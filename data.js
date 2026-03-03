@@ -44,7 +44,7 @@ const WEAPONS = {
 
 const BOSSES = {
     pride: {
-        name: '堕天骑士', sin: '傲慢', hp: 1, damage: 25, speed: 120,
+        name: '堕天骑士', sin: '傲慢', hp: 380, damage: 25, speed: 120,
         area: '天空神殿', color: 0xFFD700,
         phases: [
             { hpPercent: 1.0, attacks: ['slash', 'charge'] },
@@ -58,7 +58,7 @@ const BOSSES = {
         drops: { sinSeal: 'pride', material: 'prideEssence', gold: 200, weapon: 'dualBlades' }
     },
     envy: {
-        name: '影形者', sin: '嫉妒', hp: 1, damage: 20, speed: 140,
+        name: '影形者', sin: '嫉妒', hp: 340, damage: 20, speed: 140,
         area: '毒沼迷宫', color: 0x2ECC40,
         phases: [
             { hpPercent: 1.0, attacks: ['poisonSpit', 'lunge'] },
@@ -72,7 +72,7 @@ const BOSSES = {
         drops: { sinSeal: 'envy', material: 'envyEssence', gold: 200, weapon: 'bow' }
     },
     wrath: {
-        name: '炎魔将军', sin: '暴怒', hp: 1, damage: 30, speed: 100,
+        name: '炎魔将军', sin: '暴怒', hp: 460, damage: 30, speed: 100,
         area: '熔岩锻炉', color: 0xFF4136,
         phases: [
             { hpPercent: 1.0, attacks: ['firePunch', 'groundSlam'] },
@@ -86,7 +86,7 @@ const BOSSES = {
         drops: { sinSeal: 'wrath', material: 'wrathEssence', gold: 250, weapon: 'hammer' }
     },
     sloth: {
-        name: '梦境蛛后', sin: '懒惰', hp: 1, damage: 15, speed: 60,
+        name: '梦境蛛后', sin: '懒惰', hp: 360, damage: 15, speed: 60,
         area: '沉睡森林', color: 0xB10DC9,
         phases: [
             { hpPercent: 1.0, attacks: ['webShot', 'summonSpider'] },
@@ -100,7 +100,7 @@ const BOSSES = {
         drops: { sinSeal: 'sloth', material: 'slothEssence', gold: 180, weapon: 'staff' }
     },
     greed: {
-        name: '黄金龙王', sin: '贪婪', hp: 1, damage: 22, speed: 110,
+        name: '黄金龙王', sin: '贪婪', hp: 420, damage: 22, speed: 110,
         area: '宝藏地窟', color: 0xFFDC00,
         phases: [
             { hpPercent: 1.0, attacks: ['tailSwipe', 'goldBreath'] },
@@ -114,7 +114,7 @@ const BOSSES = {
         drops: { sinSeal: 'greed', material: 'greedEssence', gold: 999, bonusItems: { hpPotion: 5, staminaPotion: 5 } }
     },
     gluttony: {
-        name: '深渊巨口', sin: '暴食', hp: 1, damage: 28, speed: 80,
+        name: '深渊巨口', sin: '暴食', hp: 440, damage: 28, speed: 80,
         area: '腐烂宴厅', color: 0x85144b,
         phases: [
             { hpPercent: 1.0, attacks: ['bite', 'vomit'] },
@@ -128,7 +128,7 @@ const BOSSES = {
         drops: { sinSeal: 'gluttony', material: 'gluttonyEssence', gold: 400, bonusItems: { hpPotion: 8 } }
     },
     lust: {
-        name: '魅惑女妖', sin: '色欲', hp: 1, damage: 18, speed: 150,
+        name: '魅惑女妖', sin: '色欲', hp: 350, damage: 18, speed: 150,
         area: '幻梦花园', color: 0xF012BE,
         phases: [
             { hpPercent: 1.0, attacks: ['charmBolt', 'dash'] },
@@ -142,7 +142,7 @@ const BOSSES = {
         drops: { sinSeal: 'lust', material: 'lustEssence', gold: 350, bonusItems: { staminaPotion: 8 } }
     },
     final: {
-        name: '原罪之主', sin: '原罪', hp: 1, damage: 35, speed: 130,
+        name: '原罪之主', sin: '原罪', hp: 700, damage: 35, speed: 130,
         area: '虚无深渊', color: 0xFFFFFF, isFinal: true,
         phases: [
             { hpPercent: 1.0, attacks: ['slash', 'groundSlam', 'firePunch'] },

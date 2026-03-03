@@ -9,6 +9,7 @@ const GameState = {
     sinSeals: [],
     weaponLevels: { sword: 1, dualBlades: 1, hammer: 1, bow: 1, staff: 1 },
     unlockedWeapons: ['sword'],
+    selectedWeaponKey: 'sword',
     quickSlots: [null, null, null, null],
 
     addItem(itemKey, count) {
@@ -45,7 +46,17 @@ const GameState = {
         this.sinSeals = [];
         this.weaponLevels = { sword: 1, dualBlades: 1, hammer: 1, bow: 1, staff: 1 };
         this.unlockedWeapons = ['sword'];
+        this.selectedWeaponKey = 'sword';
         this.quickSlots = [null, null, null, null];
+    },
+    ensureSelectedWeapon() {
+        const unlocked = Array.isArray(this.unlockedWeapons) && this.unlockedWeapons.length > 0
+            ? this.unlockedWeapons
+            : ['sword'];
+        if (!this.selectedWeaponKey || !unlocked.includes(this.selectedWeaponKey)) {
+            this.selectedWeaponKey = unlocked[0];
+        }
+        return this.selectedWeaponKey;
     },
     save() {
         const data = {
@@ -55,6 +66,7 @@ const GameState = {
             sinSeals: this.sinSeals,
             weaponLevels: this.weaponLevels,
             unlockedWeapons: this.unlockedWeapons,
+            selectedWeaponKey: this.selectedWeaponKey,
             quickSlots: this.quickSlots
         };
         localStorage.setItem('sevenSinsSave', JSON.stringify(data));
@@ -70,13 +82,117 @@ const GameState = {
             this.sinSeals = data.sinSeals || [];
             this.weaponLevels = data.weaponLevels || { sword: 1, dualBlades: 1, hammer: 1, bow: 1, staff: 1 };
             this.unlockedWeapons = data.unlockedWeapons || ['sword'];
+            this.selectedWeaponKey = data.selectedWeaponKey || this.unlockedWeapons[0] || 'sword';
             this.quickSlots = data.quickSlots || [null, null, null, null];
+            this.ensureSelectedWeapon();
             return true;
         } catch (e) {
             return false;
         }
     }
 };
+
+function applyPlayerWeaponState(player) {
+    const unlocked = Array.isArray(GameState.unlockedWeapons) && GameState.unlockedWeapons.length > 0
+        ? GameState.unlockedWeapons.slice()
+        : ['sword'];
+    const selected = GameState.ensureSelectedWeapon();
+    player.setWeapons(unlocked, selected);
+}
+
+const UI_DEBUG_FLAGS = {
+    showSavedWeaponInHUD: false
+};
+
+const PIXEL_TILE_STYLES = {
+    default: {
+        tileSize: 16,
+        seed: 13,
+        baseColor: 0x2a2a2a,
+        shadeColor: 0x202020,
+        highlightColor: 0x363636,
+        accentColor: 0x3f3f3f,
+        shadeChance: 0.24,
+        highlightChance: 0.12,
+        accentChance: 0.08,
+        stripeInterval: 5
+    },
+    hub: {
+        tileSize: 16,
+        seed: 29,
+        baseColor: 0x3a332a,
+        shadeColor: 0x2f281f,
+        highlightColor: 0x4a4236,
+        accentColor: 0x5a5142,
+        shadeChance: 0.22,
+        highlightChance: 0.1,
+        accentChance: 0.07,
+        stripeInterval: 6
+    },
+    pride: { tileSize: 16, seed: 41, baseColor: 0x5a4f2a, shadeColor: 0x443a1d, highlightColor: 0x7c6a38, accentColor: 0xa07f38, shadeChance: 0.21, highlightChance: 0.12, accentChance: 0.1, stripeInterval: 7 },
+    envy: { tileSize: 16, seed: 53, baseColor: 0x23412a, shadeColor: 0x1a331f, highlightColor: 0x2f5a39, accentColor: 0x3f7648, shadeChance: 0.24, highlightChance: 0.09, accentChance: 0.08, stripeInterval: 5 },
+    wrath: { tileSize: 16, seed: 67, baseColor: 0x4a2522, shadeColor: 0x391a17, highlightColor: 0x66312b, accentColor: 0x8a3c33, shadeChance: 0.25, highlightChance: 0.11, accentChance: 0.1, stripeInterval: 4 },
+    sloth: { tileSize: 16, seed: 71, baseColor: 0x3a2a47, shadeColor: 0x2d2038, highlightColor: 0x4e395e, accentColor: 0x66467d, shadeChance: 0.2, highlightChance: 0.12, accentChance: 0.09, stripeInterval: 6 },
+    greed: { tileSize: 16, seed: 79, baseColor: 0x4d4724, shadeColor: 0x3a351a, highlightColor: 0x69622f, accentColor: 0x8a7f3a, shadeChance: 0.22, highlightChance: 0.12, accentChance: 0.1, stripeInterval: 5 },
+    gluttony: { tileSize: 16, seed: 89, baseColor: 0x3f262e, shadeColor: 0x2f1b21, highlightColor: 0x55323d, accentColor: 0x6f3d4e, shadeChance: 0.24, highlightChance: 0.1, accentChance: 0.08, stripeInterval: 5 },
+    lust: { tileSize: 16, seed: 97, baseColor: 0x47243f, shadeColor: 0x351b2f, highlightColor: 0x5f3155, accentColor: 0x7f3d73, shadeChance: 0.21, highlightChance: 0.13, accentChance: 0.1, stripeInterval: 6 },
+    final: { tileSize: 16, seed: 109, baseColor: 0x2e2e34, shadeColor: 0x222228, highlightColor: 0x3d3d47, accentColor: 0x5a5a68, shadeChance: 0.24, highlightChance: 0.12, accentChance: 0.09, stripeInterval: 4 }
+};
+
+function resolvePixelStyleKey(styleKey) {
+    return PIXEL_TILE_STYLES[styleKey] ? styleKey : 'default';
+}
+
+function getPixelNoise(x, y, seed) {
+    let n = (x * 374761393 + y * 668265263 + seed * 1442695041) >>> 0;
+    n ^= n >>> 13;
+    n = Math.imul(n, 1274126177) >>> 0;
+    n ^= n >>> 16;
+    return n / 4294967296;
+}
+
+function ensurePixelTileTexture(scene, styleKey) {
+    const resolved = resolvePixelStyleKey(styleKey);
+    const textureKey = 'pixel_tile_' + resolved;
+    if (scene.textures.exists(textureKey)) return textureKey;
+
+    const style = PIXEL_TILE_STYLES[resolved];
+    const size = style.tileSize || 16;
+    const gfx = scene.make.graphics({ add: false });
+
+    for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+            const noise = getPixelNoise(x, y, style.seed || 0);
+            let color = style.baseColor;
+            if (noise < style.shadeChance) {
+                color = style.shadeColor;
+            } else if (noise > 1 - style.highlightChance) {
+                color = style.highlightColor;
+            } else if ((x + y + (style.seed || 0)) % style.stripeInterval === 0 && noise < style.accentChance) {
+                color = style.accentColor;
+            }
+            gfx.fillStyle(color, 1);
+            gfx.fillRect(x, y, 1, 1);
+        }
+    }
+
+    // Slight per-tile edge contrast to reinforce pixel tile boundaries.
+    gfx.fillStyle(style.shadeColor, 0.35);
+    gfx.fillRect(0, 0, size, 1);
+    gfx.fillRect(0, 0, 1, size);
+    gfx.fillStyle(style.highlightColor, 0.25);
+    gfx.fillRect(0, size - 1, size, 1);
+    gfx.fillRect(size - 1, 0, 1, size);
+
+    gfx.generateTexture(textureKey, size, size);
+    gfx.destroy();
+    return textureKey;
+}
+
+function drawPixelTiledRect(scene, x, y, w, h, styleKey, depth) {
+    const key = ensurePixelTileTexture(scene, styleKey);
+    return scene.add.tileSprite(x, y, w, h, key).setOrigin(0, 0).setDepth(depth || 0);
+}
 
 class BootScene extends Phaser.Scene {
     constructor() {
@@ -316,6 +432,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this._invincibleTimer = 0;
         this._animDir = 'down';
         this._animState = 'idle';
+        this._weaponVisualDirty = true;
 
         this.setScale(1.5);
         this.body.setSize(20, 24);
@@ -323,11 +440,76 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.setCollideWorldBounds(true);
         this.setDepth(10);
         this._wasdKeys = scene.input.keyboard.addKeys('W,A,S,D');
+        this.weaponVisual = scene.add.graphics();
+        this.weaponVisual.setDepth(11);
         this.play('player_idle_down');
     }
 
     get currentWeapon() {
-        return WEAPONS[this.weapons[this.currentWeaponIndex]];
+        if (!Array.isArray(this.weapons) || this.weapons.length === 0) return WEAPONS.sword;
+        if (this.currentWeaponIndex < 0 || this.currentWeaponIndex >= this.weapons.length) {
+            this.currentWeaponIndex = 0;
+        }
+        const key = this.weapons[this.currentWeaponIndex];
+        return WEAPONS[key] || WEAPONS.sword;
+    }
+
+    setWeapons(weaponKeys, preferredWeaponKey) {
+        const normalized = (Array.isArray(weaponKeys) ? weaponKeys : [])
+            .filter(k => !!WEAPONS[k]);
+        this.weapons = normalized.length > 0 ? normalized : ['sword'];
+        const wanted = preferredWeaponKey && this.weapons.includes(preferredWeaponKey)
+            ? preferredWeaponKey
+            : this.weapons[0];
+        this.currentWeaponIndex = this.weapons.indexOf(wanted);
+        this._syncSelectedWeapon();
+        this._weaponVisualDirty = true;
+    }
+
+    _syncSelectedWeapon() {
+        if (!Array.isArray(this.weapons) || this.weapons.length === 0) return;
+        GameState.selectedWeaponKey = this.weapons[this.currentWeaponIndex] || this.weapons[0];
+        this._weaponVisualDirty = true;
+    }
+
+    _drawWeaponVisual() {
+        if (!this.weaponVisual || !this.weaponVisual.active) return;
+        const weaponKey = this.weapons[this.currentWeaponIndex] || 'sword';
+        const weapon = WEAPONS[weaponKey] || WEAPONS.sword;
+        const angle = this.facingAngle || 0;
+        const r = 16;
+        const hx = this.x + Math.cos(angle) * r;
+        const hy = this.y + Math.sin(angle) * r;
+        this.weaponVisual.clear();
+        this.weaponVisual.setPosition(hx, hy);
+        this.weaponVisual.setRotation(angle);
+
+        // Lightweight in-world UI for equipped weapon.
+        if (weapon.attackPattern === 'projectile') {
+            this.weaponVisual.fillStyle(0xC8B27A, 1);
+            this.weaponVisual.fillRect(-7, -1, 12, 2);
+            this.weaponVisual.fillStyle(0xF0E6C8, 1);
+            this.weaponVisual.fillTriangle(5, -2, 5, 2, 9, 0);
+        } else if (weapon.attackPattern === 'magic') {
+            this.weaponVisual.fillStyle(0xA675D1, 1);
+            this.weaponVisual.fillCircle(0, 0, 4);
+            this.weaponVisual.fillStyle(0xE9D4FF, 0.8);
+            this.weaponVisual.fillCircle(0, 0, 2);
+        } else if (weapon.attackPattern === 'slam') {
+            this.weaponVisual.fillStyle(0x8D8D95, 1);
+            this.weaponVisual.fillRect(-4, -2, 8, 4);
+            this.weaponVisual.fillStyle(0xB8B8C2, 1);
+            this.weaponVisual.fillRect(2, -1, 6, 2);
+        } else if (weapon.attackPattern === 'thrust') {
+            this.weaponVisual.fillStyle(0xD8D8D8, 1);
+            this.weaponVisual.fillRect(-8, -1, 7, 2);
+            this.weaponVisual.fillRect(1, -1, 7, 2);
+        } else {
+            this.weaponVisual.fillStyle(0xE6E6E6, 1);
+            this.weaponVisual.fillRect(-7, -1, 14, 2);
+        }
+
+        this._weaponVisualDirty = false;
     }
 
     _playAnim(state, dir) {
@@ -390,6 +572,10 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             this._playAnim(moving ? 'walk' : 'idle', dir);
         }
 
+        if (this._weaponVisualDirty || moving || this.isAttacking || this.isDodging) {
+            this._drawWeaponVisual();
+        }
+
         if (!this.isAttacking && !this.isDodging) {
             this.stamina = Math.min(this.maxStamina, this.stamina + cfg.staminaRegen * dt);
         }
@@ -437,7 +623,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         const dir = this._getDirection();
         this._playAnim('attack', dir);
         this.scene.time.delayedCall(250, () => { this.isAttacking = false; });
-        return this._spawnHitbox(weapon.damage * 2, 2, false);
+        return this._spawnHitbox(weapon.damage * 2, 2, true);
     }
 
     _spawnHitbox(damage, scale, isSpecial) {
@@ -458,6 +644,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             arrow.setRotation(angle);
             arrow.setDepth(5);
             arrow.damage = damage;
+            arrow.hitRadius = 10 * scale;
             this.scene.physics.add.existing(arrow);
             arrow.body.setVelocity(Math.cos(angle) * 450, Math.sin(angle) * 450);
             this.scene.time.delayedCall(800, () => { if (arrow.active) arrow.destroy(); });
@@ -473,6 +660,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             orb.setPosition(this.x, this.y);
             orb.setDepth(5);
             orb.damage = damage;
+            orb.hitRadius = 12 * orbScale;
             orb._pierceHits = [];
             this.scene.physics.add.existing(orb);
             orb.body.setVelocity(Math.cos(angle) * 250, Math.sin(angle) * 250);
@@ -486,6 +674,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             slam.setPosition(hx, hy);
             slam.setDepth(5);
             slam.damage = damage;
+            slam.hitRadius = 40 * scale;
             slam.x = hx;
             slam.y = hy;
             this.scene.cameras.main.shake(100, 0.01);
@@ -500,6 +689,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             hitbox.setRotation(angle);
             hitbox.setDepth(5);
             hitbox.damage = damage;
+            hitbox.hitRadius = 14 * scale;
             hitbox.x = hx;
             hitbox.y = hy;
             this.scene.time.delayedCall(100, () => { if (hitbox.active) hitbox.destroy(); });
@@ -514,6 +704,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
                 h2.setRotation(angle);
                 h2.setDepth(5);
                 h2.damage = Math.floor(damage * 0.6);
+                h2.hitRadius = 14 * scale;
                 h2.x = hx2;
                 h2.y = hy2;
                 this.scene.time.delayedCall(100, () => { if (h2.active) h2.destroy(); });
@@ -524,6 +715,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             const hitbox = this.scene.add.sprite(hx, hy, 'projectile');
             hitbox.setScale(scale);
             hitbox.damage = damage;
+            hitbox.hitRadius = 18 * scale;
             hitbox.setDepth(5);
             this.scene.time.delayedCall(150, () => { if (hitbox.active) hitbox.destroy(); });
             return hitbox;
@@ -549,10 +741,19 @@ class Player extends Phaser.Physics.Arcade.Sprite {
 
     switchWeaponLeft() {
         this.currentWeaponIndex = (this.currentWeaponIndex - 1 + this.weapons.length) % this.weapons.length;
+        this._syncSelectedWeapon();
+        this._drawWeaponVisual();
     }
 
     switchWeaponRight() {
         this.currentWeaponIndex = (this.currentWeaponIndex + 1) % this.weapons.length;
+        this._syncSelectedWeapon();
+        this._drawWeaponVisual();
+    }
+
+    destroy(fromScene) {
+        if (this.weaponVisual && this.weaponVisual.active) this.weaponVisual.destroy();
+        super.destroy(fromScene);
     }
 }
 
@@ -720,11 +921,11 @@ class HubScene extends Phaser.Scene {
 
         this.physics.world.setBounds(-500, -500, 2500, 2300);
 
+        drawPixelTiledRect(this, -500, -500, 2500, 2300, 'hub', 0);
+
         const floorGfx = this.add.graphics();
-        floorGfx.fillStyle(0x2a2520, 1);
-        floorGfx.fillRect(-500, -500, 2500, 2300);
-        floorGfx.setDepth(0);
-        floorGfx.lineStyle(1, 0x3a3530, 0.3);
+        floorGfx.setDepth(1);
+        floorGfx.lineStyle(1, 0x4a4236, 0.18);
         for (let y = -500; y < 1800; y += 64) {
             floorGfx.lineBetween(-500, y, 2000, y);
         }
@@ -735,7 +936,7 @@ class HubScene extends Phaser.Scene {
         const centerX = 750;
         const centerY = 650;
         this.player = new Player(this, centerX, centerY);
-        this.player.weapons = GameState.unlockedWeapons;
+        applyPlayerWeaponState(this.player);
 
         this.cameras.main.startFollow(this.player, false, 0.08, 0.08);
         this.cameras.main.setBounds(-500, -500, 2500, 2300);
@@ -1004,11 +1205,8 @@ class LevelScene extends Phaser.Scene {
 
         this.physics.world.setBounds(0, 0, 2800, 800);
 
-        // Draw floors and borders
-        const gfx = this.add.graphics();
-        gfx.setDepth(0);
-
-        const floorColor = 0x2a2a2a;
+        // Draw pixel-tiled floors and borders
+        const floorStyleKey = resolvePixelStyleKey(bossKey);
         const borderColor = Phaser.Display.Color.GetColor(
             Math.max(0, cr - 40),
             Math.max(0, cg - 40),
@@ -1017,17 +1215,20 @@ class LevelScene extends Phaser.Scene {
 
         const allAreas = [...rooms, ...corridors];
         allAreas.forEach(area => {
-            gfx.fillStyle(floorColor, 1);
-            gfx.fillRect(area.x, area.y, area.w, area.h);
-            gfx.lineStyle(3, borderColor, 1);
-            gfx.strokeRect(area.x, area.y, area.w, area.h);
+            drawPixelTiledRect(this, area.x, area.y, area.w, area.h, floorStyleKey, 0);
+        });
+        const borderGfx = this.add.graphics();
+        borderGfx.setDepth(1);
+        borderGfx.lineStyle(3, borderColor, 1);
+        allAreas.forEach(area => {
+            borderGfx.strokeRect(area.x, area.y, area.w, area.h);
         });
 
         this._walkableAreas = allAreas;
 
         // Spawn player at left of Room 1
         this.player = new Player(this, 200, 450);
-        this.player.weapons = GameState.unlockedWeapons;
+        applyPlayerWeaponState(this.player);
         this.player.setCollideWorldBounds(true);
         this.cameras.main.startFollow(this.player, false, 0.08, 0.08);
         this.cameras.main.setBounds(0, 0, 2800, 800);
@@ -1158,19 +1359,23 @@ class LevelScene extends Phaser.Scene {
         const ui = this.scene.get('UIScene');
         if (ui && ui.updateHUD) ui.updateHUD(this.player, BOSSES[this.bossKey].area);
 
-        const hitboxRadius = 45;
+        const defaultHitboxRadius = 45;
         for (let i = this.activeHitboxes.length - 1; i >= 0; i--) {
             const hb = this.activeHitboxes[i];
             if (!hb.active) {
                 this.activeHitboxes.splice(i, 1);
                 continue;
             }
+            const hbRadius = hb.hitRadius || defaultHitboxRadius;
             for (const enemy of this.enemies) {
                 if (!enemy.isAlive) continue;
                 const d = Phaser.Math.Distance.Between(hb.x, hb.y, enemy.x, enemy.y);
-                if (d < hitboxRadius && hb.damage) {
+                if (d < hbRadius && hb.damage) {
+                    const canPierce = Array.isArray(hb._pierceHits);
+                    if (canPierce && hb._pierceHits.includes(enemy)) continue;
                     const drops = enemy.takeDamage(hb.damage);
-                    hb.damage = 0;
+                    if (canPierce) hb._pierceHits.push(enemy);
+                    else hb.damage = 0;
                     if (drops && drops.gold) {
                         GameState.addGold(drops.gold);
                         const txt = this.add.text(enemy.x, enemy.y - 20, '+' + drops.gold + ' gold', {
@@ -1201,6 +1406,11 @@ class LevelScene extends Phaser.Scene {
         for (const enemy of this.enemies) {
             if (!enemy.isAlive) continue;
             const attacking = enemy.update(time, delta, this.player);
+            if (!this._isInWalkable(enemy.x, enemy.y)) {
+                const clamped = this._clampToWalkable(enemy.x, enemy.y);
+                enemy.setPosition(clamped.x, clamped.y);
+                enemy.setVelocity(0, 0);
+            }
             if (attacking) {
                 const d = Phaser.Math.Distance.Between(enemy.x, enemy.y, this.player.x, this.player.y);
                 if (d < enemy.attackRange + 20) {
@@ -1866,11 +2076,12 @@ class BossScene extends Phaser.Scene {
         this.victoryShown = false;
         this.activeHitboxes = [];
 
-        this.physics.world.setBounds(100, 100, 1200, 900);
         const arenaW = 1000;
         const arenaH = 700;
         const arenaX = 100 + (1200 - arenaW) / 2;
         const arenaY = 100 + (900 - arenaH) / 2;
+        this._arenaRect = { x: arenaX, y: arenaY, w: arenaW, h: arenaH };
+        this.physics.world.setBounds(arenaX, arenaY, arenaW, arenaH);
 
         const cr = (bossConfig.color >> 16) & 0xFF;
         const cg = (bossConfig.color >> 8) & 0xFF;
@@ -1881,18 +2092,17 @@ class BossScene extends Phaser.Scene {
             Math.min(255, cb + 40)
         );
 
+        drawPixelTiledRect(this, arenaX, arenaY, arenaW, arenaH, this.bossKey, 0);
         const gfx = this.add.graphics();
-        gfx.fillStyle(0x1a1a1a, 1);
-        gfx.fillRect(arenaX, arenaY, arenaW, arenaH);
         gfx.lineStyle(4, borderColor, 1);
         gfx.strokeRect(arenaX, arenaY, arenaW, arenaH);
-        gfx.setDepth(0);
+        gfx.setDepth(1);
 
         this.player = new Player(this, 600, 750);
-        this.player.weapons = GameState.unlockedWeapons;
+        applyPlayerWeaponState(this.player);
         this.player.setCollideWorldBounds(true);
         this.cameras.main.startFollow(this.player, false, 0.08, 0.08);
-        this.cameras.main.setBounds(100, 100, 1200, 900);
+        this.cameras.main.setBounds(arenaX, arenaY, arenaW, arenaH);
 
         this.boss = new Boss(this, 600, 250, bossKey);
 
@@ -1950,23 +2160,41 @@ class BossScene extends Phaser.Scene {
         });
     }
 
+    _clampToArena(sprite) {
+        if (!sprite || !sprite.active || !this._arenaRect) return;
+        const rect = this._arenaRect;
+        const bodyWidth = sprite.body && sprite.body.width ? sprite.body.width : 0;
+        const bodyHeight = sprite.body && sprite.body.height ? sprite.body.height : 0;
+        const padX = Math.max(4, bodyWidth / 2);
+        const padY = Math.max(4, bodyHeight / 2);
+        const cx = Phaser.Math.Clamp(sprite.x, rect.x + padX, rect.x + rect.w - padX);
+        const cy = Phaser.Math.Clamp(sprite.y, rect.y + padY, rect.y + rect.h - padY);
+        if (cx !== sprite.x || cy !== sprite.y) {
+            sprite.setPosition(cx, cy);
+            if (sprite.body && sprite.body.velocity) sprite.body.setVelocity(0, 0);
+        }
+    }
+
     update(time, delta) {
         if (this.playerDead) return;
         if (this.bossDead) return;
 
         this.player.update(time, delta);
+        this._clampToArena(this.player);
         this.boss.update(time, delta, this.player);
+        this._clampToArena(this.boss.sprite);
 
-        const hitboxRadius = 50;
+        const defaultHitboxRadius = 50;
         for (let i = this.activeHitboxes.length - 1; i >= 0; i--) {
             const hb = this.activeHitboxes[i];
             if (!hb.active) {
                 this.activeHitboxes.splice(i, 1);
                 continue;
             }
+            const hbRadius = hb.hitRadius || defaultHitboxRadius;
             if (this.boss.isAlive && this.boss.sprite.active) {
                 const d = Phaser.Math.Distance.Between(hb.x, hb.y, this.boss.sprite.x, this.boss.sprite.y);
-                if (d < hitboxRadius + 30 && hb.damage) {
+                if (d < hbRadius + 30 && hb.damage) {
                     this.boss.takeDamage(hb.damage);
                     hb.damage = 0;
                 }
@@ -2035,20 +2263,23 @@ class BossScene extends Phaser.Scene {
         this.victoryText = this.add.text(512, 360, lines[0], {
             fontSize: '48px',
             fill: '#FFD700'
-        }).setOrigin(0.5).setScrollFactor(0);
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(50);
 
         if (lines.length > 1) {
-            this.add.text(512, 420, lines.slice(1).join('\n'), {
+            this.victoryDetailText = this.add.text(512, 420, lines.slice(1).join('\n'), {
                 fontSize: '22px',
                 fill: '#ffffff',
                 align: 'center'
-            }).setOrigin(0.5).setScrollFactor(0);
+            }).setOrigin(0.5).setScrollFactor(0).setDepth(50);
         }
 
         this.time.delayedCall(2500, () => {
             const bossConfig = BOSSES[this.bossKey];
-            const dialog = bossConfig.defeatDialog || [];
+            const rewardDialog = lines.slice(1).map(text => ({ speaker: '系统', text }));
+            const dialog = rewardDialog.concat(bossConfig.defeatDialog || []);
             const isFinal = bossConfig.isFinal;
+            if (this.victoryText && this.victoryText.active) this.victoryText.destroy();
+            if (this.victoryDetailText && this.victoryDetailText.active) this.victoryDetailText.destroy();
             if (dialog.length > 0) {
                 this.scene.launch('DialogScene', {
                     dialog: dialog,
@@ -2666,6 +2897,16 @@ class UIScene extends Phaser.Scene {
             fontSize: '16px',
             fill: '#ffffff'
         }).setScrollFactor(0);
+        this.savedWeaponDebugText = this.add.text(pad, height - 58, '', {
+            fontSize: '12px',
+            fill: '#66ccff'
+        }).setScrollFactor(0).setVisible(UI_DEBUG_FLAGS.showSavedWeaponInHUD);
+
+        // Debug HUD toggle: F8
+        this.input.keyboard.on('keydown-F8', () => {
+            UI_DEBUG_FLAGS.showSavedWeaponInHUD = !UI_DEBUG_FLAGS.showSavedWeaponInHUD;
+            this.savedWeaponDebugText.setVisible(UI_DEBUG_FLAGS.showSavedWeaponInHUD);
+        });
 
         // Bottom-right: 4 quick slot boxes (40×40)
         const slotSize = 40;
@@ -2725,7 +2966,15 @@ class UIScene extends Phaser.Scene {
         // Weapon display
         const weapon = player.currentWeapon;
         const weaponName = weapon ? weapon.name : '-';
-        this.weaponText.setText('⚔ ' + weaponName + '  [Q/E 切换]');
+        const weaponKey = player.weapons && player.weapons[player.currentWeaponIndex]
+            ? player.weapons[player.currentWeaponIndex]
+            : 'sword';
+        this.weaponText.setText('⚔ ' + weaponName + ' (' + weaponKey + ')  [Q/E 切换]');
+        if (UI_DEBUG_FLAGS.showSavedWeaponInHUD) {
+            const savedWeaponKey = GameState.ensureSelectedWeapon();
+            const savedWeapon = WEAPONS[savedWeaponKey];
+            this.savedWeaponDebugText.setText('[DEBUG] 保存武器: ' + (savedWeapon ? savedWeapon.name : savedWeaponKey));
+        }
 
         // Area name
         this.areaNameText.setText(areaName || '');
