@@ -1189,7 +1189,15 @@ class LevelScene extends Phaser.Scene {
             }
         }
 
-        // Enemy updates and attack damage to player
+        for (const enemy of this.enemies) {
+            if (!enemy.isAlive) continue;
+            if (!this._isInWalkable(enemy.x, enemy.y)) {
+                const clamped = this._clampToWalkable(enemy.x, enemy.y);
+                enemy.setPosition(clamped.x, clamped.y);
+                enemy.setVelocity(0, 0);
+            }
+        }
+
         for (const enemy of this.enemies) {
             if (!enemy.isAlive) continue;
             const attacking = enemy.update(time, delta, this.player);
@@ -1261,6 +1269,7 @@ class Boss {
         this.sprite.setTint(this.config.color);
         this.sprite.setDepth(10);
         this.sprite.body.setAllowGravity(false);
+        this.sprite.setCollideWorldBounds(true);
         const bossAnimKey = 'enemy_' + (bossSpriteMap[bossKey] || 'orc_base') + '_idle';
         if (scene.anims.exists(bossAnimKey)) this.sprite.play(bossAnimKey);
 
@@ -1491,10 +1500,13 @@ class Boss {
                 }
             }
             if (this.attackData.shadows) {
+                const wb = this.scene.physics.world.bounds;
                 for (const sh of this.attackData.shadows) {
                     if (sh.active) {
                         sh.x += sh.vx * delta / 1000;
                         sh.y += sh.vy * delta / 1000;
+                        sh.x = Phaser.Math.Clamp(sh.x, wb.x, wb.right);
+                        sh.y = Phaser.Math.Clamp(sh.y, wb.y, wb.bottom);
                         const d = Phaser.Math.Distance.Between(sh.x, sh.y, player.x, player.y);
                         if (d < 50 && !player.isInvincible && !sh.hit) {
                             sh.hit = true;
@@ -1680,11 +1692,14 @@ class Boss {
                     this.attackData.minions.push({ g, x: sx, y: sy, hit: false, hp: 2 });
                 }
             }
+            const wb = this.scene.physics.world.bounds;
             for (const m of this.attackData.minions) {
                 if (!m.g.active) continue;
                 const a = Phaser.Math.Angle.Between(m.x, m.y, player.x, player.y);
                 m.x += Math.cos(a) * 100 * delta / 1000;
                 m.y += Math.sin(a) * 100 * delta / 1000;
+                m.x = Phaser.Math.Clamp(m.x, wb.x, wb.right);
+                m.y = Phaser.Math.Clamp(m.y, wb.y, wb.bottom);
                 m.g.setPosition(m.x, m.y);
                 const d = Phaser.Math.Distance.Between(m.x, m.y, player.x, player.y);
                 if (d < 30 && !player.isInvincible && !m.hit) {
