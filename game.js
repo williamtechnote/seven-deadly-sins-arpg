@@ -1,0 +1,2881 @@
+/**
+ * BootScene - Generates placeholder textures and shows loading bar
+ */
+
+const GameState = {
+    inventory: {},
+    gold: 0,
+    defeatedBosses: [],
+    sinSeals: [],
+    weaponLevels: { sword: 1, dualBlades: 1, hammer: 1, bow: 1, staff: 1 },
+    unlockedWeapons: ['sword'],
+    quickSlots: [null, null, null, null],
+
+    addItem(itemKey, count) {
+        this.inventory[itemKey] = (this.inventory[itemKey] || 0) + (count || 1);
+    },
+    removeItem(itemKey, count) {
+        if (!this.inventory[itemKey]) return false;
+        this.inventory[itemKey] -= (count || 1);
+        if (this.inventory[itemKey] <= 0) delete this.inventory[itemKey];
+        return true;
+    },
+    hasItem(itemKey, count) {
+        return (this.inventory[itemKey] || 0) >= (count || 1);
+    },
+    addGold(amount) { this.gold += amount; },
+    spendGold(amount) {
+        if (this.gold < amount) return false;
+        this.gold -= amount;
+        return true;
+    },
+    useQuickSlot(index, player) {
+        const itemKey = this.quickSlots[index];
+        if (!itemKey || !this.hasItem(itemKey)) return;
+        const item = ITEMS[itemKey];
+        if (!item || item.type !== 'consumable') return;
+        if (item.effect === 'healHp') player.hp = Math.min(player.maxHp, player.hp + item.value);
+        if (item.effect === 'healStamina') player.stamina = Math.min(player.maxStamina, player.stamina + item.value);
+        this.removeItem(itemKey);
+    },
+    reset() {
+        this.inventory = {};
+        this.gold = 50;
+        this.defeatedBosses = [];
+        this.sinSeals = [];
+        this.weaponLevels = { sword: 1, dualBlades: 1, hammer: 1, bow: 1, staff: 1 };
+        this.unlockedWeapons = ['sword'];
+        this.quickSlots = [null, null, null, null];
+    },
+    save() {
+        const data = {
+            inventory: this.inventory,
+            gold: this.gold,
+            defeatedBosses: this.defeatedBosses,
+            sinSeals: this.sinSeals,
+            weaponLevels: this.weaponLevels,
+            unlockedWeapons: this.unlockedWeapons,
+            quickSlots: this.quickSlots
+        };
+        localStorage.setItem('sevenSinsSave', JSON.stringify(data));
+    },
+    load() {
+        const raw = localStorage.getItem('sevenSinsSave');
+        if (!raw) return false;
+        try {
+            const data = JSON.parse(raw);
+            this.inventory = data.inventory || {};
+            this.gold = data.gold || 0;
+            this.defeatedBosses = data.defeatedBosses || [];
+            this.sinSeals = data.sinSeals || [];
+            this.weaponLevels = data.weaponLevels || { sword: 1, dualBlades: 1, hammer: 1, bow: 1, staff: 1 };
+            this.unlockedWeapons = data.unlockedWeapons || ['sword'];
+            this.quickSlots = data.quickSlots || [null, null, null, null];
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+};
+
+class BootScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'BootScene' });
+    }
+
+    preload() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        const barBg = this.add.graphics();
+        barBg.fillStyle(0x333333, 1);
+        barBg.fillRect(width / 2 - 150, height / 2 - 15, 300, 30);
+        const bar = this.add.graphics();
+        const loadingText = this.add.text(width / 2, height / 2 - 40, '加载中...', {
+            fontSize: '20px', fill: '#ffffff'
+        }).setOrigin(0.5);
+        this.load.on('progress', (v) => {
+            bar.clear();
+            bar.fillStyle(0x4a90d9, 1);
+            bar.fillRect(width / 2 - 145, height / 2 - 10, 290 * v, 20);
+        });
+        this.load.on('complete', () => loadingText.setText('完成!'));
+
+        this._loadFailed = [];
+        this.load.on('loaderror', (file) => {
+            console.warn('[BootScene] Failed to load:', file.key, file.url);
+            this._loadFailed.push(file.key);
+        });
+
+        const P = 'assets/sprites/';
+
+        const playerAnims = [
+            'idle_down', 'idle_side', 'idle_up',
+            'walk_down', 'walk_side', 'walk_up',
+            'attack_down', 'attack_side', 'attack_up',
+            'hit_down', 'death_down'
+        ];
+        playerAnims.forEach(k => {
+            this.load.spritesheet('player_' + k, P + 'player/' + k + '.png',
+                { frameWidth: 64, frameHeight: 64 });
+        });
+
+        const enemyTypes = [
+            'skeleton_rogue', 'skeleton_warrior', 'skeleton_mage', 'skeleton_base',
+            'orc_rogue', 'orc_warrior', 'orc_shaman', 'orc_base'
+        ];
+        enemyTypes.forEach(k => {
+            this.load.spritesheet('enemy_' + k, P + 'enemies/' + k + '_idle.png',
+                { frameWidth: 32, frameHeight: 32 });
+        });
+
+        ['knight', 'rogue', 'wizard'].forEach(k => {
+            this.load.spritesheet('npc_' + k, P + 'npcs/' + k + '_idle.png',
+                { frameWidth: 32, frameHeight: 32 });
+        });
+    }
+
+    create() {
+        const gfx = this.make.graphics({ add: false });
+        const gen = (key, color, w, h) => {
+            gfx.clear();
+            gfx.fillStyle(color, 1);
+            gfx.fillRect(0, 0, w, h);
+            gfx.generateTexture(key, w, h);
+        };
+        gen('projectile', 0xFFD700, 10, 10);
+        gen('hp_fill', 0xE74C3C, 100, 8);
+        gen('stamina_fill', 0x3498DB, 100, 8);
+
+        gfx.clear();
+        gfx.fillStyle(0x2a1a3a, 1);
+        gfx.fillCircle(24, 24, 24);
+        gfx.fillStyle(0x6a3a8a, 0.8);
+        gfx.fillCircle(24, 24, 18);
+        gfx.fillStyle(0xaa5acc, 0.6);
+        gfx.fillCircle(24, 24, 12);
+        gfx.fillStyle(0xeeddff, 0.5);
+        gfx.fillCircle(24, 24, 5);
+        gfx.generateTexture('portal', 48, 48);
+
+        // Generate fallback textures for any failed loads
+        const failed = this._loadFailed || [];
+        if (failed.length > 0) {
+            console.warn('[BootScene] Generating fallback textures for', failed.length, 'failed assets');
+        }
+        const fallbacks = {
+            player: { color: 0x4a90d9, w: 64, h: 64 },
+            enemy: { color: 0xFF6347, w: 32, h: 32 },
+            npc: { color: 0x2ECC40, w: 32, h: 32 }
+        };
+        failed.forEach(key => {
+            let fb = null;
+            if (key.startsWith('player_')) fb = fallbacks.player;
+            else if (key.startsWith('enemy_')) fb = fallbacks.enemy;
+            else if (key.startsWith('npc_')) fb = fallbacks.npc;
+            if (fb) {
+                gfx.clear();
+                gfx.fillStyle(fb.color, 1);
+                gfx.fillRect(0, 0, fb.w, fb.h);
+                gfx.generateTexture(key, fb.w, fb.h);
+            }
+        });
+
+        const mkAnim = (key, texture, start, end, rate, repeat) => {
+            if (!this.textures.exists(texture)) return;
+            const frameCount = this.textures.get(texture).frameTotal - 1;
+            const safeEnd = Math.min(end, frameCount - 1);
+            if (safeEnd < start) return;
+            this.anims.create({
+                key: key,
+                frames: this.anims.generateFrameNumbers(texture, { start, end: safeEnd }),
+                frameRate: rate || 8,
+                repeat: repeat !== undefined ? repeat : -1
+            });
+        };
+
+        mkAnim('player_idle_down', 'player_idle_down', 0, 3, 6);
+        mkAnim('player_idle_side', 'player_idle_side', 0, 3, 6);
+        mkAnim('player_idle_up', 'player_idle_up', 0, 3, 6);
+        mkAnim('player_walk_down', 'player_walk_down', 0, 5, 10);
+        mkAnim('player_walk_side', 'player_walk_side', 0, 5, 10);
+        mkAnim('player_walk_up', 'player_walk_up', 0, 5, 10);
+        mkAnim('player_attack_down', 'player_attack_down', 0, 7, 16, 0);
+        mkAnim('player_attack_side', 'player_attack_side', 0, 7, 16, 0);
+        mkAnim('player_attack_up', 'player_attack_up', 0, 7, 16, 0);
+        mkAnim('player_hit_down', 'player_hit_down', 0, 3, 12, 0);
+        mkAnim('player_death_down', 'player_death_down', 0, 7, 8, 0);
+
+        const enemyTypes = [
+            'skeleton_rogue', 'skeleton_warrior', 'skeleton_mage', 'skeleton_base',
+            'orc_rogue', 'orc_warrior', 'orc_shaman', 'orc_base'
+        ];
+        enemyTypes.forEach(k => {
+            mkAnim('enemy_' + k + '_idle', 'enemy_' + k, 0, 3, 6);
+        });
+
+        ['knight', 'rogue', 'wizard'].forEach(k => {
+            mkAnim('npc_' + k + '_idle', 'npc_' + k, 0, 3, 6);
+        });
+
+        this.scene.start('TitleScene');
+    }
+}
+
+/**
+ * TitleScene - Main menu with title and buttons
+ */
+class TitleScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'TitleScene' });
+    }
+
+    create() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        this.add.text(width / 2, height / 2 - 80, '七宗罪', {
+            fontSize: '48px',
+            fill: '#ffffff',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        this.add.text(width / 2, height / 2 - 30, 'SEVEN DEADLY SINS', {
+            fontSize: '20px',
+            fill: '#aaaaaa'
+        }).setOrigin(0.5);
+
+        const hasSave = !!localStorage.getItem('sevenSinsSave');
+
+        const startBtn = this.add.text(width / 2, height / 2 + 40, '[ 开始游戏 ]', {
+            fontSize: '24px',
+            fill: '#ffffff'
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        const continueBtn = this.add.text(width / 2, height / 2 + 90, '[ 继续游戏 ]', {
+            fontSize: '24px',
+            fill: hasSave ? '#ffffff' : '#555555'
+        }).setOrigin(0.5).setInteractive({ useHandCursor: hasSave });
+
+        startBtn.on('pointerover', () => startBtn.setStyle({ fill: '#ff4444' }));
+        startBtn.on('pointerout', () => startBtn.setStyle({ fill: '#ffffff' }));
+        startBtn.on('pointerdown', () => {
+            GameState.reset();
+            GameState.addItem('hpPotion', 3);
+            this.scene.start('HubScene');
+        });
+
+        if (hasSave) {
+            continueBtn.on('pointerover', () => continueBtn.setStyle({ fill: '#ff4444' }));
+            continueBtn.on('pointerout', () => continueBtn.setStyle({ fill: '#ffffff' }));
+            continueBtn.on('pointerdown', () => {
+                GameState.load();
+                this.scene.start('HubScene');
+            });
+        }
+
+        const guideBtn = this.add.text(width / 2, height / 2 + 140, '[ 操作指引 ]', {
+            fontSize: '24px',
+            fill: '#ffffff'
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        guideBtn.on('pointerover', () => guideBtn.setStyle({ fill: '#ff4444' }));
+        guideBtn.on('pointerout', () => guideBtn.setStyle({ fill: '#ffffff' }));
+        guideBtn.on('pointerdown', () => {
+            this.scene.pause();
+            this.scene.launch('HelpScene', { parentScene: 'TitleScene' });
+        });
+    }
+}
+
+/**
+ * Player - Character with movement, combat, dodge, and weapon system
+ */
+class Player extends Phaser.Physics.Arcade.Sprite {
+    constructor(scene, x, y) {
+        const tex = scene.textures.exists('player_idle_down') ? 'player_idle_down' : '__DEFAULT';
+        super(scene, x, y, tex);
+        scene.add.existing(this);
+        scene.physics.add.existing(this);
+
+        const cfg = GAME_CONFIG.PLAYER;
+        this.hp = cfg.maxHp;
+        this.maxHp = cfg.maxHp;
+        this.stamina = cfg.maxStamina;
+        this.maxStamina = cfg.maxStamina;
+        this.weapons = ['sword'];
+        this.currentWeaponIndex = 0;
+        this.attackCooldown = 0;
+        this.specialCooldown = 0;
+        this.isDodging = false;
+        this.dodgeCooldownTimer = 0;
+        this.isInvincible = false;
+        this.isAttacking = false;
+        this.knockbackTimer = 0;
+        this.facingAngle = 0;
+        this._invincibleTimer = 0;
+        this._animDir = 'down';
+        this._animState = 'idle';
+
+        this.setScale(1.5);
+        this.body.setSize(20, 24);
+        this.body.setOffset(22, 36);
+        this.setCollideWorldBounds(true);
+        this.setDepth(10);
+        this._wasdKeys = scene.input.keyboard.addKeys('W,A,S,D');
+        this.play('player_idle_down');
+    }
+
+    get currentWeapon() {
+        return WEAPONS[this.weapons[this.currentWeaponIndex]];
+    }
+
+    _playAnim(state, dir) {
+        if (state === this._animState && dir === this._animDir) return;
+        const key = 'player_' + state + '_' + dir;
+        if (this.scene.anims.exists(key)) {
+            this._animState = state;
+            this._animDir = dir;
+            this.play(key, true);
+        }
+    }
+
+    _getDirection() {
+        const angle = this.facingAngle;
+        const deg = Phaser.Math.RadToDeg(angle);
+        if (deg > -45 && deg <= 45) { this.setFlipX(false); return 'side'; }
+        if (deg > 45 && deg <= 135) return 'down';
+        if (deg > -135 && deg <= -45) return 'up';
+        this.setFlipX(true);
+        return 'side';
+    }
+
+    update(time, delta) {
+        const cfg = GAME_CONFIG.PLAYER;
+        const dt = delta / 1000;
+
+        if (this.attackCooldown > 0) this.attackCooldown -= delta;
+        if (this.specialCooldown > 0) this.specialCooldown -= delta;
+        if (this.dodgeCooldownTimer > 0) this.dodgeCooldownTimer -= delta;
+        if (this.knockbackTimer > 0) this.knockbackTimer -= delta;
+
+        if (this._invincibleTimer !== undefined && this._invincibleTimer > 0) {
+            this._invincibleTimer -= delta;
+            if (this._invincibleTimer <= 0) this.isInvincible = false;
+        }
+
+        const pointer = this.scene.input.activePointer;
+        const worldX = this.scene.cameras.main.scrollX + pointer.x;
+        const worldY = this.scene.cameras.main.scrollY + pointer.y;
+        this.facingAngle = Phaser.Math.Angle.Between(this.x, this.y, worldX, worldY);
+
+        let moving = false;
+        if (!this.isDodging && this.knockbackTimer <= 0) {
+            let vx = 0, vy = 0;
+            if (this._wasdKeys.W.isDown) vy -= 1;
+            if (this._wasdKeys.S.isDown) vy += 1;
+            if (this._wasdKeys.A.isDown) vx -= 1;
+            if (this._wasdKeys.D.isDown) vx += 1;
+            if (vx !== 0 && vy !== 0) {
+                const norm = 0.707;
+                vx *= norm;
+                vy *= norm;
+            }
+            this.setVelocity(vx * cfg.speed, vy * cfg.speed);
+            moving = vx !== 0 || vy !== 0;
+        }
+
+        const dir = this._getDirection();
+        if (!this.isAttacking) {
+            this._playAnim(moving ? 'walk' : 'idle', dir);
+        }
+
+        if (!this.isAttacking && !this.isDodging) {
+            this.stamina = Math.min(this.maxStamina, this.stamina + cfg.staminaRegen * dt);
+        }
+    }
+
+    tryDodge() {
+        const cfg = GAME_CONFIG.PLAYER;
+        if (this.isDodging || this.dodgeCooldownTimer > 0 || this.stamina < cfg.dodgeStaminaCost) return;
+        this.stamina -= cfg.dodgeStaminaCost;
+        this.isDodging = true;
+        this.isInvincible = true;
+        this.setAlpha(0.5);
+        const vx = Math.cos(this.facingAngle) * cfg.dodgeSpeed;
+        const vy = Math.sin(this.facingAngle) * cfg.dodgeSpeed;
+        this.setVelocity(vx, vy);
+        this.scene.time.delayedCall(cfg.iframeDuration, () => {
+            if (this.isInvincible && this.isDodging) this.isInvincible = false;
+        });
+        this.scene.time.delayedCall(cfg.dodgeDuration, () => {
+            this.isDodging = false;
+            this.setAlpha(1);
+            this.setVelocity(0, 0);
+            this.dodgeCooldownTimer = cfg.dodgeCooldown;
+        });
+    }
+
+    tryAttack() {
+        const weapon = this.currentWeapon;
+        if (this.attackCooldown > 0 || this.stamina < weapon.staminaCost || this.isDodging) return null;
+        this.stamina -= weapon.staminaCost;
+        this.attackCooldown = weapon.attackSpeed;
+        this.isAttacking = true;
+        const dir = this._getDirection();
+        this._playAnim('attack', dir);
+        this.scene.time.delayedCall(250, () => { this.isAttacking = false; });
+        return this._spawnHitbox(weapon.damage, 1, false);
+    }
+
+    trySpecialAttack() {
+        const weapon = this.currentWeapon;
+        if (this.specialCooldown > 0 || this.stamina < weapon.specialStaminaCost || this.isDodging) return null;
+        this.stamina -= weapon.specialStaminaCost;
+        this.specialCooldown = weapon.specialCooldown;
+        this.isAttacking = true;
+        const dir = this._getDirection();
+        this._playAnim('attack', dir);
+        this.scene.time.delayedCall(250, () => { this.isAttacking = false; });
+        return this._spawnHitbox(weapon.damage * 2, 2, false);
+    }
+
+    _spawnHitbox(damage, scale, isSpecial) {
+        const weapon = this.currentWeapon;
+        const offset = weapon.range * 0.5;
+        const angle = this.facingAngle;
+        const hx = this.x + Math.cos(angle) * offset;
+        const hy = this.y + Math.sin(angle) * offset;
+
+        if (weapon.attackPattern === 'projectile') {
+            // Bow: fast single arrow
+            const arrow = this.scene.add.graphics();
+            arrow.fillStyle(0xCCBB88, 1);
+            arrow.fillRect(-12, -2, 24, 4);
+            arrow.fillStyle(0xFFFFFF, 1);
+            arrow.fillTriangle(12, -4, 12, 4, 18, 0);
+            arrow.setPosition(this.x, this.y);
+            arrow.setRotation(angle);
+            arrow.setDepth(5);
+            arrow.damage = damage;
+            this.scene.physics.add.existing(arrow);
+            arrow.body.setVelocity(Math.cos(angle) * 450, Math.sin(angle) * 450);
+            this.scene.time.delayedCall(800, () => { if (arrow.active) arrow.destroy(); });
+            return arrow;
+        } else if (weapon.attackPattern === 'magic') {
+            // Staff: slower, larger magic orb that pierces
+            const orb = this.scene.add.graphics();
+            const orbScale = isSpecial ? 1.5 : 1;
+            orb.fillStyle(0x9B59B6, 0.8);
+            orb.fillCircle(0, 0, 10 * orbScale);
+            orb.fillStyle(0xE8DAEF, 0.6);
+            orb.fillCircle(0, 0, 5 * orbScale);
+            orb.setPosition(this.x, this.y);
+            orb.setDepth(5);
+            orb.damage = damage;
+            orb._pierceHits = [];
+            this.scene.physics.add.existing(orb);
+            orb.body.setVelocity(Math.cos(angle) * 250, Math.sin(angle) * 250);
+            this.scene.time.delayedCall(1200, () => { if (orb.active) orb.destroy(); });
+            return orb;
+        } else if (weapon.attackPattern === 'slam') {
+            // Hammer: short range ground slam with larger area
+            const slam = this.scene.add.graphics();
+            slam.fillStyle(0x888888, 0.5);
+            slam.fillCircle(0, 0, 40 * scale);
+            slam.setPosition(hx, hy);
+            slam.setDepth(5);
+            slam.damage = damage;
+            slam.x = hx;
+            slam.y = hy;
+            this.scene.cameras.main.shake(100, 0.01);
+            this.scene.time.delayedCall(200, () => { if (slam.active) slam.destroy(); });
+            return slam;
+        } else if (weapon.attackPattern === 'thrust') {
+            // Dual blades: two quick hitboxes in rapid succession
+            const hitbox = this.scene.add.graphics();
+            hitbox.fillStyle(0xCCCCCC, 0.7);
+            hitbox.fillRect(-4, -15, 8, 30);
+            hitbox.setPosition(hx, hy);
+            hitbox.setRotation(angle);
+            hitbox.setDepth(5);
+            hitbox.damage = damage;
+            hitbox.x = hx;
+            hitbox.y = hy;
+            this.scene.time.delayedCall(100, () => { if (hitbox.active) hitbox.destroy(); });
+            // Second hit shortly after
+            this.scene.time.delayedCall(120, () => {
+                const hx2 = this.x + Math.cos(angle) * offset * 1.2;
+                const hy2 = this.y + Math.sin(angle) * offset * 1.2;
+                const h2 = this.scene.add.graphics();
+                h2.fillStyle(0xCCCCCC, 0.7);
+                h2.fillRect(-4, -15, 8, 30);
+                h2.setPosition(hx2, hy2);
+                h2.setRotation(angle);
+                h2.setDepth(5);
+                h2.damage = Math.floor(damage * 0.6);
+                h2.x = hx2;
+                h2.y = hy2;
+                this.scene.time.delayedCall(100, () => { if (h2.active) h2.destroy(); });
+            });
+            return hitbox;
+        } else {
+            // Sword (sweep): default melee arc
+            const hitbox = this.scene.add.sprite(hx, hy, 'projectile');
+            hitbox.setScale(scale);
+            hitbox.damage = damage;
+            hitbox.setDepth(5);
+            this.scene.time.delayedCall(150, () => { if (hitbox.active) hitbox.destroy(); });
+            return hitbox;
+        }
+    }
+
+    takeDamage(amount) {
+        if (this.isInvincible) return false;
+        this.hp = Math.max(0, this.hp - amount);
+        this.isInvincible = true;
+        this._invincibleTimer = 200;
+        this.knockbackTimer = 200;
+        this.scene.tweens.add({
+            targets: this,
+            alpha: 0.3,
+            duration: 50,
+            yoyo: true,
+            repeat: 3,
+            onComplete: () => this.setAlpha(1)
+        });
+        return this.hp <= 0;
+    }
+
+    switchWeaponLeft() {
+        this.currentWeaponIndex = (this.currentWeaponIndex - 1 + this.weapons.length) % this.weapons.length;
+    }
+
+    switchWeaponRight() {
+        this.currentWeaponIndex = (this.currentWeaponIndex + 1) % this.weapons.length;
+    }
+}
+
+/**
+ * Enemy - AI-driven enemy with patrol/chase/attack states and HP bar
+ */
+class Enemy extends Phaser.Physics.Arcade.Sprite {
+    constructor(scene, x, y, configKey) {
+        const config = ENEMIES[configKey];
+        if (!config) throw new Error('Unknown enemy config: ' + configKey);
+
+        const spriteKey = config.sprite || 'skeleton_base';
+        const textureKey = 'enemy_' + spriteKey;
+        const tex = scene.textures.exists(textureKey) ? textureKey : '__DEFAULT';
+        super(scene, x, y, tex);
+        scene.add.existing(this);
+        scene.physics.add.existing(this);
+
+        this.spriteKey = spriteKey;
+        this.setScale(2);
+        this.body.setSize(16, 20);
+        this.body.setOffset(8, 10);
+        this.setTint(config.color);
+        this.setDepth(9);
+
+        const animKey = 'enemy_' + spriteKey + '_idle';
+        if (scene.anims.exists(animKey)) this.play(animKey);
+
+        this.hp = config.hp;
+        this.maxHp = config.hp;
+        this.damage = config.damage;
+        this.speed = config.speed;
+        this.drops = config.drops;
+
+        this.state = 'patrol';
+        this.detectionRange = 200;
+        this.attackRange = 40;
+        this.patrolTimer = 0;
+        this.targetX = x;
+        this.targetY = y;
+        this.attackCooldown = 0;
+        this.attackCooldownMs = 1000;
+        this.isAlive = true;
+
+        // HP bar: background (30×4, 0x333333) and fill (30×4, red)
+        this.hpBarBg = scene.add.graphics();
+        this.hpBarBg.fillStyle(0x333333, 1);
+        this.hpBarBg.fillRect(-15, -28, 30, 4);
+        this.hpBarBg.setDepth(9);
+
+        this.hpBarFill = scene.add.graphics();
+        this.hpBarFill.fillStyle(0xE74C3C, 1);
+        this.hpBarFill.fillRect(-15, -28, 30, 4);
+        this.hpBarFill.setDepth(9);
+
+        this.setCollideWorldBounds(true);
+    }
+
+    update(time, delta, playerSprite) {
+        if (this.state === 'dead') return;
+
+        // Update attack cooldown
+        if (this.attackCooldown > 0) this.attackCooldown -= delta;
+
+        const dist = playerSprite
+            ? Phaser.Math.Distance.Between(this.x, this.y, playerSprite.x, playerSprite.y)
+            : Infinity;
+
+        const cooldownReady = this.attackCooldown <= 0;
+
+        // State transitions
+        if (dist < this.attackRange && cooldownReady) {
+            this.state = 'attack';
+        } else if (dist < this.detectionRange) {
+            this.state = 'chase';
+        } else {
+            this.state = 'patrol';
+        }
+
+        if (this.state === 'patrol') {
+            this.patrolTimer -= delta;
+            if (this.patrolTimer <= 0) {
+                this.patrolTimer = 2000;
+                const r = 80;
+                this.targetX = this.x + (Math.random() - 0.5) * 2 * r;
+                this.targetY = this.y + (Math.random() - 0.5) * 2 * r;
+            }
+            const patrolSpeed = this.speed * 0.3;
+            const angle = Phaser.Math.Angle.Between(this.x, this.y, this.targetX, this.targetY);
+            this.setVelocity(Math.cos(angle) * patrolSpeed, Math.sin(angle) * patrolSpeed);
+        } else if (this.state === 'chase') {
+            const angle = Phaser.Math.Angle.Between(this.x, this.y, playerSprite.x, playerSprite.y);
+            this.setVelocity(Math.cos(angle) * this.speed, Math.sin(angle) * this.speed);
+        } else if (this.state === 'attack') {
+            this.setVelocity(0, 0);
+            this.attackCooldown = this.attackCooldownMs;
+        }
+
+        // Update HP bar position and fill
+        this.hpBarBg.setPosition(this.x, this.y);
+        this.hpBarFill.setPosition(this.x, this.y);
+        const hpRatio = Math.max(0, Math.min(1, this.hp / this.maxHp));
+        this.hpBarFill.clear();
+        this.hpBarFill.fillStyle(0xE74C3C, 1);
+        this.hpBarFill.fillRect(-15, -28, 30 * hpRatio, 4);
+
+        return this.state === 'attack';
+    }
+
+    takeDamage(amount) {
+        this.hp = Math.max(0, this.hp - amount);
+
+        this.scene.tweens.add({
+            targets: this,
+            alpha: 0.3,
+            duration: 50,
+            yoyo: true,
+            repeat: 3,
+            onComplete: () => this.setAlpha(1)
+        });
+
+        if (this.hp <= 0) {
+            this.state = 'dead';
+            this.body.enable = false;
+            this.setVisible(false);
+            this.hpBarBg.destroy();
+            this.hpBarFill.destroy();
+            this.isAlive = false;
+
+            const drops = {};
+            if (this.drops) {
+                for (const [key, val] of Object.entries(this.drops)) {
+                    if (Array.isArray(val) && val.length === 2) {
+                        drops[key] = Phaser.Math.Between(val[0], val[1]);
+                    } else {
+                        drops[key] = val;
+                    }
+                }
+            }
+            return drops;
+        }
+        return null;
+    }
+
+    destroy() {
+        if (this.hpBarBg && this.hpBarBg.active) this.hpBarBg.destroy();
+        if (this.hpBarFill && this.hpBarFill.active) this.hpBarFill.destroy();
+        super.destroy();
+    }
+}
+
+/**
+ * HubScene - Playable hub area
+ */
+class HubScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'HubScene' });
+    }
+
+    create() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        this.cameras.main.setBackgroundColor('#1a1a2e');
+
+        this.physics.world.setBounds(-500, -500, 2500, 2300);
+
+        const floorGfx = this.add.graphics();
+        floorGfx.fillStyle(0x2a2520, 1);
+        floorGfx.fillRect(-500, -500, 2500, 2300);
+        floorGfx.setDepth(0);
+        floorGfx.lineStyle(1, 0x3a3530, 0.3);
+        for (let y = -500; y < 1800; y += 64) {
+            floorGfx.lineBetween(-500, y, 2000, y);
+        }
+        for (let x = -500; x < 2000; x += 64) {
+            floorGfx.lineBetween(x, -500, x, 1800);
+        }
+
+        const centerX = 750;
+        const centerY = 650;
+        this.player = new Player(this, centerX, centerY);
+        this.player.weapons = GameState.unlockedWeapons;
+
+        this.cameras.main.startFollow(this.player, false, 0.08, 0.08);
+        this.cameras.main.setBounds(-500, -500, 2500, 2300);
+
+        const spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+        spaceKey.on('down', () => this.player.tryDodge());
+
+        this.input.keyboard.on('keydown-Q', () => this.player.switchWeaponLeft());
+        this.input.keyboard.on('keydown-E', () => this.player.switchWeaponRight());
+        this.input.keyboard.on('keydown-ONE', () => GameState.useQuickSlot(0, this.player));
+        this.input.keyboard.on('keydown-TWO', () => GameState.useQuickSlot(1, this.player));
+        this.input.keyboard.on('keydown-THREE', () => GameState.useQuickSlot(2, this.player));
+        this.input.keyboard.on('keydown-FOUR', () => GameState.useQuickSlot(3, this.player));
+        this.input.keyboard.on('keydown-TAB', (event) => {
+            event.preventDefault();
+            if (this.scene.isActive('InventoryScene')) this.scene.stop('InventoryScene');
+            else this.scene.launch('InventoryScene');
+        });
+
+        this.input.on('pointerdown', (pointer) => {
+            if (pointer.button === 0) this.player.tryAttack();
+            else if (pointer.button === 2) this.player.trySpecialAttack();
+        });
+        this.input.keyboard.on('keydown-J', () => this.player.tryAttack());
+        this.input.keyboard.on('keydown-K', () => this.player.trySpecialAttack());
+        this.input.keyboard.on('keydown-H', () => {
+            if (!this.scene.isActive('HelpScene')) {
+                this.scene.pause();
+                this.scene.launch('HelpScene', { parentScene: 'HubScene' });
+            }
+        });
+
+        const bossKeys = ['pride', 'envy', 'wrath', 'sloth', 'greed', 'gluttony', 'lust'];
+        this.portalGroup = this.physics.add.group({ allowGravity: false });
+        this.portals = [];
+        bossKeys.forEach((key, i) => {
+            const angle = Math.PI + (Math.PI / (bossKeys.length - 1)) * i;
+            const px = 750 + Math.cos(angle) * 300;
+            const py = 650 + Math.sin(angle) * 300;
+
+            const portal = this.physics.add.sprite(px, py, 'portal');
+            portal.setTint(BOSSES[key].color);
+            portal.setDepth(5);
+            portal.body.setCircle(24);
+            portal.body.moves = false;
+            portal.body.setImmovable(true);
+
+            const label = this.add.text(px, py - 35, BOSSES[key].sin + ' ' + BOSSES[key].area, {
+                fontSize: '14px',
+                fill: '#ffffff'
+            }).setOrigin(0.5).setDepth(5);
+
+            portal.bossKey = key;
+            portal.label = label;
+            this.portals.push(portal);
+            this.portalGroup.add(portal);
+        });
+
+        this._portalTransitioning = false;
+        this.physics.add.overlap(this.player, this.portalGroup, (player, portal) => {
+            if (this._portalTransitioning) return;
+            this._portalTransitioning = true;
+            this.scene.stop('UIScene');
+            if (portal.bossKey === 'final') {
+                this.scene.start('BossScene', { bossKey: 'final' });
+            } else {
+                this.scene.start('LevelScene', { bossKey: portal.bossKey });
+            }
+        });
+
+        this.portals.forEach(portal => {
+            const defeated = GameState.defeatedBosses.includes(portal.bossKey);
+            if (defeated) {
+                portal.setTint(0x666666);
+                portal.label.setText(BOSSES[portal.bossKey].sin + ' ' + BOSSES[portal.bossKey].area + ' ✓');
+            }
+        });
+
+        // Final Boss portal — appears when all 7 seals collected
+        if (GameState.sinSeals.length >= 7 && BOSSES.final) {
+            const fpx = 750;
+            const fpy = 350;
+            const finalPortal = this.physics.add.sprite(fpx, fpy, 'portal');
+            finalPortal.setTint(0xFFFFFF);
+            finalPortal.setScale(1.5);
+            finalPortal.setDepth(6);
+            finalPortal.body.setCircle(24);
+            finalPortal.body.moves = false;
+            finalPortal.body.setImmovable(true);
+            finalPortal.bossKey = 'final';
+
+            const finalLabel = this.add.text(fpx, fpy - 45, '⚠ 原罪 · 虚无深渊', {
+                fontSize: '16px',
+                fill: '#FFD700',
+                fontStyle: 'bold'
+            }).setOrigin(0.5).setDepth(6);
+            finalPortal.label = finalLabel;
+
+            this.portalGroup.add(finalPortal);
+            this.portals.push(finalPortal);
+
+            // Pulsing animation for the final portal
+            this.tweens.add({
+                targets: finalPortal,
+                scaleX: 1.8,
+                scaleY: 1.8,
+                alpha: 0.6,
+                duration: 800,
+                yoyo: true,
+                repeat: -1
+            });
+
+            if (GameState.defeatedBosses.includes('final')) {
+                finalPortal.setTint(0x666666);
+                finalLabel.setText('原罪 · 虚无深渊 ✓');
+            }
+        }
+
+        const npcPositions = [
+            { key: 'blacksmith', x: 600, y: 500, sprite: 'knight' },
+            { key: 'merchant', x: 750, y: 500, sprite: 'rogue' },
+            { key: 'sage', x: 900, y: 500, sprite: 'wizard' }
+        ];
+        this.npcs = [];
+        npcPositions.forEach(({ key, x, y, sprite }) => {
+            const npcData = HUB_NPCS[key];
+            const texKey = 'npc_' + sprite;
+            const actualTex = this.textures.exists(texKey) ? texKey : '__DEFAULT';
+            const npc = this.add.sprite(x, y, actualTex);
+            npc.setScale(2);
+            npc.setDepth(8);
+            npc.npcKey = key;
+            const animKey = 'npc_' + sprite + '_idle';
+            if (this.anims.exists(animKey)) npc.play(animKey);
+
+            const label = this.add.text(x, y - 35, npcData.name, {
+                fontSize: '14px',
+                fill: '#ffffff'
+            }).setOrigin(0.5).setDepth(8);
+
+            const indicator = this.add.text(x, y - 55, '按F交互', {
+                fontSize: '12px',
+                fill: '#FFD700'
+            }).setOrigin(0.5).setDepth(8).setVisible(false);
+
+            this.physics.add.existing(npc);
+            npc.body.setCircle(20);
+            npc.body.setAllowGravity(false);
+            npc.body.moves = false;
+            npc.body.setImmovable(true);
+
+            npc.label = label;
+            npc.indicator = indicator;
+            this.npcs.push(npc);
+        });
+
+        this.nearestNpc = null;
+        this.input.keyboard.on('keydown-F', () => {
+            if (this.scene.isActive('ShopScene') || this.scene.isActive('BlacksmithScene') || this.scene.isActive('DialogScene')) return;
+            if (this.nearestNpc) {
+                const key = this.nearestNpc.npcKey;
+                if (key === 'sage') {
+                    this.scene.launch('DialogScene', {
+                        dialog: HUB_NPCS.sage.dialog,
+                        onComplete: () => this.scene.stop('DialogScene')
+                    });
+                } else if (key === 'merchant') {
+                    this.scene.launch('ShopScene');
+                } else if (key === 'blacksmith') {
+                    this.scene.launch('BlacksmithScene');
+                }
+            }
+        });
+
+        this.scene.launch('UIScene');
+
+        GameState.save();
+        const saveText = this.add.text(this.cameras.main.width / 2, 40, '已保存', {
+            fontSize: '20px',
+            fill: '#4a90d9'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(100);
+        this.tweens.add({
+            targets: saveText,
+            alpha: 0,
+            duration: 500,
+            delay: 1500,
+            onComplete: () => saveText.destroy()
+        });
+
+        if (!localStorage.getItem('sevenSins_helpSeen')) {
+            localStorage.setItem('sevenSins_helpSeen', '1');
+            const hint = this.add.text(
+                this.cameras.main.width / 2,
+                this.cameras.main.height - 40,
+                '按 H 查看操作指引',
+                { fontSize: '18px', fill: '#FFD700' }
+            ).setOrigin(0.5).setScrollFactor(0).setDepth(100).setAlpha(0);
+            this.tweens.add({
+                targets: hint,
+                alpha: 1,
+                duration: 600,
+                onComplete: () => {
+                    this.tweens.add({
+                        targets: hint,
+                        alpha: 0,
+                        duration: 1000,
+                        delay: 5000,
+                        onComplete: () => hint.destroy()
+                    });
+                }
+            });
+        }
+    }
+
+    update(time, delta) {
+        this.player.update(time, delta);
+
+        const INTERACT_DIST = 80;
+        let nearest = null;
+        let nearestDist = INTERACT_DIST;
+        this.npcs.forEach(npc => {
+            const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, npc.x, npc.y);
+            npc.indicator.setVisible(d < INTERACT_DIST);
+            if (d < nearestDist) {
+                nearestDist = d;
+                nearest = npc;
+            }
+        });
+        this.nearestNpc = nearest;
+
+        const ui = this.scene.get('UIScene');
+        if (ui && ui.updateHUD) ui.updateHUD(this.player, '净罪庇护所');
+    }
+}
+
+/**
+ * LevelScene - Procedural level with rooms, enemies, and boss door
+ */
+class LevelScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'LevelScene' });
+    }
+
+    create(data) {
+        const bossKey = data.bossKey || 'wrath';
+        const boss = BOSSES[bossKey];
+        this.bossKey = bossKey;
+
+        // Room layout
+        const rooms = [
+            { x: 100, y: 200, w: 700, h: 500 },
+            { x: 1000, y: 150, w: 750, h: 550 },
+            { x: 1950, y: 100, w: 800, h: 600 }
+        ];
+        const corridors = [
+            { x: 800, y: 350, w: 200, h: 150 },
+            { x: 1750, y: 300, w: 200, h: 150 }
+        ];
+
+        // Darker background tint from boss color
+        const cr = (boss.color >> 16) & 0xFF;
+        const cg = (boss.color >> 8) & 0xFF;
+        const cb = boss.color & 0xFF;
+        const dark = ((cr >> 2) << 16) | ((cg >> 2) << 8) | (cb >> 2);
+        this.cameras.main.setBackgroundColor('#' + dark.toString(16).padStart(6, '0'));
+
+        this.physics.world.setBounds(0, 0, 2800, 800);
+
+        // Draw floors and borders
+        const gfx = this.add.graphics();
+        gfx.setDepth(0);
+
+        const floorColor = 0x2a2a2a;
+        const borderColor = Phaser.Display.Color.GetColor(
+            Math.max(0, cr - 40),
+            Math.max(0, cg - 40),
+            Math.max(0, cb - 40)
+        );
+
+        const allAreas = [...rooms, ...corridors];
+        allAreas.forEach(area => {
+            gfx.fillStyle(floorColor, 1);
+            gfx.fillRect(area.x, area.y, area.w, area.h);
+            gfx.lineStyle(3, borderColor, 1);
+            gfx.strokeRect(area.x, area.y, area.w, area.h);
+        });
+
+        this._walkableAreas = allAreas;
+
+        // Spawn player at left of Room 1
+        this.player = new Player(this, 200, 450);
+        this.player.weapons = GameState.unlockedWeapons;
+        this.player.setCollideWorldBounds(true);
+        this.cameras.main.startFollow(this.player, false, 0.08, 0.08);
+        this.cameras.main.setBounds(0, 0, 2800, 800);
+
+        const enemyPool = (typeof AREA_ENEMIES !== 'undefined' && AREA_ENEMIES[bossKey])
+            ? AREA_ENEMIES[bossKey]
+            : ['wrathSoldier', 'wrathArcher', 'wrathBrute'];
+
+        const pick = () => enemyPool[Math.floor(Math.random() * enemyPool.length)];
+
+        this.enemies = [];
+        const spawnInRoom = (room, count) => {
+            for (let i = 0; i < count; i++) {
+                const ex = room.x + 80 + Math.random() * (room.w - 160);
+                const ey = room.y + 80 + Math.random() * (room.h - 160);
+                const enemy = new Enemy(this, ex, ey, pick());
+                this.enemies.push(enemy);
+            }
+        };
+        spawnInRoom(rooms[0], 3);
+        spawnInRoom(rooms[1], 4);
+        spawnInRoom(rooms[2], 2);
+
+        this.room3Enemies = this.enemies.filter((_, i) => i >= 7);
+
+        // Boss door at far right of Room 3
+        const room3 = rooms[2];
+        const doorX = room3.x + room3.w - 80;
+        const doorY = room3.y + room3.h / 2;
+        this.bossDoor = this.add.sprite(doorX, doorY, 'portal');
+        this.bossDoor.setTint(boss.color);
+        this.bossDoor.setDepth(8);
+        this.bossDoorLabel = this.add.text(doorX, doorY - 40, 'Boss: ' + boss.name, {
+            fontSize: '16px',
+            fill: '#ffffff'
+        }).setOrigin(0.5).setDepth(8);
+
+        this.physics.add.existing(this.bossDoor);
+        this.bossDoor.body.setCircle(30);
+        this.bossDoor.body.setAllowGravity(false);
+        this.bossDoor.body.moves = false;
+        this.bossDoor.body.setImmovable(true);
+        this.bossDoor.setAlpha(0.5);
+
+        this.physics.add.overlap(this.player, this.bossDoor, () => {
+            const room3AllDead = this.room3Enemies.every(e => !e.isAlive);
+            if (!room3AllDead) return;
+            this.scene.stop('UIScene');
+            this.scene.stop('LevelScene');
+            this.scene.start('BossScene', { bossKey: this.bossKey });
+        });
+
+        this.activeHitboxes = [];
+        this.playerDead = false;
+        this.deathText = null;
+
+        // Input
+        const spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+        spaceKey.on('down', () => this.player.tryDodge());
+        this.input.keyboard.on('keydown-Q', () => this.player.switchWeaponLeft());
+        this.input.keyboard.on('keydown-E', () => this.player.switchWeaponRight());
+        this.input.keyboard.on('keydown-ONE', () => GameState.useQuickSlot(0, this.player));
+        this.input.keyboard.on('keydown-TWO', () => GameState.useQuickSlot(1, this.player));
+        this.input.keyboard.on('keydown-THREE', () => GameState.useQuickSlot(2, this.player));
+        this.input.keyboard.on('keydown-FOUR', () => GameState.useQuickSlot(3, this.player));
+        this.input.keyboard.on('keydown-TAB', () => {
+            if (this.scene.isActive('InventoryScene')) this.scene.stop('InventoryScene');
+            else this.scene.launch('InventoryScene');
+        });
+
+        this.input.on('pointerdown', (pointer) => {
+            if (this.playerDead) return;
+            let hitbox = null;
+            if (pointer.button === 0) hitbox = this.player.tryAttack();
+            else if (pointer.button === 2) hitbox = this.player.trySpecialAttack();
+            if (hitbox) this.activeHitboxes.push(hitbox);
+        });
+        this.input.keyboard.on('keydown-J', () => {
+            if (this.playerDead) return;
+            const hitbox = this.player.tryAttack();
+            if (hitbox) this.activeHitboxes.push(hitbox);
+        });
+        this.input.keyboard.on('keydown-K', () => {
+            if (this.playerDead) return;
+            const hitbox = this.player.trySpecialAttack();
+            if (hitbox) this.activeHitboxes.push(hitbox);
+        });
+        this.input.keyboard.on('keydown-H', () => {
+            if (!this.scene.isActive('HelpScene')) {
+                this.scene.pause();
+                this.scene.launch('HelpScene', { parentScene: 'LevelScene' });
+            }
+        });
+
+        this.scene.launch('UIScene');
+    }
+
+    _isInWalkable(x, y) {
+        return this._walkableAreas.some(a =>
+            x >= a.x && x <= a.x + a.w &&
+            y >= a.y && y <= a.y + a.h
+        );
+    }
+
+    _clampToWalkable(px, py) {
+        const PAD = 4;
+        let bestDist = Infinity, bx = px, by = py;
+        for (const a of this._walkableAreas) {
+            const cx = Phaser.Math.Clamp(px, a.x + PAD, a.x + a.w - PAD);
+            const cy = Phaser.Math.Clamp(py, a.y + PAD, a.y + a.h - PAD);
+            const d = Phaser.Math.Distance.Squared(px, py, cx, cy);
+            if (d < bestDist) { bestDist = d; bx = cx; by = cy; }
+        }
+        return { x: bx, y: by };
+    }
+
+    update(time, delta) {
+        if (this.playerDead) return;
+
+        this.player.update(time, delta);
+
+        if (!this._isInWalkable(this.player.x, this.player.y)) {
+            const clamped = this._clampToWalkable(this.player.x, this.player.y);
+            this.player.setPosition(clamped.x, clamped.y);
+            this.player.setVelocity(0, 0);
+        }
+
+        const ui = this.scene.get('UIScene');
+        if (ui && ui.updateHUD) ui.updateHUD(this.player, BOSSES[this.bossKey].area);
+
+        const hitboxRadius = 45;
+        for (let i = this.activeHitboxes.length - 1; i >= 0; i--) {
+            const hb = this.activeHitboxes[i];
+            if (!hb.active) {
+                this.activeHitboxes.splice(i, 1);
+                continue;
+            }
+            for (const enemy of this.enemies) {
+                if (!enemy.isAlive) continue;
+                const d = Phaser.Math.Distance.Between(hb.x, hb.y, enemy.x, enemy.y);
+                if (d < hitboxRadius && hb.damage) {
+                    const drops = enemy.takeDamage(hb.damage);
+                    hb.damage = 0;
+                    if (drops && drops.gold) {
+                        GameState.addGold(drops.gold);
+                        const txt = this.add.text(enemy.x, enemy.y - 20, '+' + drops.gold + ' gold', {
+                            fontSize: '16px',
+                            fill: '#FFD700'
+                        }).setOrigin(0.5);
+                        this.tweens.add({
+                            targets: txt,
+                            y: txt.y - 40,
+                            alpha: 0,
+                            duration: 800,
+                            onComplete: () => txt.destroy()
+                        });
+                    }
+                }
+            }
+        }
+
+        // Enemy updates and attack damage to player
+        for (const enemy of this.enemies) {
+            if (!enemy.isAlive) continue;
+            const attacking = enemy.update(time, delta, this.player);
+            if (attacking) {
+                const d = Phaser.Math.Distance.Between(enemy.x, enemy.y, this.player.x, this.player.y);
+                if (d < enemy.attackRange + 20) {
+                    const died = this.player.takeDamage(enemy.damage);
+                    if (died) {
+                        this.playerDead = true;
+                        this.deathText = this.add.text(
+                            this.cameras.main.scrollX + 512,
+                            this.cameras.main.scrollY + 384,
+                            '死亡',
+                            { fontSize: '48px', fill: '#ff0000' }
+                        ).setOrigin(0.5).setScrollFactor(0);
+                        this.time.delayedCall(2000, () => {
+                            this.scene.stop('UIScene');
+                            this.scene.start('HubScene');
+                        });
+                        return;
+                    }
+                }
+            }
+        }
+
+        // Boss door activation when all Room 3 enemies dead
+        const room3AllDead = this.room3Enemies.every(e => !e.isAlive);
+        if (room3AllDead) this.bossDoor.setAlpha(1);
+    }
+}
+
+/**
+ * Boss - Manages boss entity with phase system and attack patterns (plain class, not extending Sprite)
+ */
+const BOSS_ATTACK_TYPES = {
+    DASH: ['firePunch', 'slash', 'poisonSpit', 'bite', 'charmBolt', 'webShot', 'tailSwipe', 'devour'],
+    AOE: ['groundSlam', 'vomit', 'goldBreath'],
+    CONE: ['flameBreath', 'charge', 'lunge', 'dash'],
+    SPECIAL: ['mirror', 'copyWeapon', 'shapeShift', 'reverseControl', 'illusion'],
+    BUFF: ['berserk', 'nightmare', 'treasureStorm', 'consume', 'divineStrike'],
+    HAZARD: ['summonSpider', 'coinTrap', 'sleepFog']
+};
+
+function getAttackType(attackName) {
+    for (const [type, attacks] of Object.entries(BOSS_ATTACK_TYPES)) {
+        if (attacks.includes(attackName)) return type;
+    }
+    return 'DASH';
+}
+
+class Boss {
+    constructor(scene, x, y, bossKey) {
+        this.scene = scene;
+        this.bossKey = bossKey;
+        this.config = BOSSES[bossKey];
+        if (!this.config) throw new Error('Unknown boss: ' + bossKey);
+
+        const bossSpriteMap = {
+            wrath: 'orc_base', pride: 'skeleton_warrior', envy: 'skeleton_rogue',
+            sloth: 'orc_shaman', greed: 'skeleton_base', gluttony: 'orc_warrior',
+            lust: 'skeleton_mage'
+        };
+        const bossTexture = 'enemy_' + (bossSpriteMap[bossKey] || 'orc_base');
+        const bossTex = scene.textures.exists(bossTexture) ? bossTexture : '__DEFAULT';
+        this.sprite = scene.physics.add.sprite(x, y, bossTex);
+        this.sprite.setScale(4);
+        this.sprite.body.setSize(16, 20);
+        this.sprite.body.setOffset(8, 10);
+        this.sprite.setTint(this.config.color);
+        this.sprite.setDepth(10);
+        this.sprite.body.setAllowGravity(false);
+        const bossAnimKey = 'enemy_' + (bossSpriteMap[bossKey] || 'orc_base') + '_idle';
+        if (scene.anims.exists(bossAnimKey)) this.sprite.play(bossAnimKey);
+
+        this.hp = this.config.hp;
+        this.maxHp = this.config.hp;
+        this.damage = this.config.damage;
+        this.speed = this.config.speed;
+        this.currentPhase = 0;
+        this.phaseTransitioned = this.config.phases.map(() => false);
+        this.attackTimer = 0;
+        this.currentAttack = null;
+        this.attackState = 'idle';
+        this.isAlive = true;
+        this.invincibleUntil = 0;
+        this.berserkApplied = false;
+
+        this.attackIndex = 0;
+        this.windUpStart = 0;
+        this.attackStart = 0;
+        this.cooldownStart = 0;
+        this.attackData = {};
+    }
+
+    getPhase() {
+        return this.config.phases[this.currentPhase] || this.config.phases[0];
+    }
+
+    update(time, delta, player) {
+        if (!this.isAlive) return;
+
+        const dt = delta / 1000;
+        this.attackTimer += delta;
+
+        if (time < this.invincibleUntil) return;
+
+        const hpPercent = this.hp / this.maxHp;
+        for (let i = this.config.phases.length - 1; i >= 0; i--) {
+            if (hpPercent <= this.config.phases[i].hpPercent && !this.phaseTransitioned[i]) {
+                this._enterPhase(i, time);
+                break;
+            }
+        }
+
+        const phase = this.getPhase();
+        const attacks = phase.attacks || [];
+
+        if (this.attackState === 'idle') {
+            if (attacks.length > 0) {
+                this.currentAttack = attacks[this.attackIndex % attacks.length];
+                this.attackIndex++;
+                this.attackState = 'winding';
+                this.windUpStart = time;
+            }
+            this._moveTowardPlayer(player, 0.5);
+        } else if (this.attackState === 'winding') {
+            const flash = Math.floor((time - this.windUpStart) / 100) % 2;
+            this.sprite.setAlpha(flash === 0 ? 1 : 0.5);
+            if (time - this.windUpStart >= 500) {
+                this.sprite.setAlpha(1);
+                this.attackState = 'attacking';
+                this.attackStart = time;
+                this.attackData = {};
+            }
+        } else if (this.attackState === 'attacking') {
+            this._executeAttack(time, delta, player);
+        } else if (this.attackState === 'cooldown') {
+            if (time - this.cooldownStart >= 500 + Math.random() * 500) {
+                this.attackState = 'idle';
+            }
+        }
+    }
+
+    _enterPhase(phaseIndex, time) {
+        this.phaseTransitioned[phaseIndex] = true;
+        this.currentPhase = phaseIndex;
+        this.scene.cameras.main.flash(200, 255, 255, 255);
+        this.invincibleUntil = time + 1000;
+        this.speed *= 1.2;
+        const phase = this.config.phases[phaseIndex];
+        if (phase && phase.attacks && phase.attacks.includes('berserk')) {
+            if (!this.berserkApplied) {
+                this.berserkApplied = true;
+                this.damage *= 1.5;
+                this.scene.cameras.main.shake(300, 0.02);
+            }
+        }
+        const berserkTypes = ['berserk', 'nightmare', 'treasureStorm', 'consume', 'divineStrike'];
+        if (phase && phase.attacks && phase.attacks.some(a => berserkTypes.includes(a))) {
+            if (!this.berserkApplied) {
+                this.berserkApplied = true;
+                this.damage *= 1.5;
+                this.scene.cameras.main.shake(300, 0.02);
+            }
+        }
+    }
+
+    _moveTowardPlayer(player, factor) {
+        if (!player || !player.active) return;
+        const angle = Phaser.Math.Angle.Between(this.sprite.x, this.sprite.y, player.x, player.y);
+        const v = this.speed * factor;
+        this.sprite.body.setVelocity(Math.cos(angle) * v, Math.sin(angle) * v);
+    }
+
+    _executeAttack(time, delta, player) {
+        const atk = this.currentAttack;
+        const type = getAttackType(atk);
+
+        if (type === 'DASH') {
+            if (!this.attackData.started) {
+                this.attackData.started = true;
+                this.attackData.targetX = player.x;
+                this.attackData.targetY = player.y;
+                const angle = Phaser.Math.Angle.Between(this.sprite.x, this.sprite.y, player.x, player.y);
+                this.sprite.body.setVelocity(Math.cos(angle) * this.speed * 3, Math.sin(angle) * this.speed * 3);
+            }
+            if (time - this.attackStart >= 300) {
+                this.sprite.body.setVelocity(0, 0);
+                this._finishAttack(time);
+            } else {
+                const d = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, player.x, player.y);
+                if (d < 60 && !player.isInvincible && !this.attackData.dashHit) {
+                    this.attackData.dashHit = true;
+                    player.takeDamage(this.damage);
+                }
+            }
+        } else if (type === 'AOE') {
+            if (!this.attackData.circle) {
+                this.attackData.circle = this.scene.add.graphics();
+                this.attackData.circle.setDepth(8);
+                this.sprite.body.setVelocity(0, 0);
+            }
+            const elapsed = time - this.attackStart;
+            const radius = Math.min(150, (elapsed / 500) * 150);
+            this.attackData.circle.clear();
+            this.attackData.circle.fillStyle(this.config.color, 0.4);
+            this.attackData.circle.fillCircle(this.sprite.x, this.sprite.y, radius);
+            if (elapsed >= 500) {
+                const d = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, player.x, player.y);
+                if (d < 150 && !player.isInvincible) player.takeDamage(this.damage);
+                if (this.attackData.circle) this.attackData.circle.destroy();
+                this._finishAttack(time);
+            }
+        } else if (type === 'CONE') {
+            if (!this.attackData.cone) {
+                this.attackData.cone = this.scene.add.graphics();
+                this.attackData.cone.setDepth(8);
+                this.sprite.body.setVelocity(0, 0);
+                const angle = Phaser.Math.Angle.Between(this.sprite.x, this.sprite.y, player.x, player.y);
+                this.attackData.angle = angle;
+                this.attackData.cx = this.sprite.x;
+                this.attackData.cy = this.sprite.y;
+            }
+            const elapsed = time - this.attackStart;
+            this.attackData.cone.clear();
+            this.attackData.cone.fillStyle(this.config.color, 0.5);
+            const a = this.attackData.angle;
+            const cx = this.attackData.cx;
+            const cy = this.attackData.cy;
+            const w = 200;
+            const h = 80;
+            const cos = Math.cos(a);
+            const sin = Math.sin(a);
+            const pts = [
+                [cx, cy],
+                [cx + cos * w - sin * (h / 2), cy + sin * w + cos * (h / 2)],
+                [cx + cos * w + sin * (h / 2), cy + sin * w - cos * (h / 2)]
+            ];
+            this.attackData.cone.fillTriangle(pts[0][0], pts[0][1], pts[1][0], pts[1][1], pts[2][0], pts[2][1]);
+            const px = player.x;
+            const py = player.y;
+            const relX = (px - cx) * cos + (py - cy) * sin;
+            const relY = -(px - cx) * sin + (py - cy) * cos;
+            if (elapsed < 800 && relX > 0 && relX < w && Math.abs(relY) < h / 2 && !player.isInvincible && !this.attackData.coneHit) {
+                this.attackData.coneHit = true;
+                player.takeDamage(this.damage);
+            }
+            if (elapsed >= 800) {
+                if (this.attackData.cone) this.attackData.cone.destroy();
+                this._finishAttack(time);
+            }
+        } else if (type === 'SPECIAL') {
+            this._execSpecial(atk, time, delta, player);
+        } else if (type === 'BUFF') {
+            if (!this.attackData.applied && !this.berserkApplied) {
+                this.attackData.applied = true;
+                this.berserkApplied = true;
+                this.scene.cameras.main.shake(300, 0.02);
+                this.damage *= 1.5;
+                this.speed *= 1.2;
+            }
+            this._finishAttack(time);
+        } else if (type === 'HAZARD') {
+            this._execHazard(atk, time, delta, player);
+        } else {
+            this._finishAttack(time);
+        }
+    }
+
+    _execSpecial(atk, time, delta, player) {
+        const elapsed = time - this.attackStart;
+
+        if (atk === 'mirror' || atk === 'shapeShift') {
+            // Teleport + shadow clones that chase player
+            if (!this.attackData.started) {
+                this.attackData.started = true;
+                this.sprite.body.setVelocity(0, 0);
+                this.sprite.setVisible(false);
+                const newX = 600 + (Math.random() - 0.5) * 600;
+                const newY = 250 + (Math.random() - 0.5) * 280;
+                this.sprite.setPosition(newX, newY);
+                const cloneCount = atk === 'shapeShift' ? 3 : 2;
+                this.attackData.shadows = [];
+                for (let i = 0; i < cloneCount; i++) {
+                    const sx = 600 + (Math.random() - 0.5) * 400;
+                    const sy = 250 + (Math.random() - 0.5) * 200;
+                    const tex = this.sprite.texture.key;
+                    const shadow = this.scene.add.sprite(sx, sy, tex);
+                    shadow.setScale(this.sprite.scaleX);
+                    shadow.setTint(this.config.color);
+                    shadow.setAlpha(0.5);
+                    shadow.setDepth(9);
+                    const ax = player.x - sx, ay = player.y - sy;
+                    const len = Math.sqrt(ax * ax + ay * ay) || 1;
+                    shadow.vx = (ax / len) * this.speed * 2;
+                    shadow.vy = (ay / len) * this.speed * 2;
+                    shadow.hit = false;
+                    this.attackData.shadows.push(shadow);
+                }
+            }
+            if (this.attackData.shadows) {
+                for (const sh of this.attackData.shadows) {
+                    if (sh.active) {
+                        sh.x += sh.vx * delta / 1000;
+                        sh.y += sh.vy * delta / 1000;
+                        const d = Phaser.Math.Distance.Between(sh.x, sh.y, player.x, player.y);
+                        if (d < 50 && !player.isInvincible && !sh.hit) {
+                            sh.hit = true;
+                            player.takeDamage(this.damage * 0.5);
+                        }
+                    }
+                }
+            }
+            if (elapsed >= 1000) {
+                this.sprite.setVisible(true);
+                if (this.attackData.shadows) {
+                    for (const sh of this.attackData.shadows) if (sh.active) sh.destroy();
+                }
+                if (!this.attackData.realDash) {
+                    this.attackData.realDash = true;
+                    const angle = Phaser.Math.Angle.Between(this.sprite.x, this.sprite.y, player.x, player.y);
+                    this.sprite.body.setVelocity(Math.cos(angle) * this.speed * 2, Math.sin(angle) * this.speed * 2);
+                    this.attackData.dashEnd = time + 400;
+                }
+            }
+            if (this.attackData.realDash && !this.attackData.realHit) {
+                const d = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, player.x, player.y);
+                if (d < 60 && !player.isInvincible) {
+                    this.attackData.realHit = true;
+                    player.takeDamage(this.damage);
+                }
+            }
+            if (this.attackData.dashEnd && time >= this.attackData.dashEnd) {
+                this.sprite.body.setVelocity(0, 0);
+                this._finishAttack(time);
+            }
+        } else if (atk === 'reverseControl') {
+            // Ring of projectiles expanding outward from boss, then contracting toward player
+            if (!this.attackData.started) {
+                this.attackData.started = true;
+                this.sprite.body.setVelocity(0, 0);
+                this.attackData.projectiles = [];
+                const count = 8;
+                for (let i = 0; i < count; i++) {
+                    const a = (Math.PI * 2 / count) * i;
+                    const g = this.scene.add.graphics();
+                    g.fillStyle(this.config.color, 0.8);
+                    g.fillCircle(0, 0, 10);
+                    g.setDepth(9);
+                    g.setPosition(this.sprite.x, this.sprite.y);
+                    this.attackData.projectiles.push({ g, angle: a, dist: 0, hit: false });
+                }
+            }
+            const phase1 = elapsed < 600;
+            for (const p of this.attackData.projectiles) {
+                if (!p.g.active) continue;
+                if (phase1) {
+                    p.dist = (elapsed / 600) * 200;
+                    p.g.setPosition(
+                        this.sprite.x + Math.cos(p.angle) * p.dist,
+                        this.sprite.y + Math.sin(p.angle) * p.dist
+                    );
+                } else {
+                    const t = (elapsed - 600) / 800;
+                    const sx = this.sprite.x + Math.cos(p.angle) * 200;
+                    const sy = this.sprite.y + Math.sin(p.angle) * 200;
+                    p.g.setPosition(
+                        sx + (player.x - sx) * Math.min(1, t),
+                        sy + (player.y - sy) * Math.min(1, t)
+                    );
+                    const d = Phaser.Math.Distance.Between(p.g.x, p.g.y, player.x, player.y);
+                    if (d < 30 && !player.isInvincible && !p.hit) {
+                        p.hit = true;
+                        player.takeDamage(this.damage * 0.4);
+                    }
+                }
+            }
+            if (elapsed >= 1400) {
+                for (const p of this.attackData.projectiles) if (p.g.active) p.g.destroy();
+                this._finishAttack(time);
+            }
+        } else if (atk === 'illusion') {
+            // Spawn 4 illusion bosses that wander randomly; only touching the real boss hurts
+            if (!this.attackData.started) {
+                this.attackData.started = true;
+                this.sprite.body.setVelocity(0, 0);
+                this.sprite.setAlpha(0.7);
+                this.attackData.illusions = [];
+                for (let i = 0; i < 4; i++) {
+                    const ix = 200 + Math.random() * 800;
+                    const iy = 200 + Math.random() * 400;
+                    const tex = this.sprite.texture.key;
+                    const ill = this.scene.add.sprite(ix, iy, tex);
+                    ill.setScale(this.sprite.scaleX);
+                    ill.setTint(this.config.color);
+                    ill.setAlpha(0.7);
+                    ill.setDepth(9);
+                    ill.vx = (Math.random() - 0.5) * this.speed;
+                    ill.vy = (Math.random() - 0.5) * this.speed;
+                    this.attackData.illusions.push(ill);
+                }
+            }
+            for (const ill of this.attackData.illusions) {
+                if (ill.active) {
+                    ill.x += ill.vx * delta / 1000;
+                    ill.y += ill.vy * delta / 1000;
+                    if (ill.x < 200 || ill.x > 1000) ill.vx *= -1;
+                    if (ill.y < 150 || ill.y > 650) ill.vy *= -1;
+                }
+            }
+            if (elapsed >= 3000) {
+                this.sprite.setAlpha(1);
+                for (const ill of this.attackData.illusions) if (ill.active) ill.destroy();
+                this._finishAttack(time);
+            }
+        } else if (atk === 'copyWeapon') {
+            // Rapid projectile barrage toward player
+            if (!this.attackData.started) {
+                this.attackData.started = true;
+                this.sprite.body.setVelocity(0, 0);
+                this.attackData.projectiles = [];
+                this.attackData.nextShot = time;
+                this.attackData.shotCount = 0;
+            }
+            if (time >= this.attackData.nextShot && this.attackData.shotCount < 6) {
+                this.attackData.shotCount++;
+                this.attackData.nextShot = time + 200;
+                const angle = Phaser.Math.Angle.Between(this.sprite.x, this.sprite.y, player.x, player.y);
+                const g = this.scene.add.graphics();
+                g.fillStyle(this.config.color, 0.9);
+                g.fillCircle(0, 0, 8);
+                g.setDepth(9);
+                g.setPosition(this.sprite.x, this.sprite.y);
+                this.attackData.projectiles.push({
+                    g, vx: Math.cos(angle) * 350, vy: Math.sin(angle) * 350, hit: false
+                });
+            }
+            for (const p of this.attackData.projectiles) {
+                if (!p.g.active) continue;
+                p.g.x += p.vx * delta / 1000;
+                p.g.y += p.vy * delta / 1000;
+                const d = Phaser.Math.Distance.Between(p.g.x, p.g.y, player.x, player.y);
+                if (d < 25 && !player.isInvincible && !p.hit) {
+                    p.hit = true;
+                    player.takeDamage(this.damage * 0.3);
+                }
+            }
+            if (elapsed >= 2000) {
+                for (const p of this.attackData.projectiles) if (p.g.active) p.g.destroy();
+                this._finishAttack(time);
+            }
+        } else {
+            // Fallback: simple teleport + dash
+            if (!this.attackData.started) {
+                this.attackData.started = true;
+                this.sprite.body.setVelocity(0, 0);
+                const angle = Phaser.Math.Angle.Between(this.sprite.x, this.sprite.y, player.x, player.y);
+                this.sprite.body.setVelocity(Math.cos(angle) * this.speed * 3, Math.sin(angle) * this.speed * 3);
+            }
+            if (elapsed >= 400) {
+                this.sprite.body.setVelocity(0, 0);
+                this._finishAttack(time);
+            }
+        }
+    }
+
+    _execHazard(atk, time, delta, player) {
+        const elapsed = time - this.attackStart;
+
+        if (atk === 'summonSpider') {
+            // Spawn small spiders that chase the player
+            if (!this.attackData.started) {
+                this.attackData.started = true;
+                this.sprite.body.setVelocity(0, 0);
+                this.attackData.minions = [];
+                const count = 3 + Math.floor(Math.random() * 2);
+                for (let i = 0; i < count; i++) {
+                    const sx = this.sprite.x + (Math.random() - 0.5) * 200;
+                    const sy = this.sprite.y + (Math.random() - 0.5) * 200;
+                    const g = this.scene.add.graphics();
+                    g.fillStyle(this.config.color, 0.8);
+                    g.fillCircle(0, 0, 12);
+                    g.fillStyle(0x000000, 1);
+                    g.fillCircle(-4, -3, 3);
+                    g.fillCircle(4, -3, 3);
+                    g.setPosition(sx, sy);
+                    g.setDepth(8);
+                    this.attackData.minions.push({ g, x: sx, y: sy, hit: false, hp: 2 });
+                }
+            }
+            for (const m of this.attackData.minions) {
+                if (!m.g.active) continue;
+                const a = Phaser.Math.Angle.Between(m.x, m.y, player.x, player.y);
+                m.x += Math.cos(a) * 100 * delta / 1000;
+                m.y += Math.sin(a) * 100 * delta / 1000;
+                m.g.setPosition(m.x, m.y);
+                const d = Phaser.Math.Distance.Between(m.x, m.y, player.x, player.y);
+                if (d < 30 && !player.isInvincible && !m.hit) {
+                    m.hit = true;
+                    player.takeDamage(this.damage * 0.3);
+                    m.g.destroy();
+                }
+            }
+            if (elapsed >= 4000) {
+                for (const m of this.attackData.minions) if (m.g.active) m.g.destroy();
+                this._finishAttack(time);
+            }
+        } else if (atk === 'coinTrap') {
+            // Gold circles that blink then explode
+            if (!this.attackData.started) {
+                this.attackData.started = true;
+                this.sprite.body.setVelocity(0, 0);
+                this.attackData.coins = [];
+                const count = 5 + Math.floor(Math.random() * 3);
+                for (let i = 0; i < count; i++) {
+                    const cx = 200 + Math.random() * 800;
+                    const cy = 200 + Math.random() * 400;
+                    const g = this.scene.add.graphics();
+                    g.setDepth(7);
+                    this.attackData.coins.push({ g, x: cx, y: cy, exploded: false, spawnTime: time + i * 300 });
+                }
+            }
+            for (const c of this.attackData.coins) {
+                if (!c.g.active || c.exploded) continue;
+                const coinElapsed = time - c.spawnTime;
+                if (coinElapsed < 0) continue;
+                c.g.clear();
+                if (coinElapsed < 1500) {
+                    const blink = Math.floor(coinElapsed / 150) % 2;
+                    c.g.fillStyle(0xFFD700, blink ? 0.9 : 0.4);
+                    c.g.fillCircle(c.x, c.y, 25);
+                } else {
+                    c.exploded = true;
+                    c.g.fillStyle(0xFF4500, 0.7);
+                    c.g.fillCircle(c.x, c.y, 60);
+                    const d = Phaser.Math.Distance.Between(c.x, c.y, player.x, player.y);
+                    if (d < 60 && !player.isInvincible) {
+                        player.takeDamage(this.damage * 0.6);
+                    }
+                    this.scene.time.delayedCall(300, () => { if (c.g.active) c.g.destroy(); });
+                }
+            }
+            if (elapsed >= 5000) {
+                for (const c of this.attackData.coins) if (c.g.active) c.g.destroy();
+                this._finishAttack(time);
+            }
+        } else if (atk === 'sleepFog') {
+            // Slow-moving fog clouds
+            if (!this.attackData.started) {
+                this.attackData.started = true;
+                this.sprite.body.setVelocity(0, 0);
+                this.attackData.fogs = [];
+                for (let i = 0; i < 4; i++) {
+                    const fx = 200 + Math.random() * 800;
+                    const fy = 200 + Math.random() * 400;
+                    const g = this.scene.add.graphics();
+                    g.setDepth(7);
+                    this.attackData.fogs.push({
+                        g, x: fx, y: fy,
+                        vx: (Math.random() - 0.5) * 60,
+                        vy: (Math.random() - 0.5) * 60,
+                        lastHit: 0, radius: 50 + Math.random() * 30
+                    });
+                }
+            }
+            for (const f of this.attackData.fogs) {
+                if (!f.g.active) continue;
+                f.x += f.vx * delta / 1000;
+                f.y += f.vy * delta / 1000;
+                if (f.x < 150 || f.x > 1050) f.vx *= -1;
+                if (f.y < 150 || f.y > 650) f.vy *= -1;
+                f.g.clear();
+                f.g.fillStyle(this.config.color, 0.3);
+                f.g.fillCircle(f.x, f.y, f.radius);
+                f.g.fillStyle(this.config.color, 0.15);
+                f.g.fillCircle(f.x + 15, f.y - 10, f.radius * 0.7);
+                const d = Phaser.Math.Distance.Between(f.x, f.y, player.x, player.y);
+                if (d < f.radius && !player.isInvincible && time - f.lastHit > 800) {
+                    f.lastHit = time;
+                    player.takeDamage(this.damage * 0.25);
+                }
+            }
+            if (elapsed >= 5000) {
+                for (const f of this.attackData.fogs) if (f.g.active) f.g.destroy();
+                this._finishAttack(time);
+            }
+        } else {
+            // Default: static hazard zones
+            if (!this.attackData.zones) {
+                this.attackData.zones = [];
+                const count = 3 + Math.floor(Math.random() * 3);
+                for (let i = 0; i < count; i++) {
+                    const zx = 600 + (Math.random() - 0.5) * 600;
+                    const zy = 400 + (Math.random() - 0.5) * 400;
+                    const g = this.scene.add.graphics();
+                    g.fillStyle(this.config.color, 0.6);
+                    g.fillCircle(zx, zy, 60);
+                    g.setDepth(7);
+                    this.attackData.zones.push({ g, x: zx, y: zy, lastHit: 0 });
+                }
+                this.sprite.body.setVelocity(0, 0);
+            }
+            for (const z of this.attackData.zones) {
+                if (z.g.active) {
+                    const d = Phaser.Math.Distance.Between(z.x, z.y, player.x, player.y);
+                    if (d < 60 && !player.isInvincible && time - z.lastHit > 500) {
+                        z.lastHit = time;
+                        player.takeDamage(this.damage * 0.5);
+                    }
+                }
+            }
+            if (elapsed >= 5000) {
+                for (const z of this.attackData.zones) if (z.g.active) z.g.destroy();
+                this._finishAttack(time);
+            }
+        }
+    }
+
+    _finishAttack(time) {
+        this.attackState = 'cooldown';
+        this.cooldownStart = time;
+    }
+
+    takeDamage(amount) {
+        if (this.scene.time.now < this.invincibleUntil) return;
+        this.hp = Math.max(0, this.hp - amount);
+        this.scene.tweens.add({
+            targets: this.sprite,
+            alpha: 0.3,
+            duration: 50,
+            yoyo: true,
+            repeat: 3,
+            onComplete: () => this.sprite.setAlpha(1)
+        });
+        if (this.hp <= 0) this.isAlive = false;
+    }
+
+    destroy() {
+        if (this.sprite && this.sprite.active) this.sprite.destroy();
+    }
+}
+
+/**
+ * BossScene - Full boss fight with phase system and attack patterns
+ */
+class BossScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'BossScene' });
+    }
+
+    create(data) {
+        const bossKey = data.bossKey || 'wrath';
+        const bossConfig = BOSSES[bossKey];
+        if (!bossConfig) throw new Error('Unknown boss: ' + bossKey);
+
+        this.bossKey = bossKey;
+        this.playerDead = false;
+        this.bossDead = false;
+        this.victoryShown = false;
+        this.activeHitboxes = [];
+
+        this.physics.world.setBounds(100, 100, 1200, 900);
+        const arenaW = 1000;
+        const arenaH = 700;
+        const arenaX = 100 + (1200 - arenaW) / 2;
+        const arenaY = 100 + (900 - arenaH) / 2;
+
+        const cr = (bossConfig.color >> 16) & 0xFF;
+        const cg = (bossConfig.color >> 8) & 0xFF;
+        const cb = bossConfig.color & 0xFF;
+        const borderColor = Phaser.Display.Color.GetColor(
+            Math.min(255, cr + 40),
+            Math.min(255, cg + 40),
+            Math.min(255, cb + 40)
+        );
+
+        const gfx = this.add.graphics();
+        gfx.fillStyle(0x1a1a1a, 1);
+        gfx.fillRect(arenaX, arenaY, arenaW, arenaH);
+        gfx.lineStyle(4, borderColor, 1);
+        gfx.strokeRect(arenaX, arenaY, arenaW, arenaH);
+        gfx.setDepth(0);
+
+        this.player = new Player(this, 600, 750);
+        this.player.weapons = GameState.unlockedWeapons;
+        this.player.setCollideWorldBounds(true);
+        this.cameras.main.startFollow(this.player, false, 0.08, 0.08);
+        this.cameras.main.setBounds(100, 100, 1200, 900);
+
+        this.boss = new Boss(this, 600, 250, bossKey);
+
+        const barW = 500;
+        const barH = 24;
+        const barX = 512 - barW / 2;
+        const barY = 20;
+        this.bossHpBarBg = this.add.graphics();
+        this.bossHpBarBg.fillStyle(0x333333, 1);
+        this.bossHpBarBg.fillRect(barX, barY, barW, barH);
+        this.bossHpBarBg.setScrollFactor(0);
+        this.bossHpBarFill = this.add.graphics();
+        this.bossHpBarFill.setScrollFactor(0);
+        this.bossHpLabel = this.add.text(512, barY - 12, bossConfig.sin + ' ' + bossConfig.name, {
+            fontSize: '18px',
+            fill: '#ffffff'
+        }).setOrigin(0.5, 1).setScrollFactor(0);
+
+        this.scene.launch('UIScene');
+
+        const spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+        spaceKey.on('down', () => this.player.tryDodge());
+        this.input.keyboard.on('keydown-Q', () => this.player.switchWeaponLeft());
+        this.input.keyboard.on('keydown-E', () => this.player.switchWeaponRight());
+        this.input.keyboard.on('keydown-ONE', () => GameState.useQuickSlot(0, this.player));
+        this.input.keyboard.on('keydown-TWO', () => GameState.useQuickSlot(1, this.player));
+        this.input.keyboard.on('keydown-THREE', () => GameState.useQuickSlot(2, this.player));
+        this.input.keyboard.on('keydown-FOUR', () => GameState.useQuickSlot(3, this.player));
+        this.input.keyboard.on('keydown-TAB', () => {
+            if (this.scene.isActive('InventoryScene')) this.scene.stop('InventoryScene');
+            else this.scene.launch('InventoryScene');
+        });
+        this.input.on('pointerdown', (pointer) => {
+            if (this.playerDead || this.bossDead) return;
+            let hitbox = null;
+            if (pointer.button === 0) hitbox = this.player.tryAttack();
+            else if (pointer.button === 2) hitbox = this.player.trySpecialAttack();
+            if (hitbox) this.activeHitboxes.push(hitbox);
+        });
+        this.input.keyboard.on('keydown-J', () => {
+            if (this.playerDead || this.bossDead) return;
+            const hitbox = this.player.tryAttack();
+            if (hitbox) this.activeHitboxes.push(hitbox);
+        });
+        this.input.keyboard.on('keydown-K', () => {
+            if (this.playerDead || this.bossDead) return;
+            const hitbox = this.player.trySpecialAttack();
+            if (hitbox) this.activeHitboxes.push(hitbox);
+        });
+        this.input.keyboard.on('keydown-H', () => {
+            if (!this.scene.isActive('HelpScene')) {
+                this.scene.pause();
+                this.scene.launch('HelpScene', { parentScene: 'BossScene' });
+            }
+        });
+    }
+
+    update(time, delta) {
+        if (this.playerDead) return;
+        if (this.bossDead) return;
+
+        this.player.update(time, delta);
+        this.boss.update(time, delta, this.player);
+
+        const hitboxRadius = 50;
+        for (let i = this.activeHitboxes.length - 1; i >= 0; i--) {
+            const hb = this.activeHitboxes[i];
+            if (!hb.active) {
+                this.activeHitboxes.splice(i, 1);
+                continue;
+            }
+            if (this.boss.isAlive && this.boss.sprite.active) {
+                const d = Phaser.Math.Distance.Between(hb.x, hb.y, this.boss.sprite.x, this.boss.sprite.y);
+                if (d < hitboxRadius + 30 && hb.damage) {
+                    this.boss.takeDamage(hb.damage);
+                    hb.damage = 0;
+                }
+            }
+        }
+
+        this.bossHpBarFill.clear();
+        const hpRatio = Math.max(0, Math.min(1, this.boss.hp / this.boss.maxHp));
+        this.bossHpBarFill.fillStyle(this.boss.config.color, 1);
+        this.bossHpBarFill.fillRect(512 - 250 + 4, 20 + 4, (500 - 8) * hpRatio, 24 - 8);
+
+        const ui = this.scene.get('UIScene');
+        if (ui && ui.updateHUD) ui.updateHUD(this.player, BOSSES[this.bossKey].area);
+
+        if (!this.boss.isAlive && !this.bossDead) {
+            this.bossDead = true;
+            const bossConfig = BOSSES[this.bossKey];
+            const drops = bossConfig.drops || {};
+            if (drops.gold) GameState.addGold(drops.gold);
+            if (drops.material) GameState.addItem(drops.material, 1);
+            if (drops.sinSeal && !GameState.sinSeals.includes(drops.sinSeal)) {
+                GameState.sinSeals.push(drops.sinSeal);
+            }
+            if (drops.weapon && !GameState.unlockedWeapons.includes(drops.weapon)) {
+                GameState.unlockedWeapons.push(drops.weapon);
+                this._weaponUnlockName = WEAPONS[drops.weapon] ? WEAPONS[drops.weapon].name : drops.weapon;
+            }
+            if (drops.bonusItems) {
+                this._bonusItemNames = [];
+                for (const [itemKey, count] of Object.entries(drops.bonusItems)) {
+                    GameState.addItem(itemKey, count);
+                    const itemName = ITEMS[itemKey] ? ITEMS[itemKey].name : itemKey;
+                    this._bonusItemNames.push(itemName + ' x' + count);
+                }
+            }
+            if (!GameState.defeatedBosses.includes(this.bossKey)) {
+                GameState.defeatedBosses.push(this.bossKey);
+            }
+            GameState.save();
+            this._victorySequence();
+        }
+
+        if (this.player.hp <= 0 && !this.playerDead) {
+            this.playerDead = true;
+            this._deathSequence();
+        }
+    }
+
+    _victorySequence() {
+        this.boss.sprite.setAlpha(0);
+        this.cameras.main.flash(300, 255, 255, 255);
+        const lines = ['Victory!'];
+        if (this._weaponUnlockName) {
+            lines.push('解锁新武器: ' + this._weaponUnlockName);
+        }
+        if (this._bonusItemNames && this._bonusItemNames.length > 0) {
+            lines.push('获得: ' + this._bonusItemNames.join(', '));
+        }
+        const bossDrops = BOSSES[this.bossKey] && BOSSES[this.bossKey].drops;
+        if (bossDrops && bossDrops.gold) {
+            lines.push('金币 +' + bossDrops.gold);
+        }
+        const sealCount = GameState.sinSeals.length;
+        lines.push('罪之印记: ' + sealCount + '/7');
+
+        this.victoryText = this.add.text(512, 360, lines[0], {
+            fontSize: '48px',
+            fill: '#FFD700'
+        }).setOrigin(0.5).setScrollFactor(0);
+
+        if (lines.length > 1) {
+            this.add.text(512, 420, lines.slice(1).join('\n'), {
+                fontSize: '22px',
+                fill: '#ffffff',
+                align: 'center'
+            }).setOrigin(0.5).setScrollFactor(0);
+        }
+
+        this.time.delayedCall(2500, () => {
+            const bossConfig = BOSSES[this.bossKey];
+            const dialog = bossConfig.defeatDialog || [];
+            const isFinal = bossConfig.isFinal;
+            if (dialog.length > 0) {
+                this.scene.launch('DialogScene', {
+                    dialog: dialog,
+                    onComplete: () => {
+                        this.scene.stop('DialogScene');
+                        this.scene.stop('UIScene');
+                        if (isFinal) {
+                            this.scene.start('CreditsScene');
+                        } else {
+                            this.scene.start('HubScene');
+                        }
+                    }
+                });
+            } else {
+                if (isFinal) {
+                    this.scene.stop('UIScene');
+                    this.scene.start('CreditsScene');
+                } else {
+                    this._returnToHub();
+                }
+            }
+        });
+    }
+
+    _returnToHub() {
+        this.scene.stop('UIScene');
+        this.scene.start('HubScene');
+    }
+
+    _deathSequence() {
+        this.deathText = this.add.text(512, 384, '死亡', {
+            fontSize: '48px',
+            fill: '#ff0000'
+        }).setOrigin(0.5).setScrollFactor(0);
+        this.time.delayedCall(2000, () => {
+            this.scene.stop('UIScene');
+            this.scene.start('HubScene');
+        });
+    }
+}
+
+/**
+ * DialogScene - Overlay dialog with typewriter effect and portrait display
+ */
+class DialogScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'DialogScene' });
+    }
+
+    create(data) {
+        this.dialogData = data.dialog || [];
+        this.onComplete = data.onComplete || null;
+        this.currentIndex = 0;
+        this.isTyping = false;
+        this.fullText = '';
+        this.displayedText = '';
+        this.charIndex = 0;
+        this.typeTimer = null;
+
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        // Semi-transparent black overlay (depth 1000)
+        const overlay = this.add.graphics();
+        overlay.fillStyle(0x000000, 0.6);
+        overlay.fillRect(0, 0, width, height);
+        overlay.setScrollFactor(0);
+        overlay.setDepth(1000);
+
+        // Dialog box: bottom 1/3 (y=500 to y=768)
+        const boxY = 500;
+        const boxH = height - boxY;
+        const box = this.add.graphics();
+        box.fillStyle(0x1a1a2e, 0.95);
+        box.fillRect(0, boxY, width, boxH);
+        box.lineStyle(2, 0x4a4a6a, 1);
+        box.lineBetween(0, boxY, width, boxY);
+        box.setScrollFactor(0);
+        box.setDepth(1001);
+
+        // Portrait placeholder (80x80, left side)
+        const portraitX = 80;
+        const portraitY = boxY + boxH / 2;
+        this.portraitRect = this.add.graphics();
+        this.portraitRect.setScrollFactor(0);
+        this.portraitRect.setDepth(1002);
+
+        // Speaker name (yellow/gold, 16px)
+        this.speakerText = this.add.text(180, boxY + 24, '', {
+            fontSize: '16px',
+            fill: '#FFD700'
+        }).setScrollFactor(0).setDepth(1002);
+
+        // Dialog text area (white, 18px, max width ~700px)
+        this.dialogText = this.add.text(180, boxY + 52, '', {
+            fontSize: '18px',
+            fill: '#ffffff',
+            wordWrap: { width: 700 }
+        }).setScrollFactor(0).setDepth(1002);
+
+        // Input handlers
+        this.input.on('pointerdown', () => this.advance());
+        this.input.keyboard.on('keydown', () => this.advance());
+
+        if (this.dialogData.length > 0) {
+            this.showEntry(0);
+        } else {
+            this._finish();
+        }
+    }
+
+    _portraitColor(name) {
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        return (hash & 0xFFFFFF) | 0x404040;
+    }
+
+    showEntry(index) {
+        if (index >= this.dialogData.length) {
+            this._finish();
+            return;
+        }
+
+        const entry = this.dialogData[index];
+        const speaker = entry.speaker || '';
+        this.fullText = entry.text || '';
+        this.displayedText = '';
+        this.charIndex = 0;
+        this.isTyping = true;
+
+        // Portrait color from speaker name
+        const color = this._portraitColor(speaker);
+        this.portraitRect.clear();
+        this.portraitRect.fillStyle(color, 1);
+        this.portraitRect.fillRect(40, 500 + (768 - 500) / 2 - 40, 80, 80);
+
+        this.speakerText.setText(speaker);
+        this.dialogText.setText('');
+
+        if (this.fullText.length === 0) {
+            this.isTyping = false;
+            return;
+        }
+
+        this.typeTimer = this.time.addEvent({
+            delay: 30,
+            callback: () => {
+                if (this.charIndex < this.fullText.length) {
+                    this.displayedText += this.fullText[this.charIndex];
+                    this.dialogText.setText(this.displayedText);
+                    this.charIndex++;
+                } else {
+                    this.typeTimer.destroy();
+                    this.typeTimer = null;
+                    this.isTyping = false;
+                }
+            },
+            repeat: this.fullText.length
+        });
+    }
+
+    advance() {
+        if (this.isTyping) {
+            if (this.typeTimer) {
+                this.typeTimer.destroy();
+                this.typeTimer = null;
+            }
+            this.displayedText = this.fullText;
+            this.dialogText.setText(this.displayedText);
+            this.isTyping = false;
+        } else {
+            this.currentIndex++;
+            if (this.currentIndex >= this.dialogData.length) {
+                this._finish();
+            } else {
+                this.showEntry(this.currentIndex);
+            }
+        }
+    }
+
+    _finish() {
+        if (this.onComplete) this.onComplete();
+    }
+}
+
+/**
+ * InventoryScene - Overlay inventory with tabs (Tab/Esc to close)
+ */
+class InventoryScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'InventoryScene' });
+    }
+
+    create() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        const overlay = this.add.graphics();
+        overlay.fillStyle(0x000000, 0.7);
+        overlay.fillRect(0, 0, width, height);
+        overlay.setScrollFactor(0).setDepth(0);
+
+        this.add.text(width / 2, 40, '背包', {
+            fontSize: '32px',
+            fill: '#ffffff',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(1);
+
+        const tabLabels = ['武器', '消耗品', '材料', '关键道具'];
+        const tabY = 85;
+        const tabW = 120;
+        this.tabs = [];
+        for (let i = 0; i < 4; i++) {
+            const x = width / 2 - 2 * tabW - 30 + i * (tabW + 20);
+            const tab = this.add.text(x, tabY, tabLabels[i], {
+                fontSize: '18px',
+                fill: i === 0 ? '#FFD700' : '#aaaaaa'
+            }).setOrigin(0.5).setScrollFactor(0).setInteractive({ useHandCursor: true }).setDepth(1);
+            tab.tabIndex = i;
+            tab.on('pointerover', () => tab.setStyle({ fill: '#ffffff' }));
+            tab.on('pointerout', () => tab.setStyle({ fill: this.activeTab === i ? '#FFD700' : '#aaaaaa' }));
+            tab.on('pointerdown', () => this._switchTab(i));
+            this.tabs.push(tab);
+        }
+        this.activeTab = 0;
+
+        this.gridContainer = this.add.container(0, 0);
+        this.gridContainer.setScrollFactor(0).setDepth(1);
+
+        this.goldText = this.add.text(width / 2, height - 40, '金币: 0', {
+            fontSize: '20px',
+            fill: '#FFD700'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(1);
+
+        this.tooltip = this.add.text(0, 0, '', {
+            fontSize: '14px',
+            fill: '#ffffff',
+            backgroundColor: '#333333',
+            padding: { x: 8, y: 4 }
+        }).setOrigin(0, 0).setScrollFactor(0).setDepth(100).setVisible(false);
+
+        this.input.keyboard.on('keydown-TAB', () => this._close());
+        this.input.keyboard.on('keydown-ESC', () => this._close());
+
+        this._buildGrid();
+    }
+
+    _switchTab(index) {
+        this.activeTab = index;
+        this.tabs.forEach((t, i) => t.setStyle({ fill: i === index ? '#FFD700' : '#aaaaaa' }));
+        this._buildGrid();
+    }
+
+    _buildGrid() {
+        this.gridContainer.removeAll(true);
+        const width = this.cameras.main.width;
+        const startY = 130;
+        const cellW = 100;
+        const cellH = 70;
+        const cols = 6;
+        const gap = 8;
+
+        if (this.activeTab === 0) {
+            const weapons = GameState.unlockedWeapons || [];
+            weapons.forEach((key, i) => {
+                const row = Math.floor(i / cols);
+                const col = i % cols;
+                const x = width / 2 - (cols * (cellW + gap) - gap) / 2 + col * (cellW + gap) + cellW / 2 + gap / 2;
+                const y = startY + row * (cellH + gap) + cellH / 2 + gap / 2;
+                const w = WEAPONS[key];
+                const level = (GameState.weaponLevels || {})[key] || 1;
+                const label = w ? w.name + ' Lv.' + level : key;
+                const box = this.add.graphics();
+                box.fillStyle(0x4a4a6a, 1);
+                box.fillRoundedRect(-cellW / 2, -cellH / 2, cellW, cellH, 4);
+                box.setPosition(x, y);
+                const txt = this.add.text(x, y, label, { fontSize: '14px', fill: '#ffffff' }).setOrigin(0.5);
+                this.gridContainer.add([box, txt]);
+            });
+        } else if (this.activeTab === 1) {
+            const items = Object.entries(GameState.inventory || {}).filter(([k]) => ITEMS[k] && ITEMS[k].type === 'consumable');
+            items.forEach(([key, count], i) => {
+                const row = Math.floor(i / cols);
+                const col = i % cols;
+                const x = width / 2 - (cols * (cellW + gap) - gap) / 2 + col * (cellW + gap) + cellW / 2 + gap / 2;
+                const y = startY + row * (cellH + gap) + cellH / 2 + gap / 2;
+                const item = ITEMS[key];
+                const box = this.add.graphics();
+                box.fillStyle(0x2d5a27, 1);
+                box.fillRoundedRect(-cellW / 2, -cellH / 2, cellW, cellH, 4);
+                box.setPosition(x, y);
+                const txt = this.add.text(x, y - 8, item.name, { fontSize: '14px', fill: '#ffffff' }).setOrigin(0.5);
+                const cnt = this.add.text(x, y + 12, 'x' + count, { fontSize: '12px', fill: '#aaaaaa' }).setOrigin(0.5);
+                const zone = this.add.zone(x, y, cellW, cellH).setInteractive();
+                zone.itemKey = key;
+                zone.itemDesc = item.description || '';
+                zone.on('pointerover', () => {
+                    this.tooltip.setText(zone.itemDesc);
+                    this.tooltip.setPosition(Phaser.Math.Clamp(x, 10, width - 200), y + cellH / 2 + 10);
+                    this.tooltip.setVisible(true);
+                });
+                zone.on('pointerout', () => this.tooltip.setVisible(false));
+                zone.on('pointerdown', () => {
+                    const idx = GameState.quickSlots.findIndex(s => !s);
+                    const slot = idx >= 0 ? idx : 0;
+                    GameState.quickSlots[slot] = key;
+                    this._buildGrid();
+                });
+                this.gridContainer.add([box, txt, cnt, zone]);
+            });
+        } else if (this.activeTab === 2) {
+            const items = Object.entries(GameState.inventory || {}).filter(([k]) => ITEMS[k] && ITEMS[k].type === 'material');
+            items.forEach(([key, count], i) => {
+                const row = Math.floor(i / cols);
+                const col = i % cols;
+                const x = width / 2 - (cols * (cellW + gap) - gap) / 2 + col * (cellW + gap) + cellW / 2 + gap / 2;
+                const y = startY + row * (cellH + gap) + cellH / 2 + gap / 2;
+                const item = ITEMS[key];
+                const box = this.add.graphics();
+                box.fillStyle(0x5a3d2d, 1);
+                box.fillRoundedRect(-cellW / 2, -cellH / 2, cellW, cellH, 4);
+                box.setPosition(x, y);
+                const txt = this.add.text(x, y - 8, item.name, { fontSize: '14px', fill: '#ffffff' }).setOrigin(0.5);
+                const cnt = this.add.text(x, y + 12, 'x' + count, { fontSize: '12px', fill: '#aaaaaa' }).setOrigin(0.5);
+                const zone = this.add.zone(x, y, cellW, cellH).setInteractive();
+                zone.itemDesc = item.description || '';
+                zone.on('pointerover', () => {
+                    this.tooltip.setText(zone.itemDesc);
+                    this.tooltip.setPosition(Phaser.Math.Clamp(x, 10, width - 200), y + cellH / 2 + 10);
+                    this.tooltip.setVisible(true);
+                });
+                zone.on('pointerout', () => this.tooltip.setVisible(false));
+                this.gridContainer.add([box, txt, cnt, zone]);
+            });
+        } else {
+            const seals = GameState.sinSeals || [];
+            seals.forEach((key, i) => {
+                const row = Math.floor(i / cols);
+                const col = i % cols;
+                const x = width / 2 - (cols * (cellW + gap) - gap) / 2 + col * (cellW + gap) + cellW / 2 + gap / 2;
+                const y = startY + row * (cellH + gap) + cellH / 2 + gap / 2;
+                const boss = BOSSES[key];
+                const label = boss ? boss.sin + '之印记' : key + '之印记';
+                const box = this.add.graphics();
+                box.fillStyle(0x4a2d5a, 1);
+                box.fillRoundedRect(-cellW / 2, -cellH / 2, cellW, cellH, 4);
+                box.setPosition(x, y);
+                const txt = this.add.text(x, y, label, { fontSize: '14px', fill: '#ffffff' }).setOrigin(0.5);
+                this.gridContainer.add([box, txt]);
+            });
+        }
+
+        this.goldText.setText('金币: ' + (GameState.gold || 0));
+    }
+
+    _close() {
+        this.scene.stop('InventoryScene');
+    }
+}
+
+/**
+ * ShopScene - Merchant overlay for buying consumables
+ */
+class ShopScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'ShopScene' });
+    }
+
+    create() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        const overlay = this.add.graphics();
+        overlay.fillStyle(0x000000, 0.7);
+        overlay.fillRect(0, 0, width, height);
+        overlay.setScrollFactor(0).setDepth(0);
+
+        const npc = HUB_NPCS.merchant;
+        this.add.text(width / 2, 50, '商店 - ' + npc.name, {
+            fontSize: '28px',
+            fill: '#ffffff',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(1);
+
+        this.goldText = this.add.text(width / 2, 90, '金币: ' + GameState.gold, {
+            fontSize: '20px',
+            fill: '#FFD700'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(1);
+
+        const buyableItems = Object.entries(ITEMS).filter(([k, v]) => v.price != null && v.type === 'consumable');
+        let y = 150;
+        buyableItems.forEach(([key, item]) => {
+            const count = GameState.inventory[key] || 0;
+            const row = this.add.text(width / 2 - 200, y, item.name + ' — ' + item.price + '金币  拥有: ' + count, {
+                fontSize: '18px',
+                fill: '#ffffff'
+            }).setScrollFactor(0).setDepth(1);
+
+            const buyBtn = this.add.text(width / 2 + 120, y, '[购买]', {
+                fontSize: '16px',
+                fill: '#4a90d9'
+            }).setOrigin(0, 0.5).setScrollFactor(0).setInteractive({ useHandCursor: true }).setDepth(1);
+            buyBtn.itemKey = key;
+            buyBtn.rowY = y;
+            buyBtn.on('pointerover', () => buyBtn.setStyle({ fill: '#6ab0ff' }));
+            buyBtn.on('pointerout', () => buyBtn.setStyle({ fill: '#4a90d9' }));
+            buyBtn.on('pointerdown', () => this._tryBuy(key, item, row, buyBtn));
+            y += 45;
+        });
+
+        this.flashText = this.add.text(width / 2, height - 80, '', {
+            fontSize: '20px',
+            fill: '#ff4444'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(1).setVisible(false);
+
+        this.input.keyboard.on('keydown-ESC', () => this._close());
+        this.input.keyboard.on('keydown-F', () => this._close());
+    }
+
+    _tryBuy(itemKey, item, rowText, buyBtn) {
+        if (GameState.gold < item.price) {
+            this.flashText.setText('金币不足!');
+            this.flashText.setVisible(true);
+            this.time.delayedCall(1500, () => this.flashText.setVisible(false));
+            return;
+        }
+        GameState.spendGold(item.price);
+        GameState.addItem(itemKey);
+        this.goldText.setText('金币: ' + GameState.gold);
+        const count = GameState.inventory[itemKey] || 0;
+        rowText.setText(item.name + ' — ' + item.price + '金币  拥有: ' + count);
+    }
+
+    _close() {
+        this.scene.stop('ShopScene');
+    }
+}
+
+/**
+ * BlacksmithScene - Blacksmith overlay for weapon upgrades
+ */
+class BlacksmithScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'BlacksmithScene' });
+    }
+
+    create() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        const overlay = this.add.graphics();
+        overlay.fillStyle(0x000000, 0.7);
+        overlay.fillRect(0, 0, width, height);
+        overlay.setScrollFactor(0).setDepth(0);
+
+        const npc = HUB_NPCS.blacksmith;
+        this.add.text(width / 2, 50, '铁匠铺 - ' + npc.name, {
+            fontSize: '28px',
+            fill: '#ffffff',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(1);
+
+        this.goldText = this.add.text(width / 2, 90, '金币: ' + GameState.gold, {
+            fontSize: '20px',
+            fill: '#FFD700'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(1);
+
+        const weaponKeys = Object.keys(WEAPONS);
+        this.weaponRows = [];
+        let y = 150;
+        weaponKeys.forEach((key, i) => {
+            const weapon = WEAPONS[key];
+            const unlocked = GameState.unlockedWeapons.includes(key);
+            const level = (GameState.weaponLevels || {})[key] || 1;
+
+            const displayName = unlocked ? weapon.name + ' Lv.' + level : '???';
+            const rowText = this.add.text(width / 2 - 250, y, displayName, {
+                fontSize: '18px',
+                fill: unlocked ? '#ffffff' : '#666666'
+            }).setScrollFactor(0).setDepth(1);
+
+            let upgradeBtn = null;
+            if (unlocked && level < 3) {
+                const cost = level === 1 ? { gold: 100, essence: 1 } : { gold: 250, essence: 2 };
+                upgradeBtn = this.add.text(width / 2 + 80, y, '[强化] ' + cost.gold + '金+' + cost.essence + '精华', {
+                    fontSize: '14px',
+                    fill: '#4a90d9'
+                }).setOrigin(0, 0.5).setScrollFactor(0).setInteractive({ useHandCursor: true }).setDepth(1);
+                upgradeBtn.weaponKey = key;
+                upgradeBtn.cost = cost;
+                upgradeBtn.rowText = rowText;
+                upgradeBtn.on('pointerover', () => upgradeBtn.setStyle({ fill: '#6ab0ff' }));
+                upgradeBtn.on('pointerout', () => upgradeBtn.setStyle({ fill: '#4a90d9' }));
+                upgradeBtn.on('pointerdown', () => this._tryUpgrade(upgradeBtn));
+            }
+            this.weaponRows.push({ key, rowText, upgradeBtn });
+            y += 45;
+        });
+
+        this.messageText = this.add.text(width / 2, height - 80, '', {
+            fontSize: '18px',
+            fill: '#44ff44'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(1).setVisible(false);
+
+        this.sceneWidth = width;
+        this.input.keyboard.on('keydown-ESC', () => this._close());
+        this.input.keyboard.on('keydown-F', () => this._close());
+    }
+
+    _materialCount() {
+        return Object.entries(GameState.inventory || {}).reduce(
+            (sum, [k, c]) => sum + (ITEMS[k] && ITEMS[k].type === 'material' ? c : 0),
+            0
+        );
+    }
+
+    _tryUpgrade(btn) {
+        const { weaponKey, cost, rowText } = btn;
+        if (GameState.gold < cost.gold) {
+            this._showMessage('金币不足!', '#ff4444');
+            return;
+        }
+        const materials = this._materialCount();
+        if (materials < cost.essence) {
+            this._showMessage('材料不足! 需要' + cost.essence + '个Boss精华', '#ff4444');
+            return;
+        }
+        GameState.spendGold(cost.gold);
+        for (let i = 0; i < cost.essence; i++) {
+            const matKey = Object.keys(ITEMS).find(k => ITEMS[k].type === 'material' && (GameState.inventory[k] || 0) > 0);
+            if (matKey) GameState.removeItem(matKey, 1);
+        }
+        GameState.weaponLevels[weaponKey] = (GameState.weaponLevels[weaponKey] || 1) + 1;
+        this.goldText.setText('金币: ' + GameState.gold);
+        const level = GameState.weaponLevels[weaponKey];
+        rowText.setText(WEAPONS[weaponKey].name + ' Lv.' + level);
+        btn.destroy();
+        if (level < 3) {
+            const newCost = level === 2 ? { gold: 250, essence: 2 } : { gold: 100, essence: 1 };
+            const y = btn.y;
+            const newBtn = this.add.text(this.sceneWidth / 2 + 80, y, '[强化] ' + newCost.gold + '金+' + newCost.essence + '精华', {
+                fontSize: '14px',
+                fill: '#4a90d9'
+            }).setOrigin(0, 0.5).setScrollFactor(0).setInteractive({ useHandCursor: true }).setDepth(1);
+            newBtn.weaponKey = weaponKey;
+            newBtn.cost = newCost;
+            newBtn.rowText = rowText;
+            newBtn.on('pointerover', () => newBtn.setStyle({ fill: '#6ab0ff' }));
+            newBtn.on('pointerout', () => newBtn.setStyle({ fill: '#4a90d9' }));
+            newBtn.on('pointerdown', () => this._tryUpgrade(newBtn));
+        }
+        this._showMessage('强化成功!', '#44ff44');
+    }
+
+    _showMessage(text, color) {
+        this.messageText.setText(text);
+        this.messageText.setStyle({ fill: color });
+        this.messageText.setVisible(true);
+        this.time.delayedCall(1500, () => this.messageText.setVisible(false));
+    }
+
+    _close() {
+        this.scene.stop('BlacksmithScene');
+    }
+}
+
+/**
+ * UIScene - HUD overlay running in parallel with game scenes
+ */
+class UIScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'UIScene' });
+    }
+
+    create() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+        const pad = 16;
+
+        // Top-left: HP bar
+        this.hpLabel = this.add.text(pad, pad, 'HP', {
+            fontSize: '16px',
+            fill: '#ffffff'
+        }).setScrollFactor(0);
+        this.hpBarBg = this.add.graphics();
+        this.hpBarBg.fillStyle(0x8B0000, 1);
+        this.hpBarBg.fillRect(pad + 28, pad, 200, 20);
+        this.hpBarBg.setScrollFactor(0);
+        this.hpBarFill = this.add.graphics();
+        this.hpBarFill.setScrollFactor(0);
+        this.hpText = this.add.text(pad + 28 + 200 + 8, pad + 4, '0/0', {
+            fontSize: '14px',
+            fill: '#ffffff'
+        }).setScrollFactor(0);
+
+        // Stamina bar below HP
+        const stY = pad + 20 + 8;
+        this.stLabel = this.add.text(pad, stY, 'ST', {
+            fontSize: '14px',
+            fill: '#ffffff'
+        }).setScrollFactor(0);
+        this.staminaBarBg = this.add.graphics();
+        this.staminaBarBg.fillStyle(0x8B8B00, 1);
+        this.staminaBarBg.fillRect(pad + 28, stY, 200, 14);
+        this.staminaBarBg.setScrollFactor(0);
+        this.staminaBarFill = this.add.graphics();
+        this.staminaBarFill.setScrollFactor(0);
+        this.staminaText = this.add.text(pad + 28 + 200 + 8, stY + 2, '0/0', {
+            fontSize: '12px',
+            fill: '#ffffff'
+        }).setScrollFactor(0);
+
+        // Bottom-left: weapon display
+        this.weaponText = this.add.text(pad, height - 36, '⚔ - [Q/E 切换]', {
+            fontSize: '16px',
+            fill: '#ffffff'
+        }).setScrollFactor(0);
+
+        // Bottom-right: 4 quick slot boxes (40×40)
+        const slotSize = 40;
+        const slotGap = 4;
+        const slotsStartX = width - pad - (4 * slotSize + 3 * slotGap);
+        const slotsY = height - pad - slotSize;
+        this.quickSlots = [];
+        for (let i = 0; i < 4; i++) {
+            const x = slotsStartX + i * (slotSize + slotGap);
+            const box = this.add.graphics();
+            box.fillStyle(0x333333, 1);
+            box.fillRect(x, slotsY, slotSize, slotSize);
+            box.setScrollFactor(0);
+            const numLabel = this.add.text(x + slotSize / 2, slotsY - 8, String(i + 1), {
+                fontSize: '12px',
+                fill: '#aaaaaa'
+            }).setOrigin(0.5).setScrollFactor(0);
+            const itemText = this.add.text(x + slotSize / 2, slotsY + slotSize / 2, '-', {
+                fontSize: '12px',
+                fill: '#888888'
+            }).setOrigin(0.5).setScrollFactor(0);
+            this.quickSlots.push({ box, numLabel, itemText });
+        }
+
+        // Top-right: area name
+        this.areaNameText = this.add.text(width - pad, pad + 10, '', {
+            fontSize: '18px',
+            fill: '#ffffff'
+        }).setOrigin(1, 0).setScrollFactor(0);
+    }
+
+    updateHUD(player, areaName) {
+        if (!player) return;
+
+        for (let i = 0; i < 4; i++) {
+            const slot = this.quickSlots[i];
+            const itemKey = GameState.quickSlots[i];
+            const name = itemKey && ITEMS[itemKey] ? ITEMS[itemKey].name : '-';
+            slot.itemText.setText(name);
+        }
+
+        // HP bar
+        const hpRatio = Math.max(0, Math.min(1, player.hp / player.maxHp));
+        this.hpBarFill.clear();
+        this.hpBarFill.fillStyle(0xE74C3C, 1);
+        this.hpBarFill.fillRect(16 + 28, 16, 200 * hpRatio, 20);
+        this.hpText.setText(Math.floor(player.hp) + '/' + player.maxHp);
+
+        // Stamina bar
+        const stY = 16 + 20 + 8;
+        const stRatio = Math.max(0, Math.min(1, player.stamina / player.maxStamina));
+        this.staminaBarFill.clear();
+        this.staminaBarFill.fillStyle(0xF1C40F, 1);
+        this.staminaBarFill.fillRect(16 + 28, stY, 200 * stRatio, 14);
+        this.staminaText.setText(Math.floor(player.stamina) + '/' + player.maxStamina);
+
+        // Weapon display
+        const weapon = player.currentWeapon;
+        const weaponName = weapon ? weapon.name : '-';
+        this.weaponText.setText('⚔ ' + weaponName + '  [Q/E 切换]');
+
+        // Area name
+        this.areaNameText.setText(areaName || '');
+    }
+}
+
+/**
+ * CreditsScene - End game credits after defeating the Final Boss
+ */
+class HelpScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'HelpScene' });
+    }
+
+    create() {
+        const w = this.cameras.main.width;
+        const h = this.cameras.main.height;
+
+        const overlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.75);
+        overlay.setInteractive();
+
+        const panelW = 520;
+        const panelH = 460;
+        const px = w / 2;
+        const py = h / 2;
+
+        this.add.rectangle(px, py, panelW, panelH, 0x1a1a2e, 0.95)
+            .setStrokeStyle(2, 0x555555);
+
+        this.add.text(px, py - panelH / 2 + 30, '操作指引', {
+            fontSize: '28px', fill: '#FFD700', fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        const sections = [
+            { title: '移动', items: ['WASD  —  八方向移动'] },
+            { title: '战斗', items: ['J / 鼠标左键  —  普通攻击', 'K / 鼠标右键  —  特殊攻击'] },
+            { title: '防御', items: ['Space  —  闪避翻滚（无敌帧）'] },
+            { title: '武器', items: ['Q / E  —  切换武器'] },
+            { title: '道具', items: ['1-4  —  使用快捷栏道具'] },
+            { title: '界面', items: ['Tab — 背包', 'Esc — 暂停', 'H — 操作指引'] }
+        ];
+
+        let curY = py - panelH / 2 + 72;
+        for (const sec of sections) {
+            this.add.text(px - panelW / 2 + 40, curY, sec.title, {
+                fontSize: '16px', fill: '#ff4444', fontStyle: 'bold'
+            });
+            curY += 24;
+            for (const item of sec.items) {
+                this.add.text(px - panelW / 2 + 60, curY, item, {
+                    fontSize: '14px', fill: '#cccccc'
+                });
+                curY += 22;
+            }
+            curY += 8;
+        }
+
+        this.add.text(px, py + panelH / 2 - 25, '按 H / Esc 关闭', {
+            fontSize: '14px', fill: '#888888'
+        }).setOrigin(0.5);
+
+        this.input.keyboard.on('keydown-H', () => this._close());
+        this.input.keyboard.on('keydown-ESC', () => this._close());
+        overlay.on('pointerdown', () => this._close());
+    }
+
+    _close() {
+        this.scene.resume(this.scene.settings.data?.parentScene || 'HubScene');
+        this.scene.stop();
+    }
+}
+
+class CreditsScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'CreditsScene' });
+    }
+
+    create() {
+        this.cameras.main.setBackgroundColor('#000000');
+        const w = this.cameras.main.width;
+        const h = this.cameras.main.height;
+
+        const lines = [
+            { text: '七 宗 罪', size: '48px', color: '#FFD700', y: h + 60 },
+            { text: 'SEVEN DEADLY SINS', size: '20px', color: '#aaaaaa', y: h + 110 },
+            { text: '', size: '16px', color: '#ffffff', y: h + 160 },
+            { text: '—— 感谢游玩 ——', size: '28px', color: '#ffffff', y: h + 200 },
+            { text: '', size: '16px', color: '#ffffff', y: h + 240 },
+            { text: '你击败了七位罪之化身', size: '20px', color: '#cccccc', y: h + 280 },
+            { text: '封印了原罪之主', size: '20px', color: '#cccccc', y: h + 310 },
+            { text: '这个世界得以暂时安宁', size: '20px', color: '#cccccc', y: h + 340 },
+            { text: '', size: '16px', color: '#ffffff', y: h + 380 },
+            { text: '—— 七宗罪 ——', size: '22px', color: '#FFD700', y: h + 430 },
+            { text: '傲慢 · 堕天骑士', size: '18px', color: '#FFD700', y: h + 470 },
+            { text: '嫉妒 · 影形者', size: '18px', color: '#2ECC40', y: h + 500 },
+            { text: '暴怒 · 炎魔将军', size: '18px', color: '#FF4136', y: h + 530 },
+            { text: '懒惰 · 梦境蛛后', size: '18px', color: '#B10DC9', y: h + 560 },
+            { text: '贪婪 · 黄金龙王', size: '18px', color: '#FFDC00', y: h + 590 },
+            { text: '暴食 · 深渊巨口', size: '18px', color: '#85144b', y: h + 620 },
+            { text: '色欲 · 魅惑女妖', size: '18px', color: '#F012BE', y: h + 650 },
+            { text: '', size: '16px', color: '#ffffff', y: h + 690 },
+            { text: '原罪 · 原罪之主', size: '22px', color: '#FFFFFF', y: h + 730 },
+            { text: '', size: '16px', color: '#ffffff', y: h + 780 },
+            { text: '按任意键返回标题', size: '18px', color: '#888888', y: h + 850 }
+        ];
+
+        this._texts = [];
+        for (const line of lines) {
+            const t = this.add.text(w / 2, line.y, line.text, {
+                fontSize: line.size,
+                fill: line.color,
+                fontFamily: 'sans-serif'
+            }).setOrigin(0.5);
+            this._texts.push(t);
+        }
+
+        this.tweens.add({
+            targets: this._texts,
+            y: '-=' + (h + 200),
+            duration: 15000,
+            ease: 'Linear',
+            onComplete: () => {
+                this._showReturn();
+            }
+        });
+
+        this.input.on('pointerdown', () => this._returnToTitle());
+        this.input.keyboard.on('keydown', () => this._returnToTitle());
+    }
+
+    _showReturn() {
+        const w = this.cameras.main.width;
+        const h = this.cameras.main.height;
+        this.add.text(w / 2, h / 2, '按任意键返回标题', {
+            fontSize: '24px',
+            fill: '#FFD700'
+        }).setOrigin(0.5);
+    }
+
+    _returnToTitle() {
+        this.scene.start('TitleScene');
+    }
+}
+
+/**
+ * Phaser Game Configuration
+ */
+const config = {
+    type: Phaser.AUTO,
+    width: 1024,
+    height: 768,
+    backgroundColor: '#000000',
+    pixelArt: true,
+    disableContextMenu: true,
+    physics: {
+        default: 'arcade',
+        arcade: {
+            gravity: { x: 0, y: 0 }
+        }
+    },
+    scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH
+    },
+    scene: [BootScene, TitleScene, HubScene, LevelScene, BossScene, DialogScene, InventoryScene, ShopScene, BlacksmithScene, UIScene, HelpScene, CreditsScene]
+};
+
+const game = new Phaser.Game(config);
