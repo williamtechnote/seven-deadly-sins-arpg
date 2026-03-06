@@ -4305,7 +4305,8 @@ class UIScene extends Phaser.Scene {
         // HP bar
         const hpRatio = Math.max(0, Math.min(1, player.hp / player.maxHp));
         this.hpBarFill.clear();
-        this.hpBarFill.fillStyle(0xE74C3C, 1);
+        const hpColor = hpRatio <= 0.3 ? 0xFF4D4D : (hpRatio <= 0.6 ? 0xFF8A65 : 0xE74C3C);
+        this.hpBarFill.fillStyle(hpColor, 1);
         this.hpBarFill.fillRect(16 + 28, 16, 200 * hpRatio, 20);
         this.hpText.setText(Math.floor(player.hp) + '/' + player.maxHp);
 
