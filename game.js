@@ -2352,8 +2352,10 @@ class LevelScene extends Phaser.Scene {
                     if (hb.isSpecial) {
                         showHitImpactPulse(this, enemy.x, enemy.y, 0xFF9F6A, 12);
                         showFloatingCombatText(this, enemy.x, enemy.y - 16, '重击', '#ffd27a', 500);
+                        showFloatingCombatText(this, enemy.x, enemy.y - 34, '-' + hitDamage, '#ffb37a', 520);
                     } else {
                         showHitImpactPulse(this, enemy.x, enemy.y, 0xFFD27A, 9);
+                        showFloatingCombatText(this, enemy.x, enemy.y - 28, '-' + hitDamage, '#fff2c2', 450);
                     }
                     if (drops) {
                         this._spawnDropPickups(enemy.x, enemy.y, drops);
@@ -3334,8 +3336,10 @@ class BossScene extends Phaser.Scene {
                     if (hb.isSpecial) {
                         showHitImpactPulse(this, this.boss.sprite.x, this.boss.sprite.y, 0xFF6B4A, 16);
                         showFloatingCombatText(this, this.boss.sprite.x, this.boss.sprite.y - 26, '破势', '#ffcf85', 650);
+                        showFloatingCombatText(this, this.boss.sprite.x, this.boss.sprite.y - 46, '-' + hb.damage, '#ff9f7a', 620);
                     } else {
                         showHitImpactPulse(this, this.boss.sprite.x, this.boss.sprite.y, 0xFF9F6A, 12);
+                        showFloatingCombatText(this, this.boss.sprite.x, this.boss.sprite.y - 40, '-' + hb.damage, '#ffe6bf', 500);
                     }
                     if (hb.statusEffect && this.boss.applyStatusEffect) {
                         this.boss.applyStatusEffect(hb.statusEffect.key, {
