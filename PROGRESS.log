@@ -1,0 +1,4 @@
+# PROGRESS.log — seven-deadly-sins-arpg
+
+- 2026-03-06 22:43 SGT | bootstrap | Initialized TODO.md and PROGRESS.log for heartbeat-auditable autonomous loop.
+- 2026-03-06 22:47 SGT | heartbeat-manual-test | task=bootstrap-active-todo | branch=main | sync=`git checkout main && git pull origin main` FAILED (diverged branches + pull strategy unspecified) | test=not-run | merge=not-run | note=heartbeat trigger path works but execution blocked by git divergence policy; requires explicit pull strategy (rebase/merge) or pre-sync cleanup.

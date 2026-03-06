@@ -105,6 +105,22 @@ const ATTACK_DISPLAY_NAMES = {
     bite: '深渊啃咬'
 };
 
+const ATTACK_COUNTER_HINTS = {
+    flameBreath: '反制: 侧向移动，别贪刀',
+    divineStrike: '反制: 看到预警圈后立刻翻滚',
+    mirror: '反制: 先清镜像再贴身输出',
+    shapeShift: '反制: 保持中距离，观察变身后出手',
+    reverseControl: '反制: 停止冲刺，短步修正方向',
+    illusion: '反制: 先躲弹幕，再找本体',
+    sleepFog: '反制: 迅速离开雾区，避免持续减速',
+    coinTrap: '反制: 不要站角落，留翻滚路径',
+    treasureStorm: '反制: 沿边绕圈，等待间隙反打',
+    consume: '反制: 远离正面并保留一次翻滚',
+    nightmare: '反制: 先保命，等压制结束再输出',
+    goldBreath: '反制: 横向拉开，避免直线灼烧',
+    bite: '反制: 贴身诱导后反向闪避'
+};
+
 const BOSS_ATTACK_STATUS_ON_HIT = {
     flameBreath: { key: 'burn', durationMs: 2600 },
     goldBreath: { key: 'burn', durationMs: 2200 },
@@ -2377,7 +2393,13 @@ class Boss {
                 if (this.phaseMajorAttackQueue.has(this.currentAttack)) {
                     this.attackWindupDelay = 450;
                     this.phaseMajorAttackQueue.delete(this.currentAttack);
-                    this._showTelegraph('⚠ ' + (ATTACK_DISPLAY_NAMES[this.currentAttack] || this.currentAttack), '#FFD700', 900);
+                    const attackName = ATTACK_DISPLAY_NAMES[this.currentAttack] || this.currentAttack;
+                    const hint = ATTACK_COUNTER_HINTS[this.currentAttack];
+                    this._showTelegraph(
+                        hint ? (`⚠ ${attackName}\n${hint}`) : (`⚠ ${attackName}`),
+                        '#FFD700',
+                        hint ? 1200 : 900
+                    );
                 } else {
                     this.attackWindupDelay = 0;
                 }
@@ -2420,7 +2442,16 @@ class Boss {
         const unlockedLabel = newlyUnlocked.length > 0
             ? '新招式: ' + newlyUnlocked.map(a => ATTACK_DISPLAY_NAMES[a] || a).join(' / ')
             : 'Boss 进入强化状态';
-        this._showTelegraph(phaseLabel + '\n' + unlockedLabel, '#ffef9f', 1300);
+        const counterHints = newlyUnlocked
+            .map(a => ATTACK_COUNTER_HINTS[a])
+            .filter(Boolean)
+            .slice(0, 2);
+        const hintLabel = counterHints.length > 0 ? ('反制提示: ' + counterHints.join(' ｜ ')) : '';
+        this._showTelegraph(
+            hintLabel ? (phaseLabel + '\n' + unlockedLabel + '\n' + hintLabel) : (phaseLabel + '\n' + unlockedLabel),
+            '#ffef9f',
+            hintLabel ? 1700 : 1300
+        );
         if (phase && phase.attacks && phase.attacks.includes('berserk')) {
             if (!this.berserkApplied) {
                 this.berserkApplied = true;
