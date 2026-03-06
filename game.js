@@ -15,6 +15,7 @@ const {
     RUN_MODIFIER_POOL,
     DEFAULT_RUN_EFFECTS,
     CRAFTING_RECIPES,
+    RUN_EVENT_ROOM_POOL,
     AUDIO_SETTINGS_STORAGE_KEY,
     DEFAULT_AUDIO_SETTINGS,
     normalizeAudioSettings,
@@ -30,6 +31,9 @@ const {
     normalizeRunModifiers,
     pickRunModifiers,
     buildRunModifierEffects,
+    getRunEventRoomByKey,
+    normalizeRunEventRoom,
+    pickRunEventRoom,
     getUpgradeCostForLevel,
     getRequiredMaterialForWeapon,
     canUpgradeWeapon,
@@ -48,6 +52,7 @@ function cloneDefaultSaveData() {
         unlockedWeapons: [...(DEFAULT_SAVE_DATA.unlockedWeapons || ['sword'])],
         selectedWeaponKey: DEFAULT_SAVE_DATA.selectedWeaponKey || 'sword',
         runModifiers: [...(DEFAULT_SAVE_DATA.runModifiers || [])],
+        runEventRoom: DEFAULT_SAVE_DATA.runEventRoom || null,
         quickSlots: [...(DEFAULT_SAVE_DATA.quickSlots || [null, null, null, null])]
     };
 }
@@ -352,6 +357,7 @@ const GameState = {
     selectedWeaponKey: 'sword',
     runModifiers: [],
     runEffects: { ...DEFAULT_RUN_EFFECTS },
+    runEventRoom: null,
     runChallenge: null,
     quickSlots: [null, null, null, null],
 
@@ -400,6 +406,31 @@ const GameState = {
         }
         this.runEffects = buildRunModifierEffects(this.runModifiers, RUN_MODIFIER_POOL);
     },
+    rollRunEventRoom() {
+        this.runEventRoom = pickRunEventRoom(Math.random, RUN_EVENT_ROOM_POOL);
+    },
+    ensureRunEventRoom() {
+        this.runEventRoom = normalizeRunEventRoom(this.runEventRoom, RUN_EVENT_ROOM_POOL);
+        if (!this.runEventRoom) this.rollRunEventRoom();
+    },
+    discoverRunEventRoom() {
+        this.ensureRunEventRoom();
+        if (this.runEventRoom) this.runEventRoom.discovered = true;
+    },
+    resolveRunEventRoom() {
+        this.ensureRunEventRoom();
+        if (this.runEventRoom) this.runEventRoom.resolved = true;
+    },
+    getRunEventRoomSummary() {
+        this.ensureRunEventRoom();
+        if (!this.runEventRoom) return null;
+        return {
+            name: this.runEventRoom.name,
+            description: this.runEventRoom.description,
+            discovered: !!this.runEventRoom.discovered,
+            resolved: !!this.runEventRoom.resolved
+        };
+    },
     rollRunChallenge() {
         const seed = Math.floor(Math.random() * RUN_CHALLENGE_POOL.length);
         const picked = RUN_CHALLENGE_POOL[seed] || RUN_CHALLENGE_POOL[0];
@@ -443,6 +474,7 @@ const GameState = {
         this.unlockedWeapons = ['sword'];
         this.selectedWeaponKey = 'sword';
         this.rollRunModifiers();
+        this.rollRunEventRoom();
         this.rollRunChallenge();
         this.quickSlots = [null, null, null, null];
     },
@@ -465,6 +497,7 @@ const GameState = {
             unlockedWeapons: this.unlockedWeapons,
             selectedWeaponKey: this.selectedWeaponKey,
             runModifiers: this.runModifiers,
+            runEventRoom: this.runEventRoom,
             quickSlots: this.quickSlots
         });
         localStorage.setItem('sevenSinsSave', raw);
@@ -483,6 +516,8 @@ const GameState = {
             this.selectedWeaponKey = data.selectedWeaponKey || this.unlockedWeapons[0] || 'sword';
             this.runModifiers = data.runModifiers || [];
             this.ensureRunModifiers();
+            this.runEventRoom = data.runEventRoom || null;
+            this.ensureRunEventRoom();
             this.quickSlots = data.quickSlots || [null, null, null, null];
             this.ensureSelectedWeapon();
             if (!this.runChallenge) this.rollRunChallenge();
@@ -1688,6 +1723,7 @@ class HubScene extends Phaser.Scene {
         const centerY = 650;
         this.player = new Player(this, centerX, centerY);
         applyPlayerWeaponState(this.player);
+        GameState.ensureRunEventRoom();
 
         this.cameras.main.startFollow(this.player, false, 0.08, 0.08);
         this.cameras.main.setBounds(-500, -500, 2500, 2300);
@@ -1755,6 +1791,7 @@ class HubScene extends Phaser.Scene {
             if (portal.bossKey === 'final') {
                 this.scene.start('BossScene', { bossKey: 'final' });
             } else {
+                GameState.discoverRunEventRoom();
                 this.scene.start('LevelScene', { bossKey: portal.bossKey });
             }
         });
@@ -3289,6 +3326,7 @@ class BossScene extends Phaser.Scene {
             const drops = bossConfig.drops || {};
             if (drops.gold) GameState.addGold(drops.gold);
             if (drops.material) GameState.addItem(drops.material, 1);
+            GameState.resolveRunEventRoom();
             if (drops.sinSeal && !GameState.sinSeals.includes(drops.sinSeal)) {
                 GameState.sinSeals.push(drops.sinSeal);
             }
@@ -4185,6 +4223,13 @@ class UIScene extends Phaser.Scene {
             lineSpacing: 2
         }).setOrigin(1, 0).setScrollFactor(0);
 
+        this.eventRoomText = this.add.text(width - pad, pad + 160, '', {
+            fontSize: '11px',
+            fill: '#ffd27a',
+            align: 'right',
+            lineSpacing: 2
+        }).setOrigin(1, 0).setScrollFactor(0);
+
         this.statusText = this.add.text(width / 2, height - 108, '', {
             fontSize: '14px',
             fill: '#ffcf85',
@@ -4245,6 +4290,15 @@ class UIScene extends Phaser.Scene {
             this.challengeText.setStyle({ fill: challenge.completed ? '#9effd6' : '#7CFFB2' });
         } else {
             this.challengeText.setText('');
+        }
+
+        const eventRoom = GameState.getRunEventRoomSummary ? GameState.getRunEventRoomSummary() : null;
+        if (eventRoom) {
+            const state = eventRoom.resolved ? '已触发' : (eventRoom.discovered ? '已发现' : '未发现');
+            this.eventRoomText.setText(`事件房: ${eventRoom.name}\n状态: ${state}`);
+            this.eventRoomText.setStyle({ fill: eventRoom.resolved ? '#9fa8b3' : '#ffd27a' });
+        } else {
+            this.eventRoomText.setText('');
         }
 
         const statuses = player.getStatusSummary ? player.getStatusSummary() : [];

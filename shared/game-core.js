@@ -157,6 +157,27 @@
         }
     };
 
+    const RUN_EVENT_ROOM_POOL = [
+        {
+            key: 'gamblersShrine',
+            name: '赌徒圣坛',
+            description: '支付少量生命换取金币',
+            type: 'trade'
+        },
+        {
+            key: 'healingFountain',
+            name: '疗愈泉眼',
+            description: '恢复生命，获得稳态优势',
+            type: 'healing'
+        },
+        {
+            key: 'bloodContract',
+            name: '血契祭坛',
+            description: '本局增伤但承伤提高',
+            type: 'riskBuff'
+        }
+    ];
+
     const DEFAULT_SAVE_DATA = {
         inventory: {},
         gold: 0,
@@ -166,6 +187,7 @@
         unlockedWeapons: ['sword'],
         selectedWeaponKey: 'sword',
         runModifiers: [],
+        runEventRoom: null,
         quickSlots: [null, null, null, null]
     };
 
@@ -179,6 +201,7 @@
             unlockedWeapons: [...DEFAULT_SAVE_DATA.unlockedWeapons],
             selectedWeaponKey: DEFAULT_SAVE_DATA.selectedWeaponKey,
             runModifiers: [],
+            runEventRoom: null,
             quickSlots: [...DEFAULT_SAVE_DATA.quickSlots]
         };
     }
@@ -250,6 +273,44 @@
             if (!out.includes(key)) out.push(key);
         });
         return out;
+    }
+
+    function getRunEventRoomByKey(eventKey, poolOverride) {
+        const pool = Array.isArray(poolOverride) ? poolOverride : RUN_EVENT_ROOM_POOL;
+        return pool.find(event => event && event.key === eventKey) || null;
+    }
+
+    function normalizeRunEventRoom(runEventRoom, poolOverride) {
+        if (!runEventRoom || typeof runEventRoom !== 'object') return null;
+        const key = typeof runEventRoom.key === 'string' ? runEventRoom.key : '';
+        const base = getRunEventRoomByKey(key, poolOverride);
+        if (!base) return null;
+        return {
+            key: base.key,
+            name: base.name,
+            description: base.description,
+            type: base.type,
+            discovered: !!runEventRoom.discovered,
+            resolved: !!runEventRoom.resolved
+        };
+    }
+
+    function pickRunEventRoom(randomFn, poolOverride) {
+        const pool = Array.isArray(poolOverride) ? poolOverride : RUN_EVENT_ROOM_POOL;
+        if (!Array.isArray(pool) || pool.length === 0) return null;
+        const rng = typeof randomFn === 'function' ? randomFn : Math.random;
+        const raw = Number(rng());
+        const normalized = Number.isFinite(raw) ? Math.min(0.999999, Math.max(0, raw)) : 0;
+        const index = Math.floor(normalized * pool.length);
+        const picked = pool[index] || pool[0];
+        return {
+            key: picked.key,
+            name: picked.name,
+            description: picked.description,
+            type: picked.type,
+            discovered: false,
+            resolved: false
+        };
     }
 
     function pickRunModifiers(randomFn, count, poolOverride) {
@@ -395,6 +456,7 @@
             unlockedWeapons: validUnlocked,
             selectedWeaponKey,
             runModifiers: normalizeRunModifiers(data.runModifiers),
+            runEventRoom: normalizeRunEventRoom(data.runEventRoom),
             quickSlots: normalizeQuickSlots(data.quickSlots)
         };
     }
@@ -548,6 +610,7 @@
         RUN_MODIFIER_POOL,
         DEFAULT_RUN_EFFECTS,
         CRAFTING_RECIPES,
+        RUN_EVENT_ROOM_POOL,
         DEFAULT_SAVE_DATA,
         AUDIO_SETTINGS_STORAGE_KEY,
         DEFAULT_AUDIO_SETTINGS,
@@ -562,6 +625,9 @@
         normalizeRunModifiers,
         pickRunModifiers,
         buildRunModifierEffects,
+        getRunEventRoomByKey,
+        normalizeRunEventRoom,
+        pickRunEventRoom,
         getWeaponLevel,
         getScaledWeaponStats,
         getUpgradeCostForLevel,

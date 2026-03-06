@@ -15,6 +15,7 @@ const {
     RUN_MODIFIER_POOL,
     DEFAULT_RUN_EFFECTS,
     CRAFTING_RECIPES,
+    RUN_EVENT_ROOM_POOL,
     getScaledWeaponStats,
     getUpgradeCostForLevel,
     canUpgradeWeapon,
@@ -23,6 +24,9 @@ const {
     computeStatusTickDamage,
     pickRunModifiers,
     buildRunModifierEffects,
+    getRunEventRoomByKey,
+    normalizeRunEventRoom,
+    pickRunEventRoom,
     canCraftRecipe,
     applyCraftRecipe,
     serializeSaveData,
@@ -122,6 +126,7 @@ function testSaveLoadIntegrity() {
         unlockedWeapons: ['sword', 'hammer'],
         selectedWeaponKey: 'hammer',
         runModifiers: ['frenziedFoes', 'fortuneWindfall'],
+        runEventRoom: null,
         quickSlots: ['hpPotion', null, 'staminaPotion', null]
     };
 
@@ -136,6 +141,7 @@ function testSaveLoadIntegrity() {
         unlockedWeapons: ['sword', 'hammer'],
         selectedWeaponKey: 'hammer',
         runModifiers: ['frenziedFoes', 'fortuneWindfall'],
+        runEventRoom: null,
         quickSlots: ['hpPotion', null, 'staminaPotion', null]
     }, 'serialized+deserialized state should stay stable');
 
@@ -171,6 +177,23 @@ function testRunModifierSelectionAndEffects() {
     assert.equal(effects.playerDamageMultiplier, 1.28, 'glassBlade should boost player damage');
     assert.equal(effects.enemySpeedMultiplier.toFixed(2), '1.22', 'frenziedFoes should boost enemy speed');
     assert.equal(effects.goldDropMultiplier.toFixed(2), '1.35', 'fortuneWindfall should boost gold drops');
+}
+
+function testRunEventRoomSelection() {
+    assert.ok(Array.isArray(RUN_EVENT_ROOM_POOL) && RUN_EVENT_ROOM_POOL.length >= 3, 'event room pool should contain entries');
+
+    const picked = pickRunEventRoom(() => 0);
+    assert.equal(picked.key, RUN_EVENT_ROOM_POOL[0].key, 'deterministic event pick should select first entry');
+
+    const byKey = getRunEventRoomByKey(picked.key);
+    assert.ok(byKey && byKey.key === picked.key, 'event lookup by key should work');
+
+    const normalized = normalizeRunEventRoom({ key: picked.key, discovered: true, resolved: false });
+    assert.equal(normalized.key, picked.key, 'normalize should keep valid key');
+    assert.equal(normalized.discovered, true, 'normalize should keep discovered flag');
+
+    const invalid = normalizeRunEventRoom({ key: 'not-exist' });
+    assert.equal(invalid, null, 'normalize should drop invalid event key');
 }
 
 function testCraftingRecipeChecks() {
@@ -211,6 +234,7 @@ function main() {
     runTest('save/load integrity', testSaveLoadIntegrity);
     runTest('status effect logic', testStatusEffectLogic);
     runTest('run modifier selection/effects', testRunModifierSelectionAndEffects);
+    runTest('run event room selection', testRunEventRoomSelection);
     runTest('crafting recipe checks', testCraftingRecipeChecks);
     console.log('All regression checks passed.');
 }
