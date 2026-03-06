@@ -11,6 +11,10 @@ const {
     WEAPON_SCALING,
     DEFAULT_WEAPON_LEVELS,
     DEFAULT_SAVE_DATA,
+    STATUS_EFFECT_DEFS,
+    RUN_MODIFIER_POOL,
+    DEFAULT_RUN_EFFECTS,
+    CRAFTING_RECIPES,
     AUDIO_SETTINGS_STORAGE_KEY,
     DEFAULT_AUDIO_SETTINGS,
     normalizeAudioSettings,
@@ -20,10 +24,18 @@ const {
     deserializeSaveData,
     getWeaponLevel: getCoreWeaponLevel,
     getScaledWeaponStats: getCoreScaledWeaponStats,
+    getStatusEffectDef,
+    computeStatusTickDamage,
+    getRunModifierByKey,
+    normalizeRunModifiers,
+    pickRunModifiers,
+    buildRunModifierEffects,
     getUpgradeCostForLevel,
     getRequiredMaterialForWeapon,
     canUpgradeWeapon,
-    applyWeaponUpgrade
+    applyWeaponUpgrade,
+    canCraftRecipe,
+    applyCraftRecipe
 } = Core;
 
 function cloneDefaultSaveData() {
@@ -34,11 +46,265 @@ function cloneDefaultSaveData() {
         sinSeals: [...(DEFAULT_SAVE_DATA.sinSeals || [])],
         weaponLevels: { ...(DEFAULT_SAVE_DATA.weaponLevels || DEFAULT_WEAPON_LEVELS) },
         unlockedWeapons: [...(DEFAULT_SAVE_DATA.unlockedWeapons || ['sword'])],
+        selectedWeaponKey: DEFAULT_SAVE_DATA.selectedWeaponKey || 'sword',
+        runModifiers: [...(DEFAULT_SAVE_DATA.runModifiers || [])],
         quickSlots: [...(DEFAULT_SAVE_DATA.quickSlots || [null, null, null, null])]
     };
 }
 
 const initialSaveData = cloneDefaultSaveData();
+
+const STATUS_COLOR_MAP = {
+    burn: 0xFF8C42,
+    bleed: 0xE74C3C,
+    slow: 0x66CCFF
+};
+
+const AREA_TO_MATERIAL_ITEM = {
+    pride: 'prideEssence',
+    envy: 'envyEssence',
+    wrath: 'wrathEssence',
+    sloth: 'slothEssence',
+    greed: 'greedEssence',
+    gluttony: 'gluttonyEssence',
+    lust: 'lustEssence'
+};
+
+const BOSS_SPRITE_MAP = {
+    pride: 'orc_warrior',
+    envy: 'skeleton_rogue',
+    wrath: 'orc_base',
+    sloth: 'skeleton_base',
+    greed: 'orc_shaman',
+    gluttony: 'orc_rogue',
+    lust: 'skeleton_mage',
+    final: 'orc_base'
+};
+
+const ENEMY_EXTRA_DROP_CHANCE = {
+    hpPotion: 0.08,
+    staminaPotion: 0.08,
+    material: 0.07
+};
+
+const ATTACK_DISPLAY_NAMES = {
+    firePunch: '烈焰冲拳',
+    groundSlam: '震地冲击',
+    flameBreath: '烈焰吐息',
+    divineStrike: '神罚坠击',
+    mirror: '镜像突袭',
+    shapeShift: '形态裂变',
+    reverseControl: '混乱逆转',
+    illusion: '幻影风暴',
+    sleepFog: '沉眠迷雾',
+    coinTrap: '贪金陷阱',
+    treasureStorm: '宝藏风暴',
+    consume: '吞噬暴走',
+    nightmare: '梦魇压制',
+    goldBreath: '灼金币息',
+    bite: '深渊啃咬'
+};
+
+const BOSS_ATTACK_STATUS_ON_HIT = {
+    flameBreath: { key: 'burn', durationMs: 2600 },
+    goldBreath: { key: 'burn', durationMs: 2200 },
+    bite: { key: 'bleed', durationMs: 2400 },
+    firePunch: { key: 'burn', durationMs: 1600 },
+    sleepFog: { key: 'slow', durationMs: 2200 }
+};
+
+const MAJOR_BOSS_PHASE_ATTACKS = new Set([
+    'flameBreath',
+    'divineStrike',
+    'mirror',
+    'shapeShift',
+    'illusion',
+    'coinTrap',
+    'sleepFog',
+    'treasureStorm',
+    'consume',
+    'nightmare'
+]);
+
+const WEAPON_SPECIAL_STATUS = {
+    sword: { key: 'bleed', durationMs: 2800 },
+    dualBlades: { key: 'bleed', durationMs: 3200 },
+    hammer: { key: 'slow', durationMs: 2600 },
+    bow: { key: 'bleed', durationMs: 2500 },
+    staff: { key: 'burn', durationMs: 3200 }
+};
+
+function formatPct(multiplier) {
+    const delta = Math.round((multiplier - 1) * 100);
+    if (delta === 0) return '0%';
+    return (delta > 0 ? '+' : '') + delta + '%';
+}
+
+function getStatusLabel(statusKey) {
+    const def = getStatusEffectDef(statusKey);
+    return def ? def.label : statusKey;
+}
+
+function getStatusColor(statusKey) {
+    return STATUS_COLOR_MAP[statusKey] || 0xFFFFFF;
+}
+
+function getWeaponSpecialStatus(weaponKey) {
+    return WEAPON_SPECIAL_STATUS[weaponKey] || null;
+}
+
+function getAreaKeyFromEnemyKey(enemyKey) {
+    if (typeof enemyKey !== 'string') return null;
+    const prefixes = Object.keys(AREA_TO_MATERIAL_ITEM);
+    const match = prefixes.find(prefix => enemyKey.startsWith(prefix));
+    return match || null;
+}
+
+function showFloatingCombatText(scene, x, y, text, color, duration) {
+    if (!scene || !scene.add || !text) return;
+    const t = scene.add.text(x, y, text, {
+        fontSize: '14px',
+        fill: color || '#ffffff',
+        fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(35);
+    scene.tweens.add({
+        targets: t,
+        y: t.y - 26,
+        alpha: 0,
+        duration: duration || 700,
+        onComplete: () => t.destroy()
+    });
+}
+
+function formatWeaponStatsLine(weaponKey) {
+    const weapon = WEAPONS[weaponKey];
+    if (!weapon) return weaponKey + ': -';
+    const level = getCoreWeaponLevel(GameState.weaponLevels, weaponKey);
+    const scaled = getCoreScaledWeaponStats(WEAPONS, weaponKey, level, WEAPON_SCALING) || weapon;
+    return [
+        weapon.name + ' Lv.' + level,
+        '伤害 ' + scaled.damage,
+        '攻速 ' + scaled.attackSpeed + 'ms',
+        '特攻冷却 ' + scaled.specialCooldown + 'ms'
+    ].join(' | ');
+}
+
+function openPauseMenu(scene) {
+    if (!scene || !scene.scene) return;
+    if (scene.scene.isActive('PauseScene')) return;
+    scene.scene.pause();
+    scene.scene.launch('PauseScene', { parentScene: scene.scene.key });
+}
+
+const AudioSystem = {
+    _ctx: null,
+    _master: null,
+    _settings: { ...DEFAULT_AUDIO_SETTINGS },
+
+    _ensureContext() {
+        if (this._ctx) return true;
+        if (typeof window === 'undefined') return false;
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return false;
+        this._ctx = new AudioCtx();
+        this._master = this._ctx.createGain();
+        this._master.gain.value = audioSettingsToGain(this._settings, 0.18);
+        this._master.connect(this._ctx.destination);
+        return true;
+    },
+
+    _saveSettings() {
+        try {
+            localStorage.setItem(AUDIO_SETTINGS_STORAGE_KEY, JSON.stringify(this._settings));
+        } catch (e) {
+            // Ignore localStorage write failures.
+        }
+    },
+
+    _applySettings() {
+        if (!this._master) return;
+        this._master.gain.value = audioSettingsToGain(this._settings, 0.18);
+    },
+
+    loadSettings() {
+        try {
+            const raw = localStorage.getItem(AUDIO_SETTINGS_STORAGE_KEY);
+            if (!raw) {
+                this._settings = { ...DEFAULT_AUDIO_SETTINGS };
+            } else {
+                this._settings = normalizeAudioSettings(JSON.parse(raw));
+            }
+        } catch (e) {
+            this._settings = { ...DEFAULT_AUDIO_SETTINGS };
+        }
+        this._applySettings();
+    },
+
+    getSettings() {
+        return { ...this._settings };
+    },
+
+    setMuted(muted) {
+        this._settings.muted = !!muted;
+        this._applySettings();
+        this._saveSettings();
+    },
+
+    toggleMuted() {
+        this.setMuted(!this._settings.muted);
+    },
+
+    setVolume(volume) {
+        this._settings.volume = Math.max(0, Math.min(100, Math.round(Number(volume) || 0)));
+        this._applySettings();
+        this._saveSettings();
+    },
+
+    _resume() {
+        if (!this._ensureContext()) return;
+        if (this._ctx.state === 'suspended') {
+            this._ctx.resume().catch(() => {});
+        }
+    },
+
+    bindSceneInput(scene) {
+        if (!scene || !scene.input || scene._audioBound) return;
+        scene._audioBound = true;
+        scene.input.once('pointerdown', () => this._resume());
+        scene.input.keyboard.once('keydown', () => this._resume());
+    },
+
+    _playTone(freq, durationMs, type, gain) {
+        if (!this._ensureContext() || !this._master || this._settings.muted) return;
+        const now = this._ctx.currentTime;
+        const osc = this._ctx.createOscillator();
+        const g = this._ctx.createGain();
+        osc.type = type || 'square';
+        osc.frequency.value = freq;
+        g.gain.setValueAtTime(0, now);
+        g.gain.linearRampToValueAtTime(gain || 0.05, now + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + (durationMs || 120) / 1000);
+        osc.connect(g);
+        g.connect(this._master);
+        osc.start(now);
+        osc.stop(now + (durationMs || 120) / 1000 + 0.02);
+    },
+
+    playUi(kind) {
+        if (kind === 'error') this._playTone(180, 180, 'sawtooth', 0.045);
+        else if (kind === 'pickup') this._playTone(760, 120, 'triangle', 0.04);
+        else if (kind === 'dodge') this._playTone(520, 90, 'square', 0.035);
+        else this._playTone(620, 100, 'triangle', 0.035);
+    },
+
+    playAttack(isSpecial) {
+        this._playTone(isSpecial ? 420 : 300, isSpecial ? 160 : 120, 'square', isSpecial ? 0.05 : 0.04);
+    },
+
+    playHit() {
+        this._playTone(220, 140, 'sawtooth', 0.05);
+    }
+};
 
 const GameState = {
     inventory: {},
@@ -48,6 +314,8 @@ const GameState = {
     weaponLevels: { sword: 1, dualBlades: 1, hammer: 1, bow: 1, staff: 1 },
     unlockedWeapons: ['sword'],
     selectedWeaponKey: 'sword',
+    runModifiers: [],
+    runEffects: { ...DEFAULT_RUN_EFFECTS },
     quickSlots: [null, null, null, null],
 
     addItem(itemKey, count) {
@@ -73,10 +341,27 @@ const GameState = {
         if (!itemKey || !this.hasItem(itemKey)) return;
         const item = ITEMS[itemKey];
         if (!item || item.type !== 'consumable') return;
+        let consumed = true;
         if (item.effect === 'healHp') player.hp = Math.min(player.maxHp, player.hp + item.value);
-        if (item.effect === 'healStamina') player.stamina = Math.min(player.maxStamina, player.stamina + item.value);
+        else if (item.effect === 'healStamina') player.stamina = Math.min(player.maxStamina, player.stamina + item.value);
+        else if (item.effect === 'cleanseWard' && player.applyCleanseWard) player.applyCleanseWard(4000);
+        else if (item.effect === 'battleFocus' && player.applyBattleFocus) player.applyBattleFocus(8000, 1.25);
+        else consumed = false;
+        if (!consumed) return;
         this.removeItem(itemKey);
         AudioSystem.playUi('ui');
+    },
+    rollRunModifiers() {
+        this.runModifiers = pickRunModifiers(Math.random, 3, RUN_MODIFIER_POOL);
+        this.runEffects = buildRunModifierEffects(this.runModifiers, RUN_MODIFIER_POOL);
+    },
+    ensureRunModifiers() {
+        this.runModifiers = normalizeRunModifiers(this.runModifiers, RUN_MODIFIER_POOL);
+        if (this.runModifiers.length === 0) {
+            this.rollRunModifiers();
+            return;
+        }
+        this.runEffects = buildRunModifierEffects(this.runModifiers, RUN_MODIFIER_POOL);
     },
     reset() {
         const base = cloneDefaultSaveData();
@@ -87,6 +372,7 @@ const GameState = {
         this.weaponLevels = { sword: 1, dualBlades: 1, hammer: 1, bow: 1, staff: 1 };
         this.unlockedWeapons = ['sword'];
         this.selectedWeaponKey = 'sword';
+        this.rollRunModifiers();
         this.quickSlots = [null, null, null, null];
     },
     ensureSelectedWeapon() {
@@ -107,6 +393,7 @@ const GameState = {
             weaponLevels: this.weaponLevels,
             unlockedWeapons: this.unlockedWeapons,
             selectedWeaponKey: this.selectedWeaponKey,
+            runModifiers: this.runModifiers,
             quickSlots: this.quickSlots
         });
         localStorage.setItem('sevenSinsSave', raw);
@@ -115,7 +402,7 @@ const GameState = {
         const raw = localStorage.getItem('sevenSinsSave');
         if (!raw) return false;
         try {
-            const data = JSON.parse(raw);
+            const data = deserializeSaveData(raw);
             this.inventory = data.inventory || {};
             this.gold = data.gold || 0;
             this.defeatedBosses = data.defeatedBosses || [];
@@ -123,6 +410,8 @@ const GameState = {
             this.weaponLevels = data.weaponLevels || { sword: 1, dualBlades: 1, hammer: 1, bow: 1, staff: 1 };
             this.unlockedWeapons = data.unlockedWeapons || ['sword'];
             this.selectedWeaponKey = data.selectedWeaponKey || this.unlockedWeapons[0] || 'sword';
+            this.runModifiers = data.runModifiers || [];
+            this.ensureRunModifiers();
             this.quickSlots = data.quickSlots || [null, null, null, null];
             this.ensureSelectedWeapon();
             return true;
@@ -138,6 +427,22 @@ function applyPlayerWeaponState(player) {
         : ['sword'];
     const selected = GameState.ensureSelectedWeapon();
     player.setWeapons(unlocked, selected);
+}
+
+function getRunModifierLabel(modifierKey) {
+    const modifier = getRunModifierByKey(modifierKey, RUN_MODIFIER_POOL);
+    return modifier ? modifier.name : modifierKey;
+}
+
+function getRunModifierDescription(modifierKey) {
+    const modifier = getRunModifierByKey(modifierKey, RUN_MODIFIER_POOL);
+    return modifier ? modifier.description : '';
+}
+
+function getRunModifierHelpLines() {
+    const keys = Array.isArray(GameState.runModifiers) ? GameState.runModifiers : [];
+    if (keys.length === 0) return ['无'];
+    return keys.map((key, index) => `${index + 1}. ${getRunModifierLabel(key)}: ${getRunModifierDescription(key)}`);
 }
 
 const UI_DEBUG_FLAGS = {
@@ -391,6 +696,7 @@ class TitleScene extends Phaser.Scene {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
         AudioSystem.bindSceneInput(this);
+        GameState.ensureRunModifiers();
 
         this.add.text(width / 2, height / 2 - 80, '七宗罪', {
             fontSize: '48px',
@@ -473,8 +779,15 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.isInvincible = false;
         this.isAttacking = false;
         this.knockbackTimer = 0;
+        this.controlInvertTimer = 0;
+        this._controlInvertFx = false;
         this.facingAngle = 0;
         this._invincibleTimer = 0;
+        this._damageAppliedThisHit = false;
+        this.activeStatusEffects = {};
+        this.statusResistanceUntil = 0;
+        this.damageBuffUntil = 0;
+        this.damageBuffMultiplier = 1;
         this._animDir = 'down';
         this._animState = 'idle';
         this._weaponVisualDirty = true;
@@ -487,6 +800,8 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this._wasdKeys = scene.input.keyboard.addKeys('W,A,S,D');
         this.weaponVisual = scene.add.graphics();
         this.weaponVisual.setDepth(11);
+        this.statusAura = scene.add.graphics();
+        this.statusAura.setDepth(12);
         this.play('player_idle_down');
     }
 
@@ -500,7 +815,9 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             this.currentWeaponIndex = 0;
         }
         const key = this.weapons[this.currentWeaponIndex];
-        return WEAPONS[key] || WEAPONS.sword;
+        const level = getCoreWeaponLevel(GameState.weaponLevels, key);
+        const scaled = getCoreScaledWeaponStats(WEAPONS, key, level, WEAPON_SCALING);
+        return scaled || WEAPONS[key] || WEAPONS.sword;
     }
 
     setWeapons(weaponKeys, preferredWeaponKey) {
@@ -583,6 +900,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
 
     update(time, delta) {
         const cfg = GAME_CONFIG.PLAYER;
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
         const dt = delta / 1000;
 
         if (this.attackCooldown > 0) this.attackCooldown -= delta;
@@ -604,6 +922,8 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             this._invincibleTimer -= delta;
             if (this._invincibleTimer <= 0) this.isInvincible = false;
         }
+
+        this._updateStatusEffects(time);
 
         const pointer = this.scene.input.activePointer;
         const worldX = this.scene.cameras.main.scrollX + pointer.x;
@@ -630,7 +950,8 @@ class Player extends Phaser.Physics.Arcade.Sprite {
                 vx *= norm;
                 vy *= norm;
             }
-            this.setVelocity(vx * cfg.speed, vy * cfg.speed);
+            const speedScale = this._getMoveSpeedMultiplier(time);
+            this.setVelocity(vx * cfg.speed * speedScale, vy * cfg.speed * speedScale);
             moving = vx !== 0 || vy !== 0;
         }
 
@@ -644,7 +965,8 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         }
 
         if (!this.isAttacking && !this.isDodging) {
-            this.stamina = Math.min(this.maxStamina, this.stamina + cfg.staminaRegen * dt);
+            const regenScale = runEffects.playerStaminaRegenMultiplier || 1;
+            this.stamina = Math.min(this.maxStamina, this.stamina + cfg.staminaRegen * regenScale * dt);
         }
     }
 
@@ -681,7 +1003,8 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this._playAnim('attack', dir);
         this.scene.time.delayedCall(250, () => { this.isAttacking = false; });
         AudioSystem.playAttack(false);
-        return this._spawnHitbox(weapon.damage, 1, false);
+        const damage = Math.round(weapon.damage * this.getDamageMultiplier());
+        return this._spawnHitbox(damage, 1, false);
     }
 
     trySpecialAttack() {
@@ -689,16 +1012,29 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         if (!weapon) return null;
         if (this.specialCooldown > 0 || this.stamina < weapon.specialStaminaCost || this.isDodging) return null;
         this.stamina -= weapon.specialStaminaCost;
-        this.specialCooldown = weapon.specialCooldown;
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        const specialCdScale = runEffects.playerSpecialCooldownMultiplier || 1;
+        this.specialCooldown = Math.max(450, Math.round(weapon.specialCooldown * specialCdScale));
         this.isAttacking = true;
         const dir = this._getDirection();
         this._playAnim('attack', dir);
         this.scene.time.delayedCall(250, () => { this.isAttacking = false; });
-        return this._spawnHitbox(weapon.damage * 2, 2, true);
+        AudioSystem.playAttack(true);
+        const damage = Math.round(weapon.damage * 2 * this.getDamageMultiplier());
+        return this._spawnHitbox(damage, 2, true);
     }
 
     _spawnHitbox(damage, scale, isSpecial) {
         const weapon = this.currentWeapon;
+        const weaponKey = this.currentWeaponKey || 'sword';
+        const specialStatus = isSpecial ? getWeaponSpecialStatus(weaponKey) : null;
+        const statusPayload = specialStatus
+            ? {
+                key: specialStatus.key,
+                durationMs: specialStatus.durationMs,
+                sourceDamage: damage
+            }
+            : null;
         const offset = weapon.range * 0.5;
         const angle = this.facingAngle;
         const hx = this.x + Math.cos(angle) * offset;
@@ -716,6 +1052,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             arrow.setDepth(5);
             arrow.damage = damage;
             arrow.hitRadius = 10 * scale;
+            arrow.statusEffect = statusPayload;
             this.scene.physics.add.existing(arrow);
             arrow.body.setVelocity(Math.cos(angle) * 450, Math.sin(angle) * 450);
             this.scene.time.delayedCall(800, () => { if (arrow.active) arrow.destroy(); });
@@ -733,6 +1070,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             orb.damage = damage;
             orb.hitRadius = 12 * orbScale;
             orb._pierceHits = [];
+            orb.statusEffect = statusPayload;
             this.scene.physics.add.existing(orb);
             orb.body.setVelocity(Math.cos(angle) * 250, Math.sin(angle) * 250);
             this.scene.time.delayedCall(1200, () => { if (orb.active) orb.destroy(); });
@@ -748,6 +1086,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             slam.hitRadius = 40 * scale;
             slam.x = hx;
             slam.y = hy;
+            slam.statusEffect = statusPayload;
             this.scene.cameras.main.shake(100, 0.01);
             this.scene.time.delayedCall(200, () => { if (slam.active) slam.destroy(); });
             return slam;
@@ -763,6 +1102,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             hitbox.hitRadius = 14 * scale;
             hitbox.x = hx;
             hitbox.y = hy;
+            hitbox.statusEffect = statusPayload;
             this.scene.time.delayedCall(100, () => { if (hitbox.active) hitbox.destroy(); });
             // Second hit shortly after
             this.scene.time.delayedCall(120, () => {
@@ -778,6 +1118,9 @@ class Player extends Phaser.Physics.Arcade.Sprite {
                 h2.hitRadius = 14 * scale;
                 h2.x = hx2;
                 h2.y = hy2;
+                h2.statusEffect = statusPayload
+                    ? { ...statusPayload, sourceDamage: h2.damage }
+                    : null;
                 this.scene.time.delayedCall(100, () => { if (h2.active) h2.destroy(); });
             });
             return hitbox;
@@ -787,28 +1130,180 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             hitbox.setScale(scale);
             hitbox.damage = damage;
             hitbox.hitRadius = 18 * scale;
+            hitbox.statusEffect = statusPayload;
             hitbox.setDepth(5);
             this.scene.time.delayedCall(150, () => { if (hitbox.active) hitbox.destroy(); });
             return hitbox;
         }
     }
 
-    takeDamage(amount) {
-        if (this.isInvincible) return false;
-        this.hp = Math.max(0, this.hp - amount);
-        AudioSystem.playHit();
-        this.isInvincible = true;
-        this._invincibleTimer = 200;
-        this.knockbackTimer = 200;
-        this.scene.tweens.add({
-            targets: this,
-            alpha: 0.3,
-            duration: 50,
-            yoyo: true,
-            repeat: 3,
-            onComplete: () => this.setAlpha(1)
-        });
+    takeDamage(amount, options) {
+        const opts = options || {};
+        this._damageAppliedThisHit = false;
+        if (this.isInvincible && !opts.ignoreInvincibility) return false;
+
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        const incomingScale = opts.ignoreRunModifier ? 1 : (runEffects.playerDamageTakenMultiplier || 1);
+        const finalDamage = Math.max(1, Math.round((Number(amount) || 0) * incomingScale));
+        this.hp = Math.max(0, this.hp - finalDamage);
+        this._damageAppliedThisHit = true;
+
+        if (!opts.silent) AudioSystem.playHit();
+        if (!opts.noIframes && !opts.ignoreInvincibility) {
+            this.isInvincible = true;
+            this._invincibleTimer = 200;
+            this.knockbackTimer = 200;
+        }
+        if (!opts.noFlash) {
+            this.scene.tweens.add({
+                targets: this,
+                alpha: 0.3,
+                duration: 50,
+                yoyo: true,
+                repeat: 1,
+                onComplete: () => this.setAlpha(1)
+            });
+        }
         return this.hp <= 0;
+    }
+
+    getDamageMultiplier() {
+        const now = this.scene.time.now;
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        let mult = runEffects.playerDamageMultiplier || 1;
+        if (now < this.damageBuffUntil) mult *= this.damageBuffMultiplier || 1;
+        return mult;
+    }
+
+    _getMoveSpeedMultiplier(now) {
+        let speedMult = 1;
+        Object.entries(this.activeStatusEffects).forEach(([statusKey, state]) => {
+            if (!state || now >= state.expiresAt) return;
+            const def = getStatusEffectDef(statusKey);
+            if (def && Number.isFinite(def.speedMultiplier) && def.speedMultiplier > 0) {
+                speedMult = Math.min(speedMult, def.speedMultiplier);
+            }
+        });
+        return Math.max(0.45, speedMult);
+    }
+
+    _updateStatusEffects(now) {
+        const keys = Object.keys(this.activeStatusEffects || {});
+        this.statusAura.clear();
+        if (keys.length === 0) return;
+
+        let ringIndex = 0;
+        keys.forEach((statusKey) => {
+            const state = this.activeStatusEffects[statusKey];
+            if (!state) return;
+            if (now >= state.expiresAt) {
+                delete this.activeStatusEffects[statusKey];
+                return;
+            }
+            const def = getStatusEffectDef(statusKey);
+            if (!def) {
+                delete this.activeStatusEffects[statusKey];
+                return;
+            }
+            if (def.tickMs > 0 && now >= state.nextTickAt) {
+                const tickDamage = computeStatusTickDamage(statusKey, state.sourceDamage || 0, 1);
+                if (tickDamage > 0) {
+                    this.takeDamage(tickDamage, {
+                        ignoreInvincibility: true,
+                        noIframes: true,
+                        noFlash: true,
+                        silent: true,
+                        ignoreRunModifier: true
+                    });
+                    showFloatingCombatText(
+                        this.scene,
+                        this.x,
+                        this.y - 46,
+                        '-' + tickDamage + ' ' + getStatusLabel(statusKey),
+                        '#' + getStatusColor(statusKey).toString(16).padStart(6, '0'),
+                        500
+                    );
+                }
+                state.nextTickAt = now + def.tickMs;
+            }
+
+            const color = getStatusColor(statusKey);
+            this.statusAura.lineStyle(2, color, 0.65);
+            this.statusAura.strokeCircle(this.x, this.y - 6, 18 + ringIndex * 4);
+            ringIndex++;
+        });
+    }
+
+    applyStatusEffect(statusKey, opts) {
+        const now = this.scene.time.now;
+        if (now < this.statusResistanceUntil) {
+            showFloatingCombatText(this.scene, this.x, this.y - 54, '抗性', '#9effd6', 500);
+            return false;
+        }
+        const def = getStatusEffectDef(statusKey);
+        if (!def) return false;
+        const options = opts || {};
+        const duration = Math.max(600, Math.round(options.durationMs || def.durationMs || 1200));
+        const existing = this.activeStatusEffects[statusKey];
+        const sourceDamage = Math.max(1, Math.round(options.sourceDamage || this.currentWeapon.damage || 10));
+        this.activeStatusEffects[statusKey] = {
+            key: statusKey,
+            expiresAt: now + duration,
+            nextTickAt: existing && existing.nextTickAt ? existing.nextTickAt : now + (def.tickMs || 0),
+            sourceDamage
+        };
+        showFloatingCombatText(
+            this.scene,
+            this.x,
+            this.y - 58,
+            getStatusLabel(statusKey),
+            '#' + getStatusColor(statusKey).toString(16).padStart(6, '0'),
+            700
+        );
+        return true;
+    }
+
+    clearStatusEffects() {
+        this.activeStatusEffects = {};
+        this.statusAura.clear();
+    }
+
+    applyCleanseWard(durationMs) {
+        this.clearStatusEffects();
+        this.controlInvertTimer = 0;
+        if (this._controlInvertFx) {
+            this.clearTint();
+            this._controlInvertFx = false;
+        }
+        const duration = Math.max(1000, durationMs || 4000);
+        this.statusResistanceUntil = Math.max(this.statusResistanceUntil, this.scene.time.now + duration);
+        showFloatingCombatText(this.scene, this.x, this.y - 54, '净化护佑', '#9effd6', 900);
+    }
+
+    applyBattleFocus(durationMs, multiplier) {
+        this.damageBuffUntil = Math.max(this.damageBuffUntil, this.scene.time.now + (durationMs || 8000));
+        this.damageBuffMultiplier = Math.max(1, Number(multiplier) || 1.2);
+        showFloatingCombatText(this.scene, this.x, this.y - 54, '战意高涨', '#ffcf66', 900);
+    }
+
+    getStatusSummary() {
+        const now = this.scene.time.now;
+        const labels = [];
+        Object.entries(this.activeStatusEffects).forEach(([statusKey, state]) => {
+            if (!state || now >= state.expiresAt) return;
+            const sec = Math.max(1, Math.ceil((state.expiresAt - now) / 1000));
+            labels.push(getStatusLabel(statusKey) + ' ' + sec + 's');
+        });
+        if (this.controlInvertTimer > 0) {
+            labels.push('控制反转 ' + Math.max(1, Math.ceil(this.controlInvertTimer / 1000)) + 's');
+        }
+        if (now < this.statusResistanceUntil) {
+            labels.push('状态抗性 ' + Math.max(1, Math.ceil((this.statusResistanceUntil - now) / 1000)) + 's');
+        }
+        if (now < this.damageBuffUntil) {
+            labels.push('增伤 ' + formatPct(this.damageBuffMultiplier) + ' ' + Math.max(1, Math.ceil((this.damageBuffUntil - now) / 1000)) + 's');
+        }
+        return labels;
     }
 
     applyReverseControl(durationMs) {
@@ -848,6 +1343,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
 
     destroy(fromScene) {
         if (this.weaponVisual && this.weaponVisual.active) this.weaponVisual.destroy();
+        if (this.statusAura && this.statusAura.active) this.statusAura.destroy();
         super.destroy(fromScene);
     }
 }
@@ -878,11 +1374,17 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
         const animKey = 'enemy_' + spriteKey + '_idle';
         if (scene.anims.exists(animKey)) this.play(animKey);
 
-        this.hp = config.hp;
-        this.maxHp = config.hp;
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        const hpScale = runEffects.enemyHpMultiplier || 1;
+        const speedScale = runEffects.enemySpeedMultiplier || 1;
+        this.hp = Math.max(1, Math.round(config.hp * hpScale));
+        this.maxHp = this.hp;
         this.damage = config.damage;
-        this.speed = config.speed;
+        this.speed = Math.max(20, Math.round(config.speed * speedScale));
+        this.baseSpeed = this.speed;
         this.drops = config.drops || {};
+        this.onHitStatus = config.onHitStatus || null;
+        this.activeStatusEffects = {};
 
         this.state = 'patrol';
         this.detectionRange = 200;
@@ -904,6 +1406,8 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
         this.hpBarFill.fillStyle(0xE74C3C, 1);
         this.hpBarFill.fillRect(-15, -28, 30, 4);
         this.hpBarFill.setDepth(9);
+        this.statusAura = scene.add.graphics();
+        this.statusAura.setDepth(8);
 
         this.setCollideWorldBounds(true);
     }
@@ -913,6 +1417,7 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
 
         // Update attack cooldown
         if (this.attackCooldown > 0) this.attackCooldown -= delta;
+        const moveScale = this._updateStatusEffects(time);
 
         const dist = playerSprite
             ? Phaser.Math.Distance.Between(this.x, this.y, playerSprite.x, playerSprite.y)
@@ -937,12 +1442,12 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
                 this.targetX = this.x + (Math.random() - 0.5) * 2 * r;
                 this.targetY = this.y + (Math.random() - 0.5) * 2 * r;
             }
-            const patrolSpeed = this.speed * 0.3;
+            const patrolSpeed = this.speed * 0.3 * moveScale;
             const angle = Phaser.Math.Angle.Between(this.x, this.y, this.targetX, this.targetY);
             this.setVelocity(Math.cos(angle) * patrolSpeed, Math.sin(angle) * patrolSpeed);
         } else if (this.state === 'chase') {
             const angle = Phaser.Math.Angle.Between(this.x, this.y, playerSprite.x, playerSprite.y);
-            this.setVelocity(Math.cos(angle) * this.speed, Math.sin(angle) * this.speed);
+            this.setVelocity(Math.cos(angle) * this.speed * moveScale, Math.sin(angle) * this.speed * moveScale);
         } else if (this.state === 'attack') {
             this.setVelocity(0, 0);
             this.attackCooldown = this.attackCooldownMs;
@@ -955,22 +1460,81 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
         this.hpBarFill.clear();
         this.hpBarFill.fillStyle(0xE74C3C, 1);
         this.hpBarFill.fillRect(-15, -28, 30 * hpRatio, 4);
+        this.statusAura.setPosition(this.x, this.y);
 
         return this.state === 'attack';
     }
 
-    takeDamage(amount) {
-        this.hp = Math.max(0, this.hp - amount);
-        AudioSystem.playHit();
-
-        this.scene.tweens.add({
-            targets: this,
-            alpha: 0.3,
-            duration: 50,
-            yoyo: true,
-            repeat: 3,
-            onComplete: () => this.setAlpha(1)
+    _updateStatusEffects(now) {
+        let moveMult = 1;
+        this.statusAura.clear();
+        let ringIndex = 0;
+        Object.entries(this.activeStatusEffects).forEach(([statusKey, state]) => {
+            if (!state || now >= state.expiresAt) {
+                delete this.activeStatusEffects[statusKey];
+                return;
+            }
+            const def = getStatusEffectDef(statusKey);
+            if (!def) {
+                delete this.activeStatusEffects[statusKey];
+                return;
+            }
+            if (def.tickMs > 0 && now >= state.nextTickAt) {
+                const tickDamage = computeStatusTickDamage(statusKey, state.sourceDamage || 0, 1);
+                if (tickDamage > 0) {
+                    const drops = this.takeDamage(tickDamage, { silent: true, noFlash: true });
+                    if (drops) this._statusDrops = drops;
+                }
+                state.nextTickAt = now + def.tickMs;
+            }
+            if (def.speedMultiplier && def.speedMultiplier > 0) {
+                moveMult = Math.min(moveMult, def.speedMultiplier);
+            }
+            this.statusAura.lineStyle(2, getStatusColor(statusKey), 0.7);
+            this.statusAura.strokeCircle(0, -6, 18 + ringIndex * 4);
+            ringIndex++;
         });
+        return Math.max(0.45, moveMult);
+    }
+
+    applyStatusEffect(statusKey, opts) {
+        const def = getStatusEffectDef(statusKey);
+        if (!def || !this.isAlive) return false;
+        const now = this.scene.time.now;
+        const options = opts || {};
+        const duration = Math.max(600, Math.round(options.durationMs || def.durationMs || 1200));
+        this.activeStatusEffects[statusKey] = {
+            key: statusKey,
+            expiresAt: now + duration,
+            nextTickAt: now + (def.tickMs || 0),
+            sourceDamage: Math.max(1, Math.round(options.sourceDamage || 8))
+        };
+        showFloatingCombatText(
+            this.scene,
+            this.x,
+            this.y - 34,
+            getStatusLabel(statusKey),
+            '#' + getStatusColor(statusKey).toString(16).padStart(6, '0'),
+            650
+        );
+        return true;
+    }
+
+    takeDamage(amount, options) {
+        const opts = options || {};
+        this.hp = Math.max(0, this.hp - amount);
+        if (!opts.silent) AudioSystem.playHit();
+
+        if (!opts.noFlash) {
+            this.scene.tweens.add({
+                targets: this,
+                alpha: 0.3,
+                duration: 50,
+                yoyo: true,
+                repeat: 3,
+                onComplete: () => this.setAlpha(1)
+            });
+        }
 
         if (this.hp <= 0) {
             this.state = 'dead';
@@ -981,11 +1545,13 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
             this.isAlive = false;
 
             const drops = { gold: 0, items: [] };
+            const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+            const goldScale = runEffects.goldDropMultiplier || 1;
             if (this.drops.gold != null) {
                 if (Array.isArray(this.drops.gold) && this.drops.gold.length === 2) {
-                    drops.gold = Phaser.Math.Between(this.drops.gold[0], this.drops.gold[1]);
+                    drops.gold = Math.round(Phaser.Math.Between(this.drops.gold[0], this.drops.gold[1]) * goldScale);
                 } else {
-                    drops.gold = this.drops.gold;
+                    drops.gold = Math.round(this.drops.gold * goldScale);
                 }
             }
             drops.items.push(...this._rollExtraDrops());
@@ -995,13 +1561,15 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
     }
 
     _rollExtraDrops() {
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        const dropScale = runEffects.extraDropRateMultiplier || 1;
         const items = [];
-        if (Math.random() < ENEMY_EXTRA_DROP_CHANCE.hpPotion) items.push({ key: 'hpPotion', count: 1 });
-        if (Math.random() < ENEMY_EXTRA_DROP_CHANCE.staminaPotion) items.push({ key: 'staminaPotion', count: 1 });
+        if (Math.random() < Math.min(0.95, ENEMY_EXTRA_DROP_CHANCE.hpPotion * dropScale)) items.push({ key: 'hpPotion', count: 1 });
+        if (Math.random() < Math.min(0.95, ENEMY_EXTRA_DROP_CHANCE.staminaPotion * dropScale)) items.push({ key: 'staminaPotion', count: 1 });
 
         const areaKey = getAreaKeyFromEnemyKey(this.configKey);
         const materialKey = areaKey ? AREA_TO_MATERIAL_ITEM[areaKey] : null;
-        if (materialKey && Math.random() < ENEMY_EXTRA_DROP_CHANCE.material) {
+        if (materialKey && Math.random() < Math.min(0.9, ENEMY_EXTRA_DROP_CHANCE.material * dropScale)) {
             items.push({ key: materialKey, count: 1 });
         }
         return items;
@@ -1010,6 +1578,7 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
     destroy() {
         if (this.hpBarBg && this.hpBarBg.active) this.hpBarBg.destroy();
         if (this.hpBarFill && this.hpBarFill.active) this.hpBarFill.destroy();
+        if (this.statusAura && this.statusAura.active) this.statusAura.destroy();
         super.destroy();
     }
 }
@@ -1364,6 +1933,7 @@ class LevelScene extends Phaser.Scene {
         const boss = BOSSES[bossKey];
         this.bossKey = bossKey;
         AudioSystem.bindSceneInput(this);
+        GameState.ensureRunModifiers();
 
         // Room layout
         const rooms = [
@@ -1636,23 +2206,17 @@ class LevelScene extends Phaser.Scene {
                 if (d < hbRadius && hb.damage) {
                     const canPierce = Array.isArray(hb._pierceHits);
                     if (canPierce && hb._pierceHits.includes(enemy)) continue;
-                    const drops = enemy.takeDamage(hb.damage);
-                    if (canPierce) hb._pierceHits.push(enemy);
-                    else hb.damage = 0;
-                    if (drops && drops.gold) {
-                        GameState.addGold(drops.gold);
-                        const txt = this.add.text(enemy.x, enemy.y - 20, '+' + drops.gold + ' gold', {
-                            fontSize: '16px',
-                            fill: '#FFD700'
-                        }).setOrigin(0.5);
-                        this.tweens.add({
-                            targets: txt,
-                            y: txt.y - 40,
-                            alpha: 0,
-                            duration: 800,
-                            onComplete: () => txt.destroy()
+                    const hitDamage = hb.damage;
+                    const drops = enemy.takeDamage(hitDamage);
+                    if (hb.statusEffect && enemy.applyStatusEffect) {
+                        enemy.applyStatusEffect(hb.statusEffect.key, {
+                            durationMs: hb.statusEffect.durationMs,
+                            sourceDamage: hb.statusEffect.sourceDamage || hitDamage
                         });
                     }
+                    if (canPierce) hb._pierceHits.push(enemy);
+                    else hb.damage = 0;
+                    if (drops) this._spawnDropPickups(enemy.x, enemy.y, drops);
                 }
             }
         }
@@ -1674,10 +2238,20 @@ class LevelScene extends Phaser.Scene {
                 enemy.setPosition(clamped.x, clamped.y);
                 enemy.setVelocity(0, 0);
             }
+            if (enemy._statusDrops) {
+                this._spawnDropPickups(enemy.x, enemy.y, enemy._statusDrops);
+                enemy._statusDrops = null;
+            }
             if (attacking) {
                 const d = Phaser.Math.Distance.Between(enemy.x, enemy.y, this.player.x, this.player.y);
                 if (d < enemy.attackRange + 20) {
                     const died = this.player.takeDamage(enemy.damage);
+                    if (this.player._damageAppliedThisHit && enemy.onHitStatus) {
+                        this.player.applyStatusEffect(enemy.onHitStatus.key, {
+                            durationMs: enemy.onHitStatus.durationMs,
+                            sourceDamage: enemy.damage
+                        });
+                    }
                     if (died) {
                         this.playerDead = true;
                         this.deathText = this.add.text(
@@ -1741,10 +2315,14 @@ class Boss {
         const bossAnimKey = 'enemy_' + (BOSS_SPRITE_MAP[bossKey] || 'orc_base') + '_idle';
         if (scene.anims.exists(bossAnimKey)) this.sprite.play(bossAnimKey);
 
-        this.hp = this.config.hp;
-        this.maxHp = this.config.hp;
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        const hpScale = runEffects.enemyHpMultiplier || 1;
+        const speedScale = runEffects.enemySpeedMultiplier || 1;
+        this.hp = Math.max(1, Math.round(this.config.hp * hpScale));
+        this.maxHp = this.hp;
         this.damage = this.config.damage;
-        this.speed = this.config.speed;
+        this.speed = Math.max(30, Math.round(this.config.speed * speedScale));
+        this.baseSpeed = this.speed;
         this.currentPhase = 0;
         this.phaseTransitioned = this.config.phases.map(() => false);
         this.attackTimer = 0;
@@ -1759,6 +2337,12 @@ class Boss {
         this.attackStart = 0;
         this.cooldownStart = 0;
         this.attackData = {};
+        this.attackWindupDelay = 0;
+        this.phaseMajorAttackQueue = new Set();
+        this.activeStatusEffects = {};
+        this._statusSpeedMultiplier = 1;
+        this.statusAura = scene.add.graphics();
+        this.statusAura.setDepth(9);
     }
 
     getPhase() {
@@ -1769,6 +2353,7 @@ class Boss {
         if (!this.isAlive) return;
 
         this.attackTimer += delta;
+        this._statusSpeedMultiplier = this._updateStatusEffects(time);
 
         if (time < this.invincibleUntil) return;
 
@@ -1789,12 +2374,19 @@ class Boss {
                 this.attackIndex++;
                 this.attackState = 'winding';
                 this.windUpStart = time;
+                if (this.phaseMajorAttackQueue.has(this.currentAttack)) {
+                    this.attackWindupDelay = 450;
+                    this.phaseMajorAttackQueue.delete(this.currentAttack);
+                    this._showTelegraph('⚠ ' + (ATTACK_DISPLAY_NAMES[this.currentAttack] || this.currentAttack), '#FFD700', 900);
+                } else {
+                    this.attackWindupDelay = 0;
+                }
             }
             this._moveTowardPlayer(player, 0.5);
         } else if (this.attackState === 'winding') {
             const flash = Math.floor((time - this.windUpStart) / 100) % 2;
             this.sprite.setAlpha(flash === 0 ? 1 : 0.5);
-            if (time - this.windUpStart >= 500) {
+            if (time - this.windUpStart >= 500 + this.attackWindupDelay) {
                 this.sprite.setAlpha(1);
                 this.attackState = 'attacking';
                 this.attackStart = time;
@@ -1816,6 +2408,19 @@ class Boss {
         this.invincibleUntil = time + 1000;
         this.speed *= 1.2;
         const phase = this.config.phases[phaseIndex];
+        const prevAttacks = phaseIndex > 0
+            ? (this.config.phases[phaseIndex - 1].attacks || [])
+            : [];
+        const currentAttacks = phase ? (phase.attacks || []) : [];
+        const newlyUnlocked = currentAttacks.filter(a => !prevAttacks.includes(a));
+        newlyUnlocked
+            .filter(a => MAJOR_BOSS_PHASE_ATTACKS.has(a))
+            .forEach(a => this.phaseMajorAttackQueue.add(a));
+        const phaseLabel = '阶段 ' + (phaseIndex + 1) + '!';
+        const unlockedLabel = newlyUnlocked.length > 0
+            ? '新招式: ' + newlyUnlocked.map(a => ATTACK_DISPLAY_NAMES[a] || a).join(' / ')
+            : 'Boss 进入强化状态';
+        this._showTelegraph(phaseLabel + '\n' + unlockedLabel, '#ffef9f', 1300);
         if (phase && phase.attacks && phase.attacks.includes('berserk')) {
             if (!this.berserkApplied) {
                 this.berserkApplied = true;
@@ -1836,8 +2441,106 @@ class Boss {
     _moveTowardPlayer(player, factor) {
         if (!player || !player.active) return;
         const angle = Phaser.Math.Angle.Between(this.sprite.x, this.sprite.y, player.x, player.y);
-        const v = this.speed * factor;
+        const v = this._getEffectiveSpeed(factor);
         this.sprite.body.setVelocity(Math.cos(angle) * v, Math.sin(angle) * v);
+    }
+
+    _getEffectiveSpeed(scale) {
+        return this.speed * (this._statusSpeedMultiplier || 1) * (scale || 1);
+    }
+
+    _showTelegraph(text, color, duration) {
+        if (!text) return;
+        const msg = this.scene.add.text(512, 120, text, {
+            fontSize: '24px',
+            fill: color || '#ffffff',
+            align: 'center',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(70);
+        this.scene.tweens.add({
+            targets: msg,
+            y: msg.y - 18,
+            alpha: 0,
+            duration: duration || 900,
+            onComplete: () => msg.destroy()
+        });
+    }
+
+    _updateStatusEffects(now) {
+        let moveMult = 1;
+        this.statusAura.clear();
+        let ringIndex = 0;
+        Object.entries(this.activeStatusEffects).forEach(([statusKey, state]) => {
+            if (!state || now >= state.expiresAt) {
+                delete this.activeStatusEffects[statusKey];
+                return;
+            }
+            const def = getStatusEffectDef(statusKey);
+            if (!def) {
+                delete this.activeStatusEffects[statusKey];
+                return;
+            }
+            if (def.tickMs > 0 && now >= state.nextTickAt) {
+                const tickDamage = computeStatusTickDamage(statusKey, state.sourceDamage || 0, 1.2);
+                if (tickDamage > 0) this.hp = Math.max(0, this.hp - tickDamage);
+                state.nextTickAt = now + def.tickMs;
+                showFloatingCombatText(
+                    this.scene,
+                    this.sprite.x,
+                    this.sprite.y - 70,
+                    '-' + tickDamage,
+                    '#' + getStatusColor(statusKey).toString(16).padStart(6, '0'),
+                    450
+                );
+                if (this.hp <= 0) this.isAlive = false;
+            }
+            if (def.speedMultiplier && def.speedMultiplier > 0) {
+                moveMult = Math.min(moveMult, def.speedMultiplier);
+            }
+            this.statusAura.lineStyle(3, getStatusColor(statusKey), 0.75);
+            this.statusAura.strokeCircle(this.sprite.x, this.sprite.y - 8, 38 + ringIndex * 6);
+            ringIndex++;
+        });
+        return Math.max(0.5, moveMult);
+    }
+
+    applyStatusEffect(statusKey, opts) {
+        const def = getStatusEffectDef(statusKey);
+        if (!def || !this.isAlive) return false;
+        const now = this.scene.time.now;
+        const options = opts || {};
+        const duration = Math.max(700, Math.round(options.durationMs || def.durationMs || 1200));
+        this.activeStatusEffects[statusKey] = {
+            key: statusKey,
+            expiresAt: now + duration,
+            nextTickAt: now + (def.tickMs || 0),
+            sourceDamage: Math.max(1, Math.round(options.sourceDamage || 14))
+        };
+        showFloatingCombatText(
+            this.scene,
+            this.sprite.x,
+            this.sprite.y - 78,
+            getStatusLabel(statusKey),
+            '#' + getStatusColor(statusKey).toString(16).padStart(6, '0'),
+            700
+        );
+        return true;
+    }
+
+    _dealDamageToPlayer(player, amount, attackName, extraOnHit) {
+        if (!player || !player.active) return false;
+        const died = player.takeDamage(amount);
+        if (player._damageAppliedThisHit) {
+            const status = BOSS_ATTACK_STATUS_ON_HIT[attackName];
+            if (status && player.applyStatusEffect) {
+                player.applyStatusEffect(status.key, {
+                    durationMs: status.durationMs,
+                    sourceDamage: amount
+                });
+            }
+            if (typeof extraOnHit === 'function') extraOnHit();
+        }
+        return died;
     }
 
     _executeAttack(time, delta, player) {
@@ -1850,7 +2553,7 @@ class Boss {
                 this.attackData.targetX = player.x;
                 this.attackData.targetY = player.y;
                 const angle = Phaser.Math.Angle.Between(this.sprite.x, this.sprite.y, player.x, player.y);
-                this.sprite.body.setVelocity(Math.cos(angle) * this.speed * 3, Math.sin(angle) * this.speed * 3);
+                this.sprite.body.setVelocity(Math.cos(angle) * this._getEffectiveSpeed(3), Math.sin(angle) * this._getEffectiveSpeed(3));
             }
             if (time - this.attackStart >= 300) {
                 this.sprite.body.setVelocity(0, 0);
@@ -1859,7 +2562,7 @@ class Boss {
                 const d = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, player.x, player.y);
                 if (d < 60 && !player.isInvincible && !this.attackData.dashHit) {
                     this.attackData.dashHit = true;
-                    player.takeDamage(this.damage);
+                    this._dealDamageToPlayer(player, this.damage, atk);
                 }
             }
         } else if (type === 'AOE') {
@@ -1875,7 +2578,7 @@ class Boss {
             this.attackData.circle.fillCircle(this.sprite.x, this.sprite.y, radius);
             if (elapsed >= 500) {
                 const d = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, player.x, player.y);
-                if (d < 150 && !player.isInvincible) player.takeDamage(this.damage);
+                if (d < 150 && !player.isInvincible) this._dealDamageToPlayer(player, this.damage, atk);
                 if (this.attackData.circle) this.attackData.circle.destroy();
                 this._finishAttack(time);
             }
@@ -1911,7 +2614,7 @@ class Boss {
             const relY = -(px - cx) * sin + (py - cy) * cos;
             if (elapsed < 800 && relX > 0 && relX < w && Math.abs(relY) < h / 2 && !player.isInvincible && !this.attackData.coneHit) {
                 this.attackData.coneHit = true;
-                player.takeDamage(this.damage);
+                this._dealDamageToPlayer(player, this.damage, atk);
             }
             if (elapsed >= 800) {
                 if (this.attackData.cone) this.attackData.cone.destroy();
@@ -1960,8 +2663,8 @@ class Boss {
                     shadow.setDepth(9);
                     const ax = player.x - sx, ay = player.y - sy;
                     const len = Math.sqrt(ax * ax + ay * ay) || 1;
-                    shadow.vx = (ax / len) * this.speed * 2;
-                    shadow.vy = (ay / len) * this.speed * 2;
+                    shadow.vx = (ax / len) * this._getEffectiveSpeed(2);
+                    shadow.vy = (ay / len) * this._getEffectiveSpeed(2);
                     shadow.hit = false;
                     this.attackData.shadows.push(shadow);
                 }
@@ -1977,7 +2680,7 @@ class Boss {
                         const d = Phaser.Math.Distance.Between(sh.x, sh.y, player.x, player.y);
                         if (d < 50 && !player.isInvincible && !sh.hit) {
                             sh.hit = true;
-                            player.takeDamage(this.damage * 0.5);
+                            this._dealDamageToPlayer(player, this.damage * 0.5, atk);
                         }
                     }
                 }
@@ -1990,7 +2693,7 @@ class Boss {
                 if (!this.attackData.realDash) {
                     this.attackData.realDash = true;
                     const angle = Phaser.Math.Angle.Between(this.sprite.x, this.sprite.y, player.x, player.y);
-                    this.sprite.body.setVelocity(Math.cos(angle) * this.speed * 2, Math.sin(angle) * this.speed * 2);
+                    this.sprite.body.setVelocity(Math.cos(angle) * this._getEffectiveSpeed(2), Math.sin(angle) * this._getEffectiveSpeed(2));
                     this.attackData.dashEnd = time + 400;
                 }
             }
@@ -1998,7 +2701,7 @@ class Boss {
                 const d = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, player.x, player.y);
                 if (d < 60 && !player.isInvincible) {
                     this.attackData.realHit = true;
-                    player.takeDamage(this.damage);
+                    this._dealDamageToPlayer(player, this.damage, atk);
                 }
             }
             if (this.attackData.dashEnd && time >= this.attackData.dashEnd) {
@@ -2042,8 +2745,7 @@ class Boss {
                     const d = Phaser.Math.Distance.Between(p.g.x, p.g.y, player.x, player.y);
                     if (d < 30 && !player.isInvincible && !p.hit) {
                         p.hit = true;
-                        player.takeDamage(this.damage * 0.4);
-                        player.applyReverseControl(2500);
+                        this._dealDamageToPlayer(player, this.damage * 0.4, atk, () => player.applyReverseControl(2500));
                     }
                 }
             }
@@ -2067,8 +2769,8 @@ class Boss {
                     ill.setTint(this.config.color);
                     ill.setAlpha(0.7);
                     ill.setDepth(9);
-                    ill.vx = (Math.random() - 0.5) * this.speed;
-                    ill.vy = (Math.random() - 0.5) * this.speed;
+                    ill.vx = (Math.random() - 0.5) * this._getEffectiveSpeed(1);
+                    ill.vy = (Math.random() - 0.5) * this._getEffectiveSpeed(1);
                     this.attackData.illusions.push(ill);
                 }
             }
@@ -2114,7 +2816,7 @@ class Boss {
                 const d = Phaser.Math.Distance.Between(p.g.x, p.g.y, player.x, player.y);
                 if (d < 25 && !player.isInvincible && !p.hit) {
                     p.hit = true;
-                    player.takeDamage(this.damage * 0.3);
+                    this._dealDamageToPlayer(player, this.damage * 0.3, atk);
                 }
             }
             if (elapsed >= 2000) {
@@ -2127,7 +2829,7 @@ class Boss {
                 this.attackData.started = true;
                 this.sprite.body.setVelocity(0, 0);
                 const angle = Phaser.Math.Angle.Between(this.sprite.x, this.sprite.y, player.x, player.y);
-                this.sprite.body.setVelocity(Math.cos(angle) * this.speed * 3, Math.sin(angle) * this.speed * 3);
+                this.sprite.body.setVelocity(Math.cos(angle) * this._getEffectiveSpeed(3), Math.sin(angle) * this._getEffectiveSpeed(3));
             }
             if (elapsed >= 400) {
                 this.sprite.body.setVelocity(0, 0);
@@ -2172,7 +2874,7 @@ class Boss {
                 const d = Phaser.Math.Distance.Between(m.x, m.y, player.x, player.y);
                 if (d < 30 && !player.isInvincible && !m.hit) {
                     m.hit = true;
-                    player.takeDamage(this.damage * 0.3);
+                    this._dealDamageToPlayer(player, this.damage * 0.3, atk);
                     m.g.destroy();
                 }
             }
@@ -2210,7 +2912,7 @@ class Boss {
                     c.g.fillCircle(c.x, c.y, 60);
                     const d = Phaser.Math.Distance.Between(c.x, c.y, player.x, player.y);
                     if (d < 60 && !player.isInvincible) {
-                        player.takeDamage(this.damage * 0.6);
+                        this._dealDamageToPlayer(player, this.damage * 0.6, atk);
                     }
                     this.scene.time.delayedCall(300, () => { if (c.g.active) c.g.destroy(); });
                 }
@@ -2252,7 +2954,7 @@ class Boss {
                 const d = Phaser.Math.Distance.Between(f.x, f.y, player.x, player.y);
                 if (d < f.radius && !player.isInvincible && time - f.lastHit > 800) {
                     f.lastHit = time;
-                    player.takeDamage(this.damage * 0.25);
+                    this._dealDamageToPlayer(player, this.damage * 0.25, atk);
                 }
             }
             if (elapsed >= 5000) {
@@ -2280,7 +2982,7 @@ class Boss {
                     const d = Phaser.Math.Distance.Between(z.x, z.y, player.x, player.y);
                     if (d < 60 && !player.isInvincible && time - z.lastHit > 500) {
                         z.lastHit = time;
-                        player.takeDamage(this.damage * 0.5);
+                        this._dealDamageToPlayer(player, this.damage * 0.5, atk);
                     }
                 }
             }
@@ -2312,6 +3014,7 @@ class Boss {
 
     destroy() {
         if (this.sprite && this.sprite.active) this.sprite.destroy();
+        if (this.statusAura && this.statusAura.active) this.statusAura.destroy();
     }
 }
 
@@ -2328,6 +3031,7 @@ class BossScene extends Phaser.Scene {
         const bossConfig = BOSSES[bossKey];
         if (!bossConfig) throw new Error('Unknown boss: ' + bossKey);
         AudioSystem.bindSceneInput(this);
+        GameState.ensureRunModifiers();
 
         this.bossKey = bossKey;
         this.playerDead = false;
@@ -2456,6 +3160,12 @@ class BossScene extends Phaser.Scene {
                 const d = Phaser.Math.Distance.Between(hb.x, hb.y, this.boss.sprite.x, this.boss.sprite.y);
                 if (d < hbRadius + 30 && hb.damage) {
                     this.boss.takeDamage(hb.damage);
+                    if (hb.statusEffect && this.boss.applyStatusEffect) {
+                        this.boss.applyStatusEffect(hb.statusEffect.key, {
+                            durationMs: hb.statusEffect.durationMs,
+                            sourceDamage: hb.statusEffect.sourceDamage || hb.damage
+                        });
+                    }
                     hb.damage = 0;
                 }
             }
@@ -3074,6 +3784,24 @@ class BlacksmithScene extends Phaser.Scene {
             y += 45;
         });
 
+        y += 12;
+        this.add.text(width / 2 - 250, y, '实用药剂制作', {
+            fontSize: '18px',
+            fill: '#ffd27a',
+            fontStyle: 'bold'
+        }).setScrollFactor(0).setDepth(1);
+        y += 34;
+        this.craftRows = [];
+        Object.keys(CRAFTING_RECIPES).forEach((recipeKey) => {
+            const rowText = this.add.text(width / 2 - 250, y, this._buildCraftLabel(recipeKey), {
+                fontSize: '16px',
+                fill: '#ffffff'
+            }).setScrollFactor(0).setDepth(1);
+            const craftBtn = this._createCraftButton(recipeKey, rowText, y);
+            this.craftRows.push({ recipeKey, rowText, craftBtn });
+            y += 40;
+        });
+
         this.messageText = this.add.text(width / 2, height - 80, '', {
             fontSize: '18px',
             fill: '#44ff44'
@@ -3112,6 +3840,42 @@ class BlacksmithScene extends Phaser.Scene {
         return upgradeBtn;
     }
 
+    _buildCraftLabel(recipeKey) {
+        const recipe = CRAFTING_RECIPES[recipeKey];
+        if (!recipe) return recipeKey;
+        const item = ITEMS[recipe.itemKey];
+        const itemName = item ? item.name : recipe.itemKey;
+        const owned = GameState.inventory[recipe.itemKey] || 0;
+        const matText = Object.entries(recipe.materials || {})
+            .map(([key, count]) => {
+                const matName = ITEMS[key] ? ITEMS[key].name : key;
+                return count + matName;
+            })
+            .join(' + ');
+        return `${itemName} — ${recipe.gold}金 + ${matText}  拥有:${owned}`;
+    }
+
+    _createCraftButton(recipeKey, rowText, y) {
+        const craftBtn = this.add.text(this.sceneWidth / 2 + 180, y, '[制作]', {
+            fontSize: '14px',
+            fill: '#4a90d9'
+        }).setOrigin(0, 0.5).setScrollFactor(0).setInteractive({ useHandCursor: true }).setDepth(1);
+        craftBtn.recipeKey = recipeKey;
+        craftBtn.rowText = rowText;
+        craftBtn.on('pointerover', () => craftBtn.setStyle({ fill: '#6ab0ff' }));
+        craftBtn.on('pointerout', () => craftBtn.setStyle({ fill: '#4a90d9' }));
+        craftBtn.on('pointerdown', () => this._tryCraft(craftBtn));
+        return craftBtn;
+    }
+
+    _refreshCraftRows() {
+        if (!Array.isArray(this.craftRows)) return;
+        this.craftRows.forEach((row) => {
+            if (!row || !row.rowText || !row.rowText.active) return;
+            row.rowText.setText(this._buildCraftLabel(row.recipeKey));
+        });
+    }
+
     _tryUpgrade(btn) {
         const { weaponKey, rowText } = btn;
         const check = canUpgradeWeapon(GameState, weaponKey);
@@ -3146,6 +3910,7 @@ class BlacksmithScene extends Phaser.Scene {
         GameState.inventory = applied.nextState.inventory;
         GameState.weaponLevels = applied.nextState.weaponLevels;
         this.goldText.setText('金币: ' + GameState.gold);
+        this._refreshCraftRows();
         const level = GameState.weaponLevels[weaponKey];
         rowText.setText(WEAPONS[weaponKey].name + ' Lv.' + level);
         btn.destroy();
@@ -3157,6 +3922,42 @@ class BlacksmithScene extends Phaser.Scene {
             ? ITEMS[applied.requiredMaterialKey].name
             : applied.requiredMaterialKey;
         this._showMessage('强化成功! 消耗' + applied.cost.essence + '个' + materialName, '#44ff44');
+    }
+
+    _tryCraft(btn) {
+        const recipeKey = btn.recipeKey;
+        const check = canCraftRecipe(GameState, recipeKey);
+        if (!check.ok && check.reason === 'gold') {
+            AudioSystem.playUi('error');
+            this._showMessage('金币不足!', '#ff4444');
+            return;
+        }
+        if (!check.ok && check.reason === 'material') {
+            AudioSystem.playUi('error');
+            const materialName = ITEMS[check.missingItemKey] ? ITEMS[check.missingItemKey].name : check.missingItemKey;
+            this._showMessage('材料不足: ' + materialName, '#ff4444');
+            return;
+        }
+        if (!check.ok) {
+            AudioSystem.playUi('error');
+            this._showMessage('配方不可用', '#ff4444');
+            return;
+        }
+
+        const crafted = applyCraftRecipe(GameState, recipeKey);
+        if (!crafted.ok || !crafted.nextState) {
+            AudioSystem.playUi('error');
+            this._showMessage('制作失败，请重试', '#ff4444');
+            return;
+        }
+
+        AudioSystem.playUi('ui');
+        GameState.gold = crafted.nextState.gold;
+        GameState.inventory = crafted.nextState.inventory;
+        this.goldText.setText('金币: ' + GameState.gold);
+        this._refreshCraftRows();
+        const itemName = ITEMS[crafted.producedItemKey] ? ITEMS[crafted.producedItemKey].name : crafted.producedItemKey;
+        this._showMessage('制作成功: ' + itemName + ' x' + crafted.producedCount, '#44ff44');
     }
 
     _showMessage(text, color) {
@@ -3262,9 +4063,20 @@ class UIScene extends Phaser.Scene {
             fill: '#ffffff'
         }).setOrigin(1, 0).setScrollFactor(0);
 
-        this.statusText = this.add.text(width / 2, pad + 6, '', {
-            fontSize: '16px',
-            fill: '#ff77ff',
+        this.runModifierTitle = this.add.text(width - pad, pad + 36, '本局词缀', {
+            fontSize: '12px',
+            fill: '#ffd27a'
+        }).setOrigin(1, 0).setScrollFactor(0);
+        this.runModifierText = this.add.text(width - pad, pad + 52, '', {
+            fontSize: '11px',
+            fill: '#d7e6ff',
+            align: 'right',
+            lineSpacing: 2
+        }).setOrigin(1, 0).setScrollFactor(0);
+
+        this.statusText = this.add.text(width / 2, height - 108, '', {
+            fontSize: '14px',
+            fill: '#ffcf85',
             fontStyle: 'bold'
         }).setOrigin(0.5, 0).setScrollFactor(0).setVisible(false);
     }
@@ -3309,6 +4121,18 @@ class UIScene extends Phaser.Scene {
 
         // Area name
         this.areaNameText.setText(areaName || '');
+
+        const modifierLines = (GameState.runModifiers || []).map((key, idx) => `${idx + 1}. ${getRunModifierLabel(key)}`);
+        this.runModifierText.setText(modifierLines.join('\n'));
+
+        const statuses = player.getStatusSummary ? player.getStatusSummary() : [];
+        if (statuses.length > 0) {
+            this.statusText.setVisible(true);
+            this.statusText.setText(statuses.join('  |  '));
+        } else {
+            this.statusText.setVisible(false);
+            this.statusText.setText('');
+        }
     }
 }
 
@@ -3467,7 +4291,7 @@ class HelpScene extends Phaser.Scene {
         overlay.setInteractive();
 
         const panelW = 520;
-        const panelH = 460;
+        const panelH = 620;
         const px = w / 2;
         const py = h / 2;
 
@@ -3478,12 +4302,15 @@ class HelpScene extends Phaser.Scene {
             fontSize: '28px', fill: '#FFD700', fontStyle: 'bold'
         }).setOrigin(0.5);
 
+        const runModifierLines = getRunModifierHelpLines();
         const sections = [
             { title: '移动', items: ['WASD  —  八方向移动'] },
             { title: '战斗', items: ['J / 鼠标左键  —  普通攻击', 'K / 鼠标右键  —  特殊攻击'] },
             { title: '防御', items: ['Space  —  闪避翻滚（无敌帧）'] },
             { title: '武器', items: ['Q / E  —  切换武器'] },
-            { title: '道具', items: ['1-4  —  使用快捷栏道具'] },
+            { title: '道具', items: ['1-4  —  使用快捷栏道具', '净化药剂/狂战油可在铁匠制作'] },
+            { title: '状态', items: ['灼烧/流血会持续掉血', '减速会降低移动速度'] },
+            { title: '本局词缀', items: runModifierLines },
             { title: '界面', items: ['Tab — 背包', 'Esc — 暂停', 'H — 操作指引'] }
         ];
 

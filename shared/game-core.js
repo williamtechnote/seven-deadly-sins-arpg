@@ -35,6 +35,128 @@
         staff: 'slothEssence'
     };
 
+    const STATUS_EFFECT_DEFS = {
+        burn: {
+            key: 'burn',
+            label: '灼烧',
+            durationMs: 3200,
+            tickMs: 400,
+            damageMultiplier: 0.09,
+            minTickDamage: 2,
+            maxTickDamage: 14,
+            speedMultiplier: 1
+        },
+        bleed: {
+            key: 'bleed',
+            label: '流血',
+            durationMs: 3000,
+            tickMs: 500,
+            damageMultiplier: 0.08,
+            minTickDamage: 2,
+            maxTickDamage: 12,
+            speedMultiplier: 1
+        },
+        slow: {
+            key: 'slow',
+            label: '减速',
+            durationMs: 2400,
+            tickMs: 0,
+            damageMultiplier: 0,
+            minTickDamage: 0,
+            maxTickDamage: 0,
+            speedMultiplier: 0.68
+        }
+    };
+
+    const RUN_MODIFIER_POOL = [
+        {
+            key: 'frenziedFoes',
+            name: '狂怒敌群',
+            description: '敌方移动速度 +22%',
+            effects: {
+                enemySpeedMultiplier: 1.22
+            }
+        },
+        {
+            key: 'glassBlade',
+            name: '锋刃赌注',
+            description: '玩家伤害 +28%，承伤 +15%',
+            effects: {
+                playerDamageMultiplier: 1.28,
+                playerDamageTakenMultiplier: 1.15
+            }
+        },
+        {
+            key: 'fortuneWindfall',
+            name: '财运涌动',
+            description: '金币与额外掉落率提高',
+            effects: {
+                goldDropMultiplier: 1.35,
+                extraDropRateMultiplier: 1.4
+            }
+        },
+        {
+            key: 'ironWill',
+            name: '钢铁意志',
+            description: '玩家减伤，但敌人更耐打',
+            effects: {
+                playerDamageTakenMultiplier: 0.82,
+                enemyHpMultiplier: 1.12
+            }
+        },
+        {
+            key: 'drainingMist',
+            name: '迟滞迷雾',
+            description: '体力恢复降低，敌人略快',
+            effects: {
+                playerStaminaRegenMultiplier: 0.78,
+                enemySpeedMultiplier: 1.1
+            }
+        },
+        {
+            key: 'arcaneTempo',
+            name: '奥能节律',
+            description: '特殊攻击冷却缩短',
+            effects: {
+                playerSpecialCooldownMultiplier: 0.82
+            }
+        }
+    ];
+
+    const DEFAULT_RUN_EFFECTS = {
+        enemySpeedMultiplier: 1,
+        enemyHpMultiplier: 1,
+        playerDamageMultiplier: 1,
+        playerDamageTakenMultiplier: 1,
+        goldDropMultiplier: 1,
+        extraDropRateMultiplier: 1,
+        playerStaminaRegenMultiplier: 1,
+        playerSpecialCooldownMultiplier: 1
+    };
+
+    const CRAFTING_RECIPES = {
+        cleanseTonic: {
+            key: 'cleanseTonic',
+            itemKey: 'cleanseTonic',
+            count: 1,
+            gold: 45,
+            materials: {
+                envyEssence: 1,
+                slothEssence: 1
+            }
+        },
+        berserkerOil: {
+            key: 'berserkerOil',
+            itemKey: 'berserkerOil',
+            count: 1,
+            gold: 60,
+            materials: {
+                wrathEssence: 1,
+                greedEssence: 1
+            }
+        }
+    };
+
     const DEFAULT_SAVE_DATA = {
         inventory: {},
         gold: 0,
@@ -42,6 +164,8 @@
         sinSeals: [],
         weaponLevels: { ...DEFAULT_WEAPON_LEVELS },
         unlockedWeapons: ['sword'],
+        selectedWeaponKey: 'sword',
+        runModifiers: [],
         quickSlots: [null, null, null, null]
     };
 
@@ -53,6 +177,8 @@
             sinSeals: [...DEFAULT_SAVE_DATA.sinSeals],
             weaponLevels: { ...DEFAULT_WEAPON_LEVELS },
             unlockedWeapons: [...DEFAULT_SAVE_DATA.unlockedWeapons],
+            selectedWeaponKey: DEFAULT_SAVE_DATA.selectedWeaponKey,
+            runModifiers: [],
             quickSlots: [...DEFAULT_SAVE_DATA.quickSlots]
         };
     }
@@ -105,18 +231,170 @@
         return out;
     }
 
+    function getStatusEffectDef(statusKey) {
+        return STATUS_EFFECT_DEFS[statusKey] || null;
+    }
+
+    function getRunModifierByKey(modifierKey, poolOverride) {
+        const pool = Array.isArray(poolOverride) ? poolOverride : RUN_MODIFIER_POOL;
+        return pool.find(modifier => modifier && modifier.key === modifierKey) || null;
+    }
+
+    function normalizeRunModifiers(runModifiers, poolOverride) {
+        const pool = Array.isArray(poolOverride) ? poolOverride : RUN_MODIFIER_POOL;
+        const allowed = new Set(pool.map(mod => mod.key).filter(key => typeof key === 'string'));
+        const source = sanitizeStringArray(runModifiers);
+        const out = [];
+        source.forEach((key) => {
+            if (!allowed.has(key)) return;
+            if (!out.includes(key)) out.push(key);
+        });
+        return out;
+    }
+
+    function pickRunModifiers(randomFn, count, poolOverride) {
+        const pool = Array.isArray(poolOverride) ? poolOverride : RUN_MODIFIER_POOL;
+        const uniquePool = pool.filter((mod, idx) => (
+            mod &&
+            typeof mod.key === 'string' &&
+            pool.findIndex(other => other && other.key === mod.key) === idx
+        ));
+        const safeCount = clampInt(
+            count == null ? 3 : count,
+            0,
+            uniquePool.length,
+            Math.min(3, uniquePool.length)
+        );
+        const rng = typeof randomFn === 'function' ? randomFn : Math.random;
+        const bag = uniquePool.slice();
+        for (let i = bag.length - 1; i > 0; i--) {
+            const r = Number(rng());
+            const normalized = Number.isFinite(r) ? Math.min(0.999999, Math.max(0, r)) : 0;
+            const j = Math.floor(normalized * (i + 1));
+            const temp = bag[i];
+            bag[i] = bag[j];
+            bag[j] = temp;
+        }
+        return bag.slice(0, safeCount).map(mod => mod.key);
+    }
+
+    function buildRunModifierEffects(runModifiers, poolOverride) {
+        const pool = Array.isArray(poolOverride) ? poolOverride : RUN_MODIFIER_POOL;
+        const validKeys = normalizeRunModifiers(runModifiers, pool);
+        const effects = { ...DEFAULT_RUN_EFFECTS };
+
+        validKeys.forEach((modifierKey) => {
+            const modifier = getRunModifierByKey(modifierKey, pool);
+            if (!modifier || !modifier.effects || typeof modifier.effects !== 'object') return;
+            Object.entries(modifier.effects).forEach(([effectKey, value]) => {
+                const n = Number(value);
+                if (!Number.isFinite(n) || n <= 0) return;
+                if (effects[effectKey] == null) effects[effectKey] = 1;
+                effects[effectKey] *= n;
+            });
+        });
+        return effects;
+    }
+
+    function computeStatusTickDamage(statusKey, sourceDamage, multiplierOverride) {
+        const def = getStatusEffectDef(statusKey);
+        if (!def || !def.tickMs || def.tickMs <= 0) return 0;
+        const base = Number(sourceDamage);
+        const safeBase = Number.isFinite(base) ? Math.max(0, base) : 0;
+        const bonusMultiplier = Number(multiplierOverride);
+        const safeMultiplier = Number.isFinite(bonusMultiplier) ? bonusMultiplier : 1;
+        const raw = Math.round(safeBase * def.damageMultiplier * safeMultiplier);
+        return clampInt(raw, def.minTickDamage, def.maxTickDamage, def.minTickDamage);
+    }
+
+    function getCraftingRecipe(recipeKey) {
+        return CRAFTING_RECIPES[recipeKey] || null;
+    }
+
+    function canCraftRecipe(state, recipeKey) {
+        const recipe = getCraftingRecipe(recipeKey);
+        if (!recipe) {
+            return { ok: false, reason: 'recipe', recipe: null };
+        }
+
+        const safeState = state && typeof state === 'object' ? state : {};
+        const gold = clampInt(safeState.gold, 0, Number.MAX_SAFE_INTEGER, 0);
+        if (gold < recipe.gold) {
+            return { ok: false, reason: 'gold', recipe };
+        }
+
+        const inventory = normalizeInventory(safeState.inventory);
+        const materials = recipe.materials || {};
+        for (const [itemKey, requiredCountRaw] of Object.entries(materials)) {
+            const requiredCount = clampInt(requiredCountRaw, 1, Number.MAX_SAFE_INTEGER, 1);
+            const count = inventory[itemKey] || 0;
+            if (count < requiredCount) {
+                return {
+                    ok: false,
+                    reason: 'material',
+                    recipe,
+                    missingItemKey: itemKey,
+                    requiredCount,
+                    currentCount: count
+                };
+            }
+        }
+
+        return { ok: true, reason: null, recipe };
+    }
+
+    function applyCraftRecipe(state, recipeKey) {
+        const check = canCraftRecipe(state, recipeKey);
+        if (!check.ok || !check.recipe) {
+            return { ...check, nextState: null };
+        }
+
+        const safeState = state && typeof state === 'object' ? state : {};
+        const inventory = normalizeInventory(safeState.inventory);
+        const nextState = {
+            ...safeState,
+            inventory,
+            gold: clampInt(safeState.gold, 0, Number.MAX_SAFE_INTEGER, 0)
+        };
+
+        nextState.gold -= check.recipe.gold;
+        Object.entries(check.recipe.materials || {}).forEach(([itemKey, requiredCountRaw]) => {
+            const requiredCount = clampInt(requiredCountRaw, 1, Number.MAX_SAFE_INTEGER, 1);
+            const left = (nextState.inventory[itemKey] || 0) - requiredCount;
+            if (left > 0) nextState.inventory[itemKey] = left;
+            else delete nextState.inventory[itemKey];
+        });
+        nextState.inventory[check.recipe.itemKey] = (nextState.inventory[check.recipe.itemKey] || 0) + check.recipe.count;
+
+        return {
+            ok: true,
+            reason: null,
+            recipe: check.recipe,
+            producedItemKey: check.recipe.itemKey,
+            producedCount: check.recipe.count,
+            nextState
+        };
+    }
+
     function normalizeSaveData(data) {
         if (!data || typeof data !== 'object') return createDefaultSaveData();
         const unlocked = sanitizeStringArray(data.unlockedWeapons);
+        const validUnlocked = unlocked.length > 0 ? unlocked : ['sword'];
+        const selectedWeaponKey = (
+            typeof data.selectedWeaponKey === 'string' &&
+            validUnlocked.includes(data.selectedWeaponKey)
+        )
+            ? data.selectedWeaponKey
+            : validUnlocked[0];
         return {
             inventory: normalizeInventory(data.inventory),
             gold: clampInt(data.gold, 0, Number.MAX_SAFE_INTEGER, 0),
             defeatedBosses: sanitizeStringArray(data.defeatedBosses),
             sinSeals: sanitizeStringArray(data.sinSeals),
             weaponLevels: normalizeWeaponLevels(data.weaponLevels),
-            unlockedWeapons: unlocked.length > 0
-                ? unlocked
-                : ['sword'],
+            unlockedWeapons: validUnlocked,
+            selectedWeaponKey,
+            runModifiers: normalizeRunModifiers(data.runModifiers),
             quickSlots: normalizeQuickSlots(data.quickSlots)
         };
     }
@@ -266,6 +544,10 @@
         WEAPON_SCALING,
         DEFAULT_WEAPON_LEVELS,
         WEAPON_TO_MATERIAL,
+        STATUS_EFFECT_DEFS,
+        RUN_MODIFIER_POOL,
+        DEFAULT_RUN_EFFECTS,
+        CRAFTING_RECIPES,
         DEFAULT_SAVE_DATA,
         AUDIO_SETTINGS_STORAGE_KEY,
         DEFAULT_AUDIO_SETTINGS,
@@ -274,11 +556,20 @@
         normalizeSaveData,
         serializeSaveData,
         deserializeSaveData,
+        getStatusEffectDef,
+        computeStatusTickDamage,
+        getRunModifierByKey,
+        normalizeRunModifiers,
+        pickRunModifiers,
+        buildRunModifierEffects,
         getWeaponLevel,
         getScaledWeaponStats,
         getUpgradeCostForLevel,
         getRequiredMaterialForWeapon,
         canUpgradeWeapon,
-        applyWeaponUpgrade
+        applyWeaponUpgrade,
+        getCraftingRecipe,
+        canCraftRecipe,
+        applyCraftRecipe
     };
 });

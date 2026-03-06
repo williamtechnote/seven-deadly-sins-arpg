@@ -11,10 +11,20 @@ const core = require('../shared/game-core.js');
 const {
     WEAPON_SCALING,
     WEAPON_TO_MATERIAL,
+    STATUS_EFFECT_DEFS,
+    RUN_MODIFIER_POOL,
+    DEFAULT_RUN_EFFECTS,
+    CRAFTING_RECIPES,
     getScaledWeaponStats,
     getUpgradeCostForLevel,
     canUpgradeWeapon,
     applyWeaponUpgrade,
+    getStatusEffectDef,
+    computeStatusTickDamage,
+    pickRunModifiers,
+    buildRunModifierEffects,
+    canCraftRecipe,
+    applyCraftRecipe,
     serializeSaveData,
     deserializeSaveData,
     DEFAULT_SAVE_DATA
@@ -110,6 +120,8 @@ function testSaveLoadIntegrity() {
         sinSeals: ['wrath'],
         weaponLevels: { ...DEFAULT_SAVE_DATA.weaponLevels, hammer: 2 },
         unlockedWeapons: ['sword', 'hammer'],
+        selectedWeaponKey: 'hammer',
+        runModifiers: ['frenziedFoes', 'fortuneWindfall'],
         quickSlots: ['hpPotion', null, 'staminaPotion', null]
     };
 
@@ -122,6 +134,8 @@ function testSaveLoadIntegrity() {
         sinSeals: ['wrath'],
         weaponLevels: { ...DEFAULT_SAVE_DATA.weaponLevels, hammer: 2 },
         unlockedWeapons: ['sword', 'hammer'],
+        selectedWeaponKey: 'hammer',
+        runModifiers: ['frenziedFoes', 'fortuneWindfall'],
         quickSlots: ['hpPotion', null, 'staminaPotion', null]
     }, 'serialized+deserialized state should stay stable');
 
@@ -129,10 +143,75 @@ function testSaveLoadIntegrity() {
     assert.deepEqual(corrupted, DEFAULT_SAVE_DATA, 'corrupted save should fallback to defaults');
 }
 
+function testStatusEffectLogic() {
+    assert.ok(STATUS_EFFECT_DEFS.burn, 'burn status should exist');
+    assert.ok(STATUS_EFFECT_DEFS.bleed, 'bleed status should exist');
+    assert.ok(STATUS_EFFECT_DEFS.slow, 'slow status should exist');
+    assert.equal(getStatusEffectDef('burn').durationMs, 3200, 'burn duration should remain stable');
+    assert.equal(getStatusEffectDef('slow').speedMultiplier, 0.68, 'slow multiplier should remain stable');
+    assert.equal(getStatusEffectDef('unknown'), null, 'unknown status should return null');
+
+    const burnTick = computeStatusTickDamage('burn', 50);
+    assert.equal(burnTick, 5, 'burn tick damage should scale from source damage');
+    const bleedTick = computeStatusTickDamage('bleed', 200);
+    assert.equal(bleedTick, 12, 'bleed tick damage should be capped by max');
+    const slowTick = computeStatusTickDamage('slow', 50);
+    assert.equal(slowTick, 0, 'slow should not deal periodic damage');
+}
+
+function testRunModifierSelectionAndEffects() {
+    assert.ok(Array.isArray(RUN_MODIFIER_POOL) && RUN_MODIFIER_POOL.length >= 6, 'run modifier pool should contain entries');
+    assert.equal(DEFAULT_RUN_EFFECTS.enemySpeedMultiplier, 1, 'default effects should be neutral');
+
+    const picks = pickRunModifiers(() => 0, 3);
+    assert.deepEqual(picks, ['glassBlade', 'fortuneWindfall', 'ironWill'], 'selection should be deterministic with fixed RNG');
+    assert.equal(new Set(picks).size, 3, 'selected modifiers should be unique');
+
+    const effects = buildRunModifierEffects(['glassBlade', 'frenziedFoes', 'fortuneWindfall']);
+    assert.equal(effects.playerDamageMultiplier, 1.28, 'glassBlade should boost player damage');
+    assert.equal(effects.enemySpeedMultiplier.toFixed(2), '1.22', 'frenziedFoes should boost enemy speed');
+    assert.equal(effects.goldDropMultiplier.toFixed(2), '1.35', 'fortuneWindfall should boost gold drops');
+}
+
+function testCraftingRecipeChecks() {
+    assert.ok(CRAFTING_RECIPES.cleanseTonic, 'cleanse recipe should exist');
+    assert.ok(CRAFTING_RECIPES.berserkerOil, 'berserker recipe should exist');
+    assert.deepEqual(Object.keys(CRAFTING_RECIPES.cleanseTonic.materials).sort(), ['envyEssence', 'slothEssence'], 'cleanse recipe materials should stay deterministic');
+
+    const craftableState = {
+        gold: 120,
+        inventory: {
+            envyEssence: 3,
+            slothEssence: 2
+        }
+    };
+    const canCraft = canCraftRecipe(craftableState, 'cleanseTonic');
+    assert.equal(canCraft.ok, true, 'craft should be allowed with enough resources');
+
+    const crafted = applyCraftRecipe(craftableState, 'cleanseTonic');
+    assert.equal(crafted.ok, true, 'craft should succeed');
+    assert.equal(crafted.nextState.gold, 75, 'craft gold cost should be deducted');
+    assert.equal(crafted.nextState.inventory.envyEssence, 2, 'envy essence should be consumed');
+    assert.equal(crafted.nextState.inventory.slothEssence, 1, 'sloth essence should be consumed');
+    assert.equal(crafted.nextState.inventory.cleanseTonic, 1, 'crafted item should be added');
+
+    const noMaterial = canCraftRecipe({
+        gold: 120,
+        inventory: {
+            envyEssence: 1
+        }
+    }, 'cleanseTonic');
+    assert.equal(noMaterial.ok, false, 'craft should fail without complete materials');
+    assert.equal(noMaterial.reason, 'material');
+}
+
 function main() {
     runTest('weapon scaling monotonicity', testWeaponScalingMonotonicity);
     runTest('material-bound upgrade checks', testMaterialBoundUpgradeChecks);
     runTest('save/load integrity', testSaveLoadIntegrity);
+    runTest('status effect logic', testStatusEffectLogic);
+    runTest('run modifier selection/effects', testRunModifierSelectionAndEffects);
+    runTest('crafting recipe checks', testCraftingRecipeChecks);
     console.log('All regression checks passed.');
 }
 
