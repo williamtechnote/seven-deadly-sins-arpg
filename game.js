@@ -4278,6 +4278,12 @@ class UIScene extends Phaser.Scene {
             fill: '#ffcf85',
             fontStyle: 'bold'
         }).setOrigin(0.5, 0).setScrollFactor(0).setVisible(false);
+
+        this.lowHpWarningText = this.add.text(width / 2, 58, '⚠ 生命值过低', {
+            fontSize: '22px',
+            fill: '#ff6b6b',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setScrollFactor(0).setVisible(false);
     }
 
     updateHUD(player, areaName) {
@@ -4296,6 +4302,14 @@ class UIScene extends Phaser.Scene {
         this.hpBarFill.fillStyle(0xE74C3C, 1);
         this.hpBarFill.fillRect(16 + 28, 16, 200 * hpRatio, 20);
         this.hpText.setText(Math.floor(player.hp) + '/' + player.maxHp);
+
+        if (hpRatio <= 0.3 && player.hp > 0) {
+            this.lowHpWarningText.setVisible(true);
+            const blink = Math.floor(this.time.now / 220) % 2;
+            this.lowHpWarningText.setStyle({ fill: blink === 0 ? '#ff6b6b' : '#ffd1d1' });
+        } else {
+            this.lowHpWarningText.setVisible(false);
+        }
 
         // Stamina bar
         const stY = 16 + 20 + 8;
