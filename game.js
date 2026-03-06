@@ -121,6 +121,22 @@ const ATTACK_COUNTER_HINTS = {
     bite: '反制: 贴身诱导后反向闪避'
 };
 
+const ATTACK_COUNTER_WINDOW_MS = {
+    flameBreath: 1800,
+    divineStrike: 1200,
+    mirror: 1400,
+    shapeShift: 1200,
+    reverseControl: 1500,
+    illusion: 1700,
+    sleepFog: 1800,
+    coinTrap: 1400,
+    treasureStorm: 1700,
+    consume: 1300,
+    nightmare: 1600,
+    goldBreath: 1700,
+    bite: 1000
+};
+
 const BOSS_ATTACK_STATUS_ON_HIT = {
     flameBreath: { key: 'burn', durationMs: 2600 },
     goldBreath: { key: 'burn', durationMs: 2200 },
@@ -2395,10 +2411,12 @@ class Boss {
                     this.phaseMajorAttackQueue.delete(this.currentAttack);
                     const attackName = ATTACK_DISPLAY_NAMES[this.currentAttack] || this.currentAttack;
                     const hint = ATTACK_COUNTER_HINTS[this.currentAttack];
+                    const windowMs = ATTACK_COUNTER_WINDOW_MS[this.currentAttack] || 1200;
+                    const windowLabel = '反制窗口≈' + Math.max(1, Math.round(windowMs / 100) / 10) + 's';
                     this._showTelegraph(
-                        hint ? (`⚠ ${attackName}\n${hint}`) : (`⚠ ${attackName}`),
+                        hint ? (`⚠ ${attackName}\n${hint}\n${windowLabel}`) : (`⚠ ${attackName}\n${windowLabel}`),
                         '#FFD700',
-                        hint ? 1200 : 900
+                        hint ? 1300 : 1000
                     );
                 } else {
                     this.attackWindupDelay = 0;
@@ -2443,7 +2461,12 @@ class Boss {
             ? '新招式: ' + newlyUnlocked.map(a => ATTACK_DISPLAY_NAMES[a] || a).join(' / ')
             : 'Boss 进入强化状态';
         const counterHints = newlyUnlocked
-            .map(a => ATTACK_COUNTER_HINTS[a])
+            .map(a => {
+                const hint = ATTACK_COUNTER_HINTS[a];
+                const win = ATTACK_COUNTER_WINDOW_MS[a];
+                if (!hint) return '';
+                return win ? (hint + `（窗口≈${Math.max(1, Math.round(win / 100) / 10)}s）`) : hint;
+            })
             .filter(Boolean)
             .slice(0, 2);
         const hintLabel = counterHints.length > 0 ? ('反制提示: ' + counterHints.join(' ｜ ')) : '';
