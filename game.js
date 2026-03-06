@@ -1177,6 +1177,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             arrow.setDepth(5);
             arrow.damage = damage;
             arrow.hitRadius = 10 * scale;
+            arrow.isSpecial = !!isSpecial;
             arrow.statusEffect = statusPayload;
             this.scene.physics.add.existing(arrow);
             arrow.body.setVelocity(Math.cos(angle) * 450, Math.sin(angle) * 450);
@@ -1194,6 +1195,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             orb.setDepth(5);
             orb.damage = damage;
             orb.hitRadius = 12 * orbScale;
+            orb.isSpecial = !!isSpecial;
             orb._pierceHits = [];
             orb.statusEffect = statusPayload;
             this.scene.physics.add.existing(orb);
@@ -1209,6 +1211,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             slam.setDepth(5);
             slam.damage = damage;
             slam.hitRadius = 40 * scale;
+            slam.isSpecial = !!isSpecial;
             slam.x = hx;
             slam.y = hy;
             slam.statusEffect = statusPayload;
@@ -1225,6 +1228,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             hitbox.setDepth(5);
             hitbox.damage = damage;
             hitbox.hitRadius = 14 * scale;
+            hitbox.isSpecial = !!isSpecial;
             hitbox.x = hx;
             hitbox.y = hy;
             hitbox.statusEffect = statusPayload;
@@ -1241,6 +1245,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
                 h2.setDepth(5);
                 h2.damage = Math.floor(damage * 0.6);
                 h2.hitRadius = 14 * scale;
+                h2.isSpecial = !!isSpecial;
                 h2.x = hx2;
                 h2.y = hy2;
                 h2.statusEffect = statusPayload
@@ -1255,6 +1260,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             hitbox.setScale(scale);
             hitbox.damage = damage;
             hitbox.hitRadius = 18 * scale;
+            hitbox.isSpecial = !!isSpecial;
             hitbox.statusEffect = statusPayload;
             hitbox.setDepth(5);
             this.scene.time.delayedCall(150, () => { if (hitbox.active) hitbox.destroy(); });
@@ -2343,7 +2349,12 @@ class LevelScene extends Phaser.Scene {
                     }
                     if (canPierce) hb._pierceHits.push(enemy);
                     else hb.damage = 0;
-                    showHitImpactPulse(this, enemy.x, enemy.y, 0xFFD27A, 9);
+                    if (hb.isSpecial) {
+                        showHitImpactPulse(this, enemy.x, enemy.y, 0xFF9F6A, 12);
+                        showFloatingCombatText(this, enemy.x, enemy.y - 16, '重击', '#ffd27a', 500);
+                    } else {
+                        showHitImpactPulse(this, enemy.x, enemy.y, 0xFFD27A, 9);
+                    }
                     if (drops) {
                         this._spawnDropPickups(enemy.x, enemy.y, drops);
                         const challengeCompleted = GameState.onEnemyDefeated();
@@ -3320,7 +3331,12 @@ class BossScene extends Phaser.Scene {
                 const d = Phaser.Math.Distance.Between(hb.x, hb.y, this.boss.sprite.x, this.boss.sprite.y);
                 if (d < hbRadius + 30 && hb.damage) {
                     this.boss.takeDamage(hb.damage);
-                    showHitImpactPulse(this, this.boss.sprite.x, this.boss.sprite.y, 0xFF9F6A, 12);
+                    if (hb.isSpecial) {
+                        showHitImpactPulse(this, this.boss.sprite.x, this.boss.sprite.y, 0xFF6B4A, 16);
+                        showFloatingCombatText(this, this.boss.sprite.x, this.boss.sprite.y - 26, '破势', '#ffcf85', 650);
+                    } else {
+                        showHitImpactPulse(this, this.boss.sprite.x, this.boss.sprite.y, 0xFF9F6A, 12);
+                    }
                     if (hb.statusEffect && this.boss.applyStatusEffect) {
                         this.boss.applyStatusEffect(hb.statusEffect.key, {
                             durationMs: hb.statusEffect.durationMs,
