@@ -4284,6 +4284,12 @@ class UIScene extends Phaser.Scene {
             fill: '#ff6b6b',
             fontStyle: 'bold'
         }).setOrigin(0.5).setScrollFactor(0).setVisible(false);
+
+        this.lowStaminaWarningText = this.add.text(width / 2, 86, '⚠ 体力不足', {
+            fontSize: '18px',
+            fill: '#ffd27a',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setScrollFactor(0).setVisible(false);
     }
 
     updateHUD(player, areaName) {
@@ -4318,6 +4324,14 @@ class UIScene extends Phaser.Scene {
         this.staminaBarFill.fillStyle(0xF1C40F, 1);
         this.staminaBarFill.fillRect(16 + 28, stY, 200 * stRatio, 14);
         this.staminaText.setText(Math.floor(player.stamina) + '/' + player.maxStamina);
+
+        if (stRatio <= 0.2 && player.hp > 0) {
+            this.lowStaminaWarningText.setVisible(true);
+            const blink = Math.floor(this.time.now / 240) % 2;
+            this.lowStaminaWarningText.setStyle({ fill: blink === 0 ? '#ffd27a' : '#fff1c7' });
+        } else {
+            this.lowStaminaWarningText.setVisible(false);
+        }
 
         // Weapon display
         const weapon = player.currentWeapon;
