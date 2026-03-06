@@ -4314,6 +4314,7 @@ class UIScene extends Phaser.Scene {
         this.hpBarFill.fillStyle(hpColor, 1);
         this.hpBarFill.fillRect(16 + 28, 16, 200 * hpRatio, 20);
         this.hpText.setText(Math.floor(player.hp) + '/' + player.maxHp);
+        this.hpText.setStyle({ fill: hpRatio <= UI_WARNING_THRESHOLDS.lowHpRatio ? '#ffb3b3' : '#ffffff' });
 
         if (hpRatio <= UI_WARNING_THRESHOLDS.lowHpRatio && player.hp > 0) {
             this.lowHpWarningText.setVisible(true);
@@ -4332,6 +4333,7 @@ class UIScene extends Phaser.Scene {
         this.staminaBarFill.fillStyle(stColor, 1);
         this.staminaBarFill.fillRect(16 + 28, stY, 200 * stRatio, 14);
         this.staminaText.setText(Math.floor(player.stamina) + '/' + player.maxStamina);
+        this.staminaText.setStyle({ fill: stRatio <= UI_WARNING_THRESHOLDS.lowStaminaRatio ? '#ffe0ad' : '#ffffff' });
 
         if (stRatio <= UI_WARNING_THRESHOLDS.lowStaminaRatio && player.hp > 0) {
             this.lowStaminaWarningText.setVisible(true);
