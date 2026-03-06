@@ -217,6 +217,24 @@ function showFloatingCombatText(scene, x, y, text, color, duration) {
     });
 }
 
+function showHitImpactPulse(scene, x, y, color, radius) {
+    if (!scene || !scene.add || !scene.tweens) return;
+    const pulse = scene.add.graphics();
+    pulse.setDepth(34);
+    pulse.lineStyle(2, color || 0xFFD27A, 0.95);
+    pulse.strokeCircle(x, y, radius || 10);
+    scene.tweens.add({
+        targets: pulse,
+        alpha: 0,
+        duration: 180,
+        onUpdate: () => {
+            pulse.scaleX += 0.035;
+            pulse.scaleY += 0.035;
+        },
+        onComplete: () => pulse.destroy()
+    });
+}
+
 function formatWeaponStatsLine(weaponKey) {
     const weapon = WEAPONS[weaponKey];
     if (!weapon) return weaponKey + ': -';
@@ -2325,6 +2343,7 @@ class LevelScene extends Phaser.Scene {
                     }
                     if (canPierce) hb._pierceHits.push(enemy);
                     else hb.damage = 0;
+                    showHitImpactPulse(this, enemy.x, enemy.y, 0xFFD27A, 9);
                     if (drops) {
                         this._spawnDropPickups(enemy.x, enemy.y, drops);
                         const challengeCompleted = GameState.onEnemyDefeated();
@@ -3301,6 +3320,7 @@ class BossScene extends Phaser.Scene {
                 const d = Phaser.Math.Distance.Between(hb.x, hb.y, this.boss.sprite.x, this.boss.sprite.y);
                 if (d < hbRadius + 30 && hb.damage) {
                     this.boss.takeDamage(hb.damage);
+                    showHitImpactPulse(this, this.boss.sprite.x, this.boss.sprite.y, 0xFF9F6A, 12);
                     if (hb.statusEffect && this.boss.applyStatusEffect) {
                         this.boss.applyStatusEffect(hb.statusEffect.key, {
                             durationMs: hb.statusEffect.durationMs,
