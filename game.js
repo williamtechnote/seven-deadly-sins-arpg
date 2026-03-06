@@ -4321,7 +4321,8 @@ class UIScene extends Phaser.Scene {
         const stY = 16 + 20 + 8;
         const stRatio = Math.max(0, Math.min(1, player.stamina / player.maxStamina));
         this.staminaBarFill.clear();
-        this.staminaBarFill.fillStyle(0xF1C40F, 1);
+        const stColor = stRatio <= 0.2 ? 0xFF9F43 : (stRatio <= 0.45 ? 0xF1C40F : 0xB9E769);
+        this.staminaBarFill.fillStyle(stColor, 1);
         this.staminaBarFill.fillRect(16 + 28, stY, 200 * stRatio, 14);
         this.staminaText.setText(Math.floor(player.stamina) + '/' + player.maxStamina);
 
