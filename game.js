@@ -4319,6 +4319,7 @@ class UIScene extends Phaser.Scene {
             this.lowHpWarningText.setVisible(true);
             const blink = Math.floor(this.time.now / 220) % 2;
             this.lowHpWarningText.setStyle({ fill: blink === 0 ? '#ff6b6b' : '#ffd1d1' });
+            this.lowHpWarningText.setText(`⚠ 生命值过低 (${Math.max(1, Math.round(hpRatio * 100))}%)`);
         } else {
             this.lowHpWarningText.setVisible(false);
         }
@@ -4336,6 +4337,7 @@ class UIScene extends Phaser.Scene {
             this.lowStaminaWarningText.setVisible(true);
             const blink = Math.floor(this.time.now / 240) % 2;
             this.lowStaminaWarningText.setStyle({ fill: blink === 0 ? '#ffd27a' : '#fff1c7' });
+            this.lowStaminaWarningText.setText(`⚠ 体力不足 (${Math.max(1, Math.round(stRatio * 100))}%)`);
         } else {
             this.lowStaminaWarningText.setVisible(false);
         }
