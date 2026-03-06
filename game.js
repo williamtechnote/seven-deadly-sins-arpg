@@ -38,6 +38,7 @@ const GameState = {
         if (item.effect === 'healHp') player.hp = Math.min(player.maxHp, player.hp + item.value);
         if (item.effect === 'healStamina') player.stamina = Math.min(player.maxStamina, player.stamina + item.value);
         this.removeItem(itemKey);
+        AudioSystem.playUi('ui');
     },
     reset() {
         this.inventory = {};
@@ -349,6 +350,7 @@ class TitleScene extends Phaser.Scene {
     create() {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
+        AudioSystem.bindSceneInput(this);
 
         this.add.text(width / 2, height / 2 - 80, '七宗罪', {
             fontSize: '48px',
@@ -376,6 +378,7 @@ class TitleScene extends Phaser.Scene {
         startBtn.on('pointerover', () => startBtn.setStyle({ fill: '#ff4444' }));
         startBtn.on('pointerout', () => startBtn.setStyle({ fill: '#ffffff' }));
         startBtn.on('pointerdown', () => {
+            AudioSystem.playUi('ui');
             GameState.reset();
             GameState.addItem('hpPotion', 3);
             this.scene.start('HubScene');
@@ -385,6 +388,7 @@ class TitleScene extends Phaser.Scene {
             continueBtn.on('pointerover', () => continueBtn.setStyle({ fill: '#ff4444' }));
             continueBtn.on('pointerout', () => continueBtn.setStyle({ fill: '#ffffff' }));
             continueBtn.on('pointerdown', () => {
+                AudioSystem.playUi('ui');
                 GameState.load();
                 this.scene.start('HubScene');
             });
@@ -398,6 +402,7 @@ class TitleScene extends Phaser.Scene {
         guideBtn.on('pointerover', () => guideBtn.setStyle({ fill: '#ff4444' }));
         guideBtn.on('pointerout', () => guideBtn.setStyle({ fill: '#ffffff' }));
         guideBtn.on('pointerdown', () => {
+            AudioSystem.playUi('ui');
             this.scene.pause();
             this.scene.launch('HelpScene', { parentScene: 'TitleScene' });
         });
@@ -443,6 +448,10 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.weaponVisual = scene.add.graphics();
         this.weaponVisual.setDepth(11);
         this.play('player_idle_down');
+    }
+
+    get currentWeaponKey() {
+        return this.weapons[this.currentWeaponIndex];
     }
 
     get currentWeapon() {
@@ -540,6 +549,16 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         if (this.specialCooldown > 0) this.specialCooldown -= delta;
         if (this.dodgeCooldownTimer > 0) this.dodgeCooldownTimer -= delta;
         if (this.knockbackTimer > 0) this.knockbackTimer -= delta;
+        if (this.controlInvertTimer > 0) {
+            this.controlInvertTimer -= delta;
+            if (this.controlInvertTimer <= 0) {
+                this.controlInvertTimer = 0;
+                if (this._controlInvertFx) {
+                    this.clearTint();
+                    this._controlInvertFx = false;
+                }
+            }
+        }
 
         if (this._invincibleTimer !== undefined && this._invincibleTimer > 0) {
             this._invincibleTimer -= delta;
@@ -558,6 +577,14 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             if (this._wasdKeys.S.isDown) vy += 1;
             if (this._wasdKeys.A.isDown) vx -= 1;
             if (this._wasdKeys.D.isDown) vx += 1;
+            if (this.controlInvertTimer > 0) {
+                vx *= -1;
+                vy *= -1;
+                if (!this._controlInvertFx) {
+                    this.setTint(0xF8A5FF);
+                    this._controlInvertFx = true;
+                }
+            }
             if (vx !== 0 && vy !== 0) {
                 const norm = 0.707;
                 vx *= norm;
@@ -585,6 +612,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         const cfg = GAME_CONFIG.PLAYER;
         if (this.isDodging || this.dodgeCooldownTimer > 0 || this.stamina < cfg.dodgeStaminaCost) return;
         this.stamina -= cfg.dodgeStaminaCost;
+        AudioSystem.playUi('dodge');
         this.isDodging = true;
         this.isInvincible = true;
         this.setAlpha(0.5);
@@ -604,6 +632,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
 
     tryAttack() {
         const weapon = this.currentWeapon;
+        if (!weapon) return null;
         if (this.attackCooldown > 0 || this.stamina < weapon.staminaCost || this.isDodging) return null;
         this.stamina -= weapon.staminaCost;
         this.attackCooldown = weapon.attackSpeed;
@@ -611,11 +640,13 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         const dir = this._getDirection();
         this._playAnim('attack', dir);
         this.scene.time.delayedCall(250, () => { this.isAttacking = false; });
+        AudioSystem.playAttack(false);
         return this._spawnHitbox(weapon.damage, 1, false);
     }
 
     trySpecialAttack() {
         const weapon = this.currentWeapon;
+        if (!weapon) return null;
         if (this.specialCooldown > 0 || this.stamina < weapon.specialStaminaCost || this.isDodging) return null;
         this.stamina -= weapon.specialStaminaCost;
         this.specialCooldown = weapon.specialCooldown;
@@ -725,6 +756,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     takeDamage(amount) {
         if (this.isInvincible) return false;
         this.hp = Math.max(0, this.hp - amount);
+        AudioSystem.playHit();
         this.isInvincible = true;
         this._invincibleTimer = 200;
         this.knockbackTimer = 200;
@@ -737,6 +769,29 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             onComplete: () => this.setAlpha(1)
         });
         return this.hp <= 0;
+    }
+
+    applyReverseControl(durationMs) {
+        const duration = Math.max(300, durationMs || 2200);
+        const wasActive = this.controlInvertTimer > 0;
+        this.controlInvertTimer = Math.max(this.controlInvertTimer, duration);
+        if (!this._controlInvertFx) {
+            this.setTint(0xF8A5FF);
+            this._controlInvertFx = true;
+        }
+        if (!wasActive) {
+            const text = this.scene.add.text(this.x, this.y - 60, '控制反转!', {
+                fontSize: '16px',
+                fill: '#ff77ff'
+            }).setOrigin(0.5).setDepth(30);
+            this.scene.tweens.add({
+                targets: text,
+                y: text.y - 30,
+                alpha: 0,
+                duration: 900,
+                onComplete: () => text.destroy()
+            });
+        }
     }
 
     switchWeaponLeft() {
@@ -772,6 +827,7 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
         scene.add.existing(this);
         scene.physics.add.existing(this);
 
+        this.configKey = configKey;
         this.spriteKey = spriteKey;
         this.setScale(2);
         this.body.setSize(16, 20);
@@ -786,7 +842,7 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
         this.maxHp = config.hp;
         this.damage = config.damage;
         this.speed = config.speed;
-        this.drops = config.drops;
+        this.drops = config.drops || {};
 
         this.state = 'patrol';
         this.detectionRange = 200;
@@ -865,6 +921,7 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
 
     takeDamage(amount) {
         this.hp = Math.max(0, this.hp - amount);
+        AudioSystem.playHit();
 
         this.scene.tweens.add({
             targets: this,
@@ -883,19 +940,31 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
             this.hpBarFill.destroy();
             this.isAlive = false;
 
-            const drops = {};
-            if (this.drops) {
-                for (const [key, val] of Object.entries(this.drops)) {
-                    if (Array.isArray(val) && val.length === 2) {
-                        drops[key] = Phaser.Math.Between(val[0], val[1]);
-                    } else {
-                        drops[key] = val;
-                    }
+            const drops = { gold: 0, items: [] };
+            if (this.drops.gold != null) {
+                if (Array.isArray(this.drops.gold) && this.drops.gold.length === 2) {
+                    drops.gold = Phaser.Math.Between(this.drops.gold[0], this.drops.gold[1]);
+                } else {
+                    drops.gold = this.drops.gold;
                 }
             }
+            drops.items.push(...this._rollExtraDrops());
             return drops;
         }
         return null;
+    }
+
+    _rollExtraDrops() {
+        const items = [];
+        if (Math.random() < ENEMY_EXTRA_DROP_CHANCE.hpPotion) items.push({ key: 'hpPotion', count: 1 });
+        if (Math.random() < ENEMY_EXTRA_DROP_CHANCE.staminaPotion) items.push({ key: 'staminaPotion', count: 1 });
+
+        const areaKey = getAreaKeyFromEnemyKey(this.configKey);
+        const materialKey = areaKey ? AREA_TO_MATERIAL_ITEM[areaKey] : null;
+        if (materialKey && Math.random() < ENEMY_EXTRA_DROP_CHANCE.material) {
+            items.push({ key: materialKey, count: 1 });
+        }
+        return items;
     }
 
     destroy() {
@@ -916,6 +985,7 @@ class HubScene extends Phaser.Scene {
     create() {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
+        AudioSystem.bindSceneInput(this);
 
         this.cameras.main.setBackgroundColor('#1a1a2e');
 
@@ -955,6 +1025,7 @@ class HubScene extends Phaser.Scene {
             if (this.scene.isActive('InventoryScene')) this.scene.stop('InventoryScene');
             else this.scene.launch('InventoryScene');
         });
+        this.input.keyboard.on('keydown-ESC', () => openPauseMenu(this));
 
         this.input.on('pointerdown', (pointer) => {
             if (pointer.button === 0) this.player.tryAttack();
@@ -1111,6 +1182,7 @@ class HubScene extends Phaser.Scene {
             }
         });
 
+        this._createMiniMap();
         this.scene.launch('UIScene');
 
         GameState.save();
@@ -1151,6 +1223,72 @@ class HubScene extends Phaser.Scene {
         }
     }
 
+    _createMiniMap() {
+        const cam = this.cameras.main;
+        const mapW = 190;
+        const mapH = 132;
+        const x = cam.width - mapW - 16;
+        const y = 48;
+
+        this._miniMap = { x, y, w: mapW, h: mapH };
+        this._miniMapStatic = this.add.graphics().setScrollFactor(0).setDepth(95);
+        this._miniMapDynamic = this.add.graphics().setScrollFactor(0).setDepth(96);
+
+        this._miniMapStatic.fillStyle(0x05070a, 0.8);
+        this._miniMapStatic.fillRoundedRect(x, y, mapW, mapH, 6);
+        this._miniMapStatic.lineStyle(1, 0x7f8fa6, 0.9);
+        this._miniMapStatic.strokeRoundedRect(x, y, mapW, mapH, 6);
+
+        const room = { x: 450, y: 350, w: 600, h: 600 };
+        const topLeft = this._toMiniMap(room.x, room.y);
+        const bottomRight = this._toMiniMap(room.x + room.w, room.y + room.h);
+        this._miniMapStatic.fillStyle(0x2d3a4a, 0.7);
+        this._miniMapStatic.fillRect(
+            Math.min(topLeft.x, bottomRight.x),
+            Math.min(topLeft.y, bottomRight.y),
+            Math.abs(bottomRight.x - topLeft.x),
+            Math.abs(bottomRight.y - topLeft.y)
+        );
+
+        this.portals.forEach(portal => {
+            const p = this._toMiniMap(portal.x, portal.y);
+            this._miniMapStatic.fillStyle(portal.tintTopLeft || 0xbb88ff, 1);
+            this._miniMapStatic.fillCircle(p.x, p.y, 3);
+        });
+
+        this.npcs.forEach(npc => {
+            const p = this._toMiniMap(npc.x, npc.y);
+            this._miniMapStatic.fillStyle(0xffffff, 0.9);
+            this._miniMapStatic.fillRect(p.x - 2, p.y - 2, 4, 4);
+        });
+
+        this.add.text(x + 8, y - 16, 'Hub MiniMap', {
+            fontSize: '11px',
+            fill: '#c9d6df'
+        }).setScrollFactor(0).setDepth(96);
+    }
+
+    _toMiniMap(worldX, worldY) {
+        const bounds = this.physics.world.bounds;
+        const mm = this._miniMap;
+        if (!mm) return { x: 0, y: 0 };
+        const nx = (worldX - bounds.x) / bounds.width;
+        const ny = (worldY - bounds.y) / bounds.height;
+        const px = mm.x + Phaser.Math.Clamp(nx, 0, 1) * mm.w;
+        const py = mm.y + Phaser.Math.Clamp(ny, 0, 1) * mm.h;
+        return { x: px, y: py };
+    }
+
+    _updateMiniMap() {
+        if (!this._miniMapDynamic || !this.player) return;
+        this._miniMapDynamic.clear();
+        const playerPos = this._toMiniMap(this.player.x, this.player.y);
+        this._miniMapDynamic.fillStyle(0x00e5ff, 1);
+        this._miniMapDynamic.fillCircle(playerPos.x, playerPos.y, 3.5);
+        this._miniMapDynamic.lineStyle(1, 0x00e5ff, 0.8);
+        this._miniMapDynamic.strokeCircle(playerPos.x, playerPos.y, 6);
+    }
+
     update(time, delta) {
         this.player.update(time, delta);
 
@@ -1166,6 +1304,7 @@ class HubScene extends Phaser.Scene {
             }
         });
         this.nearestNpc = nearest;
+        this._updateMiniMap();
 
         const ui = this.scene.get('UIScene');
         if (ui && ui.updateHUD) ui.updateHUD(this.player, '净罪庇护所');
@@ -1184,6 +1323,7 @@ class LevelScene extends Phaser.Scene {
         const bossKey = data.bossKey || 'wrath';
         const boss = BOSSES[bossKey];
         this.bossKey = bossKey;
+        AudioSystem.bindSceneInput(this);
 
         // Room layout
         const rooms = [
@@ -1276,12 +1416,15 @@ class LevelScene extends Phaser.Scene {
         this.physics.add.overlap(this.player, this.bossDoor, () => {
             const room3AllDead = this.room3Enemies.every(e => !e.isAlive);
             if (!room3AllDead) return;
+            AudioSystem.playUi('ui');
             this.scene.stop('UIScene');
             this.scene.stop('LevelScene');
             this.scene.start('BossScene', { bossKey: this.bossKey });
         });
 
         this.activeHitboxes = [];
+        this.pickups = this.physics.add.group({ allowGravity: false, immovable: true });
+        this.physics.add.overlap(this.player, this.pickups, (_player, pickup) => this._collectPickup(pickup));
         this.playerDead = false;
         this.deathText = null;
 
@@ -1298,6 +1441,7 @@ class LevelScene extends Phaser.Scene {
             if (this.scene.isActive('InventoryScene')) this.scene.stop('InventoryScene');
             else this.scene.launch('InventoryScene');
         });
+        this.input.keyboard.on('keydown-ESC', () => openPauseMenu(this));
 
         this.input.on('pointerdown', (pointer) => {
             if (this.playerDead) return;
@@ -1343,6 +1487,85 @@ class LevelScene extends Phaser.Scene {
             if (d < bestDist) { bestDist = d; bx = cx; by = cy; }
         }
         return { x: bx, y: by };
+    }
+
+    _spawnDropPickups(x, y, drops) {
+        if (!drops) return;
+        if (drops.gold && drops.gold > 0) {
+            this._createPickup(x, y, {
+                kind: 'gold',
+                amount: drops.gold,
+                color: 0xFFD700,
+                label: '金币 +' + drops.gold
+            });
+        }
+        const items = Array.isArray(drops.items) ? drops.items : [];
+        items.forEach((itemDrop, index) => {
+            if (!itemDrop || !itemDrop.key || !itemDrop.count) return;
+            const item = ITEMS[itemDrop.key];
+            if (!item) return;
+            this._createPickup(x + 10 + index * 8, y + 8, {
+                kind: 'item',
+                itemKey: itemDrop.key,
+                amount: itemDrop.count,
+                color: item.type === 'material' ? 0x8E44AD : 0x2ECC71,
+                label: `${item.name} x${itemDrop.count}`
+            });
+        });
+    }
+
+    _createPickup(x, y, data) {
+        const pickup = this.physics.add.sprite(x, y, 'projectile');
+        pickup.setDepth(8);
+        pickup.setScale(data.kind === 'gold' ? 1.1 : 0.9);
+        pickup.setTint(data.color || 0xFFFFFF);
+        pickup.body.setAllowGravity(false);
+        pickup.body.setImmovable(true);
+        pickup.body.moves = false;
+        pickup.dropData = data;
+        pickup.setAlpha(0.95);
+        this.pickups.add(pickup);
+        this.tweens.add({
+            targets: pickup,
+            y: pickup.y - 6,
+            duration: 450,
+            yoyo: true,
+            repeat: -1
+        });
+        this.time.delayedCall(12000, () => {
+            if (pickup.active) pickup.destroy();
+        });
+    }
+
+    _collectPickup(pickup) {
+        if (!pickup || !pickup.active || pickup._collected) return;
+        pickup._collected = true;
+        const data = pickup.dropData || {};
+        if (data.kind === 'gold') {
+            GameState.addGold(data.amount || 0);
+            this._showFloatingText(pickup.x, pickup.y - 10, '+' + (data.amount || 0) + ' gold', '#FFD700');
+        } else if (data.kind === 'item' && data.itemKey) {
+            GameState.addItem(data.itemKey, data.amount || 1);
+            const item = ITEMS[data.itemKey];
+            const name = item ? item.name : data.itemKey;
+            this._showFloatingText(pickup.x, pickup.y - 10, name + ' +' + (data.amount || 1), '#80ffcf');
+        }
+        AudioSystem.playUi('pickup');
+        pickup.destroy();
+    }
+
+    _showFloatingText(x, y, text, color) {
+        const txt = this.add.text(x, y, text, {
+            fontSize: '15px',
+            fill: color || '#ffffff'
+        }).setOrigin(0.5).setDepth(20);
+        this.tweens.add({
+            targets: txt,
+            y: txt.y - 32,
+            alpha: 0,
+            duration: 900,
+            onComplete: () => txt.destroy()
+        });
     }
 
     update(time, delta) {
@@ -1465,12 +1688,7 @@ class Boss {
         this.config = BOSSES[bossKey];
         if (!this.config) throw new Error('Unknown boss: ' + bossKey);
 
-        const bossSpriteMap = {
-            wrath: 'orc_base', pride: 'skeleton_warrior', envy: 'skeleton_rogue',
-            sloth: 'orc_shaman', greed: 'skeleton_base', gluttony: 'orc_warrior',
-            lust: 'skeleton_mage'
-        };
-        const bossTexture = 'enemy_' + (bossSpriteMap[bossKey] || 'orc_base');
+        const bossTexture = 'enemy_' + (BOSS_SPRITE_MAP[bossKey] || 'orc_base');
         const bossTex = scene.textures.exists(bossTexture) ? bossTexture : '__DEFAULT';
         this.sprite = scene.physics.add.sprite(x, y, bossTex);
         this.sprite.setScale(4);
@@ -1480,7 +1698,7 @@ class Boss {
         this.sprite.setDepth(10);
         this.sprite.body.setAllowGravity(false);
         this.sprite.setCollideWorldBounds(true);
-        const bossAnimKey = 'enemy_' + (bossSpriteMap[bossKey] || 'orc_base') + '_idle';
+        const bossAnimKey = 'enemy_' + (BOSS_SPRITE_MAP[bossKey] || 'orc_base') + '_idle';
         if (scene.anims.exists(bossAnimKey)) this.sprite.play(bossAnimKey);
 
         this.hp = this.config.hp;
@@ -1510,7 +1728,6 @@ class Boss {
     update(time, delta, player) {
         if (!this.isAlive) return;
 
-        const dt = delta / 1000;
         this.attackTimer += delta;
 
         if (time < this.invincibleUntil) return;
@@ -1786,6 +2003,7 @@ class Boss {
                     if (d < 30 && !player.isInvincible && !p.hit) {
                         p.hit = true;
                         player.takeDamage(this.damage * 0.4);
+                        player.applyReverseControl(2500);
                     }
                 }
             }
@@ -2069,6 +2287,7 @@ class BossScene extends Phaser.Scene {
         const bossKey = data.bossKey || 'wrath';
         const bossConfig = BOSSES[bossKey];
         if (!bossConfig) throw new Error('Unknown boss: ' + bossKey);
+        AudioSystem.bindSceneInput(this);
 
         this.bossKey = bossKey;
         this.playerDead = false;
@@ -2135,6 +2354,7 @@ class BossScene extends Phaser.Scene {
             if (this.scene.isActive('InventoryScene')) this.scene.stop('InventoryScene');
             else this.scene.launch('InventoryScene');
         });
+        this.input.keyboard.on('keydown-ESC', () => openPauseMenu(this));
         this.input.on('pointerdown', (pointer) => {
             if (this.playerDead || this.bossDead) return;
             let hitbox = null;
@@ -2363,9 +2583,21 @@ class DialogScene extends Phaser.Scene {
         // Portrait placeholder (80x80, left side)
         const portraitX = 80;
         const portraitY = boxY + boxH / 2;
+        this._portraitBox = { x: 40, y: portraitY - 40, w: 80, h: 80 };
+        this.portraitFrame = this.add.graphics();
+        this.portraitFrame.fillStyle(0x0f1320, 1);
+        this.portraitFrame.fillRoundedRect(this._portraitBox.x - 3, this._portraitBox.y - 3, this._portraitBox.w + 6, this._portraitBox.h + 6, 4);
+        this.portraitFrame.lineStyle(1, 0x8ea2c6, 1);
+        this.portraitFrame.strokeRoundedRect(this._portraitBox.x - 3, this._portraitBox.y - 3, this._portraitBox.w + 6, this._portraitBox.h + 6, 4);
+        this.portraitFrame.setScrollFactor(0);
+        this.portraitFrame.setDepth(1002);
         this.portraitRect = this.add.graphics();
         this.portraitRect.setScrollFactor(0);
         this.portraitRect.setDepth(1002);
+        this.portraitSprite = this.add.sprite(portraitX, portraitY, '__DEFAULT');
+        this.portraitSprite.setScrollFactor(0);
+        this.portraitSprite.setDepth(1003);
+        this.portraitSprite.setVisible(false);
 
         // Speaker name (yellow/gold, 16px)
         this.speakerText = this.add.text(180, boxY + 24, '', {
@@ -2397,6 +2629,30 @@ class DialogScene extends Phaser.Scene {
         return (hash & 0xFFFFFF) | 0x404040;
     }
 
+    _renderFallbackPortrait(speaker) {
+        const color = this._portraitColor(speaker || '?');
+        this.portraitSprite.setVisible(false);
+        this.portraitRect.clear();
+        this.portraitRect.fillStyle(color, 1);
+        this.portraitRect.fillRect(this._portraitBox.x, this._portraitBox.y, this._portraitBox.w, this._portraitBox.h);
+    }
+
+    _setPortrait(speaker) {
+        const portraitCfg = getPortraitConfigBySpeaker(speaker);
+        if (!portraitCfg || !this.textures.exists(portraitCfg.texture)) {
+            this._renderFallbackPortrait(speaker);
+            return;
+        }
+
+        this.portraitRect.clear();
+        this.portraitRect.fillStyle(0x1b2233, 1);
+        this.portraitRect.fillRect(this._portraitBox.x, this._portraitBox.y, this._portraitBox.w, this._portraitBox.h);
+        this.portraitSprite.setTexture(portraitCfg.texture);
+        this.portraitSprite.setScale(portraitCfg.scale || 2);
+        this.portraitSprite.setTint(portraitCfg.tint != null ? portraitCfg.tint : 0xFFFFFF);
+        this.portraitSprite.setVisible(true);
+    }
+
     showEntry(index) {
         if (index >= this.dialogData.length) {
             this._finish();
@@ -2410,11 +2666,7 @@ class DialogScene extends Phaser.Scene {
         this.charIndex = 0;
         this.isTyping = true;
 
-        // Portrait color from speaker name
-        const color = this._portraitColor(speaker);
-        this.portraitRect.clear();
-        this.portraitRect.fillStyle(color, 1);
-        this.portraitRect.fillRect(40, 500 + (768 - 500) / 2 - 40, 80, 80);
+        this._setPortrait(speaker);
 
         this.speakerText.setText(speaker);
         this.dialogText.setText('');
@@ -2669,11 +2921,17 @@ class ShopScene extends Phaser.Scene {
             fill: '#FFD700'
         }).setOrigin(0.5).setScrollFactor(0).setDepth(1);
 
-        const buyableItems = Object.entries(ITEMS).filter(([k, v]) => v.price != null && v.type === 'consumable');
+        const buyableItems = Object.entries(ITEMS)
+            .filter(([, v]) => v.price != null && (v.type === 'consumable' || v.type === 'material'))
+            .sort((a, b) => {
+                if (a[1].type === b[1].type) return a[1].price - b[1].price;
+                return a[1].type === 'consumable' ? -1 : 1;
+            });
         let y = 150;
         buyableItems.forEach(([key, item]) => {
             const count = GameState.inventory[key] || 0;
-            const row = this.add.text(width / 2 - 200, y, item.name + ' — ' + item.price + '金币  拥有: ' + count, {
+            const typeTag = item.type === 'material' ? '[材料]' : '[消耗品]';
+            const row = this.add.text(width / 2 - 200, y, `${typeTag} ${item.name} — ${item.price}金币  拥有: ${count}`, {
                 fontSize: '18px',
                 fill: '#ffffff'
             }).setScrollFactor(0).setDepth(1);
@@ -2701,16 +2959,19 @@ class ShopScene extends Phaser.Scene {
 
     _tryBuy(itemKey, item, rowText, buyBtn) {
         if (GameState.gold < item.price) {
+            AudioSystem.playUi('error');
             this.flashText.setText('金币不足!');
             this.flashText.setVisible(true);
             this.time.delayedCall(1500, () => this.flashText.setVisible(false));
             return;
         }
+        AudioSystem.playUi('ui');
         GameState.spendGold(item.price);
         GameState.addItem(itemKey);
         this.goldText.setText('金币: ' + GameState.gold);
         const count = GameState.inventory[itemKey] || 0;
-        rowText.setText(item.name + ' — ' + item.price + '金币  拥有: ' + count);
+        const typeTag = item.type === 'material' ? '[材料]' : '[消耗品]';
+        rowText.setText(`${typeTag} ${item.name} — ${item.price}金币  拥有: ${count}`);
     }
 
     _close() {
@@ -2799,14 +3060,17 @@ class BlacksmithScene extends Phaser.Scene {
     _tryUpgrade(btn) {
         const { weaponKey, cost, rowText } = btn;
         if (GameState.gold < cost.gold) {
+            AudioSystem.playUi('error');
             this._showMessage('金币不足!', '#ff4444');
             return;
         }
         const materials = this._materialCount();
         if (materials < cost.essence) {
+            AudioSystem.playUi('error');
             this._showMessage('材料不足! 需要' + cost.essence + '个Boss精华', '#ff4444');
             return;
         }
+        AudioSystem.playUi('ui');
         GameState.spendGold(cost.gold);
         for (let i = 0; i < cost.essence; i++) {
             const matKey = Object.keys(ITEMS).find(k => ITEMS[k].type === 'material' && (GameState.inventory[k] || 0) > 0);
@@ -2936,6 +3200,12 @@ class UIScene extends Phaser.Scene {
             fontSize: '18px',
             fill: '#ffffff'
         }).setOrigin(1, 0).setScrollFactor(0);
+
+        this.statusText = this.add.text(width / 2, pad + 6, '', {
+            fontSize: '16px',
+            fill: '#ff77ff',
+            fontStyle: 'bold'
+        }).setOrigin(0.5, 0).setScrollFactor(0).setVisible(false);
     }
 
     updateHUD(player, areaName) {
@@ -2982,7 +3252,111 @@ class UIScene extends Phaser.Scene {
 }
 
 /**
- * CreditsScene - End game credits after defeating the Final Boss
+ * PauseScene - Overlay pause menu for runtime scenes
+ */
+class PauseScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'PauseScene' });
+    }
+
+    create(data) {
+        this.parentScene = data.parentScene || 'HubScene';
+        const w = this.cameras.main.width;
+        const h = this.cameras.main.height;
+
+        const overlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.72);
+        overlay.setInteractive();
+
+        this.add.rectangle(w / 2, h / 2, 620, 480, 0x111827, 0.95).setStrokeStyle(2, 0x5e81ac);
+        this.add.text(w / 2, h / 2 - 190, '暂停菜单', {
+            fontSize: '34px',
+            fill: '#ffffff',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        this.add.text(w / 2, h / 2 - 152, `当前场景: ${this.parentScene}`, {
+            fontSize: '14px',
+            fill: '#9fb3c8'
+        }).setOrigin(0.5);
+
+        this._infoVisible = false;
+        this.infoText = this.add.text(w / 2, h / 2 + 24, '', {
+            fontSize: '14px',
+            fill: '#dfe6f0',
+            align: 'left',
+            wordWrap: { width: 520 }
+        }).setOrigin(0.5, 0).setVisible(false);
+
+        this.messageText = this.add.text(w / 2, h / 2 + 190, '', {
+            fontSize: '16px',
+            fill: '#88c0d0'
+        }).setOrigin(0.5).setVisible(false);
+
+        this._createButton(w / 2, h / 2 - 92, '继续游戏', () => this._continue());
+        this._createButton(w / 2, h / 2 - 46, '背包', () => this._toggleInventory());
+        this._createButton(w / 2, h / 2, '武器信息', () => this._toggleWeaponInfo());
+        this._createButton(w / 2, h / 2 + 46, '设置（占位）', () => this._showSettingsPlaceholder());
+        this._createButton(w / 2, h / 2 + 92, '返回标题', () => this._backToTitle());
+
+        this.input.keyboard.on('keydown-ESC', () => this._continue());
+        this.input.keyboard.on('keydown-ENTER', () => this._continue());
+    }
+
+    _createButton(x, y, label, onClick) {
+        const btn = this.add.text(x, y, `[ ${label} ]`, {
+            fontSize: '22px',
+            fill: '#d8dee9'
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+        btn.on('pointerover', () => btn.setStyle({ fill: '#88c0d0' }));
+        btn.on('pointerout', () => btn.setStyle({ fill: '#d8dee9' }));
+        btn.on('pointerdown', () => {
+            AudioSystem.playUi('ui');
+            onClick();
+        });
+    }
+
+    _continue() {
+        if (this.scene.isActive('InventoryScene')) this.scene.stop('InventoryScene');
+        this.scene.stop('PauseScene');
+        if (this.scene.isPaused(this.parentScene)) this.scene.resume(this.parentScene);
+    }
+
+    _toggleInventory() {
+        if (this.scene.isActive('InventoryScene')) this.scene.stop('InventoryScene');
+        else this.scene.launch('InventoryScene');
+    }
+
+    _toggleWeaponInfo() {
+        this._infoVisible = !this._infoVisible;
+        this.infoText.setVisible(this._infoVisible);
+        if (!this._infoVisible) return;
+        const unlocked = GameState.unlockedWeapons || [];
+        if (unlocked.length === 0) {
+            this.infoText.setText('暂无可用武器。');
+            return;
+        }
+        const lines = ['武器当前属性：', ''];
+        unlocked.forEach(key => lines.push(formatWeaponStatsLine(key)));
+        this.infoText.setText(lines.join('\n'));
+    }
+
+    _showSettingsPlaceholder() {
+        this.messageText.setText('设置功能预留中（音量/键位将在后续版本提供）');
+        this.messageText.setVisible(true);
+        this.time.delayedCall(1500, () => this.messageText.setVisible(false));
+    }
+
+    _backToTitle() {
+        GameState.save();
+        const cleanup = ['InventoryScene', 'DialogScene', 'HelpScene', 'ShopScene', 'BlacksmithScene', 'UIScene', this.parentScene];
+        cleanup.forEach(key => {
+            if (this.scene.isActive(key) || this.scene.isPaused(key)) this.scene.stop(key);
+        });
+        this.scene.start('TitleScene');
+    }
+}
+
+/**
+ * HelpScene - In-game controls guide overlay
  */
 class HelpScene extends Phaser.Scene {
     constructor() {
@@ -3139,7 +3513,7 @@ const config = {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH
     },
-    scene: [BootScene, TitleScene, HubScene, LevelScene, BossScene, DialogScene, InventoryScene, ShopScene, BlacksmithScene, UIScene, HelpScene, CreditsScene]
+    scene: [BootScene, TitleScene, HubScene, LevelScene, BossScene, DialogScene, InventoryScene, ShopScene, BlacksmithScene, UIScene, PauseScene, HelpScene, CreditsScene]
 };
 
 const game = new Phaser.Game(config);
