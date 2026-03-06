@@ -2,3 +2,4 @@
 
 - 2026-03-06 22:43 SGT | bootstrap | Initialized TODO.md and PROGRESS.log for heartbeat-auditable autonomous loop.
 - 2026-03-06 22:47 SGT | heartbeat-manual-test | task=bootstrap-active-todo | branch=main | sync=`git checkout main && git pull origin main` FAILED (diverged branches + pull strategy unspecified) | test=not-run | merge=not-run | note=heartbeat trigger path works but execution blocked by git divergence policy; requires explicit pull strategy (rebase/merge) or pre-sync cleanup.
+- 2026-03-06 23:00 SGT | heartbeat-cycle | task=Boss phase counter-hint telegraph readability | branch=feat/auto-boss-phase-counter-hints | tests=`node --check game.js && node --check data.js && node --check shared/game-core.js && node scripts/regression-checks.mjs` PASS | merge_status=not-merged (await manual review/approval)
