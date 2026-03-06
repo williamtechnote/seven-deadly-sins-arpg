@@ -154,6 +154,11 @@ const BOSS_ATTACK_STATUS_ON_HIT = {
     sleepFog: { key: 'slow', durationMs: 2200 }
 };
 
+const UI_WARNING_THRESHOLDS = {
+    lowHpRatio: 0.3,
+    lowStaminaRatio: 0.2
+};
+
 const MAJOR_BOSS_PHASE_ATTACKS = new Set([
     'flameBreath',
     'divineStrike',
@@ -4305,12 +4310,12 @@ class UIScene extends Phaser.Scene {
         // HP bar
         const hpRatio = Math.max(0, Math.min(1, player.hp / player.maxHp));
         this.hpBarFill.clear();
-        const hpColor = hpRatio <= 0.3 ? 0xFF4D4D : (hpRatio <= 0.6 ? 0xFF8A65 : 0xE74C3C);
+        const hpColor = hpRatio <= UI_WARNING_THRESHOLDS.lowHpRatio ? 0xFF4D4D : (hpRatio <= 0.6 ? 0xFF8A65 : 0xE74C3C);
         this.hpBarFill.fillStyle(hpColor, 1);
         this.hpBarFill.fillRect(16 + 28, 16, 200 * hpRatio, 20);
         this.hpText.setText(Math.floor(player.hp) + '/' + player.maxHp);
 
-        if (hpRatio <= 0.3 && player.hp > 0) {
+        if (hpRatio <= UI_WARNING_THRESHOLDS.lowHpRatio && player.hp > 0) {
             this.lowHpWarningText.setVisible(true);
             const blink = Math.floor(this.time.now / 220) % 2;
             this.lowHpWarningText.setStyle({ fill: blink === 0 ? '#ff6b6b' : '#ffd1d1' });
@@ -4322,12 +4327,12 @@ class UIScene extends Phaser.Scene {
         const stY = 16 + 20 + 8;
         const stRatio = Math.max(0, Math.min(1, player.stamina / player.maxStamina));
         this.staminaBarFill.clear();
-        const stColor = stRatio <= 0.2 ? 0xFF9F43 : (stRatio <= 0.45 ? 0xF1C40F : 0xB9E769);
+        const stColor = stRatio <= UI_WARNING_THRESHOLDS.lowStaminaRatio ? 0xFF9F43 : (stRatio <= 0.45 ? 0xF1C40F : 0xB9E769);
         this.staminaBarFill.fillStyle(stColor, 1);
         this.staminaBarFill.fillRect(16 + 28, stY, 200 * stRatio, 14);
         this.staminaText.setText(Math.floor(player.stamina) + '/' + player.maxStamina);
 
-        if (stRatio <= 0.2 && player.hp > 0) {
+        if (stRatio <= UI_WARNING_THRESHOLDS.lowStaminaRatio && player.hp > 0) {
             this.lowStaminaWarningText.setVisible(true);
             const blink = Math.floor(this.time.now / 240) % 2;
             this.lowStaminaWarningText.setStyle({ fill: blink === 0 ? '#ffd27a' : '#fff1c7' });
