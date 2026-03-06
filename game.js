@@ -2,6 +2,44 @@
  * BootScene - Generates placeholder textures and shows loading bar
  */
 
+const Core = typeof GameCore !== 'undefined' ? GameCore : null;
+if (!Core) {
+    throw new Error('GameCore is required. Ensure shared/game-core.js is loaded before game.js');
+}
+
+const {
+    WEAPON_SCALING,
+    DEFAULT_WEAPON_LEVELS,
+    DEFAULT_SAVE_DATA,
+    AUDIO_SETTINGS_STORAGE_KEY,
+    DEFAULT_AUDIO_SETTINGS,
+    normalizeAudioSettings,
+    audioSettingsToGain,
+    normalizeSaveData,
+    serializeSaveData,
+    deserializeSaveData,
+    getWeaponLevel: getCoreWeaponLevel,
+    getScaledWeaponStats: getCoreScaledWeaponStats,
+    getUpgradeCostForLevel,
+    getRequiredMaterialForWeapon,
+    canUpgradeWeapon,
+    applyWeaponUpgrade
+} = Core;
+
+function cloneDefaultSaveData() {
+    return {
+        inventory: { ...(DEFAULT_SAVE_DATA.inventory || {}) },
+        gold: DEFAULT_SAVE_DATA.gold || 0,
+        defeatedBosses: [...(DEFAULT_SAVE_DATA.defeatedBosses || [])],
+        sinSeals: [...(DEFAULT_SAVE_DATA.sinSeals || [])],
+        weaponLevels: { ...(DEFAULT_SAVE_DATA.weaponLevels || DEFAULT_WEAPON_LEVELS) },
+        unlockedWeapons: [...(DEFAULT_SAVE_DATA.unlockedWeapons || ['sword'])],
+        quickSlots: [...(DEFAULT_SAVE_DATA.quickSlots || [null, null, null, null])]
+    };
+}
+
+const initialSaveData = cloneDefaultSaveData();
+
 const GameState = {
     inventory: {},
     gold: 0,
@@ -41,7 +79,8 @@ const GameState = {
         AudioSystem.playUi('ui');
     },
     reset() {
-        this.inventory = {};
+        const base = cloneDefaultSaveData();
+        this.inventory = base.inventory;
         this.gold = 50;
         this.defeatedBosses = [];
         this.sinSeals = [];
@@ -60,7 +99,7 @@ const GameState = {
         return this.selectedWeaponKey;
     },
     save() {
-        const data = {
+        const raw = serializeSaveData({
             inventory: this.inventory,
             gold: this.gold,
             defeatedBosses: this.defeatedBosses,
@@ -69,8 +108,8 @@ const GameState = {
             unlockedWeapons: this.unlockedWeapons,
             selectedWeaponKey: this.selectedWeaponKey,
             quickSlots: this.quickSlots
-        };
-        localStorage.setItem('sevenSinsSave', JSON.stringify(data));
+        });
+        localStorage.setItem('sevenSinsSave', raw);
     },
     load() {
         const raw = localStorage.getItem('sevenSinsSave');
@@ -104,6 +143,7 @@ function applyPlayerWeaponState(player) {
 const UI_DEBUG_FLAGS = {
     showSavedWeaponInHUD: false
 };
+AudioSystem.loadSettings();
 
 const PIXEL_TILE_STYLES = {
     default: {
@@ -2990,6 +3030,7 @@ class BlacksmithScene extends Phaser.Scene {
     create() {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
+        this.sceneWidth = width;
 
         const overlay = this.add.graphics();
         overlay.fillStyle(0x000000, 0.7);
@@ -3024,17 +3065,10 @@ class BlacksmithScene extends Phaser.Scene {
 
             let upgradeBtn = null;
             if (unlocked && level < 3) {
-                const cost = level === 1 ? { gold: 100, essence: 1 } : { gold: 250, essence: 2 };
-                upgradeBtn = this.add.text(width / 2 + 80, y, '[强化] ' + cost.gold + '金+' + cost.essence + '精华', {
-                    fontSize: '14px',
-                    fill: '#4a90d9'
-                }).setOrigin(0, 0.5).setScrollFactor(0).setInteractive({ useHandCursor: true }).setDepth(1);
-                upgradeBtn.weaponKey = key;
-                upgradeBtn.cost = cost;
-                upgradeBtn.rowText = rowText;
-                upgradeBtn.on('pointerover', () => upgradeBtn.setStyle({ fill: '#6ab0ff' }));
-                upgradeBtn.on('pointerout', () => upgradeBtn.setStyle({ fill: '#4a90d9' }));
-                upgradeBtn.on('pointerdown', () => this._tryUpgrade(upgradeBtn));
+                const config = this._buildUpgradeConfig(key, level);
+                if (config) {
+                    upgradeBtn = this._createUpgradeButton(key, rowText, y, config);
+                }
             }
             this.weaponRows.push({ key, rowText, upgradeBtn });
             y += 45;
@@ -3045,57 +3079,84 @@ class BlacksmithScene extends Phaser.Scene {
             fill: '#44ff44'
         }).setOrigin(0.5).setScrollFactor(0).setDepth(1).setVisible(false);
 
-        this.sceneWidth = width;
         this.input.keyboard.on('keydown-ESC', () => this._close());
         this.input.keyboard.on('keydown-F', () => this._close());
     }
 
-    _materialCount() {
-        return Object.entries(GameState.inventory || {}).reduce(
-            (sum, [k, c]) => sum + (ITEMS[k] && ITEMS[k].type === 'material' ? c : 0),
-            0
-        );
+    _buildUpgradeConfig(weaponKey, level) {
+        const cost = getUpgradeCostForLevel(level);
+        const requiredMaterialKey = getRequiredMaterialForWeapon(weaponKey);
+        if (!cost || !requiredMaterialKey) return null;
+        const requiredMaterialName = ITEMS[requiredMaterialKey] ? ITEMS[requiredMaterialKey].name : requiredMaterialKey;
+        return {
+            cost,
+            requiredMaterialKey,
+            requiredMaterialName,
+            label: '[强化] ' + cost.gold + '金+' + cost.essence + requiredMaterialName
+        };
+    }
+
+    _createUpgradeButton(weaponKey, rowText, y, config) {
+        const upgradeBtn = this.add.text(this.sceneWidth / 2 + 80, y, config.label, {
+            fontSize: '14px',
+            fill: '#4a90d9'
+        }).setOrigin(0, 0.5).setScrollFactor(0).setInteractive({ useHandCursor: true }).setDepth(1);
+        upgradeBtn.weaponKey = weaponKey;
+        upgradeBtn.cost = config.cost;
+        upgradeBtn.requiredMaterialKey = config.requiredMaterialKey;
+        upgradeBtn.requiredMaterialName = config.requiredMaterialName;
+        upgradeBtn.rowText = rowText;
+        upgradeBtn.on('pointerover', () => upgradeBtn.setStyle({ fill: '#6ab0ff' }));
+        upgradeBtn.on('pointerout', () => upgradeBtn.setStyle({ fill: '#4a90d9' }));
+        upgradeBtn.on('pointerdown', () => this._tryUpgrade(upgradeBtn));
+        return upgradeBtn;
     }
 
     _tryUpgrade(btn) {
-        const { weaponKey, cost, rowText } = btn;
-        if (GameState.gold < cost.gold) {
+        const { weaponKey, rowText } = btn;
+        const check = canUpgradeWeapon(GameState, weaponKey);
+        if (!check.ok && check.reason === 'gold') {
             AudioSystem.playUi('error');
             this._showMessage('金币不足!', '#ff4444');
             return;
         }
-        const materials = this._materialCount();
-        if (materials < cost.essence) {
+        if (!check.ok && check.reason === 'material') {
             AudioSystem.playUi('error');
-            this._showMessage('材料不足! 需要' + cost.essence + '个Boss精华', '#ff4444');
+            const materialName = ITEMS[check.requiredMaterialKey]
+                ? ITEMS[check.requiredMaterialKey].name
+                : check.requiredMaterialKey;
+            this._showMessage('材料不足! 需要' + check.cost.essence + '个' + materialName, '#ff4444');
             return;
         }
-        AudioSystem.playUi('ui');
-        GameState.spendGold(cost.gold);
-        for (let i = 0; i < cost.essence; i++) {
-            const matKey = Object.keys(ITEMS).find(k => ITEMS[k].type === 'material' && (GameState.inventory[k] || 0) > 0);
-            if (matKey) GameState.removeItem(matKey, 1);
+        if (!check.ok) {
+            AudioSystem.playUi('error');
+            const reason = check.reason === 'max_level' ? '该武器已达最高等级' : '该武器缺少强化材料绑定';
+            this._showMessage(reason, '#ff4444');
+            return;
         }
-        GameState.weaponLevels[weaponKey] = (GameState.weaponLevels[weaponKey] || 1) + 1;
+        const applied = applyWeaponUpgrade(GameState, weaponKey);
+        if (!applied.ok || !applied.nextState) {
+            AudioSystem.playUi('error');
+            this._showMessage('强化失败，请重试', '#ff4444');
+            return;
+        }
+
+        AudioSystem.playUi('ui');
+        GameState.gold = applied.nextState.gold;
+        GameState.inventory = applied.nextState.inventory;
+        GameState.weaponLevels = applied.nextState.weaponLevels;
         this.goldText.setText('金币: ' + GameState.gold);
         const level = GameState.weaponLevels[weaponKey];
         rowText.setText(WEAPONS[weaponKey].name + ' Lv.' + level);
         btn.destroy();
         if (level < 3) {
-            const newCost = level === 2 ? { gold: 250, essence: 2 } : { gold: 100, essence: 1 };
-            const y = btn.y;
-            const newBtn = this.add.text(this.sceneWidth / 2 + 80, y, '[强化] ' + newCost.gold + '金+' + newCost.essence + '精华', {
-                fontSize: '14px',
-                fill: '#4a90d9'
-            }).setOrigin(0, 0.5).setScrollFactor(0).setInteractive({ useHandCursor: true }).setDepth(1);
-            newBtn.weaponKey = weaponKey;
-            newBtn.cost = newCost;
-            newBtn.rowText = rowText;
-            newBtn.on('pointerover', () => newBtn.setStyle({ fill: '#6ab0ff' }));
-            newBtn.on('pointerout', () => newBtn.setStyle({ fill: '#4a90d9' }));
-            newBtn.on('pointerdown', () => this._tryUpgrade(newBtn));
+            const newConfig = this._buildUpgradeConfig(weaponKey, level);
+            if (newConfig) this._createUpgradeButton(weaponKey, rowText, btn.y, newConfig);
         }
-        this._showMessage('强化成功!', '#44ff44');
+        const materialName = ITEMS[applied.requiredMaterialKey]
+            ? ITEMS[applied.requiredMaterialKey].name
+            : applied.requiredMaterialKey;
+        this._showMessage('强化成功! 消耗' + applied.cost.essence + '个' + materialName, '#44ff44');
     }
 
     _showMessage(text, color) {
@@ -3267,7 +3328,7 @@ class PauseScene extends Phaser.Scene {
         const overlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.72);
         overlay.setInteractive();
 
-        this.add.rectangle(w / 2, h / 2, 620, 480, 0x111827, 0.95).setStrokeStyle(2, 0x5e81ac);
+        this.add.rectangle(w / 2, h / 2, 620, 520, 0x111827, 0.95).setStrokeStyle(2, 0x5e81ac);
         this.add.text(w / 2, h / 2 - 190, '暂停菜单', {
             fontSize: '34px',
             fill: '#ffffff',
@@ -3279,31 +3340,39 @@ class PauseScene extends Phaser.Scene {
         }).setOrigin(0.5);
 
         this._infoVisible = false;
-        this.infoText = this.add.text(w / 2, h / 2 + 24, '', {
+        this.infoText = this.add.text(w / 2, h / 2 + 12, '', {
             fontSize: '14px',
             fill: '#dfe6f0',
             align: 'left',
             wordWrap: { width: 520 }
         }).setOrigin(0.5, 0).setVisible(false);
 
-        this.messageText = this.add.text(w / 2, h / 2 + 190, '', {
+        this.messageText = this.add.text(w / 2, h / 2 + 228, '', {
             fontSize: '16px',
             fill: '#88c0d0'
         }).setOrigin(0.5).setVisible(false);
+        this._messageTimer = null;
 
-        this._createButton(w / 2, h / 2 - 92, '继续游戏', () => this._continue());
-        this._createButton(w / 2, h / 2 - 46, '背包', () => this._toggleInventory());
-        this._createButton(w / 2, h / 2, '武器信息', () => this._toggleWeaponInfo());
-        this._createButton(w / 2, h / 2 + 46, '设置（占位）', () => this._showSettingsPlaceholder());
-        this._createButton(w / 2, h / 2 + 92, '返回标题', () => this._backToTitle());
+        this._createButton(w / 2, h / 2 - 102, '继续游戏', () => this._continue());
+        this._createButton(w / 2, h / 2 - 58, '背包', () => this._toggleInventory());
+        this._createButton(w / 2, h / 2 - 14, '武器信息', () => this._toggleWeaponInfo());
+        this.muteButton = this._createButton(w / 2, h / 2 + 30, '', () => this._toggleMute());
+        this.volumeText = this.add.text(w / 2, h / 2 + 74, '', {
+            fontSize: '20px',
+            fill: '#d8dee9'
+        }).setOrigin(0.5);
+        this._createButton(w / 2 - 110, h / 2 + 118, '音量 -10', () => this._changeVolume(-10), '18px');
+        this._createButton(w / 2 + 110, h / 2 + 118, '音量 +10', () => this._changeVolume(10), '18px');
+        this._createButton(w / 2, h / 2 + 170, '返回标题', () => this._backToTitle());
+        this._refreshAudioUi();
 
         this.input.keyboard.on('keydown-ESC', () => this._continue());
         this.input.keyboard.on('keydown-ENTER', () => this._continue());
     }
 
-    _createButton(x, y, label, onClick) {
+    _createButton(x, y, label, onClick, fontSize = '22px') {
         const btn = this.add.text(x, y, `[ ${label} ]`, {
-            fontSize: '22px',
+            fontSize,
             fill: '#d8dee9'
         }).setOrigin(0.5).setInteractive({ useHandCursor: true });
         btn.on('pointerover', () => btn.setStyle({ fill: '#88c0d0' }));
@@ -3312,6 +3381,7 @@ class PauseScene extends Phaser.Scene {
             AudioSystem.playUi('ui');
             onClick();
         });
+        return btn;
     }
 
     _continue() {
@@ -3339,10 +3409,36 @@ class PauseScene extends Phaser.Scene {
         this.infoText.setText(lines.join('\n'));
     }
 
-    _showSettingsPlaceholder() {
-        this.messageText.setText('设置功能预留中（音量/键位将在后续版本提供）');
+    _refreshAudioUi() {
+        const settings = AudioSystem.getSettings();
+        this.muteButton.setText(`[ 主静音: ${settings.muted ? '开' : '关'} ]`);
+        this.volumeText.setText('主音量: ' + settings.volume + '%');
+    }
+
+    _showTransientMessage(text) {
+        this.messageText.setText(text);
         this.messageText.setVisible(true);
-        this.time.delayedCall(1500, () => this.messageText.setVisible(false));
+        if (this._messageTimer) this._messageTimer.remove(false);
+        this._messageTimer = this.time.delayedCall(1200, () => {
+            this.messageText.setVisible(false);
+            this._messageTimer = null;
+        });
+    }
+
+    _toggleMute() {
+        AudioSystem.toggleMuted();
+        const settings = AudioSystem.getSettings();
+        this._refreshAudioUi();
+        this._showTransientMessage(settings.muted ? '主音频已静音' : '主音频已开启');
+    }
+
+    _changeVolume(delta) {
+        const settings = AudioSystem.getSettings();
+        const nextVolume = Math.max(0, Math.min(100, settings.volume + delta));
+        if (nextVolume === settings.volume) return;
+        AudioSystem.setVolume(nextVolume);
+        this._refreshAudioUi();
+        this._showTransientMessage('主音量已调整到 ' + nextVolume + '%');
     }
 
     _backToTitle() {
