@@ -1279,7 +1279,10 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.hp = Math.max(0, this.hp - finalDamage);
         this._damageAppliedThisHit = true;
 
-        if (!opts.silent) AudioSystem.playHit();
+        if (!opts.silent) {
+            AudioSystem.playHit();
+            showFloatingCombatText(this.scene, this.x, this.y - 34, '-' + finalDamage, '#ff8a8a', 520);
+        }
         if (!opts.noIframes && !opts.ignoreInvincibility) {
             this.isInvincible = true;
             this._invincibleTimer = 200;
