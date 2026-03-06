@@ -87,6 +87,10 @@ const ENEMY_EXTRA_DROP_CHANCE = {
     material: 0.07
 };
 
+const RUN_CHALLENGE_POOL = [
+    { key: 'enemySlayer', label: '挑战: 本局击败 30 个敌人', target: 30, rewardGold: 80 }
+];
+
 const ATTACK_DISPLAY_NAMES = {
     firePunch: '烈焰冲拳',
     groundSlam: '震地冲击',
@@ -348,6 +352,7 @@ const GameState = {
     selectedWeaponKey: 'sword',
     runModifiers: [],
     runEffects: { ...DEFAULT_RUN_EFFECTS },
+    runChallenge: null,
     quickSlots: [null, null, null, null],
 
     addItem(itemKey, count) {
@@ -395,6 +400,39 @@ const GameState = {
         }
         this.runEffects = buildRunModifierEffects(this.runModifiers, RUN_MODIFIER_POOL);
     },
+    rollRunChallenge() {
+        const seed = Math.floor(Math.random() * RUN_CHALLENGE_POOL.length);
+        const picked = RUN_CHALLENGE_POOL[seed] || RUN_CHALLENGE_POOL[0];
+        this.runChallenge = {
+            key: picked.key,
+            label: picked.label,
+            target: picked.target,
+            progress: 0,
+            rewardGold: picked.rewardGold,
+            completed: false
+        };
+    },
+    onEnemyDefeated() {
+        if (!this.runChallenge || this.runChallenge.completed) return false;
+        this.runChallenge.progress += 1;
+        if (this.runChallenge.progress >= this.runChallenge.target) {
+            this.runChallenge.completed = true;
+            this.addGold(this.runChallenge.rewardGold || 0);
+            return true;
+        }
+        return false;
+    },
+    getRunChallengeSummary() {
+        if (!this.runChallenge) return null;
+        const c = this.runChallenge;
+        return {
+            label: c.label,
+            progress: c.progress,
+            target: c.target,
+            completed: !!c.completed,
+            rewardGold: c.rewardGold || 0
+        };
+    },
     reset() {
         const base = cloneDefaultSaveData();
         this.inventory = base.inventory;
@@ -405,6 +443,7 @@ const GameState = {
         this.unlockedWeapons = ['sword'];
         this.selectedWeaponKey = 'sword';
         this.rollRunModifiers();
+        this.rollRunChallenge();
         this.quickSlots = [null, null, null, null];
     },
     ensureSelectedWeapon() {
@@ -446,6 +485,7 @@ const GameState = {
             this.ensureRunModifiers();
             this.quickSlots = data.quickSlots || [null, null, null, null];
             this.ensureSelectedWeapon();
+            if (!this.runChallenge) this.rollRunChallenge();
             return true;
         } catch (e) {
             return false;
@@ -2248,7 +2288,13 @@ class LevelScene extends Phaser.Scene {
                     }
                     if (canPierce) hb._pierceHits.push(enemy);
                     else hb.damage = 0;
-                    if (drops) this._spawnDropPickups(enemy.x, enemy.y, drops);
+                    if (drops) {
+                        this._spawnDropPickups(enemy.x, enemy.y, drops);
+                        const challengeCompleted = GameState.onEnemyDefeated();
+                        if (challengeCompleted) {
+                            showFloatingCombatText(this, enemy.x, enemy.y - 24, '挑战完成 +金币', '#7CFFB2', 1200);
+                        }
+                    }
                 }
             }
         }
@@ -2272,6 +2318,10 @@ class LevelScene extends Phaser.Scene {
             }
             if (enemy._statusDrops) {
                 this._spawnDropPickups(enemy.x, enemy.y, enemy._statusDrops);
+                const challengeCompleted = GameState.onEnemyDefeated();
+                if (challengeCompleted) {
+                    showFloatingCombatText(this, enemy.x, enemy.y - 24, '挑战完成 +金币', '#7CFFB2', 1200);
+                }
                 enemy._statusDrops = null;
             }
             if (attacking) {
@@ -4128,6 +4178,13 @@ class UIScene extends Phaser.Scene {
             lineSpacing: 2
         }).setOrigin(1, 0).setScrollFactor(0);
 
+        this.challengeText = this.add.text(width - pad, pad + 108, '', {
+            fontSize: '11px',
+            fill: '#7CFFB2',
+            align: 'right',
+            lineSpacing: 2
+        }).setOrigin(1, 0).setScrollFactor(0);
+
         this.statusText = this.add.text(width / 2, height - 108, '', {
             fontSize: '14px',
             fill: '#ffcf85',
@@ -4178,6 +4235,17 @@ class UIScene extends Phaser.Scene {
 
         const modifierLines = (GameState.runModifiers || []).map((key, idx) => `${idx + 1}. ${getRunModifierLabel(key)}`);
         this.runModifierText.setText(modifierLines.join('\n'));
+
+        const challenge = GameState.getRunChallengeSummary ? GameState.getRunChallengeSummary() : null;
+        if (challenge) {
+            const head = challenge.completed ? '本局挑战：已完成' : '本局挑战';
+            const progress = `${Math.min(challenge.progress, challenge.target)}/${challenge.target}`;
+            const reward = `奖励:+${challenge.rewardGold} 金币`;
+            this.challengeText.setText(`${head}\n${challenge.label}\n进度:${progress}  ${reward}`);
+            this.challengeText.setStyle({ fill: challenge.completed ? '#9effd6' : '#7CFFB2' });
+        } else {
+            this.challengeText.setText('');
+        }
 
         const statuses = player.getStatusSummary ? player.getStatusSummary() : [];
         if (statuses.length > 0) {
