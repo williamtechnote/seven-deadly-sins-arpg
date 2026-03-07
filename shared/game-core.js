@@ -551,6 +551,38 @@
         return Math.max(safeTarget, safePrevious - safeStep);
     }
 
+    function buildBossTelegraphHudSummary(options) {
+        const safe = options && typeof options === 'object' ? options : {};
+        const attackLabel = typeof safe.attackLabel === 'string' ? safe.attackLabel.trim() : '';
+        const attackTypeLabel = typeof safe.attackTypeLabel === 'string' ? safe.attackTypeLabel.trim() : '';
+        const counterHint = typeof safe.counterHint === 'string' ? safe.counterHint.trim() : '';
+        const counterWindowMs = Math.max(0, clampInt(safe.counterWindowMs, 0, Number.MAX_SAFE_INTEGER, 0));
+        const telegraphDurationMs = Math.max(1, clampInt(safe.telegraphDurationMs, 1, Number.MAX_SAFE_INTEGER, 1));
+        const remainingMs = Math.max(0, clampInt(safe.remainingMs, 0, Number.MAX_SAFE_INTEGER, 0));
+
+        if (!attackLabel) {
+            return {
+                visible: false,
+                attackLabel: '',
+                typeLabel: '',
+                counterWindowLabel: '',
+                hintLabel: '',
+                progressRatio: 0
+            };
+        }
+
+        return {
+            visible: true,
+            attackLabel,
+            typeLabel: attackTypeLabel ? `类型 ${attackTypeLabel}` : '',
+            counterWindowLabel: counterWindowMs > 0
+                ? `反制窗口 ${Math.max(1, Math.round(counterWindowMs / 100) / 10)}s`
+                : '',
+            hintLabel: counterHint,
+            progressRatio: clampRatio(remainingMs / telegraphDurationMs, 0)
+        };
+    }
+
     function buildBossPhaseHudSummary(options) {
         const safe = options && typeof options === 'object' ? options : {};
         const phases = Array.isArray(safe.phases) ? safe.phases : [];
@@ -567,6 +599,46 @@
             nextThresholdLabel: nextThreshold >= 0 ? `下阶段 ${Math.round(nextThreshold * 100)}%` : '',
             thresholdMarkers
         };
+    }
+
+    function buildBossStatusHighlightSummary(options) {
+        const safe = options && typeof options === 'object' ? options : {};
+        const hpRatio = clampRatio(safe.hpRatio, 0);
+        const breakMs = Math.max(0, clampInt(safe.breakMs, 0, Number.MAX_SAFE_INTEGER, 0));
+        const activeStatuses = Array.isArray(safe.activeStatuses) ? safe.activeStatuses : [];
+        const controlStatusLabels = [];
+        const controlStatusMap = {
+            slow: '减速'
+        };
+
+        activeStatuses.forEach((statusKey) => {
+            if (typeof statusKey !== 'string') return;
+            const label = controlStatusMap[statusKey];
+            if (!label || controlStatusLabels.includes(label)) return;
+            controlStatusLabels.push(label);
+        });
+
+        const segments = [];
+        if (breakMs > 0) {
+            segments.push({
+                key: 'break',
+                label: '破招窗口',
+                ratio: hpRatio,
+                color: 0xFFD36B,
+                alpha: 0.45
+            });
+        }
+        if (controlStatusLabels.length > 0) {
+            segments.push({
+                key: 'control',
+                label: `受控: ${controlStatusLabels.join(' / ')}`,
+                ratio: hpRatio,
+                color: 0x78E6FF,
+                alpha: 0.34
+            });
+        }
+
+        return { segments };
     }
 
     function getCraftingRecipe(recipeKey) {
@@ -825,7 +897,9 @@
         resolveConsumableUse,
         buildStatusHudSummary,
         advanceBossHpAfterimage,
+        buildBossTelegraphHudSummary,
         buildBossPhaseHudSummary,
+        buildBossStatusHighlightSummary,
         getRunModifierByKey,
         normalizeRunModifiers,
         pickRunModifiers,

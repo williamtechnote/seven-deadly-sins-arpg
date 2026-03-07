@@ -30,7 +30,9 @@ const {
     resolveConsumableUse,
     buildStatusHudSummary,
     advanceBossHpAfterimage,
+    buildBossTelegraphHudSummary,
     buildBossPhaseHudSummary,
+    buildBossStatusHighlightSummary,
     getRunModifierByKey,
     normalizeRunModifiers,
     pickRunModifiers,
@@ -150,6 +152,24 @@ const ATTACK_COUNTER_WINDOW_MS = {
     bite: 1000
 };
 
+const BOSS_TELEGRAPH_TYPE_LABELS = {
+    DASH: '突进',
+    AOE: '范围',
+    CONE: '扇形',
+    SPECIAL: '特殊',
+    BUFF: '强化',
+    HAZARD: '机制'
+};
+
+const BOSS_TELEGRAPH_TYPE_COLORS = {
+    DASH: 0xF28F6B,
+    AOE: 0xFFB347,
+    CONE: 0xFF7C7C,
+    SPECIAL: 0xD39BFF,
+    BUFF: 0xFFE28A,
+    HAZARD: 0x7FE4A8
+};
+
 const BOSS_ATTACK_STATUS_ON_HIT = {
     flameBreath: { key: 'burn', durationMs: 2600 },
     goldBreath: { key: 'burn', durationMs: 2200 },
@@ -164,6 +184,7 @@ const UI_WARNING_THRESHOLDS = {
 };
 
 const BOSS_HUD_AFTERIMAGE_STEP_PER_SECOND = 0.42;
+const BOSS_COUNTER_BREAK_STAGGER_MS = 900;
 const BOSS_PHASE_ALERT_DURATION_MS = 1800;
 
 const MAJOR_BOSS_PHASE_ATTACKS = new Set([
@@ -2548,6 +2569,9 @@ class Boss {
         this.activeStatusEffects = {};
         this._statusSpeedMultiplier = 1;
         this.phaseAlertUntil = 0;
+        this.breakHighlightUntil = 0;
+        this.staggerUntil = 0;
+        this.activeTelegraph = null;
         this.statusAura = scene.add.graphics();
         this.statusAura.setDepth(9);
     }
@@ -2556,11 +2580,45 @@ class Boss {
         return this.config.phases[this.currentPhase] || this.config.phases[0];
     }
 
+    getTelegraphHudSummary(now) {
+        if (!this.activeTelegraph) return buildBossTelegraphHudSummary();
+        const remainingMs = Math.max(0, this.activeTelegraph.expiresAt - now);
+        return buildBossTelegraphHudSummary({
+            attackLabel: this.activeTelegraph.attackLabel,
+            attackTypeLabel: this.activeTelegraph.attackTypeLabel,
+            counterWindowMs: this.activeTelegraph.counterWindowMs,
+            counterHint: this.activeTelegraph.counterHint,
+            telegraphDurationMs: this.activeTelegraph.telegraphDurationMs,
+            remainingMs
+        });
+    }
+
+    getStatusHighlightSummary(now) {
+        return buildBossStatusHighlightSummary({
+            hpRatio: this.maxHp > 0 ? (this.hp / this.maxHp) : 0,
+            breakMs: Math.max(0, (this.breakHighlightUntil || 0) - now),
+            activeStatuses: Object.keys(this.activeStatusEffects || {})
+        });
+    }
+
     update(time, delta, player) {
         if (!this.isAlive) return;
 
         this.attackTimer += delta;
         this._statusSpeedMultiplier = this._updateStatusEffects(time);
+        if (this.activeTelegraph && time >= this.activeTelegraph.expiresAt) {
+            this.activeTelegraph = null;
+        }
+
+        if (this.attackState === 'staggered') {
+            this.sprite.setAlpha(1);
+            if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
+            if (time >= this.staggerUntil) {
+                this.attackState = 'cooldown';
+                this.cooldownStart = time;
+            }
+            return;
+        }
 
         if (time < this.invincibleUntil) return;
 
@@ -2581,12 +2639,13 @@ class Boss {
                 this.attackIndex++;
                 this.attackState = 'winding';
                 this.windUpStart = time;
+                const attackName = ATTACK_DISPLAY_NAMES[this.currentAttack] || this.currentAttack;
+                const attackType = getAttackType(this.currentAttack);
+                const hint = ATTACK_COUNTER_HINTS[this.currentAttack];
+                const windowMs = ATTACK_COUNTER_WINDOW_MS[this.currentAttack] || 0;
                 if (this.phaseMajorAttackQueue.has(this.currentAttack)) {
                     this.attackWindupDelay = 450;
                     this.phaseMajorAttackQueue.delete(this.currentAttack);
-                    const attackName = ATTACK_DISPLAY_NAMES[this.currentAttack] || this.currentAttack;
-                    const hint = ATTACK_COUNTER_HINTS[this.currentAttack];
-                    const windowMs = ATTACK_COUNTER_WINDOW_MS[this.currentAttack] || 1200;
                     const windowLabel = '反制窗口≈' + Math.max(1, Math.round(windowMs / 100) / 10) + 's';
                     this._showTelegraph(
                         hint ? (`⚠ ${attackName}\n${hint}\n${windowLabel}`) : (`⚠ ${attackName}\n${windowLabel}`),
@@ -2596,6 +2655,20 @@ class Boss {
                 } else {
                     this.attackWindupDelay = 0;
                 }
+                if (hint || windowMs > 0) {
+                    const telegraphDuration = 500 + this.attackWindupDelay;
+                    this.activeTelegraph = {
+                        attackLabel: attackName,
+                        attackTypeLabel: BOSS_TELEGRAPH_TYPE_LABELS[attackType] || attackType,
+                        counterHint: hint || '',
+                        counterWindowMs: windowMs,
+                        telegraphDurationMs: telegraphDuration,
+                        expiresAt: time + telegraphDuration,
+                        typeKey: attackType
+                    };
+                } else {
+                    this.activeTelegraph = null;
+                }
             }
             this._moveTowardPlayer(player, 0.5);
         } else if (this.attackState === 'winding') {
@@ -2603,6 +2676,7 @@ class Boss {
             this.sprite.setAlpha(flash === 0 ? 1 : 0.5);
             if (time - this.windUpStart >= 500 + this.attackWindupDelay) {
                 this.sprite.setAlpha(1);
+                this.activeTelegraph = null;
                 this.attackState = 'attacking';
                 this.attackStart = time;
                 this.attackData = {};
@@ -2677,6 +2751,23 @@ class Boss {
 
     _getEffectiveSpeed(scale) {
         return this.speed * (this._statusSpeedMultiplier || 1) * (scale || 1);
+    }
+
+    tryCounterBreak(durationMs) {
+        if (!this.isAlive) return false;
+        if (this.scene.time.now < this.invincibleUntil) return false;
+        if (this.attackState !== 'winding') return false;
+        if (!ATTACK_COUNTER_HINTS[this.currentAttack] && !ATTACK_COUNTER_WINDOW_MS[this.currentAttack]) return false;
+        const now = this.scene.time.now;
+        const staggerMs = Math.max(300, Math.round(durationMs || BOSS_COUNTER_BREAK_STAGGER_MS));
+        this.attackState = 'staggered';
+        this.staggerUntil = now + staggerMs;
+        this.attackData = {};
+        this.activeTelegraph = null;
+        this.breakHighlightUntil = Math.max(this.breakHighlightUntil, now + staggerMs);
+        this.sprite.setAlpha(1);
+        if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
+        return true;
     }
 
     _showTelegraph(text, color, duration) {
@@ -3310,6 +3401,8 @@ class BossScene extends Phaser.Scene {
         this.bossHpBarAfterimage.setScrollFactor(0);
         this.bossHpBarFill = this.add.graphics();
         this.bossHpBarFill.setScrollFactor(0);
+        this.bossHpBarStatus = this.add.graphics();
+        this.bossHpBarStatus.setScrollFactor(0);
         this.bossHpBarMarkers = this.add.graphics();
         this.bossHpBarMarkers.setScrollFactor(0);
         this.bossHpBarFrame = this.add.graphics();
@@ -3327,6 +3420,26 @@ class BossScene extends Phaser.Scene {
             fontSize: '12px',
             fill: '#ffe8b2'
         }).setOrigin(1, 0).setScrollFactor(0);
+        this._bossTelegraphRect = { x: barX, y: barY + barH + 24, w: barW, h: 12 };
+        this.bossTelegraphBarBg = this.add.graphics();
+        this.bossTelegraphBarBg.setScrollFactor(0);
+        this.bossTelegraphBarFill = this.add.graphics();
+        this.bossTelegraphBarFill.setScrollFactor(0);
+        this.bossTelegraphText = this.add.text(barX, barY + barH + 20, '', {
+            fontSize: '11px',
+            fill: '#fff6da',
+            fontStyle: 'bold'
+        }).setOrigin(0, 0).setScrollFactor(0);
+        this.bossTelegraphWindowText = this.add.text(barX + barW, barY + barH + 20, '', {
+            fontSize: '11px',
+            fill: '#ffe1a1',
+            fontStyle: 'bold'
+        }).setOrigin(1, 0).setScrollFactor(0);
+        this.bossTelegraphHintText = this.add.text(512, barY + barH + 38, '', {
+            fontSize: '10px',
+            fill: '#ffdcb3',
+            align: 'center'
+        }).setOrigin(0.5, 0).setScrollFactor(0);
         this.bossHpTrailRatio = 1;
 
         this.scene.launch('UIScene');
@@ -3406,8 +3519,22 @@ class BossScene extends Phaser.Scene {
                 if (d < hbRadius + 30 && hb.damage) {
                     this.boss.takeDamage(hb.damage);
                     if (hb.isSpecial) {
-                        showHitImpactPulse(this, this.boss.sprite.x, this.boss.sprite.y, 0xFF6B4A, 16);
-                        showFloatingCombatText(this, this.boss.sprite.x, this.boss.sprite.y - 26, '破势', '#ffcf85', 650);
+                        const counterBroken = this.boss.tryCounterBreak(BOSS_COUNTER_BREAK_STAGGER_MS);
+                        showHitImpactPulse(
+                            this,
+                            this.boss.sprite.x,
+                            this.boss.sprite.y,
+                            counterBroken ? 0xFFD36B : 0xFF6B4A,
+                            counterBroken ? 18 : 16
+                        );
+                        showFloatingCombatText(
+                            this,
+                            this.boss.sprite.x,
+                            this.boss.sprite.y - 26,
+                            counterBroken ? '破招' : '破势',
+                            counterBroken ? '#ffe39f' : '#ffcf85',
+                            650
+                        );
                         showFloatingCombatText(this, this.boss.sprite.x, this.boss.sprite.y - 46, '-' + hb.damage, '#ff9f7a', 620);
                     } else {
                         showHitImpactPulse(this, this.boss.sprite.x, this.boss.sprite.y, 0xFF9F6A, 12);
@@ -3474,6 +3601,8 @@ class BossScene extends Phaser.Scene {
             phases: this.boss.config.phases,
             currentPhase: this.boss.currentPhase
         });
+        const telegraphHud = this.boss.getTelegraphHudSummary(this.time.now);
+        const statusHud = this.boss.getStatusHighlightSummary(this.time.now);
         const phaseAlertActive = this.time.now < (this.boss.phaseAlertUntil || 0);
         const blinkOn = Math.floor(this.time.now / 120) % 2 === 0;
         const frameColor = phaseAlertActive
@@ -3506,6 +3635,17 @@ class BossScene extends Phaser.Scene {
         this.bossHpBarFill.fillStyle(this.boss.config.color, 1);
         this.bossHpBarFill.fillRect(innerX, innerY, innerW * hpRatio, innerH);
 
+        this.bossHpBarStatus.clear();
+        if (statusHud.segments.length > 0) {
+            const laneGap = 1;
+            const laneHeight = Math.max(3, Math.floor((innerH - laneGap * (statusHud.segments.length - 1)) / statusHud.segments.length));
+            statusHud.segments.forEach((segment, index) => {
+                const laneY = innerY + index * (laneHeight + laneGap);
+                this.bossHpBarStatus.fillStyle(segment.color, segment.alpha);
+                this.bossHpBarStatus.fillRect(innerX, laneY, innerW * segment.ratio, laneHeight);
+            });
+        }
+
         this.bossHpBarFrame.clear();
         this.bossHpBarFrame.lineStyle(phaseAlertActive ? 3 : 2, frameColor, 1);
         this.bossHpBarFrame.strokeRect(rect.x, rect.y, rect.w, rect.h);
@@ -3516,6 +3656,31 @@ class BossScene extends Phaser.Scene {
         this.bossPhaseText.setStyle({ fill: phaseTextColor });
         this.bossPhaseThresholdText.setText(phaseHud.nextThresholdLabel);
         this.bossPhaseThresholdText.setStyle({ fill: phaseAlertActive ? '#ffe7ad' : '#ffe8b2' });
+
+        this.bossTelegraphBarBg.clear();
+        this.bossTelegraphBarFill.clear();
+        if (telegraphHud.visible) {
+            const telegraphRect = this._bossTelegraphRect;
+            const typeKey = this.boss.activeTelegraph ? this.boss.activeTelegraph.typeKey : 'DASH';
+            const telegraphColor = BOSS_TELEGRAPH_TYPE_COLORS[typeKey] || 0xF5B58A;
+            this.bossTelegraphBarBg.fillStyle(0x261F2D, 0.92);
+            this.bossTelegraphBarBg.fillRoundedRect(telegraphRect.x, telegraphRect.y, telegraphRect.w, telegraphRect.h, 4);
+            this.bossTelegraphBarFill.fillStyle(telegraphColor, 0.9);
+            this.bossTelegraphBarFill.fillRoundedRect(
+                telegraphRect.x,
+                telegraphRect.y,
+                telegraphRect.w * telegraphHud.progressRatio,
+                telegraphRect.h,
+                4
+            );
+            this.bossTelegraphText.setText(`${telegraphHud.typeLabel} | ${telegraphHud.attackLabel}`);
+            this.bossTelegraphWindowText.setText(telegraphHud.counterWindowLabel);
+            this.bossTelegraphHintText.setText(telegraphHud.hintLabel || '');
+        } else {
+            this.bossTelegraphText.setText('');
+            this.bossTelegraphWindowText.setText('');
+            this.bossTelegraphHintText.setText('');
+        }
     }
 
     _victorySequence() {

@@ -31,6 +31,8 @@ const {
     buildStatusHudSummary,
     advanceBossHpAfterimage,
     buildBossPhaseHudSummary,
+    buildBossTelegraphHudSummary,
+    buildBossStatusHighlightSummary,
     canCraftRecipe,
     applyCraftRecipe,
     serializeSaveData,
@@ -339,6 +341,38 @@ function testBossHudReadability() {
         currentPhase: 1
     });
     assert.equal(finalPhaseSummary.nextThresholdLabel, '', 'final phase should not advertise a next threshold');
+
+    const telegraphSummary = buildBossTelegraphHudSummary({
+        attackLabel: '幻影风暴',
+        attackTypeLabel: '特殊',
+        counterWindowMs: 1700,
+        counterHint: '反制: 先躲弹幕，再找本体',
+        telegraphDurationMs: 1300,
+        remainingMs: 650
+    });
+    assert.equal(telegraphSummary.visible, true, 'telegraph summary should become visible when attack metadata exists');
+    assert.equal(telegraphSummary.typeLabel, '类型 特殊', 'telegraph summary should expose localized attack type text');
+    assert.equal(telegraphSummary.counterWindowLabel, '反制窗口 1.7s', 'telegraph summary should format the counter window in seconds');
+    assert.equal(telegraphSummary.hintLabel, '反制: 先躲弹幕，再找本体', 'telegraph summary should keep the counter hint');
+    assert.equal(telegraphSummary.progressRatio, 0.5, 'telegraph progress should report the remaining telegraph time ratio');
+
+    const controlSummary = buildBossStatusHighlightSummary({
+        hpRatio: 0.38,
+        breakMs: 900,
+        activeStatuses: ['burn', 'slow', 'slow']
+    });
+    assert.equal(controlSummary.segments.length, 2, 'status summary should stack break and control highlight segments');
+    assert.deepEqual(controlSummary.segments.map(segment => segment.key), ['break', 'control'], 'break highlight should render ahead of control highlight');
+    assert.equal(controlSummary.segments[0].label, '破招窗口', 'break highlight should advertise the counter-break state');
+    assert.equal(controlSummary.segments[1].label, '受控: 减速', 'control highlight should summarize crowd-control state');
+    assert.equal(controlSummary.segments[1].ratio, 0.38, 'highlight segments should match the current HP ratio');
+
+    const emptyStatusSummary = buildBossStatusHighlightSummary({
+        hpRatio: 0.62,
+        breakMs: 0,
+        activeStatuses: ['burn']
+    });
+    assert.equal(emptyStatusSummary.segments.length, 0, 'non-control statuses should not produce boss HUD overlay segments');
 }
 
 function main() {
