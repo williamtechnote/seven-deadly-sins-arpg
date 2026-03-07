@@ -356,6 +356,25 @@ function testRunEventRoomHudSummary() {
     assert.equal(typeof buildRunEventRoomHudSummary, 'function', 'event room HUD summary helper should be exported');
     assert.equal(typeof buildRunEventRoomHudLines, 'function', 'event room HUD line builder should be exported');
 
+    const unknownTypePool = [
+        {
+            key: 'mysteryArchive',
+            name: '谜藏书库',
+            description: '未来扩展或未知房型的回退夹具',
+            type: 'mystery',
+            choices: [
+                {
+                    key: 'sealedIndex',
+                    label: '封印索引',
+                    description: '金币 +88',
+                    effect: {
+                        type: 'grantGold'
+                    }
+                }
+            ]
+        }
+    ];
+
     const unresolvedSummary = buildRunEventRoomHudSummary({
         key: 'supplyCache',
         discovered: true,
@@ -459,9 +478,47 @@ function testRunEventRoomHudSummary() {
         '生命+36, 净化',
         'resolved healing summary should compress restore-and-cleanse settlements into compact delta text'
     );
+
+    const resolvedUnknownSummary = buildRunEventRoomHudSummary({
+        key: 'mysteryArchive',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'retiredChoice',
+        selectedChoiceLabel: '封印索引',
+        resolutionText: '金币 +88'
+    }, unknownTypePool);
+    assert.deepEqual(
+        resolvedUnknownSummary.routeLines,
+        ['已选: 封印索引'],
+        'resolved unknown-type summary should fall back to the persisted chosen label with the generic 已选 prefix'
+    );
+    assert.equal(
+        resolvedUnknownSummary.resolutionText,
+        '金币+88',
+        'resolved unknown-type summary should still compact the stored settlement text'
+    );
 }
 
 function testRunEventRoomHudLines() {
+    const unknownTypePool = [
+        {
+            key: 'mysteryArchive',
+            name: '谜藏书库',
+            description: '未来扩展或未知房型的回退夹具',
+            type: 'mystery',
+            choices: [
+                {
+                    key: 'sealedIndex',
+                    label: '封印索引',
+                    description: '金币 +88',
+                    effect: {
+                        type: 'grantGold'
+                    }
+                }
+            ]
+        }
+    ];
+
     const unresolvedLines = buildRunEventRoomHudLines({
         key: 'supplyCache',
         discovered: true,
@@ -530,6 +587,24 @@ function testRunEventRoomHudLines() {
             '治疗: 净泉啜饮 · 生命+36, 净化'
         ],
         'resolved healing event rooms should merge the chosen label and actual settlement delta with a healing prefix'
+    );
+
+    const resolvedUnknownLines = buildRunEventRoomHudLines({
+        key: 'mysteryArchive',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'retiredChoice',
+        selectedChoiceLabel: '封印索引',
+        resolutionText: '金币 +88'
+    }, unknownTypePool);
+    assert.deepEqual(
+        resolvedUnknownLines,
+        [
+            '事件房: 谜藏书库',
+            '未知 · 已触发',
+            '已选: 封印索引 · 金币+88'
+        ],
+        'resolved unknown-type event rooms should keep the generic 已选 prefix and merge the compact settlement text'
     );
 }
 

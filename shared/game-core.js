@@ -470,6 +470,12 @@
             ? runEventRoom.selectedChoiceKey
             : null;
         const selectedChoice = choices.find(choice => choice.key === selectedChoiceKey) || null;
+        const persistedChoiceLabel = typeof runEventRoom.selectedChoiceLabel === 'string'
+            ? runEventRoom.selectedChoiceLabel.trim()
+            : '';
+        const persistedResolutionText = typeof runEventRoom.resolutionText === 'string'
+            ? runEventRoom.resolutionText
+            : '';
         return {
             key: base.key,
             name: base.name,
@@ -477,17 +483,17 @@
             type: base.type,
             discovered: !!runEventRoom.discovered,
             resolved: !!runEventRoom.resolved,
-            selectedChoiceKey: selectedChoice ? selectedChoice.key : null,
+            selectedChoiceKey: selectedChoice
+                ? selectedChoice.key
+                : (runEventRoom.resolved ? selectedChoiceKey : null),
             selectedChoiceLabel: selectedChoice
                 ? (
-                    typeof runEventRoom.selectedChoiceLabel === 'string' && runEventRoom.selectedChoiceLabel.trim()
-                        ? runEventRoom.selectedChoiceLabel
+                    persistedChoiceLabel
+                        ? persistedChoiceLabel
                         : selectedChoice.label
                 )
-                : null,
-            resolutionText: selectedChoice && typeof runEventRoom.resolutionText === 'string'
-                ? runEventRoom.resolutionText
-                : ''
+                : (runEventRoom.resolved && persistedChoiceLabel ? persistedChoiceLabel : null),
+            resolutionText: runEventRoom.resolved ? persistedResolutionText : ''
         };
     }
 
@@ -751,6 +757,7 @@
         return source
             .replace(/本局/g, '')
             .replace(/，/g, ', ')
+            .replace(/\s*([+\-])\s*/g, '$1')
             .replace(/\s+/g, ' ')
             .trim();
     }
@@ -782,17 +789,20 @@
             ? allChoices.find(choice => choice.key === normalizedRoom.selectedChoiceKey) || null
             : null;
         const stateLabel = normalizedRoom.resolved ? '已触发' : (normalizedRoom.discovered ? '已发现' : '未发现');
-        const visibleChoices = normalizedRoom.resolved && selectedChoice
-            ? [selectedChoice]
+        const resolvedChoiceLabel = normalizedRoom.selectedChoiceLabel
+            || (selectedChoice ? selectedChoice.label : '');
+        const visibleChoices = normalizedRoom.resolved
+            ? []
             : allChoices.slice(0, 2);
-        const routeLines = visibleChoices.map((choice) => {
-            if (normalizedRoom.resolved) {
-                return `${getRunEventRoomResolvedPrefix(normalizedRoom.type)}: ${choice.label}`.trim();
-            }
-            return `${choice.label}: ${describeRunEventChoiceRoute(choice)}`.trim();
-        });
+        const routeLines = normalizedRoom.resolved
+            ? (
+                resolvedChoiceLabel
+                    ? [`${getRunEventRoomResolvedPrefix(normalizedRoom.type)}: ${resolvedChoiceLabel}`.trim()]
+                    : []
+            )
+            : visibleChoices.map((choice) => `${choice.label}: ${describeRunEventChoiceRoute(choice)}`.trim());
         const routeSummary = routeLines.join('\n');
-        const resolutionText = normalizedRoom.resolved && selectedChoice
+        const resolutionText = normalizedRoom.resolved && normalizedRoom.resolutionText
             ? buildCompactRunEventResolutionText(normalizedRoom, selectedChoice)
             : (normalizedRoom.resolutionText || '');
 
