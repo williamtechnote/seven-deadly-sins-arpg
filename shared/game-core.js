@@ -367,6 +367,37 @@
         return value.filter(v => typeof v === 'string');
     }
 
+    function resolveKeyboardAimState(input) {
+        const safe = input && typeof input === 'object' ? input : {};
+        const horizontal = (safe.right ? 1 : 0) - (safe.left ? 1 : 0);
+        const vertical = (safe.down ? 1 : 0) - (safe.up ? 1 : 0);
+        const fallbackAngle = Number.isFinite(safe.fallbackAngle) ? safe.fallbackAngle : 0;
+
+        if (horizontal === 0 && vertical === 0) {
+            return {
+                x: Math.cos(fallbackAngle),
+                y: Math.sin(fallbackAngle),
+                angle: fallbackAngle,
+                hasInput: false
+            };
+        }
+
+        let x = horizontal;
+        let y = vertical;
+        if (x !== 0 && y !== 0) {
+            const diagonalScale = Math.SQRT1_2;
+            x *= diagonalScale;
+            y *= diagonalScale;
+        }
+
+        return {
+            x,
+            y,
+            angle: Math.atan2(y, x),
+            hasInput: true
+        };
+    }
+
     function normalizeInventory(inventory) {
         if (!inventory || typeof inventory !== 'object') return {};
         const out = {};
@@ -1542,6 +1573,7 @@
         DEFAULT_AUDIO_SETTINGS,
         normalizeAudioSettings,
         audioSettingsToGain,
+        resolveKeyboardAimState,
         normalizeSaveData,
         serializeSaveData,
         deserializeSaveData,

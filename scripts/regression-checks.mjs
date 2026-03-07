@@ -39,6 +39,7 @@ const {
     buildRunEventRoomWorldLabelRouteLine,
     buildRunEventRoomWorldLabel,
     buildRunEventRoomPromptLabel,
+    resolveKeyboardAimState,
     resolveConsumableUse,
     buildStatusHudSummary,
     advanceBossHpAfterimage,
@@ -1443,6 +1444,86 @@ function testBossHudReadability() {
     assert.equal(emptyStatusSummary.segments.length, 0, 'non-control statuses should not produce boss HUD overlay segments');
 }
 
+function testKeyboardAimState() {
+    const aimRight = resolveKeyboardAimState({
+        up: false,
+        down: false,
+        left: false,
+        right: true,
+        fallbackAngle: Math.PI / 2
+    });
+    assert.equal(aimRight.hasInput, true, 'single-axis keyboard aim should be active');
+    assert.equal(aimRight.x, 1, 'right aim should produce positive X');
+    assert.equal(aimRight.y, 0, 'right aim should not move Y');
+    assert.equal(aimRight.angle, 0, 'right aim should face angle 0');
+
+    const aimDiagonal = resolveKeyboardAimState({
+        up: true,
+        down: false,
+        left: true,
+        right: false,
+        fallbackAngle: 0
+    });
+    assert.equal(aimDiagonal.hasInput, true, 'diagonal aim should be active');
+    assert.equal(aimDiagonal.x.toFixed(3), (-0.707).toFixed(3), 'diagonal aim should normalize X');
+    assert.equal(aimDiagonal.y.toFixed(3), (-0.707).toFixed(3), 'diagonal aim should normalize Y');
+    assert.equal(
+        aimDiagonal.angle.toFixed(3),
+        (-2.356).toFixed(3),
+        'diagonal aim should preserve the existing angle-based combat model'
+    );
+
+    const aimCancelled = resolveKeyboardAimState({
+        up: true,
+        down: true,
+        left: false,
+        right: false,
+        fallbackAngle: Math.PI / 4
+    });
+    assert.equal(aimCancelled.hasInput, false, 'opposing aim keys should cancel on the same axis');
+    assert.equal(
+        aimCancelled.angle.toFixed(3),
+        (Math.PI / 4).toFixed(3),
+        'empty aim input should preserve the previous facing angle'
+    );
+}
+
+function testKeyboardAimSourceHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /this\._aimKeys = scene\.input\.keyboard\.addKeys\('I,J,K,L'\);/,
+        'Player should register a dedicated IJKL aim key set'
+    );
+    assert.match(
+        source,
+        /resolveKeyboardAimState\(\s*{[\s\S]*?up:\s*this\._aimKeys\.I\.isDown[\s\S]*?right:\s*this\._aimKeys\.L\.isDown[\s\S]*?fallbackAngle:\s*this\.facingAngle[\s\S]*?}\s*\)/,
+        'Player.update should derive facing from keyboard aim state with last-angle fallback'
+    );
+    assert.ok(
+        !source.includes('this.facingAngle = Phaser.Math.Angle.Between(this.x, this.y, worldX, worldY);'),
+        'Player.update should no longer overwrite facingAngle from the pointer each frame'
+    );
+    assert.match(
+        source,
+        /this\.input\.keyboard\.on\('keydown-U',[\s\S]*?this\.player\.tryAttack\(\)/,
+        'keyboard attack should move off J so J can remain a pure aim key'
+    );
+    assert.match(
+        source,
+        /this\.input\.keyboard\.on\('keydown-O',[\s\S]*?this\.player\.trySpecialAttack\(\)/,
+        'keyboard special attack should move off K so K can remain a pure aim key'
+    );
+    assert.ok(
+        !source.includes("this.input.keyboard.on('keydown-J', () => this.player.tryAttack());"),
+        'J should no longer trigger attacks directly once it becomes a left-aim key'
+    );
+    assert.ok(
+        !source.includes("this.input.keyboard.on('keydown-K', () => this.player.trySpecialAttack());"),
+        'K should no longer trigger specials directly once it becomes a down-aim key'
+    );
+}
+
 function testPlayerDeathFreezeHook() {
     const source = loadGameSource();
     assert.match(source, /freezeForDeath\(\)\s*{/, 'Player should define a centralized freezeForDeath hook');
@@ -1491,6 +1572,8 @@ function main() {
     runTest('consumable use resolution', testConsumableUseResolution);
     runTest('status HUD summary', testStatusHudSummary);
     runTest('boss HUD readability helpers', testBossHudReadability);
+    runTest('keyboard aim state helper', testKeyboardAimState);
+    runTest('keyboard aim source hooks', testKeyboardAimSourceHooks);
     runTest('player death freeze hook', testPlayerDeathFreezeHook);
     console.log('All regression checks passed.');
 }

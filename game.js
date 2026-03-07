@@ -20,6 +20,7 @@ const {
     DEFAULT_AUDIO_SETTINGS,
     normalizeAudioSettings,
     audioSettingsToGain,
+    resolveKeyboardAimState,
     normalizeSaveData,
     serializeSaveData,
     deserializeSaveData,
@@ -1036,6 +1037,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.setCollideWorldBounds(true);
         this.setDepth(10);
         this._wasdKeys = scene.input.keyboard.addKeys('W,A,S,D');
+        this._aimKeys = scene.input.keyboard.addKeys('I,J,K,L');
         this.weaponVisual = scene.add.graphics();
         this.weaponVisual.setDepth(11);
         this.statusAura = scene.add.graphics();
@@ -1163,10 +1165,14 @@ class Player extends Phaser.Physics.Arcade.Sprite {
 
         this._updateStatusEffects(time);
 
-        const pointer = this.scene.input.activePointer;
-        const worldX = this.scene.cameras.main.scrollX + pointer.x;
-        const worldY = this.scene.cameras.main.scrollY + pointer.y;
-        this.facingAngle = Phaser.Math.Angle.Between(this.x, this.y, worldX, worldY);
+        const aimState = resolveKeyboardAimState({
+            up: this._aimKeys.I.isDown,
+            down: this._aimKeys.K.isDown,
+            left: this._aimKeys.J.isDown,
+            right: this._aimKeys.L.isDown,
+            fallbackAngle: this.facingAngle
+        });
+        this.facingAngle = aimState.angle;
 
         let moving = false;
         if (!this.isDodging && this.knockbackTimer <= 0) {
@@ -1903,8 +1909,8 @@ class HubScene extends Phaser.Scene {
             if (pointer.button === 0) this.player.tryAttack();
             else if (pointer.button === 2) this.player.trySpecialAttack();
         });
-        this.input.keyboard.on('keydown-J', () => this.player.tryAttack());
-        this.input.keyboard.on('keydown-K', () => this.player.trySpecialAttack());
+        this.input.keyboard.on('keydown-U', () => this.player.tryAttack());
+        this.input.keyboard.on('keydown-O', () => this.player.trySpecialAttack());
         this.input.keyboard.on('keydown-H', () => {
             if (!this.scene.isActive('HelpScene')) {
                 this.scene.pause();
@@ -2363,12 +2369,12 @@ class LevelScene extends Phaser.Scene {
             else if (pointer.button === 2) hitbox = this.player.trySpecialAttack();
             if (hitbox) this.activeHitboxes.push(hitbox);
         });
-        this.input.keyboard.on('keydown-J', () => {
+        this.input.keyboard.on('keydown-U', () => {
             if (this.playerDead || this._runEventChoiceOpen) return;
             const hitbox = this.player.tryAttack();
             if (hitbox) this.activeHitboxes.push(hitbox);
         });
-        this.input.keyboard.on('keydown-K', () => {
+        this.input.keyboard.on('keydown-O', () => {
             if (this.playerDead || this._runEventChoiceOpen) return;
             const hitbox = this.player.trySpecialAttack();
             if (hitbox) this.activeHitboxes.push(hitbox);
@@ -3862,12 +3868,12 @@ class BossScene extends Phaser.Scene {
             else if (pointer.button === 2) hitbox = this.player.trySpecialAttack();
             if (hitbox) this.activeHitboxes.push(hitbox);
         });
-        this.input.keyboard.on('keydown-J', () => {
+        this.input.keyboard.on('keydown-U', () => {
             if (this.playerDead || this.bossDead) return;
             const hitbox = this.player.tryAttack();
             if (hitbox) this.activeHitboxes.push(hitbox);
         });
-        this.input.keyboard.on('keydown-K', () => {
+        this.input.keyboard.on('keydown-O', () => {
             if (this.playerDead || this.bossDead) return;
             const hitbox = this.player.trySpecialAttack();
             if (hitbox) this.activeHitboxes.push(hitbox);
@@ -5258,7 +5264,8 @@ class HelpScene extends Phaser.Scene {
         const runModifierLines = getRunModifierHelpLines();
         const sections = [
             { title: '移动', items: ['WASD  —  八方向移动'] },
-            { title: '战斗', items: ['J / 鼠标左键  —  普通攻击', 'K / 鼠标右键  —  特殊攻击'] },
+            { title: '瞄准', items: ['I / J / K / L  —  键盘双轴瞄准（保留上次朝向）'] },
+            { title: '战斗', items: ['U / 鼠标左键  —  普通攻击', 'O / 鼠标右键  —  特殊攻击'] },
             { title: '防御', items: ['Space  —  闪避翻滚（无敌帧）'] },
             { title: '武器', items: ['Q / E  —  切换武器'] },
             { title: '道具', items: ['1-4  —  使用快捷栏道具', '净化药剂/狂战油可在铁匠制作'] },
