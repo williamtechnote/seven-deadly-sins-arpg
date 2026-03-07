@@ -43,6 +43,7 @@ const {
     buildCombatActionHudSummary,
     buildQuickSlotItemLabel,
     buildQuickSlotAutoAssignNotice,
+    getInventoryTooltipClampX,
     getQuickSlotAutoAssignIndex,
     resolveKeyboardAimState,
     resolveConsumableUse,
@@ -1682,6 +1683,26 @@ function testQuickSlotAutoAssignNotice() {
         '快捷栏2：古代狂…→神圣净…',
         'auto-assign notice should clamp overlong name-derived fallback labels on both sides of overwrite copy'
     );
+
+    let repeatedGlyphMeasureCalls = 0;
+    assert.equal(
+        buildQuickSlotAutoAssignNotice(0, {
+            didOverwrite: true,
+            assignedItemName: '回回回回回回药剂',
+            replacedItemName: '回回回回回回药剂',
+            measureLabelWidth: (label) => {
+                repeatedGlyphMeasureCalls += 1;
+                return label === '回' ? 12 : 16;
+            }
+        }),
+        '快捷栏1：同类 回回回回…',
+        'auto-assign notice should keep the same overwrite shortform when runtime measurement is used on repeated glyph labels'
+    );
+    assert.equal(
+        repeatedGlyphMeasureCalls,
+        1,
+        'auto-assign notice should cache repeated measured glyph widths across both sides of a single overwrite toast'
+    );
 }
 
 function testCombatActionHudSummary() {
@@ -1774,6 +1795,30 @@ function testKeyboardHudQolHooks() {
         /slot\.itemText\.setText\(buildQuickSlotItemLabel\(itemKey,\s*itemCount\)\);/,
         'HUD quick slots should render compact helper-driven labels with counts'
     );
+    assert.match(
+        source,
+        /_showTooltip\(text,\s*anchorX,\s*anchorY\)\s*{[\s\S]*?this\.tooltip\.setText\(text\);[\s\S]*?getInventoryTooltipClampX\(anchorX,\s*this\.tooltip\.width,\s*this\.cameras\.main\.width\)/,
+        'InventoryScene should clamp tooltip placement from the real rendered tooltip width via the shared helper'
+    );
+}
+
+function testInventoryTooltipClampXHelper() {
+    assert.equal(typeof getInventoryTooltipClampX, 'function', 'inventory tooltip clamp helper should be exported');
+    assert.equal(
+        getInventoryTooltipClampX(120, 80, 1024),
+        120,
+        'tooltip clamp should keep positions that already fit within the viewport'
+    );
+    assert.equal(
+        getInventoryTooltipClampX(940, 180, 1024),
+        834,
+        'tooltip clamp should shift overly wide tooltips left by their real rendered width near the right edge'
+    );
+    assert.equal(
+        getInventoryTooltipClampX(0, 180, 1024),
+        10,
+        'tooltip clamp should preserve the minimum left padding'
+    );
 }
 
 function testReadmeKeyboardInventoryLoop() {
@@ -1838,6 +1883,11 @@ function testReadmeKeyboardInventoryLoop() {
         /覆盖路径也会沿用同一钳制，例如“快捷栏1：古代狂…→神圣净…”/,
         'README should document the shared ellipsis clamp on overwrite fallback labels'
     );
+    assert.match(
+        source,
+        /背包悬停说明也会按实际文本宽度贴边，因此靠近屏幕右缘时不会继续沿用固定 200px 估算/,
+        'README should document the width-aware inventory tooltip placement'
+    );
 }
 
 function testHelpOverlayQuickSlotLoop() {
@@ -1876,6 +1926,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若这些道具名过长则同样会截成“快捷栏1：古代狂…→神圣净…”这类省略短句/,
         'help overlay should explain the shared ellipsis clamp on overwrite fallback labels'
+    );
+    assert.match(
+        source,
+        /背包悬停说明也会按实际文本宽度贴边，因此靠近屏幕右缘时不会继续沿用固定 200px 估算/,
+        'help overlay should document the width-aware inventory tooltip placement'
     );
 }
 
@@ -1933,6 +1988,7 @@ function main() {
     runTest('keyboard control readability hooks', testKeyboardControlReadabilityHooks);
     runTest('quick-slot auto-assign helper', testQuickSlotAutoAssignIndex);
     runTest('quick-slot auto-assign notice', testQuickSlotAutoAssignNotice);
+    runTest('inventory tooltip clamp helper', testInventoryTooltipClampXHelper);
     runTest('combat action HUD summary helper', testCombatActionHudSummary);
     runTest('quick-slot item label helper', testQuickSlotItemLabel);
     runTest('keyboard HUD QoL hooks', testKeyboardHudQolHooks);

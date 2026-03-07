@@ -25,6 +25,7 @@ const {
     buildCombatActionHudSummary,
     buildQuickSlotItemLabel,
     buildQuickSlotAutoAssignNotice,
+    getInventoryTooltipClampX,
     getQuickSlotAutoAssignIndex,
     normalizeSaveData,
     serializeSaveData,
@@ -4468,12 +4469,8 @@ class InventoryScene extends Phaser.Scene {
                 const zone = this.add.zone(x, y, cellW, cellH).setInteractive();
                 zone.itemKey = key;
                 zone.itemDesc = item.description || '';
-                zone.on('pointerover', () => {
-                    this.tooltip.setText(zone.itemDesc);
-                    this.tooltip.setPosition(Phaser.Math.Clamp(x, 10, width - 200), y + cellH / 2 + 10);
-                    this.tooltip.setVisible(true);
-                });
-                zone.on('pointerout', () => this.tooltip.setVisible(false));
+                zone.on('pointerover', () => this._showTooltip(zone.itemDesc, x, y + cellH / 2 + 10));
+                zone.on('pointerout', () => this._hideTooltip());
                 zone.on('pointerdown', () => {
                     const didOverwrite = !GameState.quickSlots.some(slotKey => !slotKey);
                     const slot = getQuickSlotAutoAssignIndex(GameState.quickSlots);
@@ -4511,12 +4508,8 @@ class InventoryScene extends Phaser.Scene {
                 const cnt = this.add.text(x, y + 12, 'x' + count, { fontSize: '12px', fill: '#aaaaaa' }).setOrigin(0.5);
                 const zone = this.add.zone(x, y, cellW, cellH).setInteractive();
                 zone.itemDesc = item.description || '';
-                zone.on('pointerover', () => {
-                    this.tooltip.setText(zone.itemDesc);
-                    this.tooltip.setPosition(Phaser.Math.Clamp(x, 10, width - 200), y + cellH / 2 + 10);
-                    this.tooltip.setVisible(true);
-                });
-                zone.on('pointerout', () => this.tooltip.setVisible(false));
+                zone.on('pointerover', () => this._showTooltip(zone.itemDesc, x, y + cellH / 2 + 10));
+                zone.on('pointerout', () => this._hideTooltip());
                 this.gridContainer.add([box, txt, cnt, zone]);
             });
         } else {
@@ -4554,6 +4547,22 @@ class InventoryScene extends Phaser.Scene {
             this.autoAssignMessageText.setVisible(false);
             this._autoAssignMessageTimer = null;
         });
+    }
+
+    _showTooltip(text, anchorX, anchorY) {
+        if (!this.tooltip) return;
+        this.tooltip.setText(text);
+        if (!text) {
+            this.tooltip.setVisible(false);
+            return;
+        }
+        const tooltipX = getInventoryTooltipClampX(anchorX, this.tooltip.width, this.cameras.main.width);
+        this.tooltip.setPosition(tooltipX, anchorY);
+        this.tooltip.setVisible(true);
+    }
+
+    _hideTooltip() {
+        if (this.tooltip) this.tooltip.setVisible(false);
     }
 
     _measureQuickSlotNoticeLabel(label) {
@@ -5327,7 +5336,7 @@ class HelpScene extends Phaser.Scene {
             { title: '战斗', items: ['U / 鼠标左键  —  普通攻击', 'O / 鼠标右键  —  特殊攻击'] },
             { title: '防御', items: ['Space  —  闪避翻滚（无敌帧）'] },
             { title: '武器', items: ['Q / E  —  切换武器'] },
-            { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位，并提示“快捷栏N：+<短名>”；若临时拿不到显式短名则会沿用道具名生成“快捷栏N：+生命”这类短句；提示现在会优先按 Phaser 文本实际宽度钳制，因此“快捷栏N：+HP恢复”这类混排会尽量保留更多有效信息；若当前环境拿不到真实测量结果则回退为宽度权重估算；若道具名词干过长则会截成“快捷栏N：+圣疗秘…”这类省略短句；快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”；若拿不到显式短名则改用“快捷栏1：狂战→净化”这类道具名短句；若这些道具名过长则同样会截成“快捷栏1：古代狂…→神圣净…”这类省略短句', '净化药剂/狂战油可在铁匠制作'] },
+            { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位，并提示“快捷栏N：+<短名>”；若临时拿不到显式短名则会沿用道具名生成“快捷栏N：+生命”这类短句；提示现在会优先按 Phaser 文本实际宽度钳制，因此“快捷栏N：+HP恢复”这类混排会尽量保留更多有效信息；若当前环境拿不到真实测量结果则回退为宽度权重估算；若道具名词干过长则会截成“快捷栏N：+圣疗秘…”这类省略短句；快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”；若拿不到显式短名则改用“快捷栏1：狂战→净化”这类道具名短句；若这些道具名过长则同样会截成“快捷栏1：古代狂…→神圣净…”这类省略短句', '背包悬停说明也会按实际文本宽度贴边，因此靠近屏幕右缘时不会继续沿用固定 200px 估算', '净化药剂/狂战油可在铁匠制作'] },
             { title: '状态', items: ['灼烧/流血会持续掉血', '减速会降低移动速度'] },
             { title: '本局词缀', items: runModifierLines },
             { title: '交互/界面', items: ['F — NPC / 事件房交互', 'Tab — 背包', 'Esc — 暂停', 'H — 操作指引'] }

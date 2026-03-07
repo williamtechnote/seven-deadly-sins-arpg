@@ -443,14 +443,25 @@
         return 2;
     }
 
-    function getMeasuredQuickSlotNoticeGlyphWidth(glyph, measureLabelWidth) {
+    function getMeasuredQuickSlotNoticeGlyphWidth(glyph, measureLabelWidth, measurementCache) {
+        const safeGlyph = typeof glyph === 'string' ? glyph : '';
+        if (measurementCache instanceof Map && measurementCache.has(safeGlyph)) {
+            return measurementCache.get(safeGlyph);
+        }
         if (typeof measureLabelWidth === 'function') {
             const measuredWidth = Number(measureLabelWidth(glyph));
             if (Number.isFinite(measuredWidth) && measuredWidth > 0) {
+                if (measurementCache instanceof Map) {
+                    measurementCache.set(safeGlyph, measuredWidth);
+                }
                 return measuredWidth;
             }
         }
-        return getQuickSlotNoticeGlyphWidth(glyph) * 8;
+        const fallbackWidth = getQuickSlotNoticeGlyphWidth(glyph) * 8;
+        if (measurementCache instanceof Map) {
+            measurementCache.set(safeGlyph, fallbackWidth);
+        }
+        return fallbackWidth;
     }
 
     function clampQuickSlotNoticeLabel(label, options) {
@@ -461,11 +472,14 @@
         const measureLabelWidth = options && typeof options.measureLabelWidth === 'function'
             ? options.measureLabelWidth
             : null;
+        const measurementCache = options && options.measurementCache instanceof Map
+            ? options.measurementCache
+            : null;
         if (measureLabelWidth) {
             let measuredWidth = 0;
             const keptGlyphs = [];
             for (const glyph of glyphs) {
-                const nextWidth = getMeasuredQuickSlotNoticeGlyphWidth(glyph, measureLabelWidth);
+                const nextWidth = getMeasuredQuickSlotNoticeGlyphWidth(glyph, measureLabelWidth, measurementCache);
                 if ((measuredWidth + nextWidth) > QUICK_SLOT_NOTICE_DERIVED_LABEL_MAX_MEASURED_WIDTH) {
                     break;
                 }
@@ -515,6 +529,17 @@
         return `${shortLabel} x${safeCount}`;
     }
 
+    function getInventoryTooltipClampX(anchorX, tooltipWidth, viewportWidth, padding) {
+        const safePadding = clampInt(padding, 0, Number.MAX_SAFE_INTEGER, 10);
+        const safeAnchorX = Number.isFinite(anchorX) ? anchorX : safePadding;
+        const safeTooltipWidth = Number.isFinite(tooltipWidth) && tooltipWidth > 0 ? tooltipWidth : 0;
+        const safeViewportWidth = Number.isFinite(viewportWidth) && viewportWidth > 0
+            ? viewportWidth
+            : (safePadding * 2) + safeTooltipWidth;
+        const maxX = Math.max(safePadding, safeViewportWidth - safeTooltipWidth - safePadding);
+        return Math.min(Math.max(safeAnchorX, safePadding), maxX);
+    }
+
     function getQuickSlotAutoAssignIndex(quickSlots) {
         const safeQuickSlots = normalizeQuickSlots(quickSlots);
         const firstEmptyIndex = safeQuickSlots.findIndex(slot => !slot);
@@ -529,10 +554,11 @@
         const replacedItemKey = options && options.replacedItemKey;
         const replacedItemName = options && options.replacedItemName;
         const measureLabelWidth = options && options.measureLabelWidth;
+        const measurementCache = typeof measureLabelWidth === 'function' ? new Map() : null;
         const assignedItemDerivedLabel = QUICK_SLOT_SHORT_LABELS[assignedItemKey]
-            || deriveQuickSlotNoticeLabelFromName(assignedItemName, { measureLabelWidth });
+            || deriveQuickSlotNoticeLabelFromName(assignedItemName, { measureLabelWidth, measurementCache });
         const replacedItemDerivedLabel = QUICK_SLOT_SHORT_LABELS[replacedItemKey]
-            || deriveQuickSlotNoticeLabelFromName(replacedItemName, { measureLabelWidth });
+            || deriveQuickSlotNoticeLabelFromName(replacedItemName, { measureLabelWidth, measurementCache });
         const assignedItemShortLabel = assignedItemDerivedLabel || '道具';
         const replacedItemShortLabel = replacedItemDerivedLabel || '道具';
         const slotLabel = `快捷栏${safeSlotIndex + 1}：`;
@@ -1728,6 +1754,7 @@
         buildCombatActionHudSummary,
         buildQuickSlotItemLabel,
         buildQuickSlotAutoAssignNotice,
+        getInventoryTooltipClampX,
         getQuickSlotAutoAssignIndex,
         normalizeSaveData,
         serializeSaveData,
