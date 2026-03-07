@@ -447,8 +447,10 @@
     function buildQuickSlotAutoAssignNotice(slotIndex, options) {
         const safeSlotIndex = clampInt(slotIndex, 0, 3, 0);
         const didOverwrite = !!(options && options.didOverwrite);
+        const replacedItemKey = options && options.replacedItemKey;
+        const replacedItemShortLabel = QUICK_SLOT_SHORT_LABELS[replacedItemKey] || '道具';
         if (didOverwrite) {
-            return `已自动装入快捷栏 ${safeSlotIndex + 1}（已覆盖 ${safeSlotIndex + 1} 号槽位）`;
+            return `已自动装入快捷栏 ${safeSlotIndex + 1}（已覆盖 ${safeSlotIndex + 1} 号槽位：${replacedItemShortLabel}）`;
         }
         return `已自动装入快捷栏 ${safeSlotIndex + 1}`;
     }

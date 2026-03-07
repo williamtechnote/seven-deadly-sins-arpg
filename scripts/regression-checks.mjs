@@ -1613,9 +1613,9 @@ function testQuickSlotAutoAssignNotice() {
         'auto-assign notice should expose later quick-slot labels'
     );
     assert.equal(
-        buildQuickSlotAutoAssignNotice(0, { didOverwrite: true }),
-        '已自动装入快捷栏 1（已覆盖 1 号槽位）',
-        'auto-assign notice should explicitly call out slot-1 overwrites when the quick bar is full'
+        buildQuickSlotAutoAssignNotice(0, { didOverwrite: true, replacedItemKey: 'hpPotion' }),
+        '已自动装入快捷栏 1（已覆盖 1 号槽位：HP）',
+        'auto-assign notice should explicitly call out both slot-1 overwrites and the replaced item short label when the quick bar is full'
     );
 }
 
@@ -1671,8 +1671,13 @@ function testKeyboardHudQolHooks() {
     );
     assert.match(
         source,
-        /this\._showAutoAssignMessage\(buildQuickSlotAutoAssignNotice\(slot,\s*\{\s*didOverwrite\s*\}\)\);/,
-        'inventory consumable clicks should derive overwrite-aware feedback copy from the shared auto-assign notice helper'
+        /const replacedItemKey = didOverwrite \? GameState\.quickSlots\[slot\] : null;/,
+        'inventory consumable clicks should capture the replaced quick-slot occupant before overwriting it'
+    );
+    assert.match(
+        source,
+        /this\._showAutoAssignMessage\(buildQuickSlotAutoAssignNotice\(slot,\s*\{\s*didOverwrite,\s*replacedItemKey\s*\}\)\);/,
+        'inventory consumable clicks should derive overwrite-aware feedback copy with the replaced item label from the shared auto-assign notice helper'
     );
     assert.match(
         source,
@@ -1695,8 +1700,8 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /快捷栏已满时会回写 1 号槽位，并提示“已覆盖 1 号槽位”/,
-        'README should explain the full-quickbar overwrite rule explicitly'
+        /快捷栏已满时会回写 1 号槽位，并提示“已覆盖 1 号槽位：<短名>”/,
+        'README should explain that the full-quickbar overwrite toast includes the replaced item short label'
     );
     assert.match(
         source,
@@ -1707,6 +1712,15 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /已自动装入快捷栏/,
         'README should mention the immediate quick-slot placement feedback'
+    );
+}
+
+function testHelpOverlayQuickSlotLoop() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /快捷栏已满时会覆盖 1 号槽位，并提示“已覆盖 1 号槽位：<短名>”/,
+        'help overlay should explain that the full quick-bar overwrite toast includes the replaced item short label'
     );
 }
 
@@ -1768,6 +1782,7 @@ function main() {
     runTest('quick-slot item label helper', testQuickSlotItemLabel);
     runTest('keyboard HUD QoL hooks', testKeyboardHudQolHooks);
     runTest('README keyboard inventory loop', testReadmeKeyboardInventoryLoop);
+    runTest('help overlay quick-slot loop', testHelpOverlayQuickSlotLoop);
     runTest('player death freeze hook', testPlayerDeathFreezeHook);
     console.log('All regression checks passed.');
 }
