@@ -39,6 +39,7 @@ const {
     buildRunEventRoomWorldLabelRouteLine,
     buildRunEventRoomWorldLabel,
     buildRunEventRoomPromptLabel,
+    formatAimDirectionLabel,
     resolveKeyboardAimState,
     resolveConsumableUse,
     buildStatusHudSummary,
@@ -1488,6 +1489,15 @@ function testKeyboardAimState() {
     );
 }
 
+function testAimDirectionLabel() {
+    assert.equal(typeof formatAimDirectionLabel, 'function', 'aim direction label helper should be exported');
+    assert.equal(formatAimDirectionLabel(0), '右', '0 radians should map to right');
+    assert.equal(formatAimDirectionLabel(Math.PI / 4), '右下', 'screen-space positive diagonal should map to down-right');
+    assert.equal(formatAimDirectionLabel(Math.PI / 2), '下', 'positive Y should map to down');
+    assert.equal(formatAimDirectionLabel(-Math.PI / 2), '上', 'negative Y should map to up');
+    assert.equal(formatAimDirectionLabel(Math.PI), '左', 'pi radians should map to left');
+}
+
 function testKeyboardAimSourceHooks() {
     const source = loadGameSource();
     assert.match(
@@ -1521,6 +1531,35 @@ function testKeyboardAimSourceHooks() {
     assert.ok(
         !source.includes("this.input.keyboard.on('keydown-K', () => this.player.trySpecialAttack());"),
         'K should no longer trigger specials directly once it becomes a down-aim key'
+    );
+}
+
+function testKeyboardControlReadabilityHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /this\.aimText = this\.add\.text\(/,
+        'HUD should allocate a dedicated current-aim text line'
+    );
+    assert.match(
+        source,
+        /this\.aimText\.setText\('当前瞄准: ' \+ formatAimDirectionLabel\(player\.facingAngle\) \+ ' \[IJKL\]'\)/,
+        'HUD should display the live keyboard aim direction with the IJKL reminder'
+    );
+    assert.match(
+        source,
+        /当前瞄准会显示在 HUD 左下角/,
+        'help overlay should teach players where to read the live aim direction'
+    );
+    assert.match(
+        source,
+        /Q \/ E  —  切换武器/,
+        'help overlay should keep weapon-switch guidance visible for keyboard-only play'
+    );
+    assert.match(
+        source,
+        /Space  —  闪避翻滚（无敌帧）/,
+        'help overlay should keep the dodge guidance visible for keyboard-only play'
     );
 }
 
@@ -1573,7 +1612,9 @@ function main() {
     runTest('status HUD summary', testStatusHudSummary);
     runTest('boss HUD readability helpers', testBossHudReadability);
     runTest('keyboard aim state helper', testKeyboardAimState);
+    runTest('aim direction label helper', testAimDirectionLabel);
     runTest('keyboard aim source hooks', testKeyboardAimSourceHooks);
+    runTest('keyboard control readability hooks', testKeyboardControlReadabilityHooks);
     runTest('player death freeze hook', testPlayerDeathFreezeHook);
     console.log('All regression checks passed.');
 }

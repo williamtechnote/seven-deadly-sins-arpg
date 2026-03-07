@@ -21,6 +21,7 @@ const {
     normalizeAudioSettings,
     audioSettingsToGain,
     resolveKeyboardAimState,
+    formatAimDirectionLabel,
     normalizeSaveData,
     serializeSaveData,
     deserializeSaveData,
@@ -4894,11 +4895,15 @@ class UIScene extends Phaser.Scene {
         }).setScrollFactor(0);
 
         // Bottom-left: weapon display
-        this.weaponText = this.add.text(pad, height - 36, '⚔ - [Q/E 切换]', {
-            fontSize: '16px',
+        this.aimText = this.add.text(pad, height - 58, '当前瞄准: 右 [IJKL]', {
+            fontSize: '14px',
+            fill: '#8fdcff'
+        }).setScrollFactor(0);
+        this.weaponText = this.add.text(pad, height - 36, '⚔ - [Q/E 切换] [U/O 攻击] [Space 闪避]', {
+            fontSize: '14px',
             fill: '#ffffff'
         }).setScrollFactor(0);
-        this.savedWeaponDebugText = this.add.text(pad, height - 58, '', {
+        this.savedWeaponDebugText = this.add.text(pad, height - 80, '', {
             fontSize: '12px',
             fill: '#66ccff'
         }).setScrollFactor(0).setVisible(UI_DEBUG_FLAGS.showSavedWeaponInHUD);
@@ -5042,7 +5047,8 @@ class UIScene extends Phaser.Scene {
         const weaponKey = player.weapons && player.weapons[player.currentWeaponIndex]
             ? player.weapons[player.currentWeaponIndex]
             : 'sword';
-        this.weaponText.setText('⚔ ' + weaponName + ' (' + weaponKey + ')  [Q/E 切换]');
+        this.aimText.setText('当前瞄准: ' + formatAimDirectionLabel(player.facingAngle) + ' [IJKL]');
+        this.weaponText.setText('⚔ ' + weaponName + ' (' + weaponKey + ') [Q/E 切换] [U/O 攻击] [Space 闪避]');
         if (UI_DEBUG_FLAGS.showSavedWeaponInHUD) {
             const savedWeaponKey = GameState.ensureSelectedWeapon();
             const savedWeapon = WEAPONS[savedWeaponKey];
@@ -5264,7 +5270,7 @@ class HelpScene extends Phaser.Scene {
         const runModifierLines = getRunModifierHelpLines();
         const sections = [
             { title: '移动', items: ['WASD  —  八方向移动'] },
-            { title: '瞄准', items: ['I / J / K / L  —  键盘双轴瞄准（保留上次朝向）'] },
+            { title: '瞄准', items: ['I / J / K / L  —  键盘双轴瞄准（保留上次朝向）', '当前瞄准会显示在 HUD 左下角'] },
             { title: '战斗', items: ['U / 鼠标左键  —  普通攻击', 'O / 鼠标右键  —  特殊攻击'] },
             { title: '防御', items: ['Space  —  闪避翻滚（无敌帧）'] },
             { title: '武器', items: ['Q / E  —  切换武器'] },

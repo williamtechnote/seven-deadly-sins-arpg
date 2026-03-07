@@ -398,6 +398,20 @@
         };
     }
 
+    function formatAimDirectionLabel(angle) {
+        const safeAngle = Number.isFinite(angle) ? Math.atan2(Math.sin(angle), Math.cos(angle)) : 0;
+        const degree = safeAngle * (180 / Math.PI);
+
+        if (degree > -22.5 && degree <= 22.5) return '右';
+        if (degree > 22.5 && degree <= 67.5) return '右下';
+        if (degree > 67.5 && degree <= 112.5) return '下';
+        if (degree > 112.5 && degree <= 157.5) return '左下';
+        if (degree > 157.5 || degree <= -157.5) return '左';
+        if (degree > -157.5 && degree <= -112.5) return '左上';
+        if (degree > -112.5 && degree <= -67.5) return '上';
+        return '右上';
+    }
+
     function normalizeInventory(inventory) {
         if (!inventory || typeof inventory !== 'object') return {};
         const out = {};
@@ -1574,6 +1588,7 @@
         normalizeAudioSettings,
         audioSettingsToGain,
         resolveKeyboardAimState,
+        formatAimDirectionLabel,
         normalizeSaveData,
         serializeSaveData,
         deserializeSaveData,
