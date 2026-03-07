@@ -42,6 +42,7 @@ const {
     formatAimDirectionLabel,
     buildCombatActionHudSummary,
     buildQuickSlotItemLabel,
+    buildQuickSlotAutoAssignNotice,
     getQuickSlotAutoAssignIndex,
     resolveKeyboardAimState,
     resolveConsumableUse,
@@ -1594,6 +1595,20 @@ function testQuickSlotAutoAssignIndex() {
     );
 }
 
+function testQuickSlotAutoAssignNotice() {
+    assert.equal(typeof buildQuickSlotAutoAssignNotice, 'function', 'quick-slot auto-assign notice helper should be exported');
+    assert.equal(
+        buildQuickSlotAutoAssignNotice(0),
+        '已自动装入快捷栏 1',
+        'auto-assign notice should expose slot 1 as a player-facing label'
+    );
+    assert.equal(
+        buildQuickSlotAutoAssignNotice(3),
+        '已自动装入快捷栏 4',
+        'auto-assign notice should expose later quick-slot labels'
+    );
+}
+
 function testCombatActionHudSummary() {
     assert.equal(typeof buildCombatActionHudSummary, 'function', 'combat action HUD helper should be exported');
     assert.equal(
@@ -1636,6 +1651,16 @@ function testKeyboardHudQolHooks() {
     );
     assert.match(
         source,
+        /this\.autoAssignMessageText = this\.add\.text\(/,
+        'InventoryScene should allocate a transient text node for quick-slot auto-assign feedback'
+    );
+    assert.match(
+        source,
+        /this\._showAutoAssignMessage\(buildQuickSlotAutoAssignNotice\(slot\)\);/,
+        'inventory consumable clicks should derive feedback copy from the shared auto-assign notice helper'
+    );
+    assert.match(
+        source,
         /slot\.itemText\.setText\(buildQuickSlotItemLabel\(itemKey,\s*itemCount\)\);/,
         'HUD quick slots should render compact helper-driven labels with counts'
     );
@@ -1657,6 +1682,11 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /Tab -> 点击背包消耗品 -> 1-4 使用/,
         'README should document the keyboard inventory-to-quick-slot loop'
+    );
+    assert.match(
+        source,
+        /已自动装入快捷栏/,
+        'README should mention the immediate quick-slot placement feedback'
     );
 }
 
@@ -1713,6 +1743,7 @@ function main() {
     runTest('keyboard aim source hooks', testKeyboardAimSourceHooks);
     runTest('keyboard control readability hooks', testKeyboardControlReadabilityHooks);
     runTest('quick-slot auto-assign helper', testQuickSlotAutoAssignIndex);
+    runTest('quick-slot auto-assign notice', testQuickSlotAutoAssignNotice);
     runTest('combat action HUD summary helper', testCombatActionHudSummary);
     runTest('quick-slot item label helper', testQuickSlotItemLabel);
     runTest('keyboard HUD QoL hooks', testKeyboardHudQolHooks);

@@ -24,6 +24,7 @@ const {
     formatAimDirectionLabel,
     buildCombatActionHudSummary,
     buildQuickSlotItemLabel,
+    buildQuickSlotAutoAssignNotice,
     getQuickSlotAutoAssignIndex,
     normalizeSaveData,
     serializeSaveData,
@@ -4395,6 +4396,12 @@ class InventoryScene extends Phaser.Scene {
             fill: '#FFD700'
         }).setOrigin(0.5).setScrollFactor(0).setDepth(1);
 
+        this.autoAssignMessageText = this.add.text(width / 2, height - 76, '', {
+            fontSize: '18px',
+            fill: '#7dffb3'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(1).setVisible(false);
+        this._autoAssignMessageTimer = null;
+
         this.tooltip = this.add.text(0, 0, '', {
             fontSize: '14px',
             fill: '#ffffff',
@@ -4466,6 +4473,7 @@ class InventoryScene extends Phaser.Scene {
                 zone.on('pointerdown', () => {
                     const slot = getQuickSlotAutoAssignIndex(GameState.quickSlots);
                     GameState.quickSlots[slot] = key;
+                    this._showAutoAssignMessage(buildQuickSlotAutoAssignNotice(slot));
                     this._buildGrid();
                 });
                 this.gridContainer.add([box, txt, cnt, zone]);
@@ -4517,6 +4525,18 @@ class InventoryScene extends Phaser.Scene {
 
     _close() {
         this.scene.stop('InventoryScene');
+    }
+
+    _showAutoAssignMessage(text) {
+        this.autoAssignMessageText.setText(text);
+        this.autoAssignMessageText.setVisible(true);
+        if (this._autoAssignMessageTimer) {
+            this._autoAssignMessageTimer.remove(false);
+        }
+        this._autoAssignMessageTimer = this.time.delayedCall(1400, () => {
+            this.autoAssignMessageText.setVisible(false);
+            this._autoAssignMessageTimer = null;
+        });
     }
 }
 
@@ -5284,7 +5304,7 @@ class HelpScene extends Phaser.Scene {
             { title: '战斗', items: ['U / 鼠标左键  —  普通攻击', 'O / 鼠标右键  —  特殊攻击'] },
             { title: '防御', items: ['Space  —  闪避翻滚（无敌帧）'] },
             { title: '武器', items: ['Q / E  —  切换武器'] },
-            { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位', '净化药剂/狂战油可在铁匠制作'] },
+            { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位，并提示“已自动装入快捷栏 N”', '净化药剂/狂战油可在铁匠制作'] },
             { title: '状态', items: ['灼烧/流血会持续掉血', '减速会降低移动速度'] },
             { title: '本局词缀', items: runModifierLines },
             { title: '交互/界面', items: ['F — NPC / 事件房交互', 'Tab — 背包', 'Esc — 暂停', 'H — 操作指引'] }

@@ -444,6 +444,11 @@
         return firstEmptyIndex >= 0 ? firstEmptyIndex : 0;
     }
 
+    function buildQuickSlotAutoAssignNotice(slotIndex) {
+        const safeSlotIndex = clampInt(slotIndex, 0, 3, 0);
+        return `已自动装入快捷栏 ${safeSlotIndex + 1}`;
+    }
+
     function normalizeInventory(inventory) {
         if (!inventory || typeof inventory !== 'object') return {};
         const out = {};
@@ -1623,6 +1628,7 @@
         formatAimDirectionLabel,
         buildCombatActionHudSummary,
         buildQuickSlotItemLabel,
+        buildQuickSlotAutoAssignNotice,
         getQuickSlotAutoAssignIndex,
         normalizeSaveData,
         serializeSaveData,
