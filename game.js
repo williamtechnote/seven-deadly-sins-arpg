@@ -1230,6 +1230,21 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         });
     }
 
+    freezeForDeath() {
+        this.setVelocity(0, 0);
+        if (this.body) this.body.setVelocity(0, 0);
+        this.isDodging = false;
+        this.isAttacking = false;
+        this.isInvincible = false;
+        this._invincibleTimer = 0;
+        this.knockbackTimer = 0;
+        this.setAlpha(1);
+        if (this._controlInvertFx) {
+            this.clearTint();
+            this._controlInvertFx = false;
+        }
+    }
+
     tryAttack() {
         const weapon = this.currentWeapon;
         if (!weapon) return null;
@@ -2862,6 +2877,7 @@ class LevelScene extends Phaser.Scene {
                         });
                     }
                     if (died) {
+                        this.player.freezeForDeath();
                         this.playerDead = true;
                         this.deathText = this.add.text(
                             this.cameras.main.scrollX + 512,
@@ -3968,6 +3984,7 @@ class BossScene extends Phaser.Scene {
         }
 
         if (this.player.hp <= 0 && !this.playerDead) {
+            this.player.freezeForDeath();
             this.playerDead = true;
             this._deathSequence();
         }

@@ -16,7 +16,7 @@ const GAME_CONFIG = {
 
 const WEAPONS = {
     sword: {
-        name: '长剑', damage: 20, attackSpeed: 500, range: 50, staminaCost: 10,
+        name: '长剑', damage: 20, attackSpeed: 500, range: 55, staminaCost: 10,
         specialStaminaCost: 30, specialCooldown: 3000, description: '均衡的近战武器',
         type: 'melee', attackPattern: 'sweep'
     },

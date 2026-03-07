@@ -64,6 +64,10 @@ function loadDataConstants() {
     return sandbox.__DATA__;
 }
 
+function loadGameSource() {
+    return fs.readFileSync(path.join(repoRoot, 'game.js'), 'utf8');
+}
+
 function runTest(name, fn) {
     try {
         fn();
@@ -90,6 +94,11 @@ function testWeaponScalingMonotonicity() {
             prev = cur;
         }
     }
+}
+
+function testSwordEarlyReachBaseline() {
+    const { WEAPONS } = loadDataConstants();
+    assert.equal(WEAPONS.sword.range, 55, 'sword base range should be nudged to 55 for safer early spacing');
 }
 
 function testMaterialBoundUpgradeChecks() {
@@ -1261,8 +1270,36 @@ function testBossHudReadability() {
     assert.equal(emptyStatusSummary.segments.length, 0, 'non-control statuses should not produce boss HUD overlay segments');
 }
 
+function testPlayerDeathFreezeHook() {
+    const source = loadGameSource();
+    assert.match(source, /freezeForDeath\(\)\s*{/, 'Player should define a centralized freezeForDeath hook');
+    assert.match(
+        source,
+        /freezeForDeath\(\)\s*{[\s\S]*?this\.setVelocity\(0,\s*0\);/,
+        'freezeForDeath should zero the player sprite velocity immediately'
+    );
+    assert.match(
+        source,
+        /freezeForDeath\(\)\s*{[\s\S]*?this\.body[\s\S]*?setVelocity\(0,\s*0\);/,
+        'freezeForDeath should zero the physics body velocity immediately'
+    );
+    assert.match(
+        source,
+        /freezeForDeath\(\)\s*{[\s\S]*?this\.isDodging = false;/,
+        'freezeForDeath should cancel dodge state'
+    );
+    assert.match(
+        source,
+        /freezeForDeath\(\)\s*{[\s\S]*?this\.isAttacking = false;/,
+        'freezeForDeath should cancel attack state'
+    );
+    const deathHookCalls = source.match(/this\.player\.freezeForDeath\(\);/g) || [];
+    assert.equal(deathHookCalls.length, 2, 'both LevelScene and BossScene should invoke player.freezeForDeath() on death');
+}
+
 function main() {
     runTest('weapon scaling monotonicity', testWeaponScalingMonotonicity);
+    runTest('sword early reach baseline', testSwordEarlyReachBaseline);
     runTest('material-bound upgrade checks', testMaterialBoundUpgradeChecks);
     runTest('save/load integrity', testSaveLoadIntegrity);
     runTest('status effect logic', testStatusEffectLogic);
@@ -1279,6 +1316,7 @@ function main() {
     runTest('consumable use resolution', testConsumableUseResolution);
     runTest('status HUD summary', testStatusHudSummary);
     runTest('boss HUD readability helpers', testBossHudReadability);
+    runTest('player death freeze hook', testPlayerDeathFreezeHook);
     console.log('All regression checks passed.');
 }
 
