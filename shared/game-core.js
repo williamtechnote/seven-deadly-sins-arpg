@@ -190,13 +190,60 @@
             key: 'healingFountain',
             name: '疗愈泉眼',
             description: '恢复生命，获得稳态优势',
-            type: 'healing'
+            type: 'healing',
+            choices: [
+                {
+                    key: 'vitalSurge',
+                    label: '活泉灌注',
+                    description: '恢复 55% 最大生命',
+                    effect: {
+                        type: 'restoreHp',
+                        hpGainRatio: 0.55
+                    }
+                },
+                {
+                    key: 'purifyingSip',
+                    label: '净泉啜饮',
+                    description: '恢复 30% 最大生命，并净化当前负面状态',
+                    effect: {
+                        type: 'restoreHpAndCleanse',
+                        hpGainRatio: 0.3,
+                        cleanseNegativeStatuses: true
+                    }
+                }
+            ]
         },
         {
             key: 'bloodContract',
             name: '血契祭坛',
-            description: '本局增伤但承伤提高',
-            type: 'riskBuff'
+            description: '签订血契，换取本局增伤与更高承伤',
+            type: 'riskBuff',
+            choices: [
+                {
+                    key: 'crimsonEdge',
+                    label: '猩红锋契',
+                    description: '本局伤害 +35%，承伤 +18%',
+                    effect: {
+                        type: 'runEffectBuff',
+                        runEffects: {
+                            playerDamageMultiplier: 1.35,
+                            playerDamageTakenMultiplier: 1.18
+                        }
+                    }
+                },
+                {
+                    key: 'temperedPact',
+                    label: '稳契余烬',
+                    description: '本局伤害 +18%，承伤 +8%',
+                    effect: {
+                        type: 'runEffectBuff',
+                        runEffects: {
+                            playerDamageMultiplier: 1.18,
+                            playerDamageTakenMultiplier: 1.08
+                        }
+                    }
+                }
+            ]
         }
     ];
 
@@ -405,7 +452,9 @@
         const effect = choice.effect && typeof choice.effect === 'object' ? choice.effect : {};
 
         let hpLoss = 0;
+        let hpGain = 0;
         let goldGain = 0;
+        let cleanseNegativeStatuses = false;
 
         if (effect.type === 'hpForGold') {
             const ratio = Number(effect.hpCostRatio);
@@ -413,17 +462,32 @@
             goldGain = clampInt(effect.goldGain, 0, Number.MAX_SAFE_INTEGER, 0);
             hpLoss = Math.floor(currentHp * normalizedRatio);
             hpLoss = Math.min(Math.max(0, hpLoss), Math.max(0, currentHp - 1));
+        } else if (effect.type === 'restoreHp' || effect.type === 'restoreHpAndCleanse') {
+            const ratio = Number(effect.hpGainRatio);
+            const normalizedRatio = Number.isFinite(ratio) ? Math.max(0, ratio) : 0;
+            hpGain = Math.floor(playerMaxHp * normalizedRatio);
+            hpGain = Math.min(Math.max(0, hpGain), Math.max(0, playerMaxHp - currentHp));
+            cleanseNegativeStatuses = effect.type === 'restoreHpAndCleanse' || !!effect.cleanseNegativeStatuses;
         }
 
         const nextState = {
             ...safeState,
             gold: currentGold + goldGain,
-            playerHp: Math.max(1, currentHp - hpLoss),
-            playerMaxHp
+            playerHp: Math.min(playerMaxHp, Math.max(1, currentHp - hpLoss + hpGain)),
+            playerMaxHp,
+            cleanseNegativeStatuses
         };
-        const resolutionText = goldGain > 0
-            ? `失去 ${hpLoss} 生命，获得 ${goldGain} 金币`
-            : choice.description;
+        let resolutionText = choice.description;
+        if (effect.type === 'hpForGold') {
+            resolutionText = `失去 ${hpLoss} 生命，获得 ${goldGain} 金币`;
+        } else if (effect.type === 'restoreHpAndCleanse') {
+            resolutionText = `恢复 ${hpGain} 生命，并净化负面状态`;
+        } else if (effect.type === 'restoreHp') {
+            resolutionText = `恢复 ${hpGain} 生命`;
+        } else if (effect.type === 'runEffectBuff') {
+            const runEffects = effect.runEffects && typeof effect.runEffects === 'object' ? effect.runEffects : {};
+            resolutionText = `本局伤害 ${formatPercentDelta(runEffects.playerDamageMultiplier)}，承伤 ${formatPercentDelta(runEffects.playerDamageTakenMultiplier)}`;
+        }
 
         return {
             ok: true,
@@ -439,6 +503,26 @@
                 resolutionText
             }
         };
+    }
+
+    function buildRunEventRoomEffects(runEventRoom, poolOverride) {
+        const normalizedRoom = normalizeRunEventRoom(runEventRoom, poolOverride);
+        const effects = { ...DEFAULT_RUN_EFFECTS };
+        if (!normalizedRoom || !normalizedRoom.resolved || !normalizedRoom.selectedChoiceKey) return effects;
+
+        const choice = getRunEventRoomChoices(normalizedRoom.key, poolOverride)
+            .find(item => item.key === normalizedRoom.selectedChoiceKey) || null;
+        if (!choice || !choice.effect || choice.effect.type !== 'runEffectBuff') return effects;
+
+        const runEffects = choice.effect.runEffects && typeof choice.effect.runEffects === 'object'
+            ? choice.effect.runEffects
+            : {};
+        Object.entries(runEffects).forEach(([effectKey, value]) => {
+            const n = Number(value);
+            if (!Number.isFinite(n) || n <= 0 || effects[effectKey] == null) return;
+            effects[effectKey] *= n;
+        });
+        return effects;
     }
 
     function pickRunModifiers(randomFn, count, poolOverride) {
@@ -1026,6 +1110,7 @@
         normalizeRunModifiers,
         pickRunModifiers,
         buildRunModifierEffects,
+        buildRunEventRoomEffects,
         getRunEventRoomByKey,
         getRunEventRoomChoices,
         normalizeRunEventRoom,

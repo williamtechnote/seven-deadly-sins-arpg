@@ -29,6 +29,7 @@ const {
     normalizeRunEventRoom,
     pickRunEventRoom,
     resolveRunEventRoomChoice,
+    buildRunEventRoomEffects,
     resolveConsumableUse,
     buildStatusHudSummary,
     advanceBossHpAfterimage,
@@ -246,6 +247,49 @@ function testRunEventRoomSelection() {
     }, settlement.eventRoom, 'carefulWager');
     assert.equal(repeat.ok, false, 'resolved event should reject repeat settlement');
     assert.equal(repeat.reason, 'already_resolved', 'repeat settlement should report already_resolved');
+
+    const fountain = getRunEventRoomByKey('healingFountain');
+    assert.ok(fountain, 'healing fountain should exist');
+    const fountainChoices = getRunEventRoomChoices('healingFountain');
+    assert.deepEqual(
+        fountainChoices.map(choice => choice.key),
+        ['vitalSurge', 'purifyingSip'],
+        'healing fountain should expose both healing choices'
+    );
+    const fountainSettlement = resolveRunEventRoomChoice({
+        gold: 10,
+        playerHp: 48,
+        playerMaxHp: 120
+    }, {
+        key: 'healingFountain',
+        discovered: true,
+        resolved: false
+    }, 'purifyingSip');
+    assert.equal(fountainSettlement.ok, true, 'healing fountain choice should resolve');
+    assert.equal(fountainSettlement.nextState.playerHp, 84, 'purifying sip should restore 30% max HP');
+    assert.equal(fountainSettlement.nextState.cleanseNegativeStatuses, true, 'purifying sip should request a cleanse');
+    assert.match(fountainSettlement.eventRoom.resolutionText, /净化/, 'healing fountain summary should mention the cleanse');
+
+    const contractChoices = getRunEventRoomChoices('bloodContract');
+    assert.deepEqual(
+        contractChoices.map(choice => choice.key),
+        ['crimsonEdge', 'temperedPact'],
+        'blood contract should expose both pact choices'
+    );
+    const contractSettlement = resolveRunEventRoomChoice({
+        gold: 10,
+        playerHp: 84,
+        playerMaxHp: 120
+    }, {
+        key: 'bloodContract',
+        discovered: true,
+        resolved: false
+    }, 'crimsonEdge');
+    assert.equal(contractSettlement.ok, true, 'blood contract choice should resolve');
+    const contractEffects = buildRunEventRoomEffects(contractSettlement.eventRoom);
+    assert.equal(contractEffects.playerDamageMultiplier, 1.35, 'crimson pact should grant the configured damage bonus');
+    assert.equal(contractEffects.playerDamageTakenMultiplier, 1.18, 'crimson pact should increase incoming damage');
+    assert.match(contractSettlement.eventRoom.resolutionText, /\+35%/, 'blood contract summary should mention the offensive buff');
 }
 
 function testCraftingRecipeChecks() {

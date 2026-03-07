@@ -37,6 +37,7 @@ const {
     normalizeRunModifiers,
     pickRunModifiers,
     buildRunModifierEffects,
+    buildRunEventRoomEffects,
     getRunEventRoomByKey,
     getRunEventRoomChoices,
     normalizeRunEventRoom,
@@ -489,7 +490,7 @@ const GameState = {
     },
     rollRunModifiers() {
         this.runModifiers = pickRunModifiers(Math.random, 3, RUN_MODIFIER_POOL);
-        this.runEffects = buildRunModifierEffects(this.runModifiers, RUN_MODIFIER_POOL);
+        this.refreshRunEffects();
     },
     ensureRunModifiers() {
         this.runModifiers = normalizeRunModifiers(this.runModifiers, RUN_MODIFIER_POOL);
@@ -497,14 +498,16 @@ const GameState = {
             this.rollRunModifiers();
             return;
         }
-        this.runEffects = buildRunModifierEffects(this.runModifiers, RUN_MODIFIER_POOL);
+        this.refreshRunEffects();
     },
     rollRunEventRoom() {
         this.runEventRoom = pickRunEventRoom(Math.random, RUN_EVENT_ROOM_POOL);
+        this.refreshRunEffects();
     },
     ensureRunEventRoom() {
         this.runEventRoom = normalizeRunEventRoom(this.runEventRoom, RUN_EVENT_ROOM_POOL);
         if (!this.runEventRoom) this.rollRunEventRoom();
+        else this.refreshRunEffects();
     },
     discoverRunEventRoom() {
         this.ensureRunEventRoom();
@@ -561,6 +564,11 @@ const GameState = {
             completed: !!c.completed,
             rewardGold: c.rewardGold || 0
         };
+    },
+    refreshRunEffects() {
+        const modifierEffects = buildRunModifierEffects(this.runModifiers, RUN_MODIFIER_POOL);
+        const eventRoomEffects = buildRunEventRoomEffects(this.runEventRoom, RUN_EVENT_ROOM_POOL);
+        this.runEffects = combineRunEffects(modifierEffects, eventRoomEffects);
     },
     reset() {
         const base = cloneDefaultSaveData();
@@ -648,6 +656,19 @@ function getRunModifierHelpLines() {
     const keys = Array.isArray(GameState.runModifiers) ? GameState.runModifiers : [];
     if (keys.length === 0) return ['无'];
     return keys.map((key, index) => `${index + 1}. ${getRunModifierLabel(key)}: ${getRunModifierDescription(key)}`);
+}
+
+function combineRunEffects(...effectGroups) {
+    const combined = { ...DEFAULT_RUN_EFFECTS };
+    effectGroups.forEach((group) => {
+        if (!group || typeof group !== 'object') return;
+        Object.keys(combined).forEach((effectKey) => {
+            const value = Number(group[effectKey]);
+            if (!Number.isFinite(value) || value <= 0) return;
+            combined[effectKey] *= value;
+        });
+    });
+    return combined;
 }
 
 const UI_DEBUG_FLAGS = {
@@ -2434,14 +2455,44 @@ class LevelScene extends Phaser.Scene {
         });
     }
 
+    _getRunEventRoomVisualConfig(eventRoom) {
+        const type = eventRoom && typeof eventRoom.type === 'string' ? eventRoom.type : 'trade';
+        if (type === 'healing') {
+            return {
+                activeTint: 0x63D7B0,
+                resolvedTint: 0x6D8A88,
+                labelColor: '#d7fff1',
+                resolvedLabelColor: '#a6bbb6',
+                accentColor: '#7CFFB2'
+            };
+        }
+        if (type === 'riskBuff') {
+            return {
+                activeTint: 0xD46A7B,
+                resolvedTint: 0x7F6670,
+                labelColor: '#ffd5de',
+                resolvedLabelColor: '#baa5ab',
+                accentColor: '#ff9fad'
+            };
+        }
+        return {
+            activeTint: 0xF6C86C,
+            resolvedTint: 0x7D8694,
+            labelColor: '#ffe6a3',
+            resolvedLabelColor: '#b0b7c2',
+            accentColor: '#FFD27A'
+        };
+    }
+
     _createRunEventEncounter(anchorRoom) {
         const eventRoom = GameState.getRunEventRoomSummary ? GameState.getRunEventRoomSummary() : null;
-        if (!eventRoom || eventRoom.key !== 'gamblersShrine' || !anchorRoom) return;
+        if (!eventRoom || !anchorRoom) return;
+        const style = this._getRunEventRoomVisualConfig(eventRoom);
 
         const altarX = anchorRoom.x + anchorRoom.w / 2;
         const altarY = anchorRoom.y + anchorRoom.h / 2;
         const shrine = this.physics.add.sprite(altarX, altarY, 'portal');
-        shrine.setTint(0xF6C86C);
+        shrine.setTint(style.activeTint);
         shrine.setScale(0.85);
         shrine.setDepth(8);
         shrine.body.setCircle(24);
@@ -2451,13 +2502,13 @@ class LevelScene extends Phaser.Scene {
 
         const label = this.add.text(altarX, altarY - 42, eventRoom.name, {
             fontSize: '16px',
-            fill: '#ffe6a3',
+            fill: style.labelColor,
             fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(9);
 
         const indicator = this.add.text(altarX, altarY - 64, '按F抉择', {
             fontSize: '12px',
-            fill: '#FFD700'
+            fill: style.accentColor
         }).setOrigin(0.5).setDepth(9).setVisible(false);
 
         this.runEventRoomShrine = shrine;
@@ -2511,14 +2562,16 @@ class LevelScene extends Phaser.Scene {
         if (!this.runEventRoomShrine) return;
         const eventRoom = GameState.getRunEventRoomSummary ? GameState.getRunEventRoomSummary() : null;
         const resolved = !eventRoom || !!eventRoom.resolved;
-        this.runEventRoomShrine.setTint(resolved ? 0x7D8694 : 0xF6C86C);
+        const style = this._getRunEventRoomVisualConfig(eventRoom);
+        this.runEventRoomShrine.setTint(resolved ? style.resolvedTint : style.activeTint);
         this.runEventRoomShrine.setAlpha(resolved ? 0.55 : 1);
         if (this.runEventRoomLabel) {
-            this.runEventRoomLabel.setText(resolved ? '赌徒圣坛 · 已结算' : '赌徒圣坛');
-            this.runEventRoomLabel.setColor(resolved ? '#b0b7c2' : '#ffe6a3');
+            this.runEventRoomLabel.setText(eventRoom ? (resolved ? `${eventRoom.name} · 已结算` : eventRoom.name) : '');
+            this.runEventRoomLabel.setColor(resolved ? style.resolvedLabelColor : style.labelColor);
         }
         if (this.runEventRoomIndicator) {
             this.runEventRoomIndicator.setVisible(false);
+            this.runEventRoomIndicator.setColor(style.accentColor);
         }
     }
 
@@ -2546,9 +2599,12 @@ class LevelScene extends Phaser.Scene {
         this._runEventChoiceOptions = choices.slice(0, 2);
         this._runEventChoiceOpen = true;
         this.player.setVelocity(0, 0);
+        const style = this._getRunEventRoomVisualConfig(eventRoom);
 
         this.runEventChoicePanel.title.setText(eventRoom.name);
+        this.runEventChoicePanel.title.setStyle({ fill: style.labelColor });
         this.runEventChoicePanel.description.setText(eventRoom.description);
+        this.runEventChoicePanel.panel.setStrokeStyle(2, style.activeTint);
         this.runEventChoicePanel.optionTexts.forEach((textNode, index) => {
             const choice = this._runEventChoiceOptions[index];
             textNode.setText(choice ? `${index + 1}. ${choice.label}\n${choice.description}` : '');
@@ -2567,6 +2623,51 @@ class LevelScene extends Phaser.Scene {
             if (node && node.setVisible) node.setVisible(false);
         });
         this.runEventChoicePanel.optionTexts.forEach((textNode) => textNode.setVisible(false));
+    }
+
+    _clearPlayerNegativeStates() {
+        this.player.clearStatusEffects();
+        this.player.controlInvertTimer = 0;
+        if (this.player._controlInvertFx) {
+            this.player.clearTint();
+            this.player._controlInvertFx = false;
+        }
+    }
+
+    _showRunEventSettlementFeedback(settlement, startGold, startHp) {
+        if (!this.runEventRoomShrine) return;
+        const style = this._getRunEventRoomVisualConfig(settlement.eventRoom);
+        const goldDelta = (settlement.nextState.gold || 0) - startGold;
+        const hpDelta = (settlement.nextState.playerHp || startHp) - startHp;
+        const lines = [{ text: settlement.choice.label, color: style.accentColor }];
+
+        if (goldDelta !== 0) {
+            lines.push({
+                text: `${goldDelta > 0 ? '+' : ''}${goldDelta} 金币`,
+                color: goldDelta > 0 ? '#FFD27A' : '#FF9A9A'
+            });
+        }
+        if (hpDelta !== 0) {
+            lines.push({
+                text: `${hpDelta > 0 ? '+' : ''}${hpDelta} HP`,
+                color: hpDelta > 0 ? '#7CFFB2' : '#FF9A9A'
+            });
+        }
+        if (settlement.nextState.cleanseNegativeStatuses) {
+            lines.push({ text: '净化负面状态', color: '#9EFFE1' });
+        }
+        if (lines.length === 1 && settlement.eventRoom && settlement.eventRoom.resolutionText) {
+            lines.push({ text: settlement.eventRoom.resolutionText, color: '#f7d9df' });
+        }
+
+        lines.forEach((line, index) => {
+            this._showFloatingText(
+                this.runEventRoomShrine.x,
+                this.runEventRoomShrine.y - 20 + index * 24,
+                line.text,
+                line.color
+            );
+        });
     }
 
     _handleRunEventChoiceHotkey(choiceIndex) {
@@ -2589,7 +2690,11 @@ class LevelScene extends Phaser.Scene {
 
         GameState.gold = settlement.nextState.gold;
         GameState.runEventRoom = settlement.eventRoom;
+        GameState.refreshRunEffects();
         this.player.hp = Math.max(1, Math.min(this.player.maxHp, settlement.nextState.playerHp));
+        if (settlement.nextState.cleanseNegativeStatuses) {
+            this._clearPlayerNegativeStates();
+        }
         GameState.save();
 
         this._closeRunEventChoicePanel();
@@ -2597,10 +2702,7 @@ class LevelScene extends Phaser.Scene {
         this.cameras.main.flash(150, 255, 215, 120, false);
         AudioSystem.playUi('pickup');
 
-        const goldDelta = settlement.nextState.gold - startGold;
-        const hpDelta = startHp - settlement.nextState.playerHp;
-        this._showFloatingText(this.runEventRoomShrine.x, this.runEventRoomShrine.y - 18, `${settlement.choice.label} +${goldDelta} 金币`, '#FFD27A');
-        this._showFloatingText(this.runEventRoomShrine.x, this.runEventRoomShrine.y + 10, `-${hpDelta} HP`, '#FF9A9A');
+        this._showRunEventSettlementFeedback(settlement, startGold, startHp);
         return true;
     }
 
