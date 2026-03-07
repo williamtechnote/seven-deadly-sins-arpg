@@ -430,17 +430,37 @@
         cleanseTonic: '净',
         berserkerOil: '油'
     };
-    const QUICK_SLOT_NOTICE_DERIVED_LABEL_MAX_CHARS = 3;
+    const QUICK_SLOT_NOTICE_DERIVED_LABEL_MAX_WIDTH_UNITS = 6;
+
+    function getQuickSlotNoticeGlyphWidth(glyph) {
+        if (typeof glyph !== 'string' || !glyph) return 0;
+        const codePoint = glyph.codePointAt(0);
+        if (!Number.isFinite(codePoint)) return 0;
+        if ((codePoint >= 0x20 && codePoint <= 0x7e) || (codePoint >= 0xff61 && codePoint <= 0xff9f)) {
+            return 1;
+        }
+        return 2;
+    }
 
     function clampQuickSlotNoticeLabel(label) {
         if (typeof label !== 'string') return '';
         const safeLabel = label.trim();
         if (!safeLabel) return '';
         const glyphs = Array.from(safeLabel);
-        if (glyphs.length <= QUICK_SLOT_NOTICE_DERIVED_LABEL_MAX_CHARS) {
+        let widthUnits = 0;
+        const keptGlyphs = [];
+        for (const glyph of glyphs) {
+            const nextWidth = getQuickSlotNoticeGlyphWidth(glyph);
+            if ((widthUnits + nextWidth) > QUICK_SLOT_NOTICE_DERIVED_LABEL_MAX_WIDTH_UNITS) {
+                break;
+            }
+            keptGlyphs.push(glyph);
+            widthUnits += nextWidth;
+        }
+        if (keptGlyphs.length === glyphs.length) {
             return safeLabel;
         }
-        return `${glyphs.slice(0, QUICK_SLOT_NOTICE_DERIVED_LABEL_MAX_CHARS).join('')}…`;
+        return `${keptGlyphs.join('')}…`;
     }
 
     function deriveQuickSlotNoticeLabelFromName(itemName) {

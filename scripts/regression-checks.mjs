@@ -1618,6 +1618,11 @@ function testQuickSlotAutoAssignNotice() {
         'auto-assign notice should clamp overlong name-derived fallback labels on the non-overwrite path'
     );
     assert.equal(
+        buildQuickSlotAutoAssignNotice(0, { assignedItemName: 'HP恢复药剂' }),
+        '快捷栏1：+HP恢复',
+        'auto-assign notice should preserve extra narrow glyphs when clamping mixed-width fallback labels'
+    );
+    assert.equal(
         buildQuickSlotAutoAssignNotice(3, { assignedItemKey: 'staminaPotion' }),
         '快捷栏4：+ST',
         'auto-assign notice should compress the non-overwrite path into a slot-led plus-marker shortform when the assigned label is known'
@@ -1641,6 +1646,11 @@ function testQuickSlotAutoAssignNotice() {
         buildQuickSlotAutoAssignNotice(1, { didOverwrite: true, assignedItemName: '净化药剂', replacedItemName: '狂战油' }),
         '快捷栏2：狂战→净化',
         'auto-assign notice should reuse the name-derived fallback labels on overwrite paths when neither item has a handcrafted short label'
+    );
+    assert.equal(
+        buildQuickSlotAutoAssignNotice(1, { didOverwrite: true, assignedItemName: 'ST恢复药剂', replacedItemName: 'HP恢复药剂' }),
+        '快捷栏2：HP恢复→ST恢复',
+        'auto-assign notice should preserve extra narrow glyphs on both sides of mixed-width overwrite copy'
     );
     assert.equal(
         buildQuickSlotAutoAssignNotice(1, {
@@ -1784,6 +1794,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /宽度权重.*“快捷栏N：\+HP恢复”/,
+        'README should document the width-weighted mixed-width fallback example'
+    );
+    assert.match(
+        source,
         /覆盖路径也会沿用同一钳制，例如“快捷栏1：古代狂…→神圣净…”/,
         'README should document the shared ellipsis clamp on overwrite fallback labels'
     );
@@ -1805,6 +1820,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若道具名词干过长则会截成“快捷栏N：\+圣疗秘…”这类省略短句/,
         'help overlay should explain the ellipsis clamp for overlong non-overwrite fallback labels'
+    );
+    assert.match(
+        source,
+        /宽度权重[^。]*“快捷栏N：\+HP恢复”/,
+        'help overlay should explain the width-weighted mixed-width fallback example'
     );
     assert.match(
         source,
