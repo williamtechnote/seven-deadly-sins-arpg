@@ -462,9 +462,9 @@
             return `${slotLabel}${replacedItemShortLabel}→${assignedItemShortLabel}`;
         }
         if (assignedItemShortLabel) {
-            return `${slotLabel}装入 ${assignedItemShortLabel}`;
+            return `${slotLabel}+${assignedItemShortLabel}`;
         }
-        return `${slotLabel}已装入`;
+        return `${slotLabel}+道具`;
     }
 
     function normalizeInventory(inventory) {

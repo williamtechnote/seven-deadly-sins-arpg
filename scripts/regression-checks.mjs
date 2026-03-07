@@ -1604,13 +1604,13 @@ function testQuickSlotAutoAssignNotice() {
     assert.equal(typeof buildQuickSlotAutoAssignNotice, 'function', 'quick-slot auto-assign notice helper should be exported');
     assert.equal(
         buildQuickSlotAutoAssignNotice(0),
-        '快捷栏1：已装入',
-        'auto-assign notice should fall back to a slot-led shortform when the assigned label is unavailable'
+        '快捷栏1：+道具',
+        'auto-assign notice should keep a slot-led plus-marker fallback when the assigned label is unavailable'
     );
     assert.equal(
         buildQuickSlotAutoAssignNotice(3, { assignedItemKey: 'staminaPotion' }),
-        '快捷栏4：装入 ST',
-        'auto-assign notice should compress the non-overwrite path into a slot-led shortform when the assigned label is known'
+        '快捷栏4：+ST',
+        'auto-assign notice should compress the non-overwrite path into a slot-led plus-marker shortform when the assigned label is known'
     );
     assert.equal(
         buildQuickSlotAutoAssignNotice(0, { didOverwrite: true, replacedItemKey: 'hpPotion' }),
@@ -1730,12 +1730,12 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /快捷栏N：装入 <短名>/,
-        'README should document the slot-led shortform for non-overwrite quick-slot placement feedback'
+        /快捷栏N：\+<短名>/,
+        'README should document the slot-led plus-marker shortform for non-overwrite quick-slot placement feedback'
     );
     assert.match(
         source,
-        /快捷栏N：已装入/,
+        /快捷栏N：\+道具/,
         'README should document the missing-label fallback for the non-overwrite placement toast'
     );
 }
@@ -1744,12 +1744,12 @@ function testHelpOverlayQuickSlotLoop() {
     const source = loadGameSource();
     assert.match(
         source,
-        /点击背包消耗品会自动装入快捷栏首个空位，并提示“快捷栏N：装入 <短名>”/,
-        'help overlay should explain the slot-led shortform non-overwrite toast'
+        /点击背包消耗品会自动装入快捷栏首个空位，并提示“快捷栏N：\+<短名>”/,
+        'help overlay should explain the slot-led plus-marker shortform non-overwrite toast'
     );
     assert.match(
         source,
-        /若临时拿不到新短名则回退为“快捷栏N：已装入”/,
+        /若临时拿不到新短名则回退为“快捷栏N：\+道具”/,
         'help overlay should explain the missing-label fallback for the non-overwrite toast'
     );
     assert.match(
