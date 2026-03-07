@@ -24,6 +24,7 @@ const {
     formatAimDirectionLabel,
     buildCombatActionHudSummary,
     buildQuickSlotItemLabel,
+    getQuickSlotAutoAssignIndex,
     normalizeSaveData,
     serializeSaveData,
     deserializeSaveData,
@@ -4463,8 +4464,7 @@ class InventoryScene extends Phaser.Scene {
                 });
                 zone.on('pointerout', () => this.tooltip.setVisible(false));
                 zone.on('pointerdown', () => {
-                    const idx = GameState.quickSlots.findIndex(s => !s);
-                    const slot = idx >= 0 ? idx : 0;
+                    const slot = getQuickSlotAutoAssignIndex(GameState.quickSlots);
                     GameState.quickSlots[slot] = key;
                     this._buildGrid();
                 });
@@ -5284,7 +5284,7 @@ class HelpScene extends Phaser.Scene {
             { title: '战斗', items: ['U / 鼠标左键  —  普通攻击', 'O / 鼠标右键  —  特殊攻击'] },
             { title: '防御', items: ['Space  —  闪避翻滚（无敌帧）'] },
             { title: '武器', items: ['Q / E  —  切换武器'] },
-            { title: '道具', items: ['1-4  —  使用快捷栏道具', '净化药剂/狂战油可在铁匠制作'] },
+            { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位', '净化药剂/狂战油可在铁匠制作'] },
             { title: '状态', items: ['灼烧/流血会持续掉血', '减速会降低移动速度'] },
             { title: '本局词缀', items: runModifierLines },
             { title: '交互/界面', items: ['F — NPC / 事件房交互', 'Tab — 背包', 'Esc — 暂停', 'H — 操作指引'] }

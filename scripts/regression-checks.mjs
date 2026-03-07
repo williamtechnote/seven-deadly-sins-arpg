@@ -42,6 +42,7 @@ const {
     formatAimDirectionLabel,
     buildCombatActionHudSummary,
     buildQuickSlotItemLabel,
+    getQuickSlotAutoAssignIndex,
     resolveKeyboardAimState,
     resolveConsumableUse,
     buildStatusHudSummary,
@@ -70,6 +71,10 @@ function loadDataConstants() {
 
 function loadGameSource() {
     return fs.readFileSync(path.join(repoRoot, 'game.js'), 'utf8');
+}
+
+function loadReadmeSource() {
+    return fs.readFileSync(path.join(repoRoot, 'README.md'), 'utf8');
 }
 
 function runTest(name, fn) {
@@ -1555,6 +1560,11 @@ function testKeyboardControlReadabilityHooks() {
     );
     assert.match(
         source,
+        /点击背包消耗品会自动装入快捷栏首个空位/,
+        'help overlay should explain the backpack-click auto-fill rule'
+    );
+    assert.match(
+        source,
         /Q \/ E  —  切换武器/,
         'help overlay should keep weapon-switch guidance visible for keyboard-only play'
     );
@@ -1562,6 +1572,25 @@ function testKeyboardControlReadabilityHooks() {
         source,
         /Space  —  闪避翻滚（无敌帧）/,
         'help overlay should keep the dodge guidance visible for keyboard-only play'
+    );
+}
+
+function testQuickSlotAutoAssignIndex() {
+    assert.equal(typeof getQuickSlotAutoAssignIndex, 'function', 'quick-slot auto-assign helper should be exported');
+    assert.equal(
+        getQuickSlotAutoAssignIndex([null, 'hpPotion', 'staminaPotion', null]),
+        0,
+        'auto-assign should pick slot 1 when it is empty'
+    );
+    assert.equal(
+        getQuickSlotAutoAssignIndex(['hpPotion', null, 'staminaPotion', null]),
+        1,
+        'auto-assign should pick the first empty slot from left to right'
+    );
+    assert.equal(
+        getQuickSlotAutoAssignIndex(['hpPotion', 'staminaPotion', 'cleanseTonic', 'berserkerOil']),
+        0,
+        'auto-assign should fall back to slot 1 when no empty slot remains'
     );
 }
 
@@ -1602,8 +1631,32 @@ function testKeyboardHudQolHooks() {
     );
     assert.match(
         source,
+        /const slot = getQuickSlotAutoAssignIndex\(GameState\.quickSlots\);/,
+        'inventory consumable clicks should derive the destination slot from the shared auto-assign helper'
+    );
+    assert.match(
+        source,
         /slot\.itemText\.setText\(buildQuickSlotItemLabel\(itemKey,\s*itemCount\)\);/,
         'HUD quick slots should render compact helper-driven labels with counts'
+    );
+}
+
+function testReadmeKeyboardInventoryLoop() {
+    const source = loadReadmeSource();
+    assert.match(
+        source,
+        /Tab.*背包/,
+        'README should keep the backpack key binding visible'
+    );
+    assert.match(
+        source,
+        /点击背包里的消耗品会自动装入快捷栏首个空位/,
+        'README should explain the backpack click auto-fill behavior'
+    );
+    assert.match(
+        source,
+        /Tab -> 点击背包消耗品 -> 1-4 使用/,
+        'README should document the keyboard inventory-to-quick-slot loop'
     );
 }
 
@@ -1659,9 +1712,11 @@ function main() {
     runTest('aim direction label helper', testAimDirectionLabel);
     runTest('keyboard aim source hooks', testKeyboardAimSourceHooks);
     runTest('keyboard control readability hooks', testKeyboardControlReadabilityHooks);
+    runTest('quick-slot auto-assign helper', testQuickSlotAutoAssignIndex);
     runTest('combat action HUD summary helper', testCombatActionHudSummary);
     runTest('quick-slot item label helper', testQuickSlotItemLabel);
     runTest('keyboard HUD QoL hooks', testKeyboardHudQolHooks);
+    runTest('README keyboard inventory loop', testReadmeKeyboardInventoryLoop);
     runTest('player death freeze hook', testPlayerDeathFreezeHook);
     console.log('All regression checks passed.');
 }

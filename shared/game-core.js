@@ -438,6 +438,12 @@
         return `${shortLabel} x${safeCount}`;
     }
 
+    function getQuickSlotAutoAssignIndex(quickSlots) {
+        const safeQuickSlots = normalizeQuickSlots(quickSlots);
+        const firstEmptyIndex = safeQuickSlots.findIndex(slot => !slot);
+        return firstEmptyIndex >= 0 ? firstEmptyIndex : 0;
+    }
+
     function normalizeInventory(inventory) {
         if (!inventory || typeof inventory !== 'object') return {};
         const out = {};
@@ -1617,6 +1623,7 @@
         formatAimDirectionLabel,
         buildCombatActionHudSummary,
         buildQuickSlotItemLabel,
+        getQuickSlotAutoAssignIndex,
         normalizeSaveData,
         serializeSaveData,
         deserializeSaveData,
