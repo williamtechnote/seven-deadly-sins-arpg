@@ -430,6 +430,18 @@
         cleanseTonic: '净',
         berserkerOil: '油'
     };
+    const QUICK_SLOT_NOTICE_DERIVED_LABEL_MAX_CHARS = 3;
+
+    function clampQuickSlotNoticeLabel(label) {
+        if (typeof label !== 'string') return '';
+        const safeLabel = label.trim();
+        if (!safeLabel) return '';
+        const glyphs = Array.from(safeLabel);
+        if (glyphs.length <= QUICK_SLOT_NOTICE_DERIVED_LABEL_MAX_CHARS) {
+            return safeLabel;
+        }
+        return `${glyphs.slice(0, QUICK_SLOT_NOTICE_DERIVED_LABEL_MAX_CHARS).join('')}…`;
+    }
 
     function deriveQuickSlotNoticeLabelFromName(itemName) {
         const safeItemName = typeof itemName === 'string'
@@ -437,7 +449,7 @@
             : '';
         if (!safeItemName) return '';
         const stem = safeItemName.replace(/(药水|药剂|药|油)$/u, '');
-        return stem || safeItemName;
+        return clampQuickSlotNoticeLabel(stem || safeItemName);
     }
 
     function resolveQuickSlotNoticeLabel(itemKey, itemName) {

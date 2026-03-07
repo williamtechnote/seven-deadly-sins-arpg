@@ -1613,6 +1613,11 @@ function testQuickSlotAutoAssignNotice() {
         'auto-assign notice should derive a compact fallback label from the assigned item name when no handcrafted short label exists'
     );
     assert.equal(
+        buildQuickSlotAutoAssignNotice(0, { assignedItemName: '圣疗秘藏浓缩生命药水' }),
+        '快捷栏1：+圣疗秘…',
+        'auto-assign notice should clamp overlong name-derived fallback labels on the non-overwrite path'
+    );
+    assert.equal(
         buildQuickSlotAutoAssignNotice(3, { assignedItemKey: 'staminaPotion' }),
         '快捷栏4：+ST',
         'auto-assign notice should compress the non-overwrite path into a slot-led plus-marker shortform when the assigned label is known'
@@ -1636,6 +1641,15 @@ function testQuickSlotAutoAssignNotice() {
         buildQuickSlotAutoAssignNotice(1, { didOverwrite: true, assignedItemName: '净化药剂', replacedItemName: '狂战油' }),
         '快捷栏2：狂战→净化',
         'auto-assign notice should reuse the name-derived fallback labels on overwrite paths when neither item has a handcrafted short label'
+    );
+    assert.equal(
+        buildQuickSlotAutoAssignNotice(1, {
+            didOverwrite: true,
+            assignedItemName: '神圣净界长效净化药剂',
+            replacedItemName: '古代狂怒战纹狂战油'
+        }),
+        '快捷栏2：古代狂…→神圣净…',
+        'auto-assign notice should clamp overlong name-derived fallback labels on both sides of overwrite copy'
     );
 }
 
@@ -1763,6 +1777,16 @@ function testReadmeKeyboardInventoryLoop() {
         /若临时拿不到显式短名，则会改为沿用道具名生成的“快捷栏N：\+<道具名词干>”短句，例如“快捷栏N：\+生命”/,
         'README should document the name-derived fallback for the non-overwrite placement toast'
     );
+    assert.match(
+        source,
+        /若道具名词干过长，则会自动截成带省略号的紧凑标签，例如“快捷栏N：\+圣疗秘…”/,
+        'README should document the ellipsis clamp for overlong non-overwrite fallback labels'
+    );
+    assert.match(
+        source,
+        /覆盖路径也会沿用同一钳制，例如“快捷栏1：古代狂…→神圣净…”/,
+        'README should document the shared ellipsis clamp on overwrite fallback labels'
+    );
 }
 
 function testHelpOverlayQuickSlotLoop() {
@@ -1779,8 +1803,18 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
+        /若道具名词干过长则会截成“快捷栏N：\+圣疗秘…”这类省略短句/,
+        'help overlay should explain the ellipsis clamp for overlong non-overwrite fallback labels'
+    );
+    assert.match(
+        source,
         /快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”；若拿不到显式短名则改用“快捷栏1：狂战→净化”这类道具名短句/,
         'help overlay should explain the overwrite toast variants, including the name-derived fallback path'
+    );
+    assert.match(
+        source,
+        /若这些道具名过长则同样会截成“快捷栏1：古代狂…→神圣净…”这类省略短句/,
+        'help overlay should explain the shared ellipsis clamp on overwrite fallback labels'
     );
 }
 
