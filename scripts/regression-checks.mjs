@@ -383,6 +383,47 @@ function testRunEventRoomHudSummary() {
         ['已选 迅击祷言: 特攻冷却-22%'],
         'HUD summary should collapse to one chosen-route line after settlement'
     );
+    const resolvedTradeSummary = buildRunEventRoomHudSummary({
+        key: 'gamblersShrine',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'highStakeWager',
+        selectedChoiceLabel: '豪赌',
+        resolutionText: '失去 30 生命，获得 120 金币'
+    });
+    assert.equal(
+        resolvedTradeSummary.resolutionText,
+        '生命-30, 金币+120',
+        'resolved trade summary should compress hp-for-gold settlements into compact delta text'
+    );
+
+    const resolvedSupplySummary = buildRunEventRoomHudSummary({
+        key: 'supplyCache',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'fieldTonic',
+        selectedChoiceLabel: '战地净化包',
+        resolutionText: '支付 45 金币，获得 净化药剂 x1'
+    });
+    assert.equal(
+        resolvedSupplySummary.resolutionText,
+        '金币-45, 净化药剂x1',
+        'resolved supply summary should compress purchase settlements into compact delta text'
+    );
+
+    const resolvedHealingSummary = buildRunEventRoomHudSummary({
+        key: 'healingFountain',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'purifyingSip',
+        selectedChoiceLabel: '净泉啜饮',
+        resolutionText: '恢复 36 生命，并净化负面状态'
+    });
+    assert.equal(
+        resolvedHealingSummary.resolutionText,
+        '生命+36, 净化',
+        'resolved healing summary should compress restore-and-cleanse settlements into compact delta text'
+    );
 }
 
 function testCraftingRecipeChecks() {

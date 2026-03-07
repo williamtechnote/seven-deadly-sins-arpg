@@ -698,6 +698,45 @@
         return typeof safeChoice.description === 'string' ? safeChoice.description : '';
     }
 
+    function buildCompactRunEventResolutionText(runEventRoom, choice) {
+        const normalizedRoom = runEventRoom && typeof runEventRoom === 'object' ? runEventRoom : {};
+        const safeChoice = choice && typeof choice === 'object' ? choice : {};
+        const effect = safeChoice.effect && typeof safeChoice.effect === 'object' ? safeChoice.effect : {};
+        const source = typeof normalizedRoom.resolutionText === 'string' ? normalizedRoom.resolutionText.trim() : '';
+        if (!source) return '';
+
+        if (effect.type === 'hpForGold') {
+            const match = source.match(/失去\s*(\d+)\s*生命，获得\s*(\d+)\s*金币/);
+            if (match) return `生命-${match[1]}, 金币+${match[2]}`;
+        }
+
+        if (effect.type === 'restoreHpAndCleanse') {
+            const match = source.match(/恢复\s*(\d+)\s*生命(?:，并净化负面状态)?/);
+            if (match) return `生命+${match[1]}, 净化`;
+        }
+
+        if (effect.type === 'restoreHp') {
+            const match = source.match(/恢复\s*(\d+)\s*生命/);
+            if (match) return `生命+${match[1]}`;
+        }
+
+        if (effect.type === 'goldForItems') {
+            const match = source.match(/支付\s*(\d+)\s*金币，获得\s*(.+)$/);
+            if (match) {
+                const itemSummary = match[2]
+                    .replace(/\s*x(\d+)/g, 'x$1')
+                    .replace(/，\s*/g, ', ');
+                return `金币-${match[1]}, ${itemSummary}`;
+            }
+        }
+
+        return source
+            .replace(/本局/g, '')
+            .replace(/，/g, ', ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
     function buildRunEventRoomHudSummary(runEventRoom, poolOverride) {
         const normalizedRoom = normalizeRunEventRoom(runEventRoom, poolOverride);
         if (!normalizedRoom) {
@@ -726,6 +765,9 @@
             return `${prefix}${choice.label}: ${describeRunEventChoiceRoute(choice)}`.trim();
         });
         const routeSummary = routeLines.join('\n');
+        const resolutionText = normalizedRoom.resolved && selectedChoice
+            ? buildCompactRunEventResolutionText(normalizedRoom, selectedChoice)
+            : (normalizedRoom.resolutionText || '');
 
         return {
             visible: true,
@@ -735,7 +777,7 @@
             typeLabel: `类型 ${getRunEventRoomTypeLabel(normalizedRoom.type)}`,
             routeLines,
             routeSummary,
-            resolutionText: normalizedRoom.resolutionText || ''
+            resolutionText
         };
     }
 
