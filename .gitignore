@@ -3,3 +3,7 @@ node_modules/
 downloads/
 verify-*.mjs
 verify-*.png
+
+.auto-iteration/
+.auto-iterate.lock/
+*.swp
