@@ -790,13 +790,10 @@
             : null;
         const stateLabel = normalizedRoom.resolved ? '已触发' : (normalizedRoom.discovered ? '已发现' : '未发现');
         const resolvedPrefix = getRunEventRoomResolvedPrefix(normalizedRoom.type);
-        const hasStoredResolutionText = typeof normalizedRoom.resolutionText === 'string'
-            ? normalizedRoom.resolutionText.trim().length > 0
-            : false;
         const resolvedChoiceLabel = normalizedRoom.selectedChoiceLabel
             || (selectedChoice ? selectedChoice.label : '')
             || (
-                normalizedRoom.resolved && resolvedPrefix === '已选' && hasStoredResolutionText
+                normalizedRoom.resolved && resolvedPrefix === '已选'
                     ? '未知选项'
                     : ''
             );

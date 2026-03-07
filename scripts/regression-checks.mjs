@@ -535,6 +535,25 @@ function testRunEventRoomHudSummary() {
         '金币+88',
         'resolved unknown-type summary should still compact the stored settlement text when the chosen label is missing'
     );
+
+    const resolvedUnknownDoubleFallbackSummary = buildRunEventRoomHudSummary({
+        key: 'mysteryArchive',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'retiredChoice',
+        selectedChoiceLabel: '',
+        resolutionText: ''
+    }, unknownTypePool);
+    assert.deepEqual(
+        resolvedUnknownDoubleFallbackSummary.routeLines,
+        ['已选: 未知选项'],
+        'resolved unknown-type summary should keep a stable generic chosen label when both stored fragments are missing'
+    );
+    assert.equal(
+        resolvedUnknownDoubleFallbackSummary.resolutionText,
+        '结算待同步',
+        'resolved unknown-type summary should keep a stable settlement placeholder when both stored fragments are missing'
+    );
 }
 
 function testRunEventRoomHudLines() {
@@ -679,6 +698,24 @@ function testRunEventRoomHudLines() {
             '已选: 未知选项 · 金币+88'
         ],
         'resolved unknown-type event rooms should keep a stable merged fallback line when the stored option label is missing'
+    );
+
+    const resolvedUnknownDoubleFallbackLines = buildRunEventRoomHudLines({
+        key: 'mysteryArchive',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'retiredChoice',
+        selectedChoiceLabel: '',
+        resolutionText: ''
+    }, unknownTypePool);
+    assert.deepEqual(
+        resolvedUnknownDoubleFallbackLines,
+        [
+            '事件房: 谜藏书库',
+            '未知 · 已触发',
+            '已选: 未知选项 · 结算待同步'
+        ],
+        'resolved unknown-type event rooms should keep a stable merged fallback line when both stored fragments are missing'
     );
 }
 
