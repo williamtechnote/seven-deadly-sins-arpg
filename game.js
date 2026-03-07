@@ -27,6 +27,8 @@ const {
     getScaledWeaponStats: getCoreScaledWeaponStats,
     getStatusEffectDef,
     computeStatusTickDamage,
+    resolveConsumableUse,
+    buildStatusHudSummary,
     getRunModifierByKey,
     normalizeRunModifiers,
     pickRunModifiers,
@@ -240,6 +242,22 @@ function showHitImpactPulse(scene, x, y, color, radius) {
     });
 }
 
+function handleQuickSlotUse(scene, player, index) {
+    if (!scene || !player || player.hp <= 0) return null;
+    const result = GameState.useQuickSlot(index, player);
+    if (result && result.feedbackText) {
+        showFloatingCombatText(
+            scene,
+            player.x,
+            player.y - 48,
+            result.feedbackText,
+            result.feedbackColor || '#ffffff',
+            result.feedbackDuration || 700
+        );
+    }
+    return result;
+}
+
 function formatWeaponStatsLine(weaponKey) {
     const weapon = WEAPONS[weaponKey];
     if (!weapon) return weaponKey + ': -';
@@ -404,18 +422,42 @@ const GameState = {
     },
     useQuickSlot(index, player) {
         const itemKey = this.quickSlots[index];
-        if (!itemKey || !this.hasItem(itemKey)) return;
+        if (!itemKey || !this.hasItem(itemKey)) return null;
         const item = ITEMS[itemKey];
-        if (!item || item.type !== 'consumable') return;
-        let consumed = true;
-        if (item.effect === 'healHp') player.hp = Math.min(player.maxHp, player.hp + item.value);
-        else if (item.effect === 'healStamina') player.stamina = Math.min(player.maxStamina, player.stamina + item.value);
-        else if (item.effect === 'cleanseWard' && player.applyCleanseWard) player.applyCleanseWard(4000);
-        else if (item.effect === 'battleFocus' && player.applyBattleFocus) player.applyBattleFocus(8000, 1.25);
-        else consumed = false;
-        if (!consumed) return;
+        if (!item || item.type !== 'consumable') return null;
+
+        const resolution = resolveConsumableUse(item, player);
+        if (!resolution || (!resolution.ok && !resolution.feedbackText)) return resolution || null;
+        if (!resolution.ok) {
+            return {
+                ...resolution,
+                itemKey,
+                feedbackColor: resolution.reason === 'full' ? '#ffd27a' : '#ffffff',
+                feedbackDuration: 700
+            };
+        }
+
+        player.hp = resolution.nextVitals.hp;
+        player.stamina = resolution.nextVitals.stamina;
+
+        if (resolution.effect === 'cleanseWard' && player.applyCleanseWard) {
+            player.applyCleanseWard(4000);
+        } else if (resolution.effect === 'battleFocus' && player.applyBattleFocus) {
+            player.applyBattleFocus(8000, 1.25);
+        }
+
         this.removeItem(itemKey);
         AudioSystem.playUi('ui');
+        return {
+            ...resolution,
+            itemKey,
+            feedbackColor: resolution.effect === 'healHp'
+                ? '#7CFFB2'
+                : (resolution.effect === 'healStamina' ? '#7AD7FF' : '#ffffff'),
+            feedbackDuration: resolution.effect === 'healHp' || resolution.effect === 'healStamina'
+                ? 800
+                : 0
+        };
     },
     rollRunModifiers() {
         this.runModifiers = pickRunModifiers(Math.random, 3, RUN_MODIFIER_POOL);
@@ -1426,23 +1468,23 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     getStatusSummary() {
+        const summary = this.getStatusHudSummary();
+        return [...summary.debuffs, ...summary.buffs];
+    }
+
+    getStatusHudSummary() {
         const now = this.scene.time.now;
-        const labels = [];
-        Object.entries(this.activeStatusEffects).forEach(([statusKey, state]) => {
-            if (!state || now >= state.expiresAt) return;
-            const sec = Math.max(1, Math.ceil((state.expiresAt - now) / 1000));
-            labels.push(getStatusLabel(statusKey) + ' ' + sec + 's');
+        const activeStatuses = Object.entries(this.activeStatusEffects).map(([statusKey, state]) => ({
+            key: statusKey,
+            remainingMs: state && Number.isFinite(state.expiresAt) ? state.expiresAt - now : 0
+        }));
+        return buildStatusHudSummary({
+            activeStatuses,
+            controlInvertMs: this.controlInvertTimer,
+            statusResistanceMs: Math.max(0, this.statusResistanceUntil - now),
+            damageBuffMs: Math.max(0, this.damageBuffUntil - now),
+            damageBuffMultiplier: this.damageBuffMultiplier
         });
-        if (this.controlInvertTimer > 0) {
-            labels.push('控制反转 ' + Math.max(1, Math.ceil(this.controlInvertTimer / 1000)) + 's');
-        }
-        if (now < this.statusResistanceUntil) {
-            labels.push('状态抗性 ' + Math.max(1, Math.ceil((this.statusResistanceUntil - now) / 1000)) + 's');
-        }
-        if (now < this.damageBuffUntil) {
-            labels.push('增伤 ' + formatPct(this.damageBuffMultiplier) + ' ' + Math.max(1, Math.ceil((this.damageBuffUntil - now) / 1000)) + 's');
-        }
-        return labels;
     }
 
     applyReverseControl(durationMs) {
@@ -1765,10 +1807,10 @@ class HubScene extends Phaser.Scene {
 
         this.input.keyboard.on('keydown-Q', () => this.player.switchWeaponLeft());
         this.input.keyboard.on('keydown-E', () => this.player.switchWeaponRight());
-        this.input.keyboard.on('keydown-ONE', () => GameState.useQuickSlot(0, this.player));
-        this.input.keyboard.on('keydown-TWO', () => GameState.useQuickSlot(1, this.player));
-        this.input.keyboard.on('keydown-THREE', () => GameState.useQuickSlot(2, this.player));
-        this.input.keyboard.on('keydown-FOUR', () => GameState.useQuickSlot(3, this.player));
+        this.input.keyboard.on('keydown-ONE', () => handleQuickSlotUse(this, this.player, 0));
+        this.input.keyboard.on('keydown-TWO', () => handleQuickSlotUse(this, this.player, 1));
+        this.input.keyboard.on('keydown-THREE', () => handleQuickSlotUse(this, this.player, 2));
+        this.input.keyboard.on('keydown-FOUR', () => handleQuickSlotUse(this, this.player, 3));
         this.input.keyboard.on('keydown-TAB', (event) => {
             event.preventDefault();
             if (this.scene.isActive('InventoryScene')) this.scene.stop('InventoryScene');
@@ -2184,10 +2226,10 @@ class LevelScene extends Phaser.Scene {
         spaceKey.on('down', () => this.player.tryDodge());
         this.input.keyboard.on('keydown-Q', () => this.player.switchWeaponLeft());
         this.input.keyboard.on('keydown-E', () => this.player.switchWeaponRight());
-        this.input.keyboard.on('keydown-ONE', () => GameState.useQuickSlot(0, this.player));
-        this.input.keyboard.on('keydown-TWO', () => GameState.useQuickSlot(1, this.player));
-        this.input.keyboard.on('keydown-THREE', () => GameState.useQuickSlot(2, this.player));
-        this.input.keyboard.on('keydown-FOUR', () => GameState.useQuickSlot(3, this.player));
+        this.input.keyboard.on('keydown-ONE', () => handleQuickSlotUse(this, this.player, 0));
+        this.input.keyboard.on('keydown-TWO', () => handleQuickSlotUse(this, this.player, 1));
+        this.input.keyboard.on('keydown-THREE', () => handleQuickSlotUse(this, this.player, 2));
+        this.input.keyboard.on('keydown-FOUR', () => handleQuickSlotUse(this, this.player, 3));
         this.input.keyboard.on('keydown-TAB', () => {
             if (this.scene.isActive('InventoryScene')) this.scene.stop('InventoryScene');
             else this.scene.launch('InventoryScene');
@@ -3271,10 +3313,10 @@ class BossScene extends Phaser.Scene {
         spaceKey.on('down', () => this.player.tryDodge());
         this.input.keyboard.on('keydown-Q', () => this.player.switchWeaponLeft());
         this.input.keyboard.on('keydown-E', () => this.player.switchWeaponRight());
-        this.input.keyboard.on('keydown-ONE', () => GameState.useQuickSlot(0, this.player));
-        this.input.keyboard.on('keydown-TWO', () => GameState.useQuickSlot(1, this.player));
-        this.input.keyboard.on('keydown-THREE', () => GameState.useQuickSlot(2, this.player));
-        this.input.keyboard.on('keydown-FOUR', () => GameState.useQuickSlot(3, this.player));
+        this.input.keyboard.on('keydown-ONE', () => handleQuickSlotUse(this, this.player, 0));
+        this.input.keyboard.on('keydown-TWO', () => handleQuickSlotUse(this, this.player, 1));
+        this.input.keyboard.on('keydown-THREE', () => handleQuickSlotUse(this, this.player, 2));
+        this.input.keyboard.on('keydown-FOUR', () => handleQuickSlotUse(this, this.player, 3));
         this.input.keyboard.on('keydown-TAB', () => {
             if (this.scene.isActive('InventoryScene')) this.scene.stop('InventoryScene');
             else this.scene.launch('InventoryScene');
@@ -4278,9 +4320,15 @@ class UIScene extends Phaser.Scene {
             lineSpacing: 2
         }).setOrigin(1, 0).setScrollFactor(0);
 
-        this.statusText = this.add.text(width / 2, height - 108, '', {
+        this.debuffStatusText = this.add.text(width / 2, height - 128, '', {
             fontSize: '14px',
-            fill: '#ffcf85',
+            fill: '#ffb0a8',
+            fontStyle: 'bold'
+        }).setOrigin(0.5, 0).setScrollFactor(0).setVisible(false);
+
+        this.buffStatusText = this.add.text(width / 2, height - 104, '', {
+            fontSize: '14px',
+            fill: '#b8ffd5',
             fontStyle: 'bold'
         }).setOrigin(0.5, 0).setScrollFactor(0).setVisible(false);
 
@@ -4383,13 +4431,22 @@ class UIScene extends Phaser.Scene {
             this.eventRoomText.setText('');
         }
 
-        const statuses = player.getStatusSummary ? player.getStatusSummary() : [];
-        if (statuses.length > 0) {
-            this.statusText.setVisible(true);
-            this.statusText.setText(statuses.join('  |  '));
+        const statusSummary = player.getStatusHudSummary
+            ? player.getStatusHudSummary()
+            : { debuffs: [], buffs: [] };
+        if (statusSummary.debuffs.length > 0) {
+            this.debuffStatusText.setVisible(true);
+            this.debuffStatusText.setText('负面: ' + statusSummary.debuffs.join('  |  '));
         } else {
-            this.statusText.setVisible(false);
-            this.statusText.setText('');
+            this.debuffStatusText.setVisible(false);
+            this.debuffStatusText.setText('');
+        }
+        if (statusSummary.buffs.length > 0) {
+            this.buffStatusText.setVisible(true);
+            this.buffStatusText.setText('增益: ' + statusSummary.buffs.join('  |  '));
+        } else {
+            this.buffStatusText.setVisible(false);
+            this.buffStatusText.setText('');
         }
     }
 }

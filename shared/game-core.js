@@ -368,6 +368,175 @@
         return clampInt(raw, def.minTickDamage, def.maxTickDamage, def.minTickDamage);
     }
 
+    function formatPercentDelta(multiplier) {
+        const safe = Number.isFinite(Number(multiplier)) ? Number(multiplier) : 1;
+        const delta = Math.round((safe - 1) * 100);
+        if (delta === 0) return '0%';
+        return `${delta > 0 ? '+' : ''}${delta}%`;
+    }
+
+    function resolveConsumableUse(item, actorState) {
+        const safeItem = item && typeof item === 'object' ? item : {};
+        const safeState = actorState && typeof actorState === 'object' ? actorState : {};
+        const nextVitals = {
+            hp: Math.max(0, Number.isFinite(Number(safeState.hp)) ? Number(safeState.hp) : 0),
+            maxHp: Math.max(1, Number.isFinite(Number(safeState.maxHp)) ? Number(safeState.maxHp) : 1),
+            stamina: Math.max(0, Number.isFinite(Number(safeState.stamina)) ? Number(safeState.stamina) : 0),
+            maxStamina: Math.max(1, Number.isFinite(Number(safeState.maxStamina)) ? Number(safeState.maxStamina) : 1)
+        };
+
+        if (safeItem.type !== 'consumable' || typeof safeItem.effect !== 'string') {
+            return {
+                ok: false,
+                consume: false,
+                reason: 'item',
+                effect: null,
+                recoveredAmount: 0,
+                feedbackText: '',
+                nextVitals
+            };
+        }
+
+        if (safeItem.effect === 'healHp') {
+            const newHp = Math.min(nextVitals.maxHp, nextVitals.hp + Math.max(0, Number(safeItem.value) || 0));
+            const recoveredAmount = Math.max(0, Math.round(newHp - nextVitals.hp));
+            if (recoveredAmount <= 0) {
+                return {
+                    ok: false,
+                    consume: false,
+                    reason: 'full',
+                    effect: 'healHp',
+                    recoveredAmount: 0,
+                    feedbackText: '生命已满',
+                    nextVitals
+                };
+            }
+            return {
+                ok: true,
+                consume: true,
+                reason: null,
+                effect: 'healHp',
+                recoveredAmount,
+                feedbackText: `+${recoveredAmount} HP`,
+                nextVitals: {
+                    ...nextVitals,
+                    hp: newHp
+                }
+            };
+        }
+
+        if (safeItem.effect === 'healStamina') {
+            const newStamina = Math.min(nextVitals.maxStamina, nextVitals.stamina + Math.max(0, Number(safeItem.value) || 0));
+            const recoveredAmount = Math.max(0, Math.round(newStamina - nextVitals.stamina));
+            if (recoveredAmount <= 0) {
+                return {
+                    ok: false,
+                    consume: false,
+                    reason: 'full',
+                    effect: 'healStamina',
+                    recoveredAmount: 0,
+                    feedbackText: '体力已满',
+                    nextVitals
+                };
+            }
+            return {
+                ok: true,
+                consume: true,
+                reason: null,
+                effect: 'healStamina',
+                recoveredAmount,
+                feedbackText: `+${recoveredAmount} ST`,
+                nextVitals: {
+                    ...nextVitals,
+                    stamina: newStamina
+                }
+            };
+        }
+
+        if (safeItem.effect === 'cleanseWard' || safeItem.effect === 'battleFocus') {
+            return {
+                ok: true,
+                consume: true,
+                reason: null,
+                effect: safeItem.effect,
+                recoveredAmount: 0,
+                feedbackText: '',
+                nextVitals
+            };
+        }
+
+        return {
+            ok: false,
+            consume: false,
+            reason: 'unsupported_effect',
+            effect: safeItem.effect,
+            recoveredAmount: 0,
+            feedbackText: '',
+            nextVitals
+        };
+    }
+
+    function buildStatusHudSummary(options) {
+        const safe = options && typeof options === 'object' ? options : {};
+        const debuffs = [];
+        const buffs = [];
+        const activeStatuses = Array.isArray(safe.activeStatuses) ? safe.activeStatuses : [];
+
+        activeStatuses.forEach((entry, index) => {
+            if (!entry || typeof entry !== 'object') return;
+            const def = getStatusEffectDef(entry.key);
+            if (!def) return;
+            const remainingMs = Math.max(0, clampInt(entry.remainingMs, 0, Number.MAX_SAFE_INTEGER, 0));
+            if (remainingMs <= 0) return;
+            debuffs.push({
+                label: `${def.label} ${Math.max(1, Math.ceil(remainingMs / 1000))}s`,
+                remainingMs,
+                order: index
+            });
+        });
+
+        const controlInvertMs = Math.max(0, clampInt(safe.controlInvertMs, 0, Number.MAX_SAFE_INTEGER, 0));
+        if (controlInvertMs > 0) {
+            debuffs.push({
+                label: `控制反转 ${Math.max(1, Math.ceil(controlInvertMs / 1000))}s`,
+                remainingMs: controlInvertMs,
+                order: -1
+            });
+        }
+
+        const statusResistanceMs = Math.max(0, clampInt(safe.statusResistanceMs, 0, Number.MAX_SAFE_INTEGER, 0));
+        if (statusResistanceMs > 0) {
+            buffs.push({
+                label: `状态抗性 ${Math.max(1, Math.ceil(statusResistanceMs / 1000))}s`,
+                remainingMs: statusResistanceMs,
+                order: 0
+            });
+        }
+
+        const damageBuffMs = Math.max(0, clampInt(safe.damageBuffMs, 0, Number.MAX_SAFE_INTEGER, 0));
+        if (damageBuffMs > 0) {
+            buffs.push({
+                label: `增伤 ${formatPercentDelta(safe.damageBuffMultiplier)} ${Math.max(1, Math.ceil(damageBuffMs / 1000))}s`,
+                remainingMs: damageBuffMs,
+                order: 1
+            });
+        }
+
+        const sorter = (a, b) => {
+            if (a.remainingMs !== b.remainingMs) return a.remainingMs - b.remainingMs;
+            if (a.order !== b.order) return a.order - b.order;
+            return a.label.localeCompare(b.label, 'zh-Hans-CN');
+        };
+
+        debuffs.sort(sorter);
+        buffs.sort(sorter);
+
+        return {
+            debuffs: debuffs.map(entry => entry.label),
+            buffs: buffs.map(entry => entry.label)
+        };
+    }
+
     function getCraftingRecipe(recipeKey) {
         return CRAFTING_RECIPES[recipeKey] || null;
     }
@@ -621,6 +790,8 @@
         deserializeSaveData,
         getStatusEffectDef,
         computeStatusTickDamage,
+        resolveConsumableUse,
+        buildStatusHudSummary,
         getRunModifierByKey,
         normalizeRunModifiers,
         pickRunModifiers,
