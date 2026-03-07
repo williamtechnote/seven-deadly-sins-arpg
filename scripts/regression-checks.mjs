@@ -1614,18 +1614,18 @@ function testQuickSlotAutoAssignNotice() {
     );
     assert.equal(
         buildQuickSlotAutoAssignNotice(0, { didOverwrite: true, replacedItemKey: 'hpPotion' }),
-        '已自动装入快捷栏 1（已覆盖 HP）',
-        'auto-assign notice should keep the replaced item short label visible without repeating the slot number inside the overwrite clause'
+        '快捷栏1：替换 HP',
+        'auto-assign notice should collapse overwrite-only fallback copy into a slot-led shortform'
     );
     assert.equal(
         buildQuickSlotAutoAssignNotice(0, { didOverwrite: true, assignedItemKey: 'hpPotion', replacedItemKey: 'hpPotion' }),
-        '已自动装入快捷栏 1（已覆盖同类 HP）',
-        'auto-assign notice should compress overwrite copy when the assigned and replaced items share the same short label'
+        '快捷栏1：同类 HP',
+        'auto-assign notice should compress same-label overwrite copy into a slot-led shortform'
     );
     assert.equal(
         buildQuickSlotAutoAssignNotice(0, { didOverwrite: true, assignedItemKey: 'staminaPotion', replacedItemKey: 'hpPotion' }),
-        '已自动装入快捷栏 1（已覆盖 HP → ST）',
-        'auto-assign notice should show the replacement direction without restating the slot number once the slot label is already in the main prefix'
+        '快捷栏1：HP→ST',
+        'auto-assign notice should show overwrite direction in the shortest slot-led form'
     );
 }
 
@@ -1710,13 +1710,18 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /快捷栏已满时会回写 1 号槽位，并提示“已覆盖 <旧短名> → <新短名>”/,
-        'README should explain that the full-quickbar overwrite toast shows the replacement direction when labels differ'
+        /快捷栏已满时会回写 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”/,
+        'README should explain the shortform overwrite direction toast when labels differ'
     );
     assert.match(
         source,
-        /若新旧道具短名相同，则会压缩为“已覆盖同类 <短名>”/,
-        'README should document the compressed full-quickbar overwrite copy for same-label replacements'
+        /若新旧道具短名相同，则会压缩为“快捷栏1：同类 <短名>”/,
+        'README should document the same-label shortform overwrite toast'
+    );
+    assert.match(
+        source,
+        /若临时拿不到新短名，则回退为“快捷栏1：替换 <旧短名>”/,
+        'README should document the overwrite shortform fallback when only the replaced label is known'
     );
     assert.match(
         source,
@@ -1734,8 +1739,8 @@ function testHelpOverlayQuickSlotLoop() {
     const source = loadGameSource();
     assert.match(
         source,
-        /快捷栏已满时会覆盖 1 号槽位，并提示“已覆盖 <旧短名> → <新短名>”；若新旧短名相同则压缩为“已覆盖同类 <短名>”/,
-        'help overlay should explain both the directional overwrite copy and the compressed same-label fallback'
+        /快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”/,
+        'help overlay should explain the shortform overwrite toast variants'
     );
 }
 
