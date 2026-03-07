@@ -1624,8 +1624,8 @@ function testQuickSlotAutoAssignNotice() {
     );
     assert.equal(
         buildQuickSlotAutoAssignNotice(0, { didOverwrite: true, assignedItemKey: 'staminaPotion', replacedItemKey: 'hpPotion' }),
-        '已自动装入快捷栏 1（已覆盖 1 号槽位：HP）',
-        'auto-assign notice should keep the explicit replaced-item label when the overwrite changes to a different short label'
+        '已自动装入快捷栏 1（已覆盖 1 号槽位：HP → ST）',
+        'auto-assign notice should show the replacement direction when the overwrite changes to a different short label'
     );
 }
 
@@ -1710,8 +1710,8 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /快捷栏已满时会回写 1 号槽位，并提示“已覆盖 1 号槽位：<短名>”/,
-        'README should explain that the full-quickbar overwrite toast includes the replaced item short label'
+        /快捷栏已满时会回写 1 号槽位，并提示“已覆盖 1 号槽位：<旧短名> → <新短名>”/,
+        'README should explain that the full-quickbar overwrite toast shows the replacement direction when labels differ'
     );
     assert.match(
         source,
@@ -1734,8 +1734,8 @@ function testHelpOverlayQuickSlotLoop() {
     const source = loadGameSource();
     assert.match(
         source,
-        /快捷栏已满时会覆盖 1 号槽位，并提示“已覆盖 1 号槽位：<短名>”；若新旧短名相同则压缩为“已覆盖同类 <短名>”/,
-        'help overlay should explain both the replaced-item overwrite copy and the compressed same-label fallback'
+        /快捷栏已满时会覆盖 1 号槽位，并提示“已覆盖 1 号槽位：<旧短名> → <新短名>”；若新旧短名相同则压缩为“已覆盖同类 <短名>”/,
+        'help overlay should explain both the directional overwrite copy and the compressed same-label fallback'
     );
 }
 

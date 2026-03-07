@@ -452,10 +452,13 @@
         const assignedItemShortLabel = QUICK_SLOT_SHORT_LABELS[assignedItemKey] || '道具';
         const replacedItemShortLabel = QUICK_SLOT_SHORT_LABELS[replacedItemKey] || '道具';
         if (didOverwrite) {
+            if (!assignedItemKey) {
+                return `已自动装入快捷栏 ${safeSlotIndex + 1}（已覆盖 ${safeSlotIndex + 1} 号槽位：${replacedItemShortLabel}）`;
+            }
             if (assignedItemShortLabel === replacedItemShortLabel) {
                 return `已自动装入快捷栏 ${safeSlotIndex + 1}（已覆盖同类 ${assignedItemShortLabel}）`;
             }
-            return `已自动装入快捷栏 ${safeSlotIndex + 1}（已覆盖 ${safeSlotIndex + 1} 号槽位：${replacedItemShortLabel}）`;
+            return `已自动装入快捷栏 ${safeSlotIndex + 1}（已覆盖 ${safeSlotIndex + 1} 号槽位：${replacedItemShortLabel} → ${assignedItemShortLabel}）`;
         }
         return `已自动装入快捷栏 ${safeSlotIndex + 1}`;
     }
