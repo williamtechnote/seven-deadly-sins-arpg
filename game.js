@@ -22,6 +22,8 @@ const {
     audioSettingsToGain,
     resolveKeyboardAimState,
     formatAimDirectionLabel,
+    buildCombatActionHudSummary,
+    buildQuickSlotItemLabel,
     normalizeSaveData,
     serializeSaveData,
     deserializeSaveData,
@@ -4895,15 +4897,19 @@ class UIScene extends Phaser.Scene {
         }).setScrollFactor(0);
 
         // Bottom-left: weapon display
-        this.aimText = this.add.text(pad, height - 58, '当前瞄准: 右 [IJKL]', {
+        this.aimText = this.add.text(pad, height - 80, '当前瞄准: 右 [IJKL]', {
             fontSize: '14px',
             fill: '#8fdcff'
         }).setScrollFactor(0);
-        this.weaponText = this.add.text(pad, height - 36, '⚔ - [Q/E 切换] [U/O 攻击] [Space 闪避]', {
+        this.weaponText = this.add.text(pad, height - 58, '⚔ - [Q/E 切换]', {
             fontSize: '14px',
             fill: '#ffffff'
         }).setScrollFactor(0);
-        this.savedWeaponDebugText = this.add.text(pad, height - 80, '', {
+        this.actionText = this.add.text(pad, height - 36, '普攻 U: 就绪  特攻 O: 就绪  闪避: Space', {
+            fontSize: '13px',
+            fill: '#cfd8e6'
+        }).setScrollFactor(0);
+        this.savedWeaponDebugText = this.add.text(pad, height - 102, '', {
             fontSize: '12px',
             fill: '#66ccff'
         }).setScrollFactor(0).setVisible(UI_DEBUG_FLAGS.showSavedWeaponInHUD);
@@ -4931,7 +4937,7 @@ class UIScene extends Phaser.Scene {
                 fill: '#aaaaaa'
             }).setOrigin(0.5).setScrollFactor(0);
             const itemText = this.add.text(x + slotSize / 2, slotsY + slotSize / 2, '-', {
-                fontSize: '12px',
+                fontSize: '11px',
                 fill: '#888888'
             }).setOrigin(0.5).setScrollFactor(0);
             this.quickSlots.push({ box, numLabel, itemText });
@@ -5000,8 +5006,8 @@ class UIScene extends Phaser.Scene {
         for (let i = 0; i < 4; i++) {
             const slot = this.quickSlots[i];
             const itemKey = GameState.quickSlots[i];
-            const name = itemKey && ITEMS[itemKey] ? ITEMS[itemKey].name : '-';
-            slot.itemText.setText(name);
+            const itemCount = itemKey ? (GameState.inventory[itemKey] || 0) : 0;
+            slot.itemText.setText(buildQuickSlotItemLabel(itemKey, itemCount));
         }
 
         // HP bar
@@ -5048,7 +5054,11 @@ class UIScene extends Phaser.Scene {
             ? player.weapons[player.currentWeaponIndex]
             : 'sword';
         this.aimText.setText('当前瞄准: ' + formatAimDirectionLabel(player.facingAngle) + ' [IJKL]');
-        this.weaponText.setText('⚔ ' + weaponName + ' (' + weaponKey + ') [Q/E 切换] [U/O 攻击] [Space 闪避]');
+        this.weaponText.setText('⚔ ' + weaponName + ' (' + weaponKey + ') [Q/E 切换]');
+        this.actionText.setText(buildCombatActionHudSummary({
+            attackCooldownMs: player.attackCooldown,
+            specialCooldownMs: player.specialCooldown
+        }));
         if (UI_DEBUG_FLAGS.showSavedWeaponInHUD) {
             const savedWeaponKey = GameState.ensureSelectedWeapon();
             const savedWeapon = WEAPONS[savedWeaponKey];

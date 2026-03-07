@@ -412,6 +412,32 @@
         return '右上';
     }
 
+    function formatCooldownSecondsLabel(cooldownMs) {
+        const ms = Math.max(0, Number(cooldownMs) || 0);
+        if (ms <= 0) return '就绪';
+        const seconds = Math.max(0.1, Math.round(ms / 100) / 10);
+        return `${seconds.toFixed(1)}s`;
+    }
+
+    function buildCombatActionHudSummary(input) {
+        const safe = input && typeof input === 'object' ? input : {};
+        return `普攻 U: ${formatCooldownSecondsLabel(safe.attackCooldownMs)}  特攻 O: ${formatCooldownSecondsLabel(safe.specialCooldownMs)}  闪避: Space`;
+    }
+
+    const QUICK_SLOT_SHORT_LABELS = {
+        hpPotion: 'HP',
+        staminaPotion: 'ST',
+        cleanseTonic: '净',
+        berserkerOil: '油'
+    };
+
+    function buildQuickSlotItemLabel(itemKey, count) {
+        if (!itemKey) return '-';
+        const shortLabel = QUICK_SLOT_SHORT_LABELS[itemKey] || '道具';
+        const safeCount = clampInt(count, 0, Number.MAX_SAFE_INTEGER, 0);
+        return `${shortLabel} x${safeCount}`;
+    }
+
     function normalizeInventory(inventory) {
         if (!inventory || typeof inventory !== 'object') return {};
         const out = {};
@@ -1589,6 +1615,8 @@
         audioSettingsToGain,
         resolveKeyboardAimState,
         formatAimDirectionLabel,
+        buildCombatActionHudSummary,
+        buildQuickSlotItemLabel,
         normalizeSaveData,
         serializeSaveData,
         deserializeSaveData,

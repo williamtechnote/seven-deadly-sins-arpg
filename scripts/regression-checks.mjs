@@ -40,6 +40,8 @@ const {
     buildRunEventRoomWorldLabel,
     buildRunEventRoomPromptLabel,
     formatAimDirectionLabel,
+    buildCombatActionHudSummary,
+    buildQuickSlotItemLabel,
     resolveKeyboardAimState,
     resolveConsumableUse,
     buildStatusHudSummary,
@@ -1563,6 +1565,48 @@ function testKeyboardControlReadabilityHooks() {
     );
 }
 
+function testCombatActionHudSummary() {
+    assert.equal(typeof buildCombatActionHudSummary, 'function', 'combat action HUD helper should be exported');
+    assert.equal(
+        buildCombatActionHudSummary({ attackCooldownMs: 0, specialCooldownMs: 0 }),
+        '普攻 U: 就绪  特攻 O: 就绪  闪避: Space',
+        'combat action HUD helper should show both actions as ready when cooldowns are clear'
+    );
+    assert.equal(
+        buildCombatActionHudSummary({ attackCooldownMs: 320, specialCooldownMs: 1080 }),
+        '普攻 U: 0.3s  特攻 O: 1.1s  闪避: Space',
+        'combat action HUD helper should format short cooldown seconds for unreadied actions'
+    );
+}
+
+function testQuickSlotItemLabel() {
+    assert.equal(typeof buildQuickSlotItemLabel, 'function', 'quick-slot item label helper should be exported');
+    assert.equal(buildQuickSlotItemLabel(null, 0), '-', 'empty quick slot should render a stable placeholder');
+    assert.equal(buildQuickSlotItemLabel('hpPotion', 3), 'HP x3', 'hp potions should use a compact short label');
+    assert.equal(buildQuickSlotItemLabel('staminaPotion', 2), 'ST x2', 'stamina potions should use a compact short label');
+    assert.equal(buildQuickSlotItemLabel('cleanseTonic', 1), '净 x1', 'cleanse tonics should use a localized compact short label');
+    assert.equal(buildQuickSlotItemLabel('berserkerOil', 4), '油 x4', 'berserker oil should use a localized compact short label');
+}
+
+function testKeyboardHudQolHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /this\.actionText = this\.add\.text\(/,
+        'HUD should allocate a dedicated combat-action cooldown line'
+    );
+    assert.match(
+        source,
+        /this\.actionText\.setText\(buildCombatActionHudSummary\(\{\s*attackCooldownMs:\s*player\.attackCooldown,\s*specialCooldownMs:\s*player\.specialCooldown\s*\}\)\);/,
+        'HUD should derive the keyboard combat loop text from the shared combat-action helper'
+    );
+    assert.match(
+        source,
+        /slot\.itemText\.setText\(buildQuickSlotItemLabel\(itemKey,\s*itemCount\)\);/,
+        'HUD quick slots should render compact helper-driven labels with counts'
+    );
+}
+
 function testPlayerDeathFreezeHook() {
     const source = loadGameSource();
     assert.match(source, /freezeForDeath\(\)\s*{/, 'Player should define a centralized freezeForDeath hook');
@@ -1615,6 +1659,9 @@ function main() {
     runTest('aim direction label helper', testAimDirectionLabel);
     runTest('keyboard aim source hooks', testKeyboardAimSourceHooks);
     runTest('keyboard control readability hooks', testKeyboardControlReadabilityHooks);
+    runTest('combat action HUD summary helper', testCombatActionHudSummary);
+    runTest('quick-slot item label helper', testQuickSlotItemLabel);
+    runTest('keyboard HUD QoL hooks', testKeyboardHudQolHooks);
     runTest('player death freeze hook', testPlayerDeathFreezeHook);
     console.log('All regression checks passed.');
 }
