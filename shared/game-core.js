@@ -755,6 +755,12 @@
             .trim();
     }
 
+    function getRunEventRoomResolvedPrefix(type) {
+        if (type === 'trade') return '交易';
+        if (type === 'riskBuff' || type === 'blessing') return '效果';
+        return '已选';
+    }
+
     function buildRunEventRoomHudSummary(runEventRoom, poolOverride) {
         const normalizedRoom = normalizeRunEventRoom(runEventRoom, poolOverride);
         if (!normalizedRoom) {
@@ -780,7 +786,7 @@
             : allChoices.slice(0, 2);
         const routeLines = visibleChoices.map((choice) => {
             if (normalizedRoom.resolved) {
-                return `已选: ${choice.label}`.trim();
+                return `${getRunEventRoomResolvedPrefix(normalizedRoom.type)}: ${choice.label}`.trim();
             }
             return `${choice.label}: ${describeRunEventChoiceRoute(choice)}`.trim();
         });

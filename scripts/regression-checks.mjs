@@ -382,8 +382,8 @@ function testRunEventRoomHudSummary() {
     assert.equal(resolvedSummary.metaLabel, '祝福 · 已触发', 'HUD summary should keep the compressed blessing metadata');
     assert.deepEqual(
         resolvedSummary.routeLines,
-        ['已选: 迅击祷言'],
-        'HUD summary should collapse resolved chosen-route lines to a short label'
+        ['效果: 迅击祷言'],
+        'resolved blessing summary should switch to an effect-specific chosen-route prefix'
     );
     assert.equal(
         resolvedSummary.resolutionText,
@@ -403,6 +403,11 @@ function testRunEventRoomHudSummary() {
         '伤害+35%, 承伤+18%',
         'resolved risk-buff summary should compress offensive-risk settlements into compact delta text'
     );
+    assert.deepEqual(
+        resolvedRiskBuffSummary.routeLines,
+        ['效果: 猩红锋契'],
+        'resolved risk-buff summary should use the shared effect prefix for the chosen route'
+    );
     const resolvedTradeSummary = buildRunEventRoomHudSummary({
         key: 'gamblersShrine',
         discovered: true,
@@ -418,8 +423,8 @@ function testRunEventRoomHudSummary() {
     );
     assert.deepEqual(
         resolvedTradeSummary.routeLines,
-        ['已选: 豪赌'],
-        'resolved trade summary should keep only the chosen label on the route line'
+        ['交易: 豪赌'],
+        'resolved trade summary should switch to a trade-specific chosen-route prefix'
     );
 
     const resolvedSupplySummary = buildRunEventRoomHudSummary({
@@ -481,9 +486,9 @@ function testRunEventRoomHudLines() {
         [
             '事件房: 祈愿圣坛',
             '祝福 · 已触发',
-            '已选: 迅击祷言 · 特攻冷却-22%'
+            '效果: 迅击祷言 · 特攻冷却-22%'
         ],
-        'resolved event rooms should merge the chosen route and compact settlement into one line'
+        'resolved blessing event rooms should merge the chosen route and compact settlement into one line with an effect prefix'
     );
 
     const resolvedTradeLines = buildRunEventRoomHudLines({
@@ -499,9 +504,9 @@ function testRunEventRoomHudLines() {
         [
             '事件房: 赌徒圣坛',
             '交易 · 已触发',
-            '已选: 豪赌 · 生命-30, 金币+120'
+            '交易: 豪赌 · 生命-30, 金币+120'
         ],
-        'resolved trade event rooms should merge the chosen label and actual settlement delta'
+        'resolved trade event rooms should merge the chosen label and actual settlement delta with a trade prefix'
     );
 }
 
