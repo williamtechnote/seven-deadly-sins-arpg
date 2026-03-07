@@ -1,6 +1,7 @@
 # TODO.md — seven-deadly-sins-arpg
 
 ## Active
+- [ ] 修复玩家死亡后沿死亡前方向持续滑移（方案评估见 `docs/plans/2026-03-07-player-death-slide-fix-design.md`）
 - [ ] 事件房祭坛靠近提示补充房型短标签（交易 / 治疗 / 效果）
 - [ ] 长剑前期手感修正：基础攻击范围上调约 10%，降低空挥换血率
 - [ ] 普通小怪压迫修正：基础移动速度下调约 6%，保留 Boss 速度不变
