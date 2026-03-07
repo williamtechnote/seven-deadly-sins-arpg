@@ -60,7 +60,7 @@ function loadDataConstants() {
     const dataSource = fs.readFileSync(path.join(repoRoot, 'data.js'), 'utf8');
     const sandbox = {};
     vm.createContext(sandbox);
-    vm.runInContext(`${dataSource}\n;globalThis.__DATA__ = { WEAPONS, ITEMS };`, sandbox);
+    vm.runInContext(`${dataSource}\n;globalThis.__DATA__ = { GAME_CONFIG, WEAPONS, ITEMS, BOSSES, ENEMIES };`, sandbox);
     return sandbox.__DATA__;
 }
 
@@ -99,6 +99,179 @@ function testWeaponScalingMonotonicity() {
 function testSwordEarlyReachBaseline() {
     const { WEAPONS } = loadDataConstants();
     assert.equal(WEAPONS.sword.range, 55, 'sword base range should be nudged to 55 for safer early spacing');
+}
+
+function testNormalEnemyPressureBaseline() {
+    const { ENEMIES, BOSSES } = loadDataConstants();
+    const expectedEnemySpeeds = {
+        wrathSoldier: 66,
+        wrathArcher: 56,
+        wrathBrute: 47,
+        prideKnight: 71,
+        prideArcher: 61,
+        prideSentinel: 52,
+        envyCrawler: 75,
+        envyMimic: 66,
+        envyShifter: 56,
+        slothSpider: 47,
+        slothDreamer: 38,
+        slothCocoon: 33,
+        greedGolem: 52,
+        greedThief: 85,
+        greedGuardian: 42,
+        gluttonySlime: 38,
+        gluttonyMaw: 56,
+        gluttonyBloat: 28,
+        lustFairy: 89,
+        lustCharm: 56,
+        lustGuard: 66
+    };
+    const expectedBossSpeeds = {
+        pride: 120,
+        envy: 140,
+        wrath: 100,
+        sloth: 60,
+        greed: 110,
+        gluttony: 80,
+        lust: 150,
+        final: 130
+    };
+
+    Object.entries(expectedEnemySpeeds).forEach(([enemyKey, expectedSpeed]) => {
+        assert.equal(
+            ENEMIES[enemyKey].speed,
+            expectedSpeed,
+            `${enemyKey} speed should be lowered to the calmer baseline`
+        );
+    });
+    Object.entries(expectedBossSpeeds).forEach(([bossKey, expectedSpeed]) => {
+        assert.equal(
+            BOSSES[bossKey].speed,
+            expectedSpeed,
+            `${bossKey} boss speed should remain on the existing difficulty baseline`
+        );
+    });
+}
+
+function computeSwordOpeningCoverage(targetSpeeds, options) {
+    const {
+        playerSpeed,
+        swordRange,
+        startDistances,
+        targetRange,
+        playerWindupMs,
+        targetWindupMs,
+        safeLeadMs
+    } = options;
+    let safeCount = 0;
+    let totalCount = 0;
+
+    Object.values(targetSpeeds).forEach((targetSpeed) => {
+        startDistances.forEach((distance) => {
+            const playerReadyMs = (Math.max(0, distance - swordRange) / playerSpeed) * 1000 + playerWindupMs;
+            const targetImpactMs = (Math.max(0, distance - targetRange) / targetSpeed) * 1000 + targetWindupMs;
+            if ((targetImpactMs - playerReadyMs) >= safeLeadMs) {
+                safeCount += 1;
+            }
+            totalCount += 1;
+        });
+    });
+
+    return safeCount / totalCount;
+}
+
+function testSwordOpeningBalanceWindow() {
+    const { GAME_CONFIG, WEAPONS, ENEMIES, BOSSES } = loadDataConstants();
+    const legacyEnemySpeeds = {
+        wrathSoldier: 70,
+        wrathArcher: 60,
+        wrathBrute: 50,
+        prideKnight: 75,
+        prideArcher: 65,
+        prideSentinel: 55,
+        envyCrawler: 80,
+        envyMimic: 70,
+        envyShifter: 60,
+        slothSpider: 50,
+        slothDreamer: 40,
+        slothCocoon: 35,
+        greedGolem: 55,
+        greedThief: 90,
+        greedGuardian: 45,
+        gluttonySlime: 40,
+        gluttonyMaw: 60,
+        gluttonyBloat: 30,
+        lustFairy: 95,
+        lustCharm: 60,
+        lustGuard: 70
+    };
+    const stableBossSpeeds = {
+        pride: 120,
+        envy: 140,
+        wrath: 100,
+        sloth: 60,
+        greed: 110,
+        gluttony: 80,
+        lust: 150,
+        final: 130
+    };
+    const startDistances = [80, 90, 100, 110];
+    const playerSpeed = GAME_CONFIG.PLAYER.speed;
+    const swordRange = WEAPONS.sword.range;
+    const safeLeadMs = 350;
+    const playerWindupMs = 220;
+
+    const enemyCoverageBefore = computeSwordOpeningCoverage(legacyEnemySpeeds, {
+        playerSpeed,
+        swordRange,
+        startDistances,
+        targetRange: 40,
+        playerWindupMs,
+        targetWindupMs: 180,
+        safeLeadMs
+    });
+    const enemyCoverageAfter = computeSwordOpeningCoverage(
+        Object.fromEntries(Object.entries(ENEMIES).map(([key, config]) => [key, config.speed])),
+        {
+            playerSpeed,
+            swordRange,
+            startDistances,
+            targetRange: 40,
+            playerWindupMs,
+            targetWindupMs: 180,
+            safeLeadMs
+        }
+    );
+    assert.ok(
+        enemyCoverageAfter >= enemyCoverageBefore + 0.03,
+        `normal-enemy sword opening coverage should improve materially (before=${enemyCoverageBefore.toFixed(3)}, after=${enemyCoverageAfter.toFixed(3)})`
+    );
+
+    const bossCoverageBaseline = computeSwordOpeningCoverage(stableBossSpeeds, {
+        playerSpeed,
+        swordRange,
+        startDistances,
+        targetRange: 55,
+        playerWindupMs,
+        targetWindupMs: 260,
+        safeLeadMs
+    });
+    const bossCoverageCurrent = computeSwordOpeningCoverage(
+        Object.fromEntries(Object.entries(BOSSES).map(([key, config]) => [key, config.speed])),
+        {
+            playerSpeed,
+            swordRange,
+            startDistances,
+            targetRange: 55,
+            playerWindupMs,
+            targetWindupMs: 260,
+            safeLeadMs
+        }
+    );
+    assert.ok(
+        Math.abs(bossCoverageCurrent - bossCoverageBaseline) <= 0.001,
+        `boss sword opening coverage should stay effectively unchanged (baseline=${bossCoverageBaseline.toFixed(3)}, current=${bossCoverageCurrent.toFixed(3)})`
+    );
 }
 
 function testMaterialBoundUpgradeChecks() {
@@ -1300,6 +1473,8 @@ function testPlayerDeathFreezeHook() {
 function main() {
     runTest('weapon scaling monotonicity', testWeaponScalingMonotonicity);
     runTest('sword early reach baseline', testSwordEarlyReachBaseline);
+    runTest('normal enemy pressure baseline', testNormalEnemyPressureBaseline);
+    runTest('sword opening balance window', testSwordOpeningBalanceWindow);
     runTest('material-bound upgrade checks', testMaterialBoundUpgradeChecks);
     runTest('save/load integrity', testSaveLoadIntegrity);
     runTest('status effect logic', testStatusEffectLogic);

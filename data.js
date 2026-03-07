@@ -162,45 +162,45 @@ const BOSSES = {
 
 const ENEMIES = {
     // Wrath — 熔岩锻炉
-    wrathSoldier: { name: '炎魔战士', hp: 48, damage: 10, speed: 70, color: 0xFF6347, sprite: 'orc_warrior', drops: { gold: [5, 15] } },
+    wrathSoldier: { name: '炎魔战士', hp: 48, damage: 10, speed: 66, color: 0xFF6347, sprite: 'orc_warrior', drops: { gold: [5, 15] } },
     wrathArcher: {
-        name: '炎魔射手', hp: 52, damage: 12, speed: 60, color: 0xFF4500, sprite: 'skeleton_mage',
+        name: '炎魔射手', hp: 52, damage: 12, speed: 56, color: 0xFF4500, sprite: 'skeleton_mage',
         onHitStatus: { key: 'burn', durationMs: 1800 },
         drops: { gold: [8, 20] }
     },
-    wrathBrute: { name: '炎魔狂战', hp: 72, damage: 18, speed: 50, color: 0xDC143C, sprite: 'orc_rogue', drops: { gold: [10, 25] } },
+    wrathBrute: { name: '炎魔狂战', hp: 72, damage: 18, speed: 47, color: 0xDC143C, sprite: 'orc_rogue', drops: { gold: [10, 25] } },
     // Pride — 天空神殿
-    prideKnight: { name: '天使骑士', hp: 52, damage: 12, speed: 75, color: 0xFFD700, sprite: 'orc_warrior', drops: { gold: [8, 20] } },
-    prideArcher: { name: '光翼射手', hp: 50, damage: 14, speed: 65, color: 0xFFC107, sprite: 'skeleton_mage', drops: { gold: [10, 22] } },
-    prideSentinel: { name: '圣殿卫兵', hp: 78, damage: 20, speed: 55, color: 0xDAA520, sprite: 'orc_rogue', drops: { gold: [12, 28] } },
+    prideKnight: { name: '天使骑士', hp: 52, damage: 12, speed: 71, color: 0xFFD700, sprite: 'orc_warrior', drops: { gold: [8, 20] } },
+    prideArcher: { name: '光翼射手', hp: 50, damage: 14, speed: 61, color: 0xFFC107, sprite: 'skeleton_mage', drops: { gold: [10, 22] } },
+    prideSentinel: { name: '圣殿卫兵', hp: 78, damage: 20, speed: 52, color: 0xDAA520, sprite: 'orc_rogue', drops: { gold: [12, 28] } },
     // Envy — 毒沼迷宫
-    envyCrawler: { name: '沼泽爬行者', hp: 46, damage: 11, speed: 80, color: 0x2ECC40, sprite: 'orc_warrior', drops: { gold: [6, 16] } },
-    envyMimic: { name: '拟态怪', hp: 56, damage: 15, speed: 70, color: 0x27AE60, sprite: 'skeleton_mage', drops: { gold: [9, 21] } },
+    envyCrawler: { name: '沼泽爬行者', hp: 46, damage: 11, speed: 75, color: 0x2ECC40, sprite: 'orc_warrior', drops: { gold: [6, 16] } },
+    envyMimic: { name: '拟态怪', hp: 56, damage: 15, speed: 66, color: 0x27AE60, sprite: 'skeleton_mage', drops: { gold: [9, 21] } },
     envyShifter: {
-        name: '变形虫', hp: 62, damage: 16, speed: 60, color: 0x1E8449, sprite: 'orc_rogue',
+        name: '变形虫', hp: 62, damage: 16, speed: 56, color: 0x1E8449, sprite: 'orc_rogue',
         onHitStatus: { key: 'bleed', durationMs: 2100 },
         drops: { gold: [11, 26] }
     },
     // Sloth — 沉睡森林
     slothSpider: {
-        name: '睡蛛', hp: 40, damage: 8, speed: 50, color: 0xB10DC9, sprite: 'orc_warrior',
+        name: '睡蛛', hp: 40, damage: 8, speed: 47, color: 0xB10DC9, sprite: 'orc_warrior',
         onHitStatus: { key: 'slow', durationMs: 1800 },
         drops: { gold: [5, 14] }
     },
-    slothDreamer: { name: '梦游者', hp: 46, damage: 10, speed: 40, color: 0x9B59B6, sprite: 'skeleton_mage', drops: { gold: [7, 18] } },
-    slothCocoon: { name: '蛛茧守卫', hp: 64, damage: 14, speed: 35, color: 0x8E44AD, sprite: 'orc_rogue', drops: { gold: [9, 22] } },
+    slothDreamer: { name: '梦游者', hp: 46, damage: 10, speed: 38, color: 0x9B59B6, sprite: 'skeleton_mage', drops: { gold: [7, 18] } },
+    slothCocoon: { name: '蛛茧守卫', hp: 64, damage: 14, speed: 33, color: 0x8E44AD, sprite: 'orc_rogue', drops: { gold: [9, 22] } },
     // Greed — 宝藏地窟
-    greedGolem: { name: '黄金魔像', hp: 58, damage: 14, speed: 55, color: 0xFFDC00, sprite: 'orc_warrior', drops: { gold: [15, 35] } },
-    greedThief: { name: '宝库盗贼', hp: 50, damage: 11, speed: 90, color: 0xF1C40F, sprite: 'skeleton_mage', drops: { gold: [20, 40] } },
-    greedGuardian: { name: '金库守卫', hp: 82, damage: 20, speed: 45, color: 0xD4AC0D, sprite: 'orc_rogue', drops: { gold: [18, 45] } },
+    greedGolem: { name: '黄金魔像', hp: 58, damage: 14, speed: 52, color: 0xFFDC00, sprite: 'orc_warrior', drops: { gold: [15, 35] } },
+    greedThief: { name: '宝库盗贼', hp: 50, damage: 11, speed: 85, color: 0xF1C40F, sprite: 'skeleton_mage', drops: { gold: [20, 40] } },
+    greedGuardian: { name: '金库守卫', hp: 82, damage: 20, speed: 42, color: 0xD4AC0D, sprite: 'orc_rogue', drops: { gold: [18, 45] } },
     // Gluttony — 腐烂宴厅
-    gluttonySlime: { name: '腐烂粘液', hp: 54, damage: 12, speed: 40, color: 0x85144b, sprite: 'orc_warrior', drops: { gold: [7, 18] } },
-    gluttonyMaw: { name: '小嘴兽', hp: 60, damage: 16, speed: 60, color: 0xA93226, sprite: 'skeleton_mage', drops: { gold: [9, 22] } },
-    gluttonyBloat: { name: '膨胀体', hp: 88, damage: 22, speed: 30, color: 0x641E16, sprite: 'orc_rogue', drops: { gold: [11, 26] } },
+    gluttonySlime: { name: '腐烂粘液', hp: 54, damage: 12, speed: 38, color: 0x85144b, sprite: 'orc_warrior', drops: { gold: [7, 18] } },
+    gluttonyMaw: { name: '小嘴兽', hp: 60, damage: 16, speed: 56, color: 0xA93226, sprite: 'skeleton_mage', drops: { gold: [9, 22] } },
+    gluttonyBloat: { name: '膨胀体', hp: 88, damage: 22, speed: 28, color: 0x641E16, sprite: 'orc_rogue', drops: { gold: [11, 26] } },
     // Lust — 幻梦花园
-    lustFairy: { name: '魅影精灵', hp: 44, damage: 10, speed: 95, color: 0xF012BE, sprite: 'orc_warrior', drops: { gold: [6, 16] } },
-    lustCharm: { name: '迷惑花', hp: 52, damage: 13, speed: 60, color: 0xE91E8C, sprite: 'skeleton_mage', drops: { gold: [8, 20] } },
-    lustGuard: { name: '花园守卫', hp: 68, damage: 17, speed: 70, color: 0xC2185B, sprite: 'orc_rogue', drops: { gold: [10, 24] } }
+    lustFairy: { name: '魅影精灵', hp: 44, damage: 10, speed: 89, color: 0xF012BE, sprite: 'orc_warrior', drops: { gold: [6, 16] } },
+    lustCharm: { name: '迷惑花', hp: 52, damage: 13, speed: 56, color: 0xE91E8C, sprite: 'skeleton_mage', drops: { gold: [8, 20] } },
+    lustGuard: { name: '花园守卫', hp: 68, damage: 17, speed: 66, color: 0xC2185B, sprite: 'orc_rogue', drops: { gold: [10, 24] } }
 };
 
 const AREA_ENEMIES = {
