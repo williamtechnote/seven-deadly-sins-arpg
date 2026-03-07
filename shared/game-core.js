@@ -789,15 +789,24 @@
             ? allChoices.find(choice => choice.key === normalizedRoom.selectedChoiceKey) || null
             : null;
         const stateLabel = normalizedRoom.resolved ? '已触发' : (normalizedRoom.discovered ? '已发现' : '未发现');
+        const resolvedPrefix = getRunEventRoomResolvedPrefix(normalizedRoom.type);
+        const hasStoredResolutionText = typeof normalizedRoom.resolutionText === 'string'
+            ? normalizedRoom.resolutionText.trim().length > 0
+            : false;
         const resolvedChoiceLabel = normalizedRoom.selectedChoiceLabel
-            || (selectedChoice ? selectedChoice.label : '');
+            || (selectedChoice ? selectedChoice.label : '')
+            || (
+                normalizedRoom.resolved && resolvedPrefix === '已选' && hasStoredResolutionText
+                    ? '未知选项'
+                    : ''
+            );
         const visibleChoices = normalizedRoom.resolved
             ? []
             : allChoices.slice(0, 2);
         const routeLines = normalizedRoom.resolved
             ? (
                 resolvedChoiceLabel
-                    ? [`${getRunEventRoomResolvedPrefix(normalizedRoom.type)}: ${resolvedChoiceLabel}`.trim()]
+                    ? [`${resolvedPrefix}: ${resolvedChoiceLabel}`.trim()]
                     : []
             )
             : visibleChoices.map((choice) => `${choice.label}: ${describeRunEventChoiceRoute(choice)}`.trim());
@@ -807,7 +816,7 @@
                 normalizedRoom.resolutionText
                     ? buildCompactRunEventResolutionText(normalizedRoom, selectedChoice)
                     : (
-                        resolvedChoiceLabel && getRunEventRoomResolvedPrefix(normalizedRoom.type) === '已选'
+                        resolvedChoiceLabel && resolvedPrefix === '已选'
                             ? '结算待同步'
                             : ''
                     )
