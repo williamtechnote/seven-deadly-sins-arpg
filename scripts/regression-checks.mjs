@@ -479,6 +479,44 @@ function testRunEventRoomHudSummary() {
         'resolved healing summary should compress restore-and-cleanse settlements into compact delta text'
     );
 
+    const resolvedBlessingMissingLabelSummary = buildRunEventRoomHudSummary({
+        key: 'prayerShrine',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'retiredPrayer',
+        selectedChoiceLabel: '',
+        resolutionText: '特攻冷却 -22%'
+    });
+    assert.deepEqual(
+        resolvedBlessingMissingLabelSummary.routeLines,
+        ['效果: 未知选项'],
+        'resolved blessing summary should keep the effect prefix even when the stored option label is missing'
+    );
+    assert.equal(
+        resolvedBlessingMissingLabelSummary.resolutionText,
+        '特攻冷却-22%',
+        'resolved blessing summary should still compact the stored settlement text when the chosen label is missing'
+    );
+
+    const resolvedTradeMissingSettlementSummary = buildRunEventRoomHudSummary({
+        key: 'gamblersShrine',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'highStakeWager',
+        selectedChoiceLabel: '豪赌',
+        resolutionText: ''
+    });
+    assert.deepEqual(
+        resolvedTradeMissingSettlementSummary.routeLines,
+        ['交易: 豪赌'],
+        'resolved trade summary should keep the trade prefix when settlement text is missing'
+    );
+    assert.equal(
+        resolvedTradeMissingSettlementSummary.resolutionText,
+        '结算待同步',
+        'resolved trade summary should fall back to a stable settlement placeholder when settlement text is missing'
+    );
+
     const resolvedUnknownSummary = buildRunEventRoomHudSummary({
         key: 'mysteryArchive',
         discovered: true,
@@ -626,6 +664,24 @@ function testRunEventRoomHudLines() {
             '交易: 豪赌 · 生命-30, 金币+120'
         ],
         'resolved trade event rooms should merge the chosen label and actual settlement delta with a trade prefix'
+    );
+
+    const resolvedTradeMissingSettlementLines = buildRunEventRoomHudLines({
+        key: 'gamblersShrine',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'highStakeWager',
+        selectedChoiceLabel: '豪赌',
+        resolutionText: ''
+    });
+    assert.deepEqual(
+        resolvedTradeMissingSettlementLines,
+        [
+            '事件房: 赌徒圣坛',
+            '交易 · 已触发',
+            '交易: 豪赌 · 结算待同步'
+        ],
+        'resolved trade event rooms should keep a stable merged fallback line when settlement text is missing'
     );
 
     const resolvedHealingLines = buildRunEventRoomHudLines({

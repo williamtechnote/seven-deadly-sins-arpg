@@ -792,11 +792,7 @@
         const resolvedPrefix = getRunEventRoomResolvedPrefix(normalizedRoom.type);
         const resolvedChoiceLabel = normalizedRoom.selectedChoiceLabel
             || (selectedChoice ? selectedChoice.label : '')
-            || (
-                normalizedRoom.resolved && resolvedPrefix === '已选'
-                    ? '未知选项'
-                    : ''
-            );
+            || (normalizedRoom.resolved ? '未知选项' : '');
         const visibleChoices = normalizedRoom.resolved
             ? []
             : allChoices.slice(0, 2);
@@ -812,11 +808,7 @@
             ? (
                 normalizedRoom.resolutionText
                     ? buildCompactRunEventResolutionText(normalizedRoom, selectedChoice)
-                    : (
-                        resolvedChoiceLabel && resolvedPrefix === '已选'
-                            ? '结算待同步'
-                            : ''
-                    )
+                    : (resolvedChoiceLabel ? '结算待同步' : '')
             )
             : (normalizedRoom.resolutionText || '');
 
