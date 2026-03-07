@@ -38,12 +38,14 @@ const {
     pickRunModifiers,
     buildRunModifierEffects,
     buildRunEventRoomEffects,
+    buildRunEventRoomChoicePreview,
     buildRunEventRoomHudLines,
     getRunEventRoomByKey,
     getRunEventRoomChoices,
     normalizeRunEventRoom,
     pickRunEventRoom,
     resolveRunEventRoomChoice,
+    getRunEventRoomChoiceFailureMessage,
     getUpgradeCostForLevel,
     getRequiredMaterialForWeapon,
     canUpgradeWeapon,
@@ -100,6 +102,12 @@ const ENEMY_EXTRA_DROP_CHANCE = {
     hpPotion: 0.08,
     staminaPotion: 0.08,
     material: 0.07
+};
+
+const RUN_EVENT_CHOICE_PANEL_FOOTER_DEFAULT = '按 1/2 选择，按 F 或 Esc 取消';
+const RUN_EVENT_CHOICE_PANEL_FOOTER_COLORS = {
+    default: '#9fb0c4',
+    blocked: '#ffb3a7'
 };
 
 const RUN_CHALLENGE_POOL = [
@@ -2560,12 +2568,20 @@ class LevelScene extends Phaser.Scene {
             wordWrap: { width: 470 },
             lineSpacing: 4
         }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(122).setVisible(false));
-        const footer = this.add.text(cx, cy + 120, '按 1/2 选择，按 F 或 Esc 取消', {
+        const footer = this.add.text(cx, cy + 120, RUN_EVENT_CHOICE_PANEL_FOOTER_DEFAULT, {
             fontSize: '13px',
-            fill: '#9fb0c4'
+            fill: RUN_EVENT_CHOICE_PANEL_FOOTER_COLORS.default
         }).setOrigin(0.5).setScrollFactor(0).setDepth(122).setVisible(false);
 
         this.runEventChoicePanel = { overlay, panel, title, description, optionTexts, footer };
+    }
+
+    _setRunEventChoicePanelFooter(message, tone) {
+        if (!this.runEventChoicePanel || !this.runEventChoicePanel.footer) return;
+        const footer = this.runEventChoicePanel.footer;
+        const nextTone = tone === 'blocked' ? 'blocked' : 'default';
+        footer.setText(message || RUN_EVENT_CHOICE_PANEL_FOOTER_DEFAULT);
+        footer.setColor(RUN_EVENT_CHOICE_PANEL_FOOTER_COLORS[nextTone]);
     }
 
     _refreshRunEventEncounterState() {
@@ -2615,9 +2631,10 @@ class LevelScene extends Phaser.Scene {
         this.runEventChoicePanel.title.setStyle({ fill: style.labelColor });
         this.runEventChoicePanel.description.setText(eventRoom.description);
         this.runEventChoicePanel.panel.setStrokeStyle(2, style.activeTint);
+        this._setRunEventChoicePanelFooter(RUN_EVENT_CHOICE_PANEL_FOOTER_DEFAULT, 'default');
         this.runEventChoicePanel.optionTexts.forEach((textNode, index) => {
             const choice = this._runEventChoiceOptions[index];
-            textNode.setText(choice ? `${index + 1}. ${choice.label}\n${choice.description}` : '');
+            textNode.setText(choice ? `${index + 1}. ${buildRunEventRoomChoicePreview(choice)}` : '');
             textNode.setVisible(true);
         });
         Object.values(this.runEventChoicePanel).forEach((node) => {
@@ -2629,6 +2646,7 @@ class LevelScene extends Phaser.Scene {
         this._runEventChoiceOpen = false;
         this._runEventChoiceOptions = [];
         if (!this.runEventChoicePanel) return;
+        this._setRunEventChoicePanelFooter(RUN_EVENT_CHOICE_PANEL_FOOTER_DEFAULT, 'default');
         Object.values(this.runEventChoicePanel).forEach((node) => {
             if (node && node.setVisible) node.setVisible(false);
         });
@@ -2704,7 +2722,7 @@ class LevelScene extends Phaser.Scene {
         }, GameState.runEventRoom, choice.key, RUN_EVENT_ROOM_POOL);
         if (!settlement.ok) {
             AudioSystem.playUi('ui');
-            this._closeRunEventChoicePanel();
+            this._setRunEventChoicePanelFooter(getRunEventRoomChoiceFailureMessage(settlement), 'blocked');
             return true;
         }
 

@@ -29,6 +29,8 @@ const {
     normalizeRunEventRoom,
     pickRunEventRoom,
     resolveRunEventRoomChoice,
+    buildRunEventRoomChoicePreview,
+    getRunEventRoomChoiceFailureMessage,
     buildRunEventRoomEffects,
     buildRunEventRoomHudSummary,
     buildRunEventRoomHudLines,
@@ -350,6 +352,41 @@ function testRunEventRoomSelection() {
     const prayerEffects = buildRunEventRoomEffects(prayerSettlement.eventRoom);
     assert.equal(prayerEffects.playerSpecialCooldownMultiplier, 0.78, 'tempo prayer should shorten special cooldowns');
     assert.match(prayerSettlement.eventRoom.resolutionText, /冷却/, 'prayer shrine summary should mention the cooldown buff');
+}
+
+function testRunEventRoomChoiceHelpers() {
+    assert.equal(typeof buildRunEventRoomChoicePreview, 'function', 'event room choice preview helper should be exported');
+    assert.equal(typeof getRunEventRoomChoiceFailureMessage, 'function', 'event room choice failure helper should be exported');
+
+    const healingChoice = getRunEventRoomChoices('healingFountain').find(choice => choice.key === 'purifyingSip');
+    assert.equal(
+        buildRunEventRoomChoicePreview(healingChoice),
+        '净泉啜饮: 生命+30%, 净化',
+        'choice preview helper should reuse the compact healing route copy'
+    );
+
+    const tradeChoice = getRunEventRoomChoices('supplyCache').find(choice => choice.key === 'fieldTonic');
+    assert.equal(
+        buildRunEventRoomChoicePreview(tradeChoice),
+        '战地净化包: 金币-45, 净化药剂x1',
+        'choice preview helper should reuse the compact trade route copy'
+    );
+
+    assert.equal(
+        getRunEventRoomChoiceFailureMessage({ reason: 'insufficient_gold' }),
+        '金币不足，无法选择该路线',
+        'failure helper should expose an explicit gold-gating message'
+    );
+    assert.equal(
+        getRunEventRoomChoiceFailureMessage({ reason: 'already_resolved' }),
+        '该事件房已结算',
+        'failure helper should expose an explicit resolved-state message'
+    );
+    assert.equal(
+        getRunEventRoomChoiceFailureMessage({ reason: 'unexpected_reason' }),
+        '当前无法完成该选择',
+        'failure helper should fall back to a stable generic message for unknown reasons'
+    );
 }
 
 function testRunEventRoomHudSummary() {
@@ -992,6 +1029,7 @@ function main() {
     runTest('status effect logic', testStatusEffectLogic);
     runTest('run modifier selection/effects', testRunModifierSelectionAndEffects);
     runTest('run event room selection', testRunEventRoomSelection);
+    runTest('run event room choice helpers', testRunEventRoomChoiceHelpers);
     runTest('run event room HUD summary', testRunEventRoomHudSummary);
     runTest('run event room HUD lines', testRunEventRoomHudLines);
     runTest('crafting recipe checks', testCraftingRecipeChecks);

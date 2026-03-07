@@ -708,6 +708,23 @@
         return typeof safeChoice.description === 'string' ? safeChoice.description : '';
     }
 
+    function buildRunEventRoomChoicePreview(choice) {
+        const safeChoice = choice && typeof choice === 'object' ? choice : {};
+        const label = typeof safeChoice.label === 'string' ? safeChoice.label.trim() : '';
+        const route = describeRunEventChoiceRoute(safeChoice).trim();
+        if (label && route) return `${label}: ${route}`;
+        return label || route || '';
+    }
+
+    function getRunEventRoomChoiceFailureMessage(settlement) {
+        const reason = settlement && typeof settlement.reason === 'string' ? settlement.reason : '';
+        if (reason === 'insufficient_gold') return '金币不足，无法选择该路线';
+        if (reason === 'already_resolved') return '该事件房已结算';
+        if (reason === 'invalid_choice') return '该路线当前不可用';
+        if (reason === 'invalid_event_room') return '事件房状态异常，请稍后重试';
+        return '当前无法完成该选择';
+    }
+
     function buildCompactRunEventResolutionText(runEventRoom, choice) {
         const normalizedRoom = runEventRoom && typeof runEventRoom === 'object' ? runEventRoom : {};
         const safeChoice = choice && typeof choice === 'object' ? choice : {};
@@ -1467,6 +1484,8 @@
         pickRunModifiers,
         buildRunModifierEffects,
         buildRunEventRoomEffects,
+        buildRunEventRoomChoicePreview,
+        getRunEventRoomChoiceFailureMessage,
         buildRunEventRoomHudSummary,
         buildRunEventRoomHudLines,
         getRunEventRoomByKey,
