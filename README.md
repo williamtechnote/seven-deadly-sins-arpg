@@ -115,10 +115,7 @@ npx serve .
 ├── shared/
 │   └── game-core.js # 纯逻辑共享模块（浏览器 + CLI）
 ├── scripts/
-│   ├── regression-checks.mjs         # 轻量回归检查脚本
-│   ├── auto-iterate.sh               # 每20分钟自动迭代执行器（Codex）
-│   ├── install-auto-iteration.sh     # 安装并启动 launchd 定时任务
-│   └── uninstall-auto-iteration.sh   # 停止并卸载 launchd 定时任务
+│   └── regression-checks.mjs # 轻量回归检查脚本
 └── assets/         # 像素美术资源
     └── sprites/    # 角色、敌人、NPC、道具精灵图
 ```
@@ -146,47 +143,6 @@ node scripts/regression-checks.mjs
 - HUD 状态分组与倒计时排序稳定性
 - Run Modifier 抽取唯一性与效果合成
 - 铁匠制作配方消耗与产出确定性
-
-## 自动持续迭代（每 20 分钟）
-
-已提供可周期运行的本地机制，通过 `launchd` 每 20 分钟触发一次 Codex 自动研发循环，并通过 `TODO.md / PROGRESS.log / README.md` 传递上下文。
-
-### 安装并启动
-
-```bash
-./scripts/install-auto-iteration.sh
-```
-
-### 查看状态与日志
-
-```bash
-launchctl print gui/$(id -u)/com.william.sevensins.autocycle
-
-# 调度层日志
-ls -lah .auto-iteration/
-# 主要看：
-# - .auto-iteration/runner.log
-# - .auto-iteration/launchd.out.log
-# - .auto-iteration/launchd.err.log
-```
-
-### 停止并卸载
-
-```bash
-./scripts/uninstall-auto-iteration.sh
-```
-
-### 机制说明
-
-- 调度间隔：`1200s`（20 分钟）
-- 防重入：`scripts/auto-iterate.sh` 使用锁目录避免并发执行
-- 每轮要求：
-  - 读取 `TODO.md / PROGRESS.log / README.md`
-  - 选取最早 2 个 active 项进行实现
-  - 分支命名固定为 `feat/auto-[short-description]`
-  - 跑回归测试并执行 commit/merge/push 规则
-  - 强制写入 `PROGRESS.log` 审计记录
-- 分支保留策略：不删除 feature 分支（本地与远端均保留）
 
 ## License
 
