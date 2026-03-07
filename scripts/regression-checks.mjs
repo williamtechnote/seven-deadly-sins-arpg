@@ -1618,6 +1618,27 @@ function testQuickSlotAutoAssignNotice() {
         'auto-assign notice should clamp overlong name-derived fallback labels on the non-overwrite path'
     );
     assert.equal(
+        buildQuickSlotAutoAssignNotice(0, {
+            assignedItemName: '圣疗秘藏浓缩生命药水',
+            measureLabelWidth: (label) => {
+                const widths = {
+                    '圣': 10,
+                    '疗': 10,
+                    '秘': 10,
+                    '藏': 10,
+                    '浓': 14,
+                    '缩': 14,
+                    '生': 14,
+                    '命': 14,
+                    '…': 8
+                };
+                return widths[label] || 14;
+            }
+        }),
+        '快捷栏1：+圣疗秘藏…',
+        'auto-assign notice should allow runtime measurement hooks to keep additional narrow glyphs before truncation'
+    );
+    assert.equal(
         buildQuickSlotAutoAssignNotice(0, { assignedItemName: 'HP恢复药剂' }),
         '快捷栏1：+HP恢复',
         'auto-assign notice should preserve extra narrow glyphs when clamping mixed-width fallback labels'
@@ -1740,6 +1761,16 @@ function testKeyboardHudQolHooks() {
     );
     assert.match(
         source,
+        /measureLabelWidth:\s*label\s*=>\s*this\._measureQuickSlotNoticeLabel\(label\)/,
+        'inventory consumable clicks should pass a Phaser-backed label measurement callback into the shared quick-slot notice helper'
+    );
+    assert.match(
+        source,
+        /_measureQuickSlotNoticeLabel\(label\)\s*{[\s\S]*?this\._quickSlotNoticeMeasureText[\s\S]*?setText\(label\)[\s\S]*?return this\._quickSlotNoticeMeasureText\.width;/,
+        'InventoryScene should expose a dedicated helper that measures quick-slot notice labels with Phaser text width'
+    );
+    assert.match(
+        source,
         /slot\.itemText\.setText\(buildQuickSlotItemLabel\(itemKey,\s*itemCount\)\);/,
         'HUD quick slots should render compact helper-driven labels with counts'
     );
@@ -1794,8 +1825,13 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /宽度权重.*“快捷栏N：\+HP恢复”/,
-        'README should document the width-weighted mixed-width fallback example'
+        /优先按 Phaser 文本实际宽度钳制.*“快捷栏N：\+HP恢复”/,
+        'README should document the Phaser-backed mixed-width fallback example'
+    );
+    assert.match(
+        source,
+        /若当前环境拿不到真实测量结果，则会回退为宽度权重估算/,
+        'README should document the heuristic fallback when runtime text measurement is unavailable'
     );
     assert.match(
         source,
@@ -1823,8 +1859,13 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /宽度权重[^。]*“快捷栏N：\+HP恢复”/,
-        'help overlay should explain the width-weighted mixed-width fallback example'
+        /优先按 Phaser 文本实际宽度钳制[^。]*“快捷栏N：\+HP恢复”/,
+        'help overlay should explain the Phaser-backed mixed-width fallback example'
+    );
+    assert.match(
+        source,
+        /若当前环境拿不到真实测量结果则回退为宽度权重估算/,
+        'help overlay should explain the heuristic fallback when Phaser text measurement is unavailable'
     );
     assert.match(
         source,

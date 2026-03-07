@@ -431,6 +431,7 @@
         berserkerOil: '油'
     };
     const QUICK_SLOT_NOTICE_DERIVED_LABEL_MAX_WIDTH_UNITS = 6;
+    const QUICK_SLOT_NOTICE_DERIVED_LABEL_MAX_MEASURED_WIDTH = 48;
 
     function getQuickSlotNoticeGlyphWidth(glyph) {
         if (typeof glyph !== 'string' || !glyph) return 0;
@@ -442,11 +443,40 @@
         return 2;
     }
 
-    function clampQuickSlotNoticeLabel(label) {
+    function getMeasuredQuickSlotNoticeGlyphWidth(glyph, measureLabelWidth) {
+        if (typeof measureLabelWidth === 'function') {
+            const measuredWidth = Number(measureLabelWidth(glyph));
+            if (Number.isFinite(measuredWidth) && measuredWidth > 0) {
+                return measuredWidth;
+            }
+        }
+        return getQuickSlotNoticeGlyphWidth(glyph) * 8;
+    }
+
+    function clampQuickSlotNoticeLabel(label, options) {
         if (typeof label !== 'string') return '';
         const safeLabel = label.trim();
         if (!safeLabel) return '';
         const glyphs = Array.from(safeLabel);
+        const measureLabelWidth = options && typeof options.measureLabelWidth === 'function'
+            ? options.measureLabelWidth
+            : null;
+        if (measureLabelWidth) {
+            let measuredWidth = 0;
+            const keptGlyphs = [];
+            for (const glyph of glyphs) {
+                const nextWidth = getMeasuredQuickSlotNoticeGlyphWidth(glyph, measureLabelWidth);
+                if ((measuredWidth + nextWidth) > QUICK_SLOT_NOTICE_DERIVED_LABEL_MAX_MEASURED_WIDTH) {
+                    break;
+                }
+                keptGlyphs.push(glyph);
+                measuredWidth += nextWidth;
+            }
+            if (keptGlyphs.length === glyphs.length) {
+                return safeLabel;
+            }
+            return `${keptGlyphs.join('')}…`;
+        }
         let widthUnits = 0;
         const keptGlyphs = [];
         for (const glyph of glyphs) {
@@ -463,13 +493,13 @@
         return `${keptGlyphs.join('')}…`;
     }
 
-    function deriveQuickSlotNoticeLabelFromName(itemName) {
+    function deriveQuickSlotNoticeLabelFromName(itemName, options) {
         const safeItemName = typeof itemName === 'string'
             ? itemName.replace(/\s+/g, '').trim()
             : '';
         if (!safeItemName) return '';
         const stem = safeItemName.replace(/(药水|药剂|药|油)$/u, '');
-        return clampQuickSlotNoticeLabel(stem || safeItemName);
+        return clampQuickSlotNoticeLabel(stem || safeItemName, options);
     }
 
     function resolveQuickSlotNoticeLabel(itemKey, itemName) {
@@ -498,10 +528,11 @@
         const assignedItemName = options && options.assignedItemName;
         const replacedItemKey = options && options.replacedItemKey;
         const replacedItemName = options && options.replacedItemName;
+        const measureLabelWidth = options && options.measureLabelWidth;
         const assignedItemDerivedLabel = QUICK_SLOT_SHORT_LABELS[assignedItemKey]
-            || deriveQuickSlotNoticeLabelFromName(assignedItemName);
+            || deriveQuickSlotNoticeLabelFromName(assignedItemName, { measureLabelWidth });
         const replacedItemDerivedLabel = QUICK_SLOT_SHORT_LABELS[replacedItemKey]
-            || deriveQuickSlotNoticeLabelFromName(replacedItemName);
+            || deriveQuickSlotNoticeLabelFromName(replacedItemName, { measureLabelWidth });
         const assignedItemShortLabel = assignedItemDerivedLabel || '道具';
         const replacedItemShortLabel = replacedItemDerivedLabel || '道具';
         const slotLabel = `快捷栏${safeSlotIndex + 1}：`;

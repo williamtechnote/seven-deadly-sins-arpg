@@ -4400,6 +4400,10 @@ class InventoryScene extends Phaser.Scene {
             fontSize: '18px',
             fill: '#7dffb3'
         }).setOrigin(0.5).setScrollFactor(0).setDepth(1).setVisible(false);
+        this._quickSlotNoticeMeasureText = this.add.text(-1000, -1000, '', {
+            fontSize: '18px',
+            fill: '#7dffb3'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(0).setVisible(false);
         this._autoAssignMessageTimer = null;
 
         this.tooltip = this.add.text(0, 0, '', {
@@ -4484,7 +4488,8 @@ class InventoryScene extends Phaser.Scene {
                         assignedItemKey: key,
                         assignedItemName,
                         replacedItemKey,
-                        replacedItemName
+                        replacedItemName,
+                        measureLabelWidth: label => this._measureQuickSlotNoticeLabel(label)
                     }));
                     this._buildGrid();
                 });
@@ -4549,6 +4554,12 @@ class InventoryScene extends Phaser.Scene {
             this.autoAssignMessageText.setVisible(false);
             this._autoAssignMessageTimer = null;
         });
+    }
+
+    _measureQuickSlotNoticeLabel(label) {
+        if (!this._quickSlotNoticeMeasureText) return 0;
+        this._quickSlotNoticeMeasureText.setText(label);
+        return this._quickSlotNoticeMeasureText.width;
     }
 }
 
@@ -5316,7 +5327,7 @@ class HelpScene extends Phaser.Scene {
             { title: '战斗', items: ['U / 鼠标左键  —  普通攻击', 'O / 鼠标右键  —  特殊攻击'] },
             { title: '防御', items: ['Space  —  闪避翻滚（无敌帧）'] },
             { title: '武器', items: ['Q / E  —  切换武器'] },
-            { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位，并提示“快捷栏N：+<短名>”；若临时拿不到显式短名则会沿用道具名生成“快捷栏N：+生命”这类短句；提示会按宽度权重而非纯字符数钳制，因此“快捷栏N：+HP恢复”这类混排会尽量保留更多有效信息；若道具名词干过长则会截成“快捷栏N：+圣疗秘…”这类省略短句；快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”；若拿不到显式短名则改用“快捷栏1：狂战→净化”这类道具名短句；若这些道具名过长则同样会截成“快捷栏1：古代狂…→神圣净…”这类省略短句', '净化药剂/狂战油可在铁匠制作'] },
+            { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位，并提示“快捷栏N：+<短名>”；若临时拿不到显式短名则会沿用道具名生成“快捷栏N：+生命”这类短句；提示现在会优先按 Phaser 文本实际宽度钳制，因此“快捷栏N：+HP恢复”这类混排会尽量保留更多有效信息；若当前环境拿不到真实测量结果则回退为宽度权重估算；若道具名词干过长则会截成“快捷栏N：+圣疗秘…”这类省略短句；快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”；若拿不到显式短名则改用“快捷栏1：狂战→净化”这类道具名短句；若这些道具名过长则同样会截成“快捷栏1：古代狂…→神圣净…”这类省略短句', '净化药剂/狂战油可在铁匠制作'] },
             { title: '状态', items: ['灼烧/流血会持续掉血', '减速会降低移动速度'] },
             { title: '本局词缀', items: runModifierLines },
             { title: '交互/界面', items: ['F — NPC / 事件房交互', 'Tab — 背包', 'Esc — 暂停', 'H — 操作指引'] }
