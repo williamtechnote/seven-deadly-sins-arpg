@@ -880,6 +880,19 @@
         return lines;
     }
 
+    function buildRunEventRoomWorldLabel(runEventRoom, poolOverride) {
+        const normalizedRoom = normalizeRunEventRoom(runEventRoom, poolOverride);
+        if (!normalizedRoom) return '';
+        if (!normalizedRoom.resolved) return normalizedRoom.name;
+
+        const summary = buildRunEventRoomHudSummary(normalizedRoom, poolOverride);
+        const selectedLine = Array.isArray(summary.routeLines) && summary.routeLines.length > 0
+            ? summary.routeLines[0]
+            : '';
+        if (selectedLine) return `${summary.name} · ${selectedLine}`;
+        return `${summary.name} · 已结算`;
+    }
+
     function pickRunModifiers(randomFn, count, poolOverride) {
         const pool = Array.isArray(poolOverride) ? poolOverride : RUN_MODIFIER_POOL;
         const uniquePool = pool.filter((mod, idx) => (
@@ -1488,6 +1501,7 @@
         getRunEventRoomChoiceFailureMessage,
         buildRunEventRoomHudSummary,
         buildRunEventRoomHudLines,
+        buildRunEventRoomWorldLabel,
         getRunEventRoomByKey,
         getRunEventRoomChoices,
         normalizeRunEventRoom,

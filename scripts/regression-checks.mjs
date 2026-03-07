@@ -34,6 +34,7 @@ const {
     buildRunEventRoomEffects,
     buildRunEventRoomHudSummary,
     buildRunEventRoomHudLines,
+    buildRunEventRoomWorldLabel,
     resolveConsumableUse,
     buildStatusHudSummary,
     advanceBossHpAfterimage,
@@ -849,6 +850,38 @@ function testRunEventRoomHudLines() {
     );
 }
 
+function testRunEventRoomWorldLabel() {
+    assert.equal(typeof buildRunEventRoomWorldLabel, 'function', 'event room world-label helper should be exported');
+
+    const resolvedBlessingLabel = buildRunEventRoomWorldLabel({
+        key: 'prayerShrine',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'tempoPrayer',
+        selectedChoiceLabel: '迅击祷言',
+        resolutionText: '特攻冷却 -22%'
+    });
+    assert.equal(
+        resolvedBlessingLabel,
+        '祈愿圣坛 · 效果: 迅击祷言',
+        'resolved altar labels should append the compact chosen-route summary for known room types'
+    );
+
+    const resolvedBlessingMissingLabel = buildRunEventRoomWorldLabel({
+        key: 'prayerShrine',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'retiredPrayer',
+        selectedChoiceLabel: '',
+        resolutionText: '特攻冷却 -22%'
+    });
+    assert.equal(
+        resolvedBlessingMissingLabel,
+        '祈愿圣坛 · 效果: 未知选项',
+        'resolved altar labels should keep the type prefix and unknown-option fallback when the stored route label is missing'
+    );
+}
+
 function testCraftingRecipeChecks() {
     assert.ok(CRAFTING_RECIPES.cleanseTonic, 'cleanse recipe should exist');
     assert.ok(CRAFTING_RECIPES.berserkerOil, 'berserker recipe should exist');
@@ -1032,6 +1065,7 @@ function main() {
     runTest('run event room choice helpers', testRunEventRoomChoiceHelpers);
     runTest('run event room HUD summary', testRunEventRoomHudSummary);
     runTest('run event room HUD lines', testRunEventRoomHudLines);
+    runTest('run event room world label', testRunEventRoomWorldLabel);
     runTest('crafting recipe checks', testCraftingRecipeChecks);
     runTest('consumable use resolution', testConsumableUseResolution);
     runTest('status HUD summary', testStatusHudSummary);

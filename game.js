@@ -40,6 +40,7 @@ const {
     buildRunEventRoomEffects,
     buildRunEventRoomChoicePreview,
     buildRunEventRoomHudLines,
+    buildRunEventRoomWorldLabel,
     getRunEventRoomByKey,
     getRunEventRoomChoices,
     normalizeRunEventRoom,
@@ -2592,7 +2593,7 @@ class LevelScene extends Phaser.Scene {
         this.runEventRoomShrine.setTint(resolved ? style.resolvedTint : style.activeTint);
         this.runEventRoomShrine.setAlpha(resolved ? 0.55 : 1);
         if (this.runEventRoomLabel) {
-            this.runEventRoomLabel.setText(eventRoom ? (resolved ? `${eventRoom.name} · 已结算` : eventRoom.name) : '');
+            this.runEventRoomLabel.setText(eventRoom ? buildRunEventRoomWorldLabel(eventRoom, RUN_EVENT_ROOM_POOL) : '');
             this.runEventRoomLabel.setColor(resolved ? style.resolvedLabelColor : style.labelColor);
         }
         if (this.runEventRoomIndicator) {
