@@ -704,7 +704,10 @@
             return {
                 visible: false,
                 name: '',
+                statusLabel: '',
+                metaLabel: '',
                 typeLabel: '',
+                routeLines: [],
                 routeSummary: '',
                 resolutionText: ''
             };
@@ -714,17 +717,23 @@
         const selectedChoice = normalizedRoom.selectedChoiceKey
             ? allChoices.find(choice => choice.key === normalizedRoom.selectedChoiceKey) || null
             : null;
+        const stateLabel = normalizedRoom.resolved ? '已触发' : (normalizedRoom.discovered ? '已发现' : '未发现');
         const visibleChoices = normalizedRoom.resolved && selectedChoice
             ? [selectedChoice]
             : allChoices.slice(0, 2);
-        const routeSummary = visibleChoices.length > 0
-            ? `路线: ${visibleChoices.map((choice) => `${choice.label}: ${describeRunEventChoiceRoute(choice)}`.trim()).join(' | ')}`
-            : '';
+        const routeLines = visibleChoices.map((choice) => {
+            const prefix = normalizedRoom.resolved ? '已选 ' : '';
+            return `${prefix}${choice.label}: ${describeRunEventChoiceRoute(choice)}`.trim();
+        });
+        const routeSummary = routeLines.join('\n');
 
         return {
             visible: true,
             name: normalizedRoom.name,
+            statusLabel: stateLabel,
+            metaLabel: `${getRunEventRoomTypeLabel(normalizedRoom.type)} · ${stateLabel}`,
             typeLabel: `类型 ${getRunEventRoomTypeLabel(normalizedRoom.type)}`,
+            routeLines,
             routeSummary,
             resolutionText: normalizedRoom.resolutionText || ''
         };

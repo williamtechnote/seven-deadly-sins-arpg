@@ -359,11 +359,14 @@ function testRunEventRoomHudSummary() {
         discovered: true,
         resolved: false
     });
-    assert.equal(unresolvedSummary.typeLabel, '类型 交易', 'HUD summary should localize the event room type');
-    assert.match(
-        unresolvedSummary.routeSummary,
-        /战地净化包: 金币-45, 净化药剂x1 \| 狂战补给: 金币-60, 狂战油x1/,
-        'HUD summary should expose compact route details for unresolved rooms'
+    assert.equal(unresolvedSummary.metaLabel, '交易 · 已发现', 'HUD summary should compress the type/state metadata');
+    assert.deepEqual(
+        unresolvedSummary.routeLines,
+        [
+            '战地净化包: 金币-45, 净化药剂x1',
+            '狂战补给: 金币-60, 狂战油x1'
+        ],
+        'HUD summary should split unresolved routes into one compact line per choice'
     );
 
     const resolvedSummary = buildRunEventRoomHudSummary({
@@ -374,11 +377,11 @@ function testRunEventRoomHudSummary() {
         selectedChoiceLabel: '迅击祷言',
         resolutionText: '特攻冷却 -22%'
     });
-    assert.equal(resolvedSummary.typeLabel, '类型 祝福', 'HUD summary should keep the localized blessing type');
-    assert.equal(
-        resolvedSummary.routeSummary,
-        '路线: 迅击祷言: 特攻冷却-22%',
-        'HUD summary should collapse to the chosen route after settlement'
+    assert.equal(resolvedSummary.metaLabel, '祝福 · 已触发', 'HUD summary should keep the compressed blessing metadata');
+    assert.deepEqual(
+        resolvedSummary.routeLines,
+        ['已选 迅击祷言: 特攻冷却-22%'],
+        'HUD summary should collapse to one chosen-route line after settlement'
     );
 }
 

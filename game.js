@@ -5011,12 +5011,15 @@ class UIScene extends Phaser.Scene {
         const eventRoom = GameState.getRunEventRoomSummary ? GameState.getRunEventRoomSummary() : null;
         if (eventRoom) {
             const hudSummary = buildRunEventRoomHudSummary(eventRoom, RUN_EVENT_ROOM_POOL);
-            const state = eventRoom.resolved ? '已触发' : (eventRoom.discovered ? '已发现' : '未发现');
             const lines = [
                 `事件房: ${eventRoom.name}`,
-                `${hudSummary.typeLabel} · 状态: ${state}`
+                hudSummary.metaLabel || `${hudSummary.typeLabel} · ${hudSummary.statusLabel || ''}`.trim()
             ];
-            if (hudSummary.routeSummary) lines.push(hudSummary.routeSummary);
+            if (Array.isArray(hudSummary.routeLines) && hudSummary.routeLines.length > 0) {
+                lines.push(...hudSummary.routeLines);
+            } else if (hudSummary.routeSummary) {
+                lines.push(hudSummary.routeSummary);
+            }
             if (eventRoom.resolved && hudSummary.resolutionText) lines.push(`结算: ${hudSummary.resolutionText}`);
             this.eventRoomText.setText(lines.join('\n'));
             this.eventRoomText.setStyle({ fill: eventRoom.resolved ? '#9fa8b3' : '#ffd27a' });
