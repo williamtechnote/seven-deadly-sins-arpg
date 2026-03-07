@@ -2475,6 +2475,15 @@ class LevelScene extends Phaser.Scene {
                 accentColor: '#ff9fad'
             };
         }
+        if (type === 'blessing') {
+            return {
+                activeTint: 0x7A8DFF,
+                resolvedTint: 0x707893,
+                labelColor: '#dee4ff',
+                resolvedLabelColor: '#b0b8cf',
+                accentColor: '#b7c3ff'
+            };
+        }
         return {
             activeTint: 0xF6C86C,
             resolvedTint: 0x7D8694,
@@ -2656,6 +2665,16 @@ class LevelScene extends Phaser.Scene {
         if (settlement.nextState.cleanseNegativeStatuses) {
             lines.push({ text: '净化负面状态', color: '#9EFFE1' });
         }
+        if (Array.isArray(settlement.itemChanges) && settlement.itemChanges.length > 0) {
+            settlement.itemChanges.forEach(({ itemKey, count }) => {
+                if (!itemKey || !count) return;
+                const item = ITEMS[itemKey];
+                lines.push({
+                    text: `${item ? item.name : itemKey} +${count}`,
+                    color: '#9EFFE1'
+                });
+            });
+        }
         if (lines.length === 1 && settlement.eventRoom && settlement.eventRoom.resolutionText) {
             lines.push({ text: settlement.eventRoom.resolutionText, color: '#f7d9df' });
         }
@@ -2689,6 +2708,9 @@ class LevelScene extends Phaser.Scene {
         }
 
         GameState.gold = settlement.nextState.gold;
+        if (settlement.nextState.inventory) {
+            GameState.inventory = settlement.nextState.inventory;
+        }
         GameState.runEventRoom = settlement.eventRoom;
         GameState.refreshRunEffects();
         this.player.hp = Math.max(1, Math.min(this.player.maxHp, settlement.nextState.playerHp));

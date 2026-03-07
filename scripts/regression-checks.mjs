@@ -207,7 +207,7 @@ function testRunModifierSelectionAndEffects() {
 }
 
 function testRunEventRoomSelection() {
-    assert.ok(Array.isArray(RUN_EVENT_ROOM_POOL) && RUN_EVENT_ROOM_POOL.length >= 3, 'event room pool should contain entries');
+    assert.ok(Array.isArray(RUN_EVENT_ROOM_POOL) && RUN_EVENT_ROOM_POOL.length >= 5, 'event room pool should contain all shipped entries');
 
     const picked = pickRunEventRoom(() => 0);
     assert.equal(picked.key, RUN_EVENT_ROOM_POOL[0].key, 'deterministic event pick should select first entry');
@@ -290,6 +290,64 @@ function testRunEventRoomSelection() {
     assert.equal(contractEffects.playerDamageMultiplier, 1.35, 'crimson pact should grant the configured damage bonus');
     assert.equal(contractEffects.playerDamageTakenMultiplier, 1.18, 'crimson pact should increase incoming damage');
     assert.match(contractSettlement.eventRoom.resolutionText, /\+35%/, 'blood contract summary should mention the offensive buff');
+
+    const supplyChoices = getRunEventRoomChoices('supplyCache');
+    assert.deepEqual(
+        supplyChoices.map(choice => choice.key),
+        ['fieldTonic', 'berserkerKit'],
+        'supply cache should expose both consumable exchange choices'
+    );
+    const supplySettlement = resolveRunEventRoomChoice({
+        gold: 140,
+        playerHp: 84,
+        playerMaxHp: 120,
+        inventory: {
+            hpPotion: 1
+        }
+    }, {
+        key: 'supplyCache',
+        discovered: true,
+        resolved: false
+    }, 'fieldTonic');
+    assert.equal(supplySettlement.ok, true, 'supply cache should resolve when enough gold exists');
+    assert.equal(supplySettlement.nextState.gold, 95, 'field tonic should deduct its configured gold cost');
+    assert.equal(supplySettlement.nextState.inventory.cleanseTonic, 1, 'field tonic should grant a cleanse tonic');
+    assert.equal(supplySettlement.nextState.inventory.hpPotion, 1, 'other inventory entries should remain intact');
+    assert.match(supplySettlement.eventRoom.resolutionText, /净化药剂/, 'supply cache summary should mention the granted item');
+
+    const supplyBlocked = resolveRunEventRoomChoice({
+        gold: 30,
+        playerHp: 84,
+        playerMaxHp: 120,
+        inventory: {}
+    }, {
+        key: 'supplyCache',
+        discovered: true,
+        resolved: false
+    }, 'berserkerKit');
+    assert.equal(supplyBlocked.ok, false, 'supply cache should reject choices when gold is insufficient');
+    assert.equal(supplyBlocked.reason, 'insufficient_gold', 'supply cache should report gold gating explicitly');
+
+    const prayerChoices = getRunEventRoomChoices('prayerShrine');
+    assert.deepEqual(
+        prayerChoices.map(choice => choice.key),
+        ['renewalPrayer', 'tempoPrayer'],
+        'prayer shrine should expose both prayer routes'
+    );
+    const prayerSettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 84,
+        playerMaxHp: 120
+    }, {
+        key: 'prayerShrine',
+        discovered: true,
+        resolved: false
+    }, 'tempoPrayer');
+    assert.equal(prayerSettlement.ok, true, 'prayer shrine choice should resolve');
+    assert.equal(prayerSettlement.eventRoom.selectedChoiceLabel, '迅击祷言', 'prayer shrine should persist the chosen label');
+    const prayerEffects = buildRunEventRoomEffects(prayerSettlement.eventRoom);
+    assert.equal(prayerEffects.playerSpecialCooldownMultiplier, 0.78, 'tempo prayer should shorten special cooldowns');
+    assert.match(prayerSettlement.eventRoom.resolutionText, /冷却/, 'prayer shrine summary should mention the cooldown buff');
 }
 
 function testCraftingRecipeChecks() {

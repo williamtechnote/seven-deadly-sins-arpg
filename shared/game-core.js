@@ -244,6 +244,74 @@
                     }
                 }
             ]
+        },
+        {
+            key: 'supplyCache',
+            name: '战备商柜',
+            description: '花费金币，换取能立刻装入背包的战备消耗品',
+            type: 'trade',
+            choices: [
+                {
+                    key: 'fieldTonic',
+                    label: '战地净化包',
+                    description: '支付 45 金币，获得 1 瓶净化药剂',
+                    effect: {
+                        type: 'goldForItems',
+                        goldCost: 45,
+                        items: {
+                            cleanseTonic: 1
+                        },
+                        itemLabels: {
+                            cleanseTonic: '净化药剂'
+                        }
+                    }
+                },
+                {
+                    key: 'berserkerKit',
+                    label: '狂战补给',
+                    description: '支付 60 金币，获得 1 瓶狂战油',
+                    effect: {
+                        type: 'goldForItems',
+                        goldCost: 60,
+                        items: {
+                            berserkerOil: 1
+                        },
+                        itemLabels: {
+                            berserkerOil: '狂战油'
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            key: 'prayerShrine',
+            name: '祈愿圣坛',
+            description: '向圣坛祈愿，换取不同方向的本局祝福',
+            type: 'blessing',
+            choices: [
+                {
+                    key: 'renewalPrayer',
+                    label: '复苏祷言',
+                    description: '本局体力恢复 +35%',
+                    effect: {
+                        type: 'runEffectBuff',
+                        runEffects: {
+                            playerStaminaRegenMultiplier: 1.35
+                        }
+                    }
+                },
+                {
+                    key: 'tempoPrayer',
+                    label: '迅击祷言',
+                    description: '本局特攻冷却 -22%',
+                    effect: {
+                        type: 'runEffectBuff',
+                        runEffects: {
+                            playerSpecialCooldownMultiplier: 0.78
+                        }
+                    }
+                }
+            ]
         }
     ];
 
@@ -369,6 +437,19 @@
             }));
     }
 
+    function normalizeEffectItemChanges(effect) {
+        if (!effect || typeof effect !== 'object') return [];
+        const itemLabels = effect.itemLabels && typeof effect.itemLabels === 'object'
+            ? effect.itemLabels
+            : {};
+        return Object.entries(normalizeInventory(effect.items))
+            .map(([itemKey, count]) => ({
+                itemKey,
+                count,
+                label: typeof itemLabels[itemKey] === 'string' ? itemLabels[itemKey] : itemKey
+            }));
+    }
+
     function getRunEventRoomChoices(eventRoomOrKey, poolOverride) {
         const eventKey = typeof eventRoomOrKey === 'string'
             ? eventRoomOrKey
@@ -434,27 +515,30 @@
     function resolveRunEventRoomChoice(state, runEventRoom, choiceKey, poolOverride) {
         const normalizedRoom = normalizeRunEventRoom(runEventRoom, poolOverride);
         if (!normalizedRoom) {
-            return { ok: false, reason: 'invalid_event_room', eventRoom: null, choice: null, nextState: null };
+            return { ok: false, reason: 'invalid_event_room', eventRoom: null, choice: null, nextState: null, itemChanges: [] };
         }
         if (normalizedRoom.resolved) {
-            return { ok: false, reason: 'already_resolved', eventRoom: normalizedRoom, choice: null, nextState: null };
+            return { ok: false, reason: 'already_resolved', eventRoom: normalizedRoom, choice: null, nextState: null, itemChanges: [] };
         }
 
         const choice = getRunEventRoomChoices(normalizedRoom.key, poolOverride).find(item => item.key === choiceKey) || null;
         if (!choice) {
-            return { ok: false, reason: 'invalid_choice', eventRoom: normalizedRoom, choice: null, nextState: null };
+            return { ok: false, reason: 'invalid_choice', eventRoom: normalizedRoom, choice: null, nextState: null, itemChanges: [] };
         }
 
         const safeState = state && typeof state === 'object' ? state : {};
         const playerMaxHp = Math.max(1, clampInt(safeState.playerMaxHp, 1, Number.MAX_SAFE_INTEGER, 100));
         const currentHp = clampInt(safeState.playerHp, 1, playerMaxHp, playerMaxHp);
         const currentGold = clampInt(safeState.gold, 0, Number.MAX_SAFE_INTEGER, 0);
+        const currentInventory = normalizeInventory(safeState.inventory);
         const effect = choice.effect && typeof choice.effect === 'object' ? choice.effect : {};
 
         let hpLoss = 0;
         let hpGain = 0;
         let goldGain = 0;
         let cleanseNegativeStatuses = false;
+        let nextInventory = null;
+        let itemChanges = [];
 
         if (effect.type === 'hpForGold') {
             const ratio = Number(effect.hpCostRatio);
@@ -468,6 +552,24 @@
             hpGain = Math.floor(playerMaxHp * normalizedRatio);
             hpGain = Math.min(Math.max(0, hpGain), Math.max(0, playerMaxHp - currentHp));
             cleanseNegativeStatuses = effect.type === 'restoreHpAndCleanse' || !!effect.cleanseNegativeStatuses;
+        } else if (effect.type === 'goldForItems') {
+            const goldCost = clampInt(effect.goldCost, 0, Number.MAX_SAFE_INTEGER, 0);
+            itemChanges = normalizeEffectItemChanges(effect);
+            if (currentGold < goldCost) {
+                return {
+                    ok: false,
+                    reason: 'insufficient_gold',
+                    eventRoom: normalizedRoom,
+                    choice,
+                    nextState: null,
+                    itemChanges
+                };
+            }
+            goldGain = -goldCost;
+            nextInventory = { ...currentInventory };
+            itemChanges.forEach(({ itemKey, count }) => {
+                nextInventory[itemKey] = (nextInventory[itemKey] || 0) + count;
+            });
         }
 
         const nextState = {
@@ -477,6 +579,8 @@
             playerMaxHp,
             cleanseNegativeStatuses
         };
+        if (nextInventory) nextState.inventory = nextInventory;
+
         let resolutionText = choice.description;
         if (effect.type === 'hpForGold') {
             resolutionText = `失去 ${hpLoss} 生命，获得 ${goldGain} 金币`;
@@ -484,9 +588,12 @@
             resolutionText = `恢复 ${hpGain} 生命，并净化负面状态`;
         } else if (effect.type === 'restoreHp') {
             resolutionText = `恢复 ${hpGain} 生命`;
+        } else if (effect.type === 'goldForItems') {
+            const itemSummary = itemChanges.map(({ label, count }) => `${label} x${count}`).join('，');
+            resolutionText = `支付 ${Math.abs(goldGain)} 金币，获得 ${itemSummary}`;
         } else if (effect.type === 'runEffectBuff') {
             const runEffects = effect.runEffects && typeof effect.runEffects === 'object' ? effect.runEffects : {};
-            resolutionText = `本局伤害 ${formatPercentDelta(runEffects.playerDamageMultiplier)}，承伤 ${formatPercentDelta(runEffects.playerDamageTakenMultiplier)}`;
+            resolutionText = describeRunEffectSummary(runEffects);
         }
 
         return {
@@ -494,6 +601,7 @@
             reason: null,
             choice,
             nextState,
+            itemChanges,
             eventRoom: {
                 ...normalizedRoom,
                 discovered: true,
@@ -585,6 +693,24 @@
         const delta = Math.round((safe - 1) * 100);
         if (delta === 0) return '0%';
         return `${delta > 0 ? '+' : ''}${delta}%`;
+    }
+
+    function describeRunEffectSummary(runEffects) {
+        const safe = runEffects && typeof runEffects === 'object' ? runEffects : {};
+        const defs = [
+            ['playerDamageMultiplier', '本局伤害'],
+            ['playerDamageTakenMultiplier', '承伤'],
+            ['goldDropMultiplier', '金币掉落'],
+            ['extraDropRateMultiplier', '额外掉落率'],
+            ['playerStaminaRegenMultiplier', '体力恢复'],
+            ['playerSpecialCooldownMultiplier', '特攻冷却'],
+            ['enemySpeedMultiplier', '敌人速度'],
+            ['enemyHpMultiplier', '敌人生命']
+        ];
+        const parts = defs
+            .filter(([key]) => Number.isFinite(Number(safe[key])) && Number(safe[key]) > 0 && Number(safe[key]) !== 1)
+            .map(([key, label]) => `${label} ${formatPercentDelta(safe[key])}`);
+        return parts.length > 0 ? parts.join('，') : '本局效果已变更';
     }
 
     function resolveConsumableUse(item, actorState) {
