@@ -30,6 +30,8 @@ const {
     pickRunEventRoom,
     resolveRunEventRoomChoice,
     buildRunEventRoomChoicePreview,
+    buildRunEventRoomChoicePanelPreview,
+    getRunEventRoomChoiceAffordabilityLabel,
     getRunEventRoomChoiceFailureMessage,
     buildRunEventRoomEffects,
     buildRunEventRoomHudSummary,
@@ -388,6 +390,53 @@ function testRunEventRoomChoiceHelpers() {
         getRunEventRoomChoiceFailureMessage({ reason: 'unexpected_reason' }),
         '当前无法完成该选择',
         'failure helper should fall back to a stable generic message for unknown reasons'
+    );
+}
+
+function testRunEventRoomChoicePanelPreview() {
+    assert.equal(typeof buildRunEventRoomChoicePanelPreview, 'function', 'event room choice panel preview helper should be exported');
+
+    const healingChoice = getRunEventRoomChoices('healingFountain').find(choice => choice.key === 'purifyingSip');
+    assert.equal(
+        buildRunEventRoomChoicePanelPreview(healingChoice, {
+            playerHp: 84,
+            playerMaxHp: 120
+        }),
+        '净泉啜饮: 生命+30%, 净化 · 预估生命+36',
+        'panel preview should append projected healing when the route restores HP'
+    );
+
+    const gambleChoice = getRunEventRoomChoices('gamblersShrine').find(choice => choice.key === 'highStakeWager');
+    assert.equal(
+        buildRunEventRoomChoicePanelPreview(gambleChoice, {
+            playerHp: 100,
+            playerMaxHp: 120
+        }),
+        '豪赌: 生命-30%, 金币+120 · 预估生命-30',
+        'panel preview should append projected HP loss when the route trades HP for gold'
+    );
+}
+
+function testRunEventRoomChoiceAffordabilityLabel() {
+    assert.equal(typeof getRunEventRoomChoiceAffordabilityLabel, 'function', 'event room choice affordability helper should be exported');
+
+    const affordableTradeChoice = getRunEventRoomChoices('supplyCache').find(choice => choice.key === 'fieldTonic');
+    assert.equal(
+        getRunEventRoomChoiceAffordabilityLabel(affordableTradeChoice, { gold: 60 }),
+        '可负担',
+        'affordability helper should mark gold routes as affordable when the player has enough gold'
+    );
+    assert.equal(
+        getRunEventRoomChoiceAffordabilityLabel(affordableTradeChoice, { gold: 20 }),
+        '金币不足',
+        'affordability helper should mark gold routes as blocked when the player lacks gold'
+    );
+
+    const healingChoice = getRunEventRoomChoices('healingFountain').find(choice => choice.key === 'purifyingSip');
+    assert.equal(
+        getRunEventRoomChoiceAffordabilityLabel(healingChoice, { gold: 20 }),
+        '',
+        'affordability helper should stay silent for non-gold routes'
     );
 }
 
@@ -1171,6 +1220,8 @@ function main() {
     runTest('run modifier selection/effects', testRunModifierSelectionAndEffects);
     runTest('run event room selection', testRunEventRoomSelection);
     runTest('run event room choice helpers', testRunEventRoomChoiceHelpers);
+    runTest('run event room choice panel preview', testRunEventRoomChoicePanelPreview);
+    runTest('run event room choice affordability label', testRunEventRoomChoiceAffordabilityLabel);
     runTest('run event room HUD summary', testRunEventRoomHudSummary);
     runTest('run event room HUD lines', testRunEventRoomHudLines);
     runTest('run event room world label', testRunEventRoomWorldLabel);

@@ -716,6 +716,46 @@
         return label || route || '';
     }
 
+    function buildRunEventRoomChoicePanelPreview(choice, state) {
+        const basePreview = buildRunEventRoomChoicePreview(choice);
+        const safeChoice = choice && typeof choice === 'object' ? choice : {};
+        const effect = safeChoice.effect && typeof safeChoice.effect === 'object' ? safeChoice.effect : {};
+        const safeState = state && typeof state === 'object' ? state : {};
+        const playerMaxHp = Math.max(1, clampInt(safeState.playerMaxHp, 1, Number.MAX_SAFE_INTEGER, 100));
+        const currentHp = clampInt(safeState.playerHp, 1, playerMaxHp, playerMaxHp);
+
+        let hpDelta = 0;
+        if (effect.type === 'hpForGold') {
+            const ratio = Number(effect.hpCostRatio);
+            const normalizedRatio = Number.isFinite(ratio) ? Math.max(0, ratio) : 0;
+            hpDelta = -Math.min(
+                Math.max(0, Math.floor(currentHp * normalizedRatio)),
+                Math.max(0, currentHp - 1)
+            );
+        } else if (effect.type === 'restoreHp' || effect.type === 'restoreHpAndCleanse') {
+            const ratio = Number(effect.hpGainRatio);
+            const normalizedRatio = Number.isFinite(ratio) ? Math.max(0, ratio) : 0;
+            hpDelta = Math.min(
+                Math.max(0, Math.floor(playerMaxHp * normalizedRatio)),
+                Math.max(0, playerMaxHp - currentHp)
+            );
+        }
+
+        if (!hpDelta) return basePreview;
+        return `${basePreview} · 预估生命${hpDelta > 0 ? '+' : ''}${hpDelta}`;
+    }
+
+    function getRunEventRoomChoiceAffordabilityLabel(choice, state) {
+        const safeChoice = choice && typeof choice === 'object' ? choice : {};
+        const effect = safeChoice.effect && typeof safeChoice.effect === 'object' ? safeChoice.effect : {};
+        if (effect.type !== 'goldForItems') return '';
+
+        const safeState = state && typeof state === 'object' ? state : {};
+        const currentGold = clampInt(safeState.gold, 0, Number.MAX_SAFE_INTEGER, 0);
+        const goldCost = clampInt(effect.goldCost, 0, Number.MAX_SAFE_INTEGER, 0);
+        return currentGold >= goldCost ? '可负担' : '金币不足';
+    }
+
     function getRunEventRoomChoiceFailureMessage(settlement) {
         const reason = settlement && typeof settlement.reason === 'string' ? settlement.reason : '';
         if (reason === 'insufficient_gold') return '金币不足，无法选择该路线';
@@ -1512,6 +1552,8 @@
         buildRunModifierEffects,
         buildRunEventRoomEffects,
         buildRunEventRoomChoicePreview,
+        buildRunEventRoomChoicePanelPreview,
+        getRunEventRoomChoiceAffordabilityLabel,
         getRunEventRoomChoiceFailureMessage,
         buildRunEventRoomHudSummary,
         buildRunEventRoomHudLines,

@@ -38,7 +38,7 @@ const {
     pickRunModifiers,
     buildRunModifierEffects,
     buildRunEventRoomEffects,
-    buildRunEventRoomChoicePreview,
+    buildRunEventRoomChoicePanelPreview,
     buildRunEventRoomHudLines,
     buildRunEventRoomWorldLabel,
     getRunEventRoomByKey,
@@ -46,6 +46,7 @@ const {
     normalizeRunEventRoom,
     pickRunEventRoom,
     resolveRunEventRoomChoice,
+    getRunEventRoomChoiceAffordabilityLabel,
     getRunEventRoomChoiceFailureMessage,
     getUpgradeCostForLevel,
     getRequiredMaterialForWeapon,
@@ -2635,7 +2636,19 @@ class LevelScene extends Phaser.Scene {
         this._setRunEventChoicePanelFooter(RUN_EVENT_CHOICE_PANEL_FOOTER_DEFAULT, 'default');
         this.runEventChoicePanel.optionTexts.forEach((textNode, index) => {
             const choice = this._runEventChoiceOptions[index];
-            textNode.setText(choice ? `${index + 1}. ${buildRunEventRoomChoicePreview(choice)}` : '');
+            if (!choice) {
+                textNode.setText('');
+                textNode.setVisible(false);
+                return;
+            }
+            const previewState = {
+                gold: GameState.gold,
+                playerHp: this.player.hp,
+                playerMaxHp: this.player.maxHp
+            };
+            const affordabilityLabel = getRunEventRoomChoiceAffordabilityLabel(choice, previewState);
+            const previewText = buildRunEventRoomChoicePanelPreview(choice, previewState);
+            textNode.setText(`${index + 1}. ${previewText}${affordabilityLabel ? ` · ${affordabilityLabel}` : ''}`);
             textNode.setVisible(true);
         });
         Object.values(this.runEventChoicePanel).forEach((node) => {
