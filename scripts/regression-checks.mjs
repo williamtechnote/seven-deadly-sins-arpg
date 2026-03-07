@@ -34,6 +34,7 @@ const {
     buildRunEventRoomEffects,
     buildRunEventRoomHudSummary,
     buildRunEventRoomHudLines,
+    buildRunEventRoomWorldLabelRouteLine,
     buildRunEventRoomWorldLabel,
     resolveConsumableUse,
     buildStatusHudSummary,
@@ -851,7 +852,27 @@ function testRunEventRoomHudLines() {
 }
 
 function testRunEventRoomWorldLabel() {
+    const unknownTypePool = [
+        {
+            key: 'mysteryArchive',
+            name: '谜藏书库',
+            description: '未来扩展或未知房型的回退夹具',
+            type: 'mystery',
+            choices: [
+                {
+                    key: 'sealedIndex',
+                    label: '封印索引',
+                    description: '金币 +88',
+                    effect: {
+                        type: 'grantGold'
+                    }
+                }
+            ]
+        }
+    ];
+
     assert.equal(typeof buildRunEventRoomWorldLabel, 'function', 'event room world-label helper should be exported');
+    assert.equal(typeof buildRunEventRoomWorldLabelRouteLine, 'function', 'event room world-label route-line helper should be exported');
 
     const resolvedBlessingLabel = buildRunEventRoomWorldLabel({
         key: 'prayerShrine',
@@ -879,6 +900,62 @@ function testRunEventRoomWorldLabel() {
         resolvedBlessingMissingLabel,
         '祈愿圣坛 · 效果: 未知选项',
         'resolved altar labels should keep the type prefix and unknown-option fallback when the stored route label is missing'
+    );
+
+    const resolvedUnknownRouteLine = buildRunEventRoomWorldLabelRouteLine({
+        key: 'mysteryArchive',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'retiredChoice',
+        selectedChoiceLabel: '封印索引',
+        resolutionText: '金币 +88'
+    }, unknownTypePool);
+    assert.equal(
+        resolvedUnknownRouteLine,
+        '已选: 封印索引',
+        'resolved unknown-type altar labels should keep the generic 已选 prefix when the persisted route label exists'
+    );
+
+    const resolvedUnknownMissingLabelRouteLine = buildRunEventRoomWorldLabelRouteLine({
+        key: 'mysteryArchive',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'retiredChoice',
+        selectedChoiceLabel: '',
+        resolutionText: '金币 +88'
+    }, unknownTypePool);
+    assert.equal(
+        resolvedUnknownMissingLabelRouteLine,
+        '已选: 未知选项',
+        'resolved unknown-type altar labels should keep the generic 已选 prefix when the persisted route label is missing'
+    );
+
+    const resolvedUnknownLabel = buildRunEventRoomWorldLabel({
+        key: 'mysteryArchive',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'retiredChoice',
+        selectedChoiceLabel: '封印索引',
+        resolutionText: '金币 +88'
+    }, unknownTypePool);
+    assert.equal(
+        resolvedUnknownLabel,
+        '谜藏书库 · 已选: 封印索引',
+        'resolved unknown-type altar labels should append the persisted route label with the generic 已选 prefix'
+    );
+
+    const resolvedUnknownMissingLabel = buildRunEventRoomWorldLabel({
+        key: 'mysteryArchive',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'retiredChoice',
+        selectedChoiceLabel: '',
+        resolutionText: '金币 +88'
+    }, unknownTypePool);
+    assert.equal(
+        resolvedUnknownMissingLabel,
+        '谜藏书库 · 已选: 未知选项',
+        'resolved unknown-type altar labels should keep the generic 已选 prefix and unknown-option fallback when the persisted route label is missing'
     );
 }
 

@@ -880,17 +880,22 @@
         return lines;
     }
 
+    function buildRunEventRoomWorldLabelRouteLine(runEventRoom, poolOverride) {
+        const summary = buildRunEventRoomHudSummary(runEventRoom, poolOverride);
+        if (!summary.visible || summary.statusLabel !== '已触发') return '';
+        return Array.isArray(summary.routeLines) && summary.routeLines.length > 0
+            ? summary.routeLines[0]
+            : '';
+    }
+
     function buildRunEventRoomWorldLabel(runEventRoom, poolOverride) {
         const normalizedRoom = normalizeRunEventRoom(runEventRoom, poolOverride);
         if (!normalizedRoom) return '';
         if (!normalizedRoom.resolved) return normalizedRoom.name;
 
-        const summary = buildRunEventRoomHudSummary(normalizedRoom, poolOverride);
-        const selectedLine = Array.isArray(summary.routeLines) && summary.routeLines.length > 0
-            ? summary.routeLines[0]
-            : '';
-        if (selectedLine) return `${summary.name} · ${selectedLine}`;
-        return `${summary.name} · 已结算`;
+        const selectedLine = buildRunEventRoomWorldLabelRouteLine(normalizedRoom, poolOverride);
+        if (selectedLine) return `${normalizedRoom.name} · ${selectedLine}`;
+        return `${normalizedRoom.name} · 已结算`;
     }
 
     function pickRunModifiers(randomFn, count, poolOverride) {
@@ -1501,6 +1506,7 @@
         getRunEventRoomChoiceFailureMessage,
         buildRunEventRoomHudSummary,
         buildRunEventRoomHudLines,
+        buildRunEventRoomWorldLabelRouteLine,
         buildRunEventRoomWorldLabel,
         getRunEventRoomByKey,
         getRunEventRoomChoices,
