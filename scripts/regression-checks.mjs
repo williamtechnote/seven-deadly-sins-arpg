@@ -30,6 +30,7 @@ const {
     pickRunEventRoom,
     resolveRunEventRoomChoice,
     buildRunEventRoomEffects,
+    buildRunEventRoomHudSummary,
     resolveConsumableUse,
     buildStatusHudSummary,
     advanceBossHpAfterimage,
@@ -350,6 +351,37 @@ function testRunEventRoomSelection() {
     assert.match(prayerSettlement.eventRoom.resolutionText, /冷却/, 'prayer shrine summary should mention the cooldown buff');
 }
 
+function testRunEventRoomHudSummary() {
+    assert.equal(typeof buildRunEventRoomHudSummary, 'function', 'event room HUD summary helper should be exported');
+
+    const unresolvedSummary = buildRunEventRoomHudSummary({
+        key: 'supplyCache',
+        discovered: true,
+        resolved: false
+    });
+    assert.equal(unresolvedSummary.typeLabel, '类型 交易', 'HUD summary should localize the event room type');
+    assert.match(
+        unresolvedSummary.routeSummary,
+        /战地净化包: 金币-45, 净化药剂x1 \| 狂战补给: 金币-60, 狂战油x1/,
+        'HUD summary should expose compact route details for unresolved rooms'
+    );
+
+    const resolvedSummary = buildRunEventRoomHudSummary({
+        key: 'prayerShrine',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'tempoPrayer',
+        selectedChoiceLabel: '迅击祷言',
+        resolutionText: '特攻冷却 -22%'
+    });
+    assert.equal(resolvedSummary.typeLabel, '类型 祝福', 'HUD summary should keep the localized blessing type');
+    assert.equal(
+        resolvedSummary.routeSummary,
+        '路线: 迅击祷言: 特攻冷却-22%',
+        'HUD summary should collapse to the chosen route after settlement'
+    );
+}
+
 function testCraftingRecipeChecks() {
     assert.ok(CRAFTING_RECIPES.cleanseTonic, 'cleanse recipe should exist');
     assert.ok(CRAFTING_RECIPES.berserkerOil, 'berserker recipe should exist');
@@ -530,6 +562,7 @@ function main() {
     runTest('status effect logic', testStatusEffectLogic);
     runTest('run modifier selection/effects', testRunModifierSelectionAndEffects);
     runTest('run event room selection', testRunEventRoomSelection);
+    runTest('run event room HUD summary', testRunEventRoomHudSummary);
     runTest('crafting recipe checks', testCraftingRecipeChecks);
     runTest('consumable use resolution', testConsumableUseResolution);
     runTest('status HUD summary', testStatusHudSummary);

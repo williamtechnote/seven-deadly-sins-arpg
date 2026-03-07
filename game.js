@@ -38,6 +38,7 @@ const {
     pickRunModifiers,
     buildRunModifierEffects,
     buildRunEventRoomEffects,
+    buildRunEventRoomHudSummary,
     getRunEventRoomByKey,
     getRunEventRoomChoices,
     normalizeRunEventRoom,
@@ -4901,7 +4902,8 @@ class UIScene extends Phaser.Scene {
             fontSize: '11px',
             fill: '#ffd27a',
             align: 'right',
-            lineSpacing: 2
+            lineSpacing: 2,
+            wordWrap: { width: 320, useAdvancedWrap: true }
         }).setOrigin(1, 0).setScrollFactor(0);
 
         this.debuffStatusText = this.add.text(width / 2, height - 128, '', {
@@ -5008,14 +5010,15 @@ class UIScene extends Phaser.Scene {
 
         const eventRoom = GameState.getRunEventRoomSummary ? GameState.getRunEventRoomSummary() : null;
         if (eventRoom) {
+            const hudSummary = buildRunEventRoomHudSummary(eventRoom, RUN_EVENT_ROOM_POOL);
             const state = eventRoom.resolved ? '已触发' : (eventRoom.discovered ? '已发现' : '未发现');
-            const extraLine = eventRoom.resolved
-                ? `结算: ${eventRoom.selectedChoiceLabel || '已结算'}`
-                : (eventRoom.description ? `提示: ${eventRoom.description}` : '');
-            const resolutionLine = eventRoom.resolved && eventRoom.resolutionText
-                ? `\n${eventRoom.resolutionText}`
-                : '';
-            this.eventRoomText.setText(`事件房: ${eventRoom.name}\n状态: ${state}${extraLine ? `\n${extraLine}` : ''}${resolutionLine}`);
+            const lines = [
+                `事件房: ${eventRoom.name}`,
+                `${hudSummary.typeLabel} · 状态: ${state}`
+            ];
+            if (hudSummary.routeSummary) lines.push(hudSummary.routeSummary);
+            if (eventRoom.resolved && hudSummary.resolutionText) lines.push(`结算: ${hudSummary.resolutionText}`);
+            this.eventRoomText.setText(lines.join('\n'));
             this.eventRoomText.setStyle({ fill: eventRoom.resolved ? '#9fa8b3' : '#ffd27a' });
         } else {
             this.eventRoomText.setText('');

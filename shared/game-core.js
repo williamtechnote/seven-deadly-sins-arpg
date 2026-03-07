@@ -633,6 +633,103 @@
         return effects;
     }
 
+    function getRunEventRoomTypeLabel(type) {
+        const typeLabels = {
+            trade: '交易',
+            healing: '治疗',
+            riskBuff: '风险增益',
+            blessing: '祝福'
+        };
+        const key = typeof type === 'string' ? type.trim() : '';
+        return typeLabels[key] || '未知';
+    }
+
+    function formatRoutePercentDelta(multiplier, fallbackLabel) {
+        const safe = Number.isFinite(Number(multiplier)) ? Number(multiplier) : 1;
+        if (safe === 1) return fallbackLabel || '';
+        return `${formatPercentDelta(safe)}`;
+    }
+
+    function describeRunEventChoiceRoute(choice) {
+        const safeChoice = choice && typeof choice === 'object' ? choice : {};
+        const effect = safeChoice.effect && typeof safeChoice.effect === 'object' ? safeChoice.effect : {};
+
+        if (effect.type === 'hpForGold') {
+            const hpCostRatio = Math.max(0, Number(effect.hpCostRatio) || 0);
+            const goldGain = clampInt(effect.goldGain, 0, Number.MAX_SAFE_INTEGER, 0);
+            return `生命-${Math.round(hpCostRatio * 100)}%, 金币+${goldGain}`;
+        }
+
+        if (effect.type === 'restoreHp' || effect.type === 'restoreHpAndCleanse') {
+            const hpGainRatio = Math.max(0, Number(effect.hpGainRatio) || 0);
+            const parts = [`生命+${Math.round(hpGainRatio * 100)}%`];
+            if (effect.type === 'restoreHpAndCleanse' || effect.cleanseNegativeStatuses) {
+                parts.push('净化');
+            }
+            return parts.join(', ');
+        }
+
+        if (effect.type === 'goldForItems') {
+            const parts = [`金币-${clampInt(effect.goldCost, 0, Number.MAX_SAFE_INTEGER, 0)}`];
+            normalizeEffectItemChanges(effect).forEach(({ label, count }) => {
+                parts.push(`${label}x${count}`);
+            });
+            return parts.join(', ');
+        }
+
+        if (effect.type === 'runEffectBuff') {
+            const runEffects = effect.runEffects && typeof effect.runEffects === 'object' ? effect.runEffects : {};
+            const defs = [
+                ['playerDamageMultiplier', '伤害'],
+                ['playerDamageTakenMultiplier', '承伤'],
+                ['goldDropMultiplier', '金币掉落'],
+                ['extraDropRateMultiplier', '额外掉落率'],
+                ['playerStaminaRegenMultiplier', '体力恢复'],
+                ['playerSpecialCooldownMultiplier', '特攻冷却'],
+                ['enemySpeedMultiplier', '敌人速度'],
+                ['enemyHpMultiplier', '敌人生命']
+            ];
+            const parts = defs
+                .filter(([key]) => Number.isFinite(Number(runEffects[key])) && Number(runEffects[key]) > 0 && Number(runEffects[key]) !== 1)
+                .map(([key, label]) => `${label}${formatRoutePercentDelta(runEffects[key])}`);
+            return parts.length > 0 ? parts.join(', ') : (typeof safeChoice.description === 'string' ? safeChoice.description : '');
+        }
+
+        return typeof safeChoice.description === 'string' ? safeChoice.description : '';
+    }
+
+    function buildRunEventRoomHudSummary(runEventRoom, poolOverride) {
+        const normalizedRoom = normalizeRunEventRoom(runEventRoom, poolOverride);
+        if (!normalizedRoom) {
+            return {
+                visible: false,
+                name: '',
+                typeLabel: '',
+                routeSummary: '',
+                resolutionText: ''
+            };
+        }
+
+        const allChoices = getRunEventRoomChoices(normalizedRoom.key, poolOverride);
+        const selectedChoice = normalizedRoom.selectedChoiceKey
+            ? allChoices.find(choice => choice.key === normalizedRoom.selectedChoiceKey) || null
+            : null;
+        const visibleChoices = normalizedRoom.resolved && selectedChoice
+            ? [selectedChoice]
+            : allChoices.slice(0, 2);
+        const routeSummary = visibleChoices.length > 0
+            ? `路线: ${visibleChoices.map((choice) => `${choice.label}: ${describeRunEventChoiceRoute(choice)}`.trim()).join(' | ')}`
+            : '';
+
+        return {
+            visible: true,
+            name: normalizedRoom.name,
+            typeLabel: `类型 ${getRunEventRoomTypeLabel(normalizedRoom.type)}`,
+            routeSummary,
+            resolutionText: normalizedRoom.resolutionText || ''
+        };
+    }
+
     function pickRunModifiers(randomFn, count, poolOverride) {
         const pool = Array.isArray(poolOverride) ? poolOverride : RUN_MODIFIER_POOL;
         const uniquePool = pool.filter((mod, idx) => (
@@ -1237,6 +1334,7 @@
         pickRunModifiers,
         buildRunModifierEffects,
         buildRunEventRoomEffects,
+        buildRunEventRoomHudSummary,
         getRunEventRoomByKey,
         getRunEventRoomChoices,
         normalizeRunEventRoom,
