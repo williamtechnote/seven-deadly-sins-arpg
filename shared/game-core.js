@@ -889,8 +889,17 @@
     }
 
     function buildRunEventRoomWorldLabel(runEventRoom, poolOverride) {
+        const persistedRoom = runEventRoom && typeof runEventRoom === 'object' ? runEventRoom : null;
+        const persistedName = persistedRoom && typeof persistedRoom.name === 'string'
+            ? persistedRoom.name.trim()
+            : '';
         const normalizedRoom = normalizeRunEventRoom(runEventRoom, poolOverride);
-        if (!normalizedRoom) return '';
+        if (!normalizedRoom) {
+            if (!persistedName) return '';
+            return persistedRoom && persistedRoom.resolved
+                ? `${persistedName} · 已结算`
+                : persistedName;
+        }
         if (!normalizedRoom.resolved) return normalizedRoom.name;
 
         const selectedLine = buildRunEventRoomWorldLabelRouteLine(normalizedRoom, poolOverride);

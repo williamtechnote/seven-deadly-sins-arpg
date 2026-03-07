@@ -870,7 +870,6 @@ function testRunEventRoomWorldLabel() {
             ]
         }
     ];
-
     assert.equal(typeof buildRunEventRoomWorldLabel, 'function', 'event room world-label helper should be exported');
     assert.equal(typeof buildRunEventRoomWorldLabelRouteLine, 'function', 'event room world-label route-line helper should be exported');
 
@@ -956,6 +955,38 @@ function testRunEventRoomWorldLabel() {
         resolvedUnknownMissingLabel,
         '谜藏书库 · 已选: 未知选项',
         'resolved unknown-type altar labels should keep the generic 已选 prefix and unknown-option fallback when the persisted route label is missing'
+    );
+
+    const retiredUnknownRouteLine = buildRunEventRoomWorldLabelRouteLine({
+        key: 'retiredMysteryArchive',
+        name: '谜藏书库',
+        type: 'mystery',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'retiredChoice',
+        selectedChoiceLabel: '',
+        resolutionText: '金币 +88'
+    }, unknownTypePool);
+    assert.equal(
+        retiredUnknownRouteLine,
+        '',
+        'resolved unknown-type altar labels should expose no route line when the saved room definition no longer exists in the current pool'
+    );
+
+    const retiredUnknownLabel = buildRunEventRoomWorldLabel({
+        key: 'retiredMysteryArchive',
+        name: '谜藏书库',
+        type: 'mystery',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'retiredChoice',
+        selectedChoiceLabel: '',
+        resolutionText: '金币 +88'
+    }, unknownTypePool);
+    assert.equal(
+        retiredUnknownLabel,
+        '谜藏书库 · 已结算',
+        'resolved unknown-type altar labels should fall back to 已结算 when the saved room definition no longer exists in the current pool'
     );
 }
 
