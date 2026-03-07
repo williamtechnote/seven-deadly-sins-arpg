@@ -444,8 +444,12 @@
         return firstEmptyIndex >= 0 ? firstEmptyIndex : 0;
     }
 
-    function buildQuickSlotAutoAssignNotice(slotIndex) {
+    function buildQuickSlotAutoAssignNotice(slotIndex, options) {
         const safeSlotIndex = clampInt(slotIndex, 0, 3, 0);
+        const didOverwrite = !!(options && options.didOverwrite);
+        if (didOverwrite) {
+            return `已自动装入快捷栏 ${safeSlotIndex + 1}（已覆盖 ${safeSlotIndex + 1} 号槽位）`;
+        }
         return `已自动装入快捷栏 ${safeSlotIndex + 1}`;
     }
 

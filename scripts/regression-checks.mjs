@@ -1566,6 +1566,11 @@ function testKeyboardControlReadabilityHooks() {
     );
     assert.match(
         source,
+        /快捷栏已满时会覆盖 1 号槽位/,
+        'help overlay should explain the full-quickbar overwrite fallback'
+    );
+    assert.match(
+        source,
         /Q \/ E  —  切换武器/,
         'help overlay should keep weapon-switch guidance visible for keyboard-only play'
     );
@@ -1606,6 +1611,11 @@ function testQuickSlotAutoAssignNotice() {
         buildQuickSlotAutoAssignNotice(3),
         '已自动装入快捷栏 4',
         'auto-assign notice should expose later quick-slot labels'
+    );
+    assert.equal(
+        buildQuickSlotAutoAssignNotice(0, { didOverwrite: true }),
+        '已自动装入快捷栏 1（已覆盖 1 号槽位）',
+        'auto-assign notice should explicitly call out slot-1 overwrites when the quick bar is full'
     );
 }
 
@@ -1651,13 +1661,18 @@ function testKeyboardHudQolHooks() {
     );
     assert.match(
         source,
+        /const didOverwrite = !GameState\.quickSlots\.some\(slotKey => !slotKey\);/,
+        'inventory consumable clicks should detect when the quick bar is already full'
+    );
+    assert.match(
+        source,
         /this\.autoAssignMessageText = this\.add\.text\(/,
         'InventoryScene should allocate a transient text node for quick-slot auto-assign feedback'
     );
     assert.match(
         source,
-        /this\._showAutoAssignMessage\(buildQuickSlotAutoAssignNotice\(slot\)\);/,
-        'inventory consumable clicks should derive feedback copy from the shared auto-assign notice helper'
+        /this\._showAutoAssignMessage\(buildQuickSlotAutoAssignNotice\(slot,\s*\{\s*didOverwrite\s*\}\)\);/,
+        'inventory consumable clicks should derive overwrite-aware feedback copy from the shared auto-assign notice helper'
     );
     assert.match(
         source,
@@ -1677,6 +1692,11 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /点击背包里的消耗品会自动装入快捷栏首个空位/,
         'README should explain the backpack click auto-fill behavior'
+    );
+    assert.match(
+        source,
+        /快捷栏已满时会回写 1 号槽位，并提示“已覆盖 1 号槽位”/,
+        'README should explain the full-quickbar overwrite rule explicitly'
     );
     assert.match(
         source,
