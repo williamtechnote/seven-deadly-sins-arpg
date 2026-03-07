@@ -27,6 +27,8 @@ const {
     getRunEventRoomByKey,
     normalizeRunEventRoom,
     pickRunEventRoom,
+    resolveConsumableUse,
+    buildStatusHudSummary,
     canCraftRecipe,
     applyCraftRecipe,
     serializeSaveData,
@@ -228,6 +230,81 @@ function testCraftingRecipeChecks() {
     assert.equal(noMaterial.reason, 'material');
 }
 
+function testConsumableUseResolution() {
+    const hpPotion = { key: 'hpPotion', type: 'consumable', effect: 'healHp', value: 40 };
+    const fullHp = resolveConsumableUse(hpPotion, {
+        hp: 100,
+        maxHp: 100,
+        stamina: 40,
+        maxStamina: 100
+    });
+    assert.equal(fullHp.ok, false, 'full HP should block consumable usage');
+    assert.equal(fullHp.consume, false, 'full HP should not consume item');
+    assert.equal(fullHp.reason, 'full', 'full HP should report full reason');
+    assert.equal(fullHp.feedbackText, '生命已满', 'full HP should expose warning text');
+
+    const partialHeal = resolveConsumableUse(hpPotion, {
+        hp: 73,
+        maxHp: 100,
+        stamina: 40,
+        maxStamina: 100
+    });
+    assert.equal(partialHeal.ok, true, 'partial HP should allow consumable usage');
+    assert.equal(partialHeal.consume, true, 'successful heal should consume item');
+    assert.equal(partialHeal.recoveredAmount, 27, 'heal should clamp to missing HP');
+    assert.equal(partialHeal.feedbackText, '+27 HP', 'heal feedback should report actual restored amount');
+    assert.equal(partialHeal.nextVitals.hp, 100, 'heal should clamp to max HP');
+
+    const staminaPotion = { key: 'staminaPotion', type: 'consumable', effect: 'healStamina', value: 40 };
+    const partialStamina = resolveConsumableUse(staminaPotion, {
+        hp: 100,
+        maxHp: 100,
+        stamina: 65,
+        maxStamina: 90
+    });
+    assert.equal(partialStamina.ok, true, 'partial stamina should allow usage');
+    assert.equal(partialStamina.recoveredAmount, 25, 'stamina restore should clamp to missing stamina');
+    assert.equal(partialStamina.feedbackText, '+25 ST', 'stamina feedback should report actual restored amount');
+    assert.equal(partialStamina.nextVitals.stamina, 90, 'stamina restore should clamp to max');
+
+    const berserkerOil = { key: 'berserkerOil', type: 'consumable', effect: 'battleFocus', value: 0 };
+    const buff = resolveConsumableUse(berserkerOil, {
+        hp: 90,
+        maxHp: 100,
+        stamina: 10,
+        maxStamina: 100
+    });
+    assert.equal(buff.ok, true, 'buff consumable should remain usable');
+    assert.equal(buff.consume, true, 'buff consumable should be consumed');
+    assert.equal(buff.effect, 'battleFocus', 'buff result should expose effect key');
+    assert.equal(buff.nextVitals.hp, 90, 'buff consumable should not mutate HP directly');
+}
+
+function testStatusHudSummary() {
+    const summary = buildStatusHudSummary({
+        activeStatuses: [
+            { key: 'slow', remainingMs: 2400 },
+            { key: 'burn', remainingMs: 900 },
+            { key: 'bleed', remainingMs: 1400 }
+        ],
+        controlInvertMs: 700,
+        statusResistanceMs: 3200,
+        damageBuffMs: 5100,
+        damageBuffMultiplier: 1.25
+    });
+
+    assert.deepEqual(summary.debuffs, [
+        '控制反转 1s',
+        '灼烧 1s',
+        '流血 2s',
+        '减速 3s'
+    ], 'debuff lane should sort by urgency');
+    assert.deepEqual(summary.buffs, [
+        '状态抗性 4s',
+        '增伤 +25% 6s'
+    ], 'buff lane should include defensive and offensive buffs');
+}
+
 function main() {
     runTest('weapon scaling monotonicity', testWeaponScalingMonotonicity);
     runTest('material-bound upgrade checks', testMaterialBoundUpgradeChecks);
@@ -236,6 +313,8 @@ function main() {
     runTest('run modifier selection/effects', testRunModifierSelectionAndEffects);
     runTest('run event room selection', testRunEventRoomSelection);
     runTest('crafting recipe checks', testCraftingRecipeChecks);
+    runTest('consumable use resolution', testConsumableUseResolution);
+    runTest('status HUD summary', testStatusHudSummary);
     console.log('All regression checks passed.');
 }
 
