@@ -449,11 +449,11 @@
         const didOverwrite = !!(options && options.didOverwrite);
         const assignedItemKey = options && options.assignedItemKey;
         const replacedItemKey = options && options.replacedItemKey;
-        const assignedItemShortLabel = QUICK_SLOT_SHORT_LABELS[assignedItemKey] || '道具';
+        const assignedItemShortLabel = QUICK_SLOT_SHORT_LABELS[assignedItemKey] || '';
         const replacedItemShortLabel = QUICK_SLOT_SHORT_LABELS[replacedItemKey] || '道具';
+        const slotLabel = `快捷栏${safeSlotIndex + 1}：`;
         if (didOverwrite) {
-            const slotLabel = `快捷栏${safeSlotIndex + 1}：`;
-            if (!assignedItemKey) {
+            if (!assignedItemShortLabel) {
                 return `${slotLabel}替换 ${replacedItemShortLabel}`;
             }
             if (assignedItemShortLabel === replacedItemShortLabel) {
@@ -461,7 +461,10 @@
             }
             return `${slotLabel}${replacedItemShortLabel}→${assignedItemShortLabel}`;
         }
-        return `已自动装入快捷栏 ${safeSlotIndex + 1}`;
+        if (assignedItemShortLabel) {
+            return `${slotLabel}装入 ${assignedItemShortLabel}`;
+        }
+        return `${slotLabel}已装入`;
     }
 
     function normalizeInventory(inventory) {
