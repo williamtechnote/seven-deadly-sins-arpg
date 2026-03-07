@@ -1961,6 +1961,168 @@ function testPlayerDeathFreezeHook() {
     assert.equal(deathHookCalls.length, 2, 'both LevelScene and BossScene should invoke player.freezeForDeath() on death');
 }
 
+function testBossHudLayoutAndVictoryGuards() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /setBossHudLayout\(enabled\)\s*{/,
+        'UIScene should expose a dedicated boss HUD layout switcher'
+    );
+    assert.match(
+        source,
+        /this\._bossHudLayoutApplied = true;/,
+        'BossScene should mark boss HUD layout as applied once UIScene is available'
+    );
+    assert.match(
+        source,
+        /GameState\.save\(\);\s*}\s*catch\s*\(/,
+        'Boss victory should guard save failures so post-fight flow does not hard-freeze'
+    );
+    assert.match(
+        source,
+        /this\._victoryFailSafeTimer = this\.time\.delayedCall\(/,
+        'Boss victory should install a fail-safe delayed transition to avoid getting stuck'
+    );
+}
+
+function testBossVictoryCombatCleanup() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /freezeForCinematic\(\)\s*{/,
+        'Player should define a cinematic freeze hook for victory/death transitions'
+    );
+    assert.match(
+        source,
+        /freezeForCinematic\(\)\s*{[\s\S]*?this\.weaponVisual\.clear\(\);/,
+        'cinematic freeze should clear the persisted weapon visual to avoid frozen ghost weapons'
+    );
+    assert.match(
+        source,
+        /clearAttackVisuals\(\)\s*{/,
+        'Boss should expose a dedicated attack visual cleanup hook'
+    );
+    assert.match(
+        source,
+        /if \(!this\.boss\.isAlive && !this\.bossDead\)\s*{[\s\S]*?this\.boss\.clearAttackVisuals\(\);/,
+        'boss defeat path should cleanup attack visuals immediately'
+    );
+    assert.match(
+        source,
+        /if \(!this\.boss\.isAlive && !this\.bossDead\)\s*{[\s\S]*?this\.player\.freezeForCinematic\(\);/,
+        'boss defeat path should freeze player motion immediately to prevent post-win drifting'
+    );
+}
+
+function testPauseWeaponInfoLayoutGuards() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /_setWeaponInfoLayout\(visible\)\s*{/,
+        'PauseScene should provide a dedicated weapon-info layout switcher'
+    );
+    assert.match(
+        source,
+        /this\.volumeDownButton = this\._createButton\(/,
+        'PauseScene should keep a reference to volume-down button for layout toggling'
+    );
+    assert.match(
+        source,
+        /this\.volumeUpButton = this\._createButton\(/,
+        'PauseScene should keep a reference to volume-up button for layout toggling'
+    );
+    assert.match(
+        source,
+        /this\.backToTitleButton = this\._createButton\(/,
+        'PauseScene should keep a reference to return-to-title button for layout toggling'
+    );
+    assert.match(
+        source,
+        /this\._setWeaponInfoLayout\(this\._infoVisible\);/,
+        'weapon-info toggle should switch pause menu layout to prevent text overlap'
+    );
+}
+
+function testBossVictoryAlwaysTransitions() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /if \(!this\.boss\.isAlive && !this\.bossDead\)\s*{[\s\S]*?try\s*{[\s\S]*?}\s*finally\s*{[\s\S]*?this\._victorySequence\(\);[\s\S]*?}/,
+        'boss defeat flow should always enter victory sequence even if reward settlement throws'
+    );
+}
+
+function testBossVictoryFailSafeIndependence() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /_victorySequence\(\)\s*{[\s\S]*?this\._victoryFailSafeTimer = this\.time\.delayedCall\(\s*12000,/,
+        'victory flow should install a long fail-safe timer at sequence start'
+    );
+    assert.match(
+        source,
+        /this\.time\.delayedCall\(2500,\s*\(\)\s*=>\s*{[\s\S]*?try\s*{/,
+        'victory delayed settlement callback should be wrapped in try/catch'
+    );
+    assert.match(
+        source,
+        /catch\s*\(e\)\s*{[\s\S]*?finishVictoryTransition\(\);/,
+        'victory settlement callback should fallback to direct transition on runtime errors'
+    );
+}
+
+function testBossDefeatOuterFinallyGuard() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /if \(!this\.boss\.isAlive && !this\.bossDead\)\s*{[\s\S]*?try\s*{[\s\S]*?this\.player\.freezeForCinematic\(\);[\s\S]*?this\.boss\.clearAttackVisuals\(\);[\s\S]*?}\s*catch\s*\(e\)\s*{[\s\S]*?}\s*finally\s*{[\s\S]*?this\._victorySequence\(\);[\s\S]*?}/,
+        'boss defeat branch should outer-guard cleanup and rewards, then always trigger victory sequence in finally'
+    );
+    assert.match(
+        source,
+        /window\.setTimeout\(\(\)\s*=>\s*{[\s\S]*?finishVictoryTransition\(\);[\s\S]*?},\s*14000\);/,
+        'victory flow should include browser timer fallback independent of Phaser scene clock'
+    );
+}
+
+function testBossVictorySyncErrorFallback() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /_forceVictoryTransition\(\)\s*{/,
+        'BossScene should expose a hard fallback transition helper'
+    );
+    assert.match(
+        source,
+        /finally\s*{[\s\S]*?try\s*{[\s\S]*?this\._victorySequence\(\);[\s\S]*?}\s*catch\s*\(e\)\s*{[\s\S]*?this\._forceVictoryTransition\(\);/,
+        'boss defeat finally block should fallback to hard transition when victory sequence throws synchronously'
+    );
+    assert.match(
+        source,
+        /_victorySequence\(\)\s*{[\s\S]*?try\s*{[\s\S]*?}\s*catch\s*\(e\)\s*{[\s\S]*?this\._forceVictoryTransition\(\);/,
+        'victory sequence should catch synchronous errors and force transition'
+    );
+}
+
+function testBossVictoryWatchdogLoop() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /if \(this\.bossDead\)\s*{\s*this\._watchVictoryFlow\(\);\s*return;\s*}/,
+        'BossScene update should keep a watchdog active while waiting for victory transition'
+    );
+    assert.match(
+        source,
+        /_watchVictoryFlow\(\)\s*{/,
+        'BossScene should define a watchdog method for stalled victory transitions'
+    );
+    assert.match(
+        source,
+        /_forceVictoryTransition\(\)\s*{[\s\S]*?let started = false;/,
+        'force transition should only mark completion after a successful scene start'
+    );
+}
+
 function main() {
     runTest('weapon scaling monotonicity', testWeaponScalingMonotonicity);
     runTest('sword early reach baseline', testSwordEarlyReachBaseline);
@@ -1995,6 +2157,14 @@ function main() {
     runTest('README keyboard inventory loop', testReadmeKeyboardInventoryLoop);
     runTest('help overlay quick-slot loop', testHelpOverlayQuickSlotLoop);
     runTest('player death freeze hook', testPlayerDeathFreezeHook);
+    runTest('boss HUD layout and victory guards', testBossHudLayoutAndVictoryGuards);
+    runTest('boss victory combat cleanup', testBossVictoryCombatCleanup);
+    runTest('pause weapon info layout guards', testPauseWeaponInfoLayoutGuards);
+    runTest('boss victory always transitions', testBossVictoryAlwaysTransitions);
+    runTest('boss victory fail-safe independence', testBossVictoryFailSafeIndependence);
+    runTest('boss defeat outer finally guard', testBossDefeatOuterFinallyGuard);
+    runTest('boss victory sync-error fallback', testBossVictorySyncErrorFallback);
+    runTest('boss victory watchdog loop', testBossVictoryWatchdogLoop);
     console.log('All regression checks passed.');
 }
 

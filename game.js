@@ -1257,6 +1257,12 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         }
     }
 
+    freezeForCinematic() {
+        this.freezeForDeath();
+        if (this.weaponVisual && this.weaponVisual.active) this.weaponVisual.clear();
+        if (this.statusAura && this.statusAura.active) this.statusAura.clear();
+    }
+
     tryAttack() {
         const weapon = this.currentWeapon;
         if (!weapon) return null;
@@ -3743,7 +3749,47 @@ class Boss {
         if (this.hp <= 0) this.isAlive = false;
     }
 
+    clearAttackVisuals() {
+        this.activeTelegraph = null;
+        this.attackState = 'idle';
+        this.currentAttack = null;
+        this.attackData = this.attackData || {};
+        if (this.sprite && this.sprite.active) {
+            this.sprite.setAlpha(0);
+            this.sprite.setVisible(false);
+            if (this.sprite.body) this.sprite.body.setVelocity(0, 0);
+        }
+        if (this.statusAura && this.statusAura.active) this.statusAura.clear();
+
+        const destroyIfActive = (obj) => {
+            if (!obj) return;
+            if (Array.isArray(obj)) {
+                obj.forEach(destroyIfActive);
+                return;
+            }
+            if (obj.g && obj.g.active && obj.g.destroy) {
+                obj.g.destroy();
+                return;
+            }
+            if (obj.active && obj.destroy) {
+                obj.destroy();
+            }
+        };
+
+        destroyIfActive(this.attackData.circle);
+        destroyIfActive(this.attackData.cone);
+        destroyIfActive(this.attackData.shadows);
+        destroyIfActive(this.attackData.projectiles);
+        destroyIfActive(this.attackData.illusions);
+        destroyIfActive(this.attackData.minions);
+        destroyIfActive(this.attackData.coins);
+        destroyIfActive(this.attackData.fogs);
+        destroyIfActive(this.attackData.zones);
+        this.attackData = {};
+    }
+
     destroy() {
+        this.clearAttackVisuals();
         if (this.sprite && this.sprite.active) this.sprite.destroy();
         if (this.statusAura && this.statusAura.active) this.statusAura.destroy();
     }
@@ -3768,6 +3814,12 @@ class BossScene extends Phaser.Scene {
         this.playerDead = false;
         this.bossDead = false;
         this.victoryShown = false;
+        this._bossHudLayoutApplied = false;
+        this._victoryRequestedAtMs = 0;
+        this._victorySequenceStarted = false;
+        this._victoryTransitionInFlight = false;
+        this._victoryRetryTimer = null;
+        this._victoryRetryCount = 0;
         this.activeHitboxes = [];
 
         const arenaW = 1000;
@@ -3803,7 +3855,7 @@ class BossScene extends Phaser.Scene {
         const barW = 500;
         const barH = 24;
         const barX = 512 - barW / 2;
-        const barY = 20;
+        const barY = 8;
         this._bossHpBarRect = { x: barX, y: barY, w: barW, h: barH, pad: 4 };
         this.bossHpBarBg = this.add.graphics();
         this.bossHpBarBg.setScrollFactor(0);
@@ -3817,35 +3869,38 @@ class BossScene extends Phaser.Scene {
         this.bossHpBarMarkers.setScrollFactor(0);
         this.bossHpBarFrame = this.add.graphics();
         this.bossHpBarFrame.setScrollFactor(0);
-        this.bossHpLabel = this.add.text(512, barY - 12, bossConfig.sin + ' ' + bossConfig.name, {
-            fontSize: '18px',
+        const bossLabelY = barY + barH + 4;
+        this.bossHpLabel = this.add.text(512, bossLabelY, bossConfig.sin + ' ' + bossConfig.name, {
+            fontSize: '16px',
             fill: '#ffffff'
-        }).setOrigin(0.5, 1).setScrollFactor(0);
-        this.bossPhaseText = this.add.text(barX, barY + barH + 6, '', {
+        }).setOrigin(0.5, 0).setScrollFactor(0);
+        const phaseLabelY = bossLabelY + 18;
+        this.bossPhaseText = this.add.text(barX, phaseLabelY, '', {
             fontSize: '12px',
             fill: '#ffd27a',
             fontStyle: 'bold'
         }).setOrigin(0, 0).setScrollFactor(0);
-        this.bossPhaseThresholdText = this.add.text(barX + barW, barY + barH + 6, '', {
+        this.bossPhaseThresholdText = this.add.text(barX + barW, phaseLabelY, '', {
             fontSize: '12px',
             fill: '#ffe8b2'
         }).setOrigin(1, 0).setScrollFactor(0);
-        this._bossTelegraphRect = { x: barX, y: barY + barH + 24, w: barW, h: 12 };
+        const telegraphY = phaseLabelY + 18;
+        this._bossTelegraphRect = { x: barX, y: telegraphY, w: barW, h: 12 };
         this.bossTelegraphBarBg = this.add.graphics();
         this.bossTelegraphBarBg.setScrollFactor(0);
         this.bossTelegraphBarFill = this.add.graphics();
         this.bossTelegraphBarFill.setScrollFactor(0);
-        this.bossTelegraphText = this.add.text(barX, barY + barH + 20, '', {
+        this.bossTelegraphText = this.add.text(barX, telegraphY - 4, '', {
             fontSize: '11px',
             fill: '#fff6da',
             fontStyle: 'bold'
         }).setOrigin(0, 0).setScrollFactor(0);
-        this.bossTelegraphWindowText = this.add.text(barX + barW, barY + barH + 20, '', {
+        this.bossTelegraphWindowText = this.add.text(barX + barW, telegraphY - 4, '', {
             fontSize: '11px',
             fill: '#ffe1a1',
             fontStyle: 'bold'
         }).setOrigin(1, 0).setScrollFactor(0);
-        this.bossTelegraphHintText = this.add.text(512, barY + barH + 38, '', {
+        this.bossTelegraphHintText = this.add.text(512, telegraphY + 16, '', {
             fontSize: '10px',
             fill: '#ffdcb3',
             align: 'center'
@@ -3909,7 +3964,10 @@ class BossScene extends Phaser.Scene {
 
     update(time, delta) {
         if (this.playerDead) return;
-        if (this.bossDead) return;
+        if (this.bossDead) {
+            this._watchVictoryFlow();
+            return;
+        }
 
         this.player.update(time, delta);
         this._clampToArena(this.player);
@@ -3964,35 +4022,63 @@ class BossScene extends Phaser.Scene {
         this._renderBossHud(delta);
 
         const ui = this.scene.get('UIScene');
+        if (ui && ui.setBossHudLayout && !this._bossHudLayoutApplied) {
+            ui.setBossHudLayout(true);
+            this._bossHudLayoutApplied = true;
+        }
         if (ui && ui.updateHUD) ui.updateHUD(this.player, BOSSES[this.bossKey].area);
 
         if (!this.boss.isAlive && !this.bossDead) {
             this.bossDead = true;
-            const bossConfig = BOSSES[this.bossKey];
-            const drops = bossConfig.drops || {};
-            if (drops.gold) GameState.addGold(drops.gold);
-            if (drops.material) GameState.addItem(drops.material, 1);
-            GameState.resolveRunEventRoom();
-            if (drops.sinSeal && !GameState.sinSeals.includes(drops.sinSeal)) {
-                GameState.sinSeals.push(drops.sinSeal);
-            }
-            if (drops.weapon && !GameState.unlockedWeapons.includes(drops.weapon)) {
-                GameState.unlockedWeapons.push(drops.weapon);
-                this._weaponUnlockName = WEAPONS[drops.weapon] ? WEAPONS[drops.weapon].name : drops.weapon;
-            }
-            if (drops.bonusItems) {
-                this._bonusItemNames = [];
-                for (const [itemKey, count] of Object.entries(drops.bonusItems)) {
-                    GameState.addItem(itemKey, count);
-                    const itemName = ITEMS[itemKey] ? ITEMS[itemKey].name : itemKey;
-                    this._bonusItemNames.push(itemName + ' x' + count);
+            this._victoryRequestedAtMs = this._getWallClockMs();
+            try {
+                this.player.freezeForCinematic();
+                this.boss.clearAttackVisuals();
+                this.activeHitboxes.forEach((hb) => {
+                    if (hb && hb.active && hb.destroy) hb.destroy();
+                });
+                this.activeHitboxes = [];
+                const bossConfig = BOSSES[this.bossKey] || {};
+                const drops = bossConfig.drops || {};
+                if (!Array.isArray(GameState.sinSeals)) GameState.sinSeals = [];
+                if (!Array.isArray(GameState.unlockedWeapons)) GameState.unlockedWeapons = ['sword'];
+                if (!Array.isArray(GameState.defeatedBosses)) GameState.defeatedBosses = [];
+
+                if (drops.gold) GameState.addGold(drops.gold);
+                if (drops.material) GameState.addItem(drops.material, 1);
+                GameState.resolveRunEventRoom();
+                if (drops.sinSeal && !GameState.sinSeals.includes(drops.sinSeal)) {
+                    GameState.sinSeals.push(drops.sinSeal);
+                }
+                if (drops.weapon && !GameState.unlockedWeapons.includes(drops.weapon)) {
+                    GameState.unlockedWeapons.push(drops.weapon);
+                    this._weaponUnlockName = WEAPONS[drops.weapon] ? WEAPONS[drops.weapon].name : drops.weapon;
+                }
+                if (drops.bonusItems && typeof drops.bonusItems === 'object') {
+                    this._bonusItemNames = [];
+                    for (const [itemKey, count] of Object.entries(drops.bonusItems)) {
+                        GameState.addItem(itemKey, count);
+                        const itemName = ITEMS[itemKey] ? ITEMS[itemKey].name : itemKey;
+                        this._bonusItemNames.push(itemName + ' x' + count);
+                    }
+                }
+                if (!GameState.defeatedBosses.includes(this.bossKey)) {
+                    GameState.defeatedBosses.push(this.bossKey);
+                }
+                try {
+                    GameState.save();
+                } catch (e) {
+                    // Keep victory flow moving even if persistence is unavailable.
+                }
+            } catch (e) {
+                // Prevent reward/cleanup exceptions from blocking victory transition.
+            } finally {
+                try {
+                    this._victorySequence();
+                } catch (e) {
+                    this._forceVictoryTransition();
                 }
             }
-            if (!GameState.defeatedBosses.includes(this.bossKey)) {
-                GameState.defeatedBosses.push(this.bossKey);
-            }
-            GameState.save();
-            this._victorySequence();
         }
 
         if (this.player.hp <= 0 && !this.playerDead) {
@@ -4095,67 +4181,156 @@ class BossScene extends Phaser.Scene {
     }
 
     _victorySequence() {
-        this.boss.sprite.setAlpha(0);
-        this.cameras.main.flash(300, 255, 255, 255);
-        const lines = ['Victory!'];
-        if (this._weaponUnlockName) {
-            lines.push('解锁新武器: ' + this._weaponUnlockName);
+        this._victoryTransitionDone = false;
+        this._victorySequenceStarted = true;
+        if (this._victoryFailSafeTimer) {
+            this._victoryFailSafeTimer.remove(false);
+            this._victoryFailSafeTimer = null;
         }
-        if (this._bonusItemNames && this._bonusItemNames.length > 0) {
-            lines.push('获得: ' + this._bonusItemNames.join(', '));
+        if (this._victoryBrowserFailSafeTimer && typeof window !== 'undefined' && window.clearTimeout) {
+            window.clearTimeout(this._victoryBrowserFailSafeTimer);
+            this._victoryBrowserFailSafeTimer = null;
         }
-        const bossDrops = BOSSES[this.bossKey] && BOSSES[this.bossKey].drops;
-        if (bossDrops && bossDrops.gold) {
-            lines.push('金币 +' + bossDrops.gold);
+        if (this._victoryRetryTimer && typeof window !== 'undefined' && window.clearTimeout) {
+            window.clearTimeout(this._victoryRetryTimer);
+            this._victoryRetryTimer = null;
         }
-        const sealCount = GameState.sinSeals.length;
-        lines.push('罪之印记: ' + sealCount + '/7');
-
-        this.victoryText = this.add.text(512, 360, lines[0], {
-            fontSize: '48px',
-            fill: '#FFD700'
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(50);
-
-        if (lines.length > 1) {
-            this.victoryDetailText = this.add.text(512, 420, lines.slice(1).join('\n'), {
-                fontSize: '22px',
-                fill: '#ffffff',
-                align: 'center'
-            }).setOrigin(0.5).setScrollFactor(0).setDepth(50);
-        }
-
-        this.time.delayedCall(2500, () => {
-            const bossConfig = BOSSES[this.bossKey];
-            const rewardDialog = lines.slice(1).map(text => ({ speaker: '系统', text }));
-            const dialog = rewardDialog.concat(bossConfig.defeatDialog || []);
-            const isFinal = bossConfig.isFinal;
-            if (this.victoryText && this.victoryText.active) this.victoryText.destroy();
-            if (this.victoryDetailText && this.victoryDetailText.active) this.victoryDetailText.destroy();
-            if (dialog.length > 0) {
-                this.scene.launch('DialogScene', {
-                    dialog: dialog,
-                    onComplete: () => {
-                        this.scene.stop('DialogScene');
-                        this.scene.stop('UIScene');
-                        if (isFinal) {
-                            this.scene.start('CreditsScene');
-                        } else {
-                            this.scene.start('HubScene');
-                        }
-                    }
-                });
-            } else {
-                if (isFinal) {
-                    this.scene.stop('UIScene');
-                    this.scene.start('CreditsScene');
-                } else {
-                    this._returnToHub();
-                }
+        try {
+            const finishVictoryTransition = () => {
+                this._forceVictoryTransition();
+            };
+            this._victoryFailSafeTimer = this.time.delayedCall(12000, () => {
+                finishVictoryTransition();
+            });
+            if (typeof window !== 'undefined' && window.setTimeout) {
+                this._victoryBrowserFailSafeTimer = window.setTimeout(() => {
+                    finishVictoryTransition();
+                }, 14000);
             }
-        });
+            this.boss.sprite.setAlpha(0);
+            this.cameras.main.flash(300, 255, 255, 255);
+            const lines = ['Victory!'];
+            if (this._weaponUnlockName) {
+                lines.push('解锁新武器: ' + this._weaponUnlockName);
+            }
+            if (this._bonusItemNames && this._bonusItemNames.length > 0) {
+                lines.push('获得: ' + this._bonusItemNames.join(', '));
+            }
+            const bossDrops = BOSSES[this.bossKey] && BOSSES[this.bossKey].drops;
+            if (bossDrops && bossDrops.gold) {
+                lines.push('金币 +' + bossDrops.gold);
+            }
+            const sealCount = Array.isArray(GameState.sinSeals) ? GameState.sinSeals.length : 0;
+            lines.push('罪之印记: ' + sealCount + '/7');
+
+            this.victoryText = this.add.text(512, 360, lines[0], {
+                fontSize: '48px',
+                fill: '#FFD700'
+            }).setOrigin(0.5).setScrollFactor(0).setDepth(50);
+
+            if (lines.length > 1) {
+                this.victoryDetailText = this.add.text(512, 420, lines.slice(1).join('\n'), {
+                    fontSize: '22px',
+                    fill: '#ffffff',
+                    align: 'center'
+                }).setOrigin(0.5).setScrollFactor(0).setDepth(50);
+            }
+
+            this.time.delayedCall(2500, () => {
+                try {
+                    const bossConfig = BOSSES[this.bossKey] || {};
+                    const rewardDialog = lines.slice(1).map(text => ({ speaker: '系统', text }));
+                    const dialog = rewardDialog.concat(bossConfig.defeatDialog || []);
+                    if (this.victoryText && this.victoryText.active) this.victoryText.destroy();
+                    if (this.victoryDetailText && this.victoryDetailText.active) this.victoryDetailText.destroy();
+                    if (dialog.length > 0) {
+                        this.scene.launch('DialogScene', {
+                            dialog: dialog,
+                            onComplete: () => {
+                                finishVictoryTransition();
+                            }
+                        });
+                    } else {
+                        finishVictoryTransition();
+                    }
+                } catch (e) {
+                    finishVictoryTransition();
+                }
+            });
+        } catch (e) {
+            this._forceVictoryTransition();
+        }
+    }
+
+    _getWallClockMs() {
+        if (typeof performance !== 'undefined' && performance.now) return performance.now();
+        return Date.now();
+    }
+
+    _watchVictoryFlow() {
+        if (this._victoryTransitionDone) return;
+        if (!this._victoryRequestedAtMs) this._victoryRequestedAtMs = this._getWallClockMs();
+        const elapsed = this._getWallClockMs() - this._victoryRequestedAtMs;
+        const dialogActive = this.scene.isActive('DialogScene');
+        if (!this._victorySequenceStarted && elapsed >= 1000) {
+            this._forceVictoryTransition();
+            return;
+        }
+        if (!dialogActive && elapsed >= 18000) {
+            this._forceVictoryTransition();
+        }
+    }
+
+    _forceVictoryTransition() {
+        if (this._victoryTransitionDone || this._victoryTransitionInFlight) return;
+        this._victoryTransitionInFlight = true;
+        if (this._victoryFailSafeTimer) {
+            this._victoryFailSafeTimer.remove(false);
+            this._victoryFailSafeTimer = null;
+        }
+        if (this._victoryBrowserFailSafeTimer && typeof window !== 'undefined' && window.clearTimeout) {
+            window.clearTimeout(this._victoryBrowserFailSafeTimer);
+            this._victoryBrowserFailSafeTimer = null;
+        }
+        if (this._victoryRetryTimer && typeof window !== 'undefined' && window.clearTimeout) {
+            window.clearTimeout(this._victoryRetryTimer);
+            this._victoryRetryTimer = null;
+        }
+        if (this.victoryText && this.victoryText.active) this.victoryText.destroy();
+        if (this.victoryDetailText && this.victoryDetailText.active) this.victoryDetailText.destroy();
+        let started = false;
+        try {
+            if (this.scene.isActive('DialogScene')) this.scene.stop('DialogScene');
+            this.scene.stop('UIScene');
+            if (this._bossHudLayoutApplied) this._bossHudLayoutApplied = false;
+            const bossCfg = BOSSES[this.bossKey];
+            if (bossCfg && bossCfg.isFinal) {
+                this.scene.start('CreditsScene');
+            } else {
+                this.scene.start('HubScene');
+            }
+            started = true;
+        } catch (e) {
+            // Retry is scheduled below.
+        } finally {
+            this._victoryTransitionInFlight = false;
+        }
+        if (started) {
+            this._victoryTransitionDone = true;
+            return;
+        }
+        this._victoryTransitionDone = false;
+        this._victoryRetryCount = (this._victoryRetryCount || 0) + 1;
+        const retryDelay = Math.min(600, 80 * this._victoryRetryCount);
+        if (typeof window !== 'undefined' && window.setTimeout) {
+            this._victoryRetryTimer = window.setTimeout(() => {
+                this._forceVictoryTransition();
+            }, retryDelay);
+        }
     }
 
     _returnToHub() {
+        if (this._bossHudLayoutApplied) this._bossHudLayoutApplied = false;
         this.scene.stop('UIScene');
         this.scene.start('HubScene');
     }
@@ -4913,33 +5088,34 @@ class UIScene extends Phaser.Scene {
     create() {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
-        const pad = 16;
+        this._hudWidth = width;
+        this._hudHeight = height;
+        this._bossLayoutEnabled = false;
+        this._hudLayout = this._buildHudLayout(false);
+        const pad = this._hudLayout.pad;
+        const hpBarY = this._hudLayout.hpBarY;
 
         // Top-left: HP bar
-        this.hpLabel = this.add.text(pad, pad, 'HP', {
+        this.hpLabel = this.add.text(pad, hpBarY, 'HP', {
             fontSize: '16px',
             fill: '#ffffff'
         }).setScrollFactor(0);
         this.hpBarBg = this.add.graphics();
-        this.hpBarBg.fillStyle(0x8B0000, 1);
-        this.hpBarBg.fillRect(pad + 28, pad, 200, 20);
         this.hpBarBg.setScrollFactor(0);
         this.hpBarFill = this.add.graphics();
         this.hpBarFill.setScrollFactor(0);
-        this.hpText = this.add.text(pad + 28 + 200 + 8, pad + 4, '0/0', {
+        this.hpText = this.add.text(pad + 28 + 200 + 8, hpBarY + 4, '0/0', {
             fontSize: '14px',
             fill: '#ffffff'
         }).setScrollFactor(0);
 
         // Stamina bar below HP
-        const stY = pad + 20 + 8;
+        const stY = this._hudLayout.staminaBarY;
         this.stLabel = this.add.text(pad, stY, 'ST', {
             fontSize: '14px',
             fill: '#ffffff'
         }).setScrollFactor(0);
         this.staminaBarBg = this.add.graphics();
-        this.staminaBarBg.fillStyle(0x8B8B00, 1);
-        this.staminaBarBg.fillRect(pad + 28, stY, 200, 14);
         this.staminaBarBg.setScrollFactor(0);
         this.staminaBarFill = this.add.graphics();
         this.staminaBarFill.setScrollFactor(0);
@@ -4996,30 +5172,30 @@ class UIScene extends Phaser.Scene {
         }
 
         // Top-right: area name
-        this.areaNameText = this.add.text(width - pad, pad + 10, '', {
+        this.areaNameText = this.add.text(width - pad, this._hudLayout.sidePanelStartY, '', {
             fontSize: '18px',
             fill: '#ffffff'
         }).setOrigin(1, 0).setScrollFactor(0);
 
-        this.runModifierTitle = this.add.text(width - pad, pad + 36, '本局词缀', {
+        this.runModifierTitle = this.add.text(width - pad, this._hudLayout.sidePanelStartY + 26, '本局词缀', {
             fontSize: '12px',
             fill: '#ffd27a'
         }).setOrigin(1, 0).setScrollFactor(0);
-        this.runModifierText = this.add.text(width - pad, pad + 52, '', {
+        this.runModifierText = this.add.text(width - pad, this._hudLayout.sidePanelStartY + 42, '', {
             fontSize: '11px',
             fill: '#d7e6ff',
             align: 'right',
             lineSpacing: 2
         }).setOrigin(1, 0).setScrollFactor(0);
 
-        this.challengeText = this.add.text(width - pad, pad + 108, '', {
+        this.challengeText = this.add.text(width - pad, this._hudLayout.sidePanelStartY + 98, '', {
             fontSize: '11px',
             fill: '#7CFFB2',
             align: 'right',
             lineSpacing: 2
         }).setOrigin(1, 0).setScrollFactor(0);
 
-        this.eventRoomText = this.add.text(width - pad, pad + 160, '', {
+        this.eventRoomText = this.add.text(width - pad, this._hudLayout.sidePanelStartY + 150, '', {
             fontSize: '11px',
             fill: '#ffd27a',
             align: 'right',
@@ -5050,10 +5226,66 @@ class UIScene extends Phaser.Scene {
             fill: '#ffd27a',
             fontStyle: 'bold'
         }).setOrigin(0.5).setScrollFactor(0).setVisible(false);
+
+        this._applyHudLayout();
+    }
+
+    _buildHudLayout(isBossLayout) {
+        const width = this._hudWidth || this.cameras.main.width;
+        const pad = isBossLayout ? 8 : 16;
+        const hpBarY = pad;
+        const staminaBarY = hpBarY + 20 + 8;
+        return {
+            pad,
+            hpBarY,
+            staminaBarY,
+            sidePanelStartY: isBossLayout ? 112 : pad + 10,
+            showSidePanel: !isBossLayout,
+            width
+        };
+    }
+
+    _applyHudLayout() {
+        const layout = this._hudLayout || this._buildHudLayout(false);
+        const pad = layout.pad;
+        this.hpLabel.setPosition(pad, layout.hpBarY);
+        this.hpText.setPosition(pad + 28 + 200 + 8, layout.hpBarY + 4);
+        this.stLabel.setPosition(pad, layout.staminaBarY);
+        this.staminaText.setPosition(pad + 28 + 200 + 8, layout.staminaBarY + 2);
+        this.areaNameText.setPosition(layout.width - pad, layout.sidePanelStartY);
+        this.runModifierTitle.setPosition(layout.width - pad, layout.sidePanelStartY + 26);
+        this.runModifierText.setPosition(layout.width - pad, layout.sidePanelStartY + 42);
+        this.challengeText.setPosition(layout.width - pad, layout.sidePanelStartY + 98);
+        this.eventRoomText.setPosition(layout.width - pad, layout.sidePanelStartY + 150);
+        const showSidePanel = !!layout.showSidePanel;
+        this.areaNameText.setVisible(showSidePanel);
+        this.runModifierTitle.setVisible(showSidePanel);
+        this.runModifierText.setVisible(showSidePanel);
+        this.challengeText.setVisible(showSidePanel);
+        this.eventRoomText.setVisible(showSidePanel);
+        this.hpBarBg.clear();
+        this.hpBarBg.fillStyle(0x8B0000, 1);
+        this.hpBarBg.fillRect(pad + 28, layout.hpBarY, 200, 20);
+        this.staminaBarBg.clear();
+        this.staminaBarBg.fillStyle(0x8B8B00, 1);
+        this.staminaBarBg.fillRect(pad + 28, layout.staminaBarY, 200, 14);
+    }
+
+    setBossHudLayout(enabled) {
+        const desired = !!enabled;
+        if (this._bossLayoutEnabled === desired && this._hudLayout) return;
+        this._bossLayoutEnabled = desired;
+        this._hudLayout = this._buildHudLayout(desired);
+        this._applyHudLayout();
     }
 
     updateHUD(player, areaName) {
         if (!player) return;
+        const layout = this._hudLayout || this._buildHudLayout(false);
+        const hpBarX = layout.pad + 28;
+        const hpBarY = layout.hpBarY;
+        const stBarX = layout.pad + 28;
+        const stY = layout.staminaBarY;
 
         for (let i = 0; i < 4; i++) {
             const slot = this.quickSlots[i];
@@ -5067,7 +5299,7 @@ class UIScene extends Phaser.Scene {
         this.hpBarFill.clear();
         const hpColor = hpRatio <= UI_WARNING_THRESHOLDS.lowHpRatio ? 0xFF4D4D : (hpRatio <= 0.6 ? 0xFF8A65 : 0xE74C3C);
         this.hpBarFill.fillStyle(hpColor, 1);
-        this.hpBarFill.fillRect(16 + 28, 16, 200 * hpRatio, 20);
+        this.hpBarFill.fillRect(hpBarX, hpBarY, 200 * hpRatio, 20);
         this.hpText.setText(Math.floor(player.hp) + '/' + player.maxHp);
         this.hpText.setStyle({ fill: hpRatio <= UI_WARNING_THRESHOLDS.lowHpRatio ? '#ffb3b3' : '#ffffff' });
 
@@ -5081,12 +5313,11 @@ class UIScene extends Phaser.Scene {
         }
 
         // Stamina bar
-        const stY = 16 + 20 + 8;
         const stRatio = Math.max(0, Math.min(1, player.stamina / player.maxStamina));
         this.staminaBarFill.clear();
         const stColor = stRatio <= UI_WARNING_THRESHOLDS.lowStaminaRatio ? 0xFF9F43 : (stRatio <= 0.45 ? 0xF1C40F : 0xB9E769);
         this.staminaBarFill.fillStyle(stColor, 1);
-        this.staminaBarFill.fillRect(16 + 28, stY, 200 * stRatio, 14);
+        this.staminaBarFill.fillRect(stBarX, stY, 200 * stRatio, 14);
         this.staminaText.setText(Math.floor(player.stamina) + '/' + player.maxStamina);
         this.staminaText.setStyle({ fill: stRatio <= UI_WARNING_THRESHOLDS.lowStaminaRatio ? '#ffe0ad' : '#ffffff' });
 
@@ -5191,7 +5422,7 @@ class PauseScene extends Phaser.Scene {
         }).setOrigin(0.5);
 
         this._infoVisible = false;
-        this.infoText = this.add.text(w / 2, h / 2 + 12, '', {
+        this.infoText = this.add.text(w / 2, h / 2 + 76, '', {
             fontSize: '14px',
             fill: '#dfe6f0',
             align: 'left',
@@ -5212,9 +5443,9 @@ class PauseScene extends Phaser.Scene {
             fontSize: '20px',
             fill: '#d8dee9'
         }).setOrigin(0.5);
-        this._createButton(w / 2 - 110, h / 2 + 118, '音量 -10', () => this._changeVolume(-10), '18px');
-        this._createButton(w / 2 + 110, h / 2 + 118, '音量 +10', () => this._changeVolume(10), '18px');
-        this._createButton(w / 2, h / 2 + 170, '返回标题', () => this._backToTitle());
+        this.volumeDownButton = this._createButton(w / 2 - 110, h / 2 + 118, '音量 -10', () => this._changeVolume(-10), '18px');
+        this.volumeUpButton = this._createButton(w / 2 + 110, h / 2 + 118, '音量 +10', () => this._changeVolume(10), '18px');
+        this.backToTitleButton = this._createButton(w / 2, h / 2 + 170, '返回标题', () => this._backToTitle());
         this._refreshAudioUi();
 
         this.input.keyboard.on('keydown-ESC', () => this._continue());
@@ -5248,6 +5479,7 @@ class PauseScene extends Phaser.Scene {
 
     _toggleWeaponInfo() {
         this._infoVisible = !this._infoVisible;
+        this._setWeaponInfoLayout(this._infoVisible);
         this.infoText.setVisible(this._infoVisible);
         if (!this._infoVisible) return;
         const unlocked = GameState.unlockedWeapons || [];
@@ -5258,6 +5490,15 @@ class PauseScene extends Phaser.Scene {
         const lines = ['武器当前属性：', ''];
         unlocked.forEach(key => lines.push(formatWeaponStatsLine(key)));
         this.infoText.setText(lines.join('\n'));
+    }
+
+    _setWeaponInfoLayout(visible) {
+        const showControls = !visible;
+        if (this.muteButton) this.muteButton.setVisible(showControls);
+        if (this.volumeText) this.volumeText.setVisible(showControls);
+        if (this.volumeDownButton) this.volumeDownButton.setVisible(showControls);
+        if (this.volumeUpButton) this.volumeUpButton.setVisible(showControls);
+        if (this.backToTitleButton) this.backToTitleButton.setVisible(showControls);
     }
 
     _refreshAudioUi() {
