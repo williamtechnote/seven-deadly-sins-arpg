@@ -29,6 +29,8 @@ const {
     pickRunEventRoom,
     resolveConsumableUse,
     buildStatusHudSummary,
+    advanceBossHpAfterimage,
+    buildBossPhaseHudSummary,
     canCraftRecipe,
     applyCraftRecipe,
     serializeSaveData,
@@ -305,6 +307,40 @@ function testStatusHudSummary() {
     ], 'buff lane should include defensive and offensive buffs');
 }
 
+function testBossHudReadability() {
+    const trailDrop = advanceBossHpAfterimage(1, 0.54, 0.12);
+    assert.equal(trailDrop, 0.88, 'afterimage should ease downward by the configured step');
+
+    const trailFloor = advanceBossHpAfterimage(0.58, 0.54, 0.12);
+    assert.equal(trailFloor, 0.54, 'afterimage should never fall below the real HP ratio');
+
+    const trailRecover = advanceBossHpAfterimage(0.54, 0.71, 0.12);
+    assert.equal(trailRecover, 0.71, 'afterimage should snap upward when HP ratio increases');
+
+    const phaseSummary = buildBossPhaseHudSummary({
+        phases: [
+            { hpPercent: 1 },
+            { hpPercent: 0.7 },
+            { hpPercent: 0.4 },
+            { hpPercent: 0.15 }
+        ],
+        currentPhase: 1
+    });
+
+    assert.equal(phaseSummary.phaseLabel, 'Phase 2/4', 'summary should expose human-readable phase label');
+    assert.equal(phaseSummary.nextThresholdLabel, '下阶段 40%', 'summary should expose next threshold label');
+    assert.deepEqual(phaseSummary.thresholdMarkers, [0.7, 0.4, 0.15], 'summary should keep phase threshold marker ratios');
+
+    const finalPhaseSummary = buildBossPhaseHudSummary({
+        phases: [
+            { hpPercent: 1 },
+            { hpPercent: 0.5 }
+        ],
+        currentPhase: 1
+    });
+    assert.equal(finalPhaseSummary.nextThresholdLabel, '', 'final phase should not advertise a next threshold');
+}
+
 function main() {
     runTest('weapon scaling monotonicity', testWeaponScalingMonotonicity);
     runTest('material-bound upgrade checks', testMaterialBoundUpgradeChecks);
@@ -315,6 +351,7 @@ function main() {
     runTest('crafting recipe checks', testCraftingRecipeChecks);
     runTest('consumable use resolution', testConsumableUseResolution);
     runTest('status HUD summary', testStatusHudSummary);
+    runTest('boss HUD readability helpers', testBossHudReadability);
     console.log('All regression checks passed.');
 }
 

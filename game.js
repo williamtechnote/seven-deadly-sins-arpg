@@ -29,6 +29,8 @@ const {
     computeStatusTickDamage,
     resolveConsumableUse,
     buildStatusHudSummary,
+    advanceBossHpAfterimage,
+    buildBossPhaseHudSummary,
     getRunModifierByKey,
     normalizeRunModifiers,
     pickRunModifiers,
@@ -160,6 +162,9 @@ const UI_WARNING_THRESHOLDS = {
     lowHpRatio: 0.3,
     lowStaminaRatio: 0.2
 };
+
+const BOSS_HUD_AFTERIMAGE_STEP_PER_SECOND = 0.42;
+const BOSS_PHASE_ALERT_DURATION_MS = 1800;
 
 const MAJOR_BOSS_PHASE_ATTACKS = new Set([
     'flameBreath',
@@ -2542,6 +2547,7 @@ class Boss {
         this.phaseMajorAttackQueue = new Set();
         this.activeStatusEffects = {};
         this._statusSpeedMultiplier = 1;
+        this.phaseAlertUntil = 0;
         this.statusAura = scene.add.graphics();
         this.statusAura.setDepth(9);
     }
@@ -2613,6 +2619,7 @@ class Boss {
     _enterPhase(phaseIndex, time) {
         this.phaseTransitioned[phaseIndex] = true;
         this.currentPhase = phaseIndex;
+        this.phaseAlertUntil = time + BOSS_PHASE_ALERT_DURATION_MS;
         this.scene.cameras.main.flash(200, 255, 255, 255);
         this.invincibleUntil = time + 1000;
         this.speed *= 1.2;
@@ -3296,16 +3303,31 @@ class BossScene extends Phaser.Scene {
         const barH = 24;
         const barX = 512 - barW / 2;
         const barY = 20;
+        this._bossHpBarRect = { x: barX, y: barY, w: barW, h: barH, pad: 4 };
         this.bossHpBarBg = this.add.graphics();
-        this.bossHpBarBg.fillStyle(0x333333, 1);
-        this.bossHpBarBg.fillRect(barX, barY, barW, barH);
         this.bossHpBarBg.setScrollFactor(0);
+        this.bossHpBarAfterimage = this.add.graphics();
+        this.bossHpBarAfterimage.setScrollFactor(0);
         this.bossHpBarFill = this.add.graphics();
         this.bossHpBarFill.setScrollFactor(0);
+        this.bossHpBarMarkers = this.add.graphics();
+        this.bossHpBarMarkers.setScrollFactor(0);
+        this.bossHpBarFrame = this.add.graphics();
+        this.bossHpBarFrame.setScrollFactor(0);
         this.bossHpLabel = this.add.text(512, barY - 12, bossConfig.sin + ' ' + bossConfig.name, {
             fontSize: '18px',
             fill: '#ffffff'
         }).setOrigin(0.5, 1).setScrollFactor(0);
+        this.bossPhaseText = this.add.text(barX, barY + barH + 6, '', {
+            fontSize: '12px',
+            fill: '#ffd27a',
+            fontStyle: 'bold'
+        }).setOrigin(0, 0).setScrollFactor(0);
+        this.bossPhaseThresholdText = this.add.text(barX + barW, barY + barH + 6, '', {
+            fontSize: '12px',
+            fill: '#ffe8b2'
+        }).setOrigin(1, 0).setScrollFactor(0);
+        this.bossHpTrailRatio = 1;
 
         this.scene.launch('UIScene');
 
@@ -3402,10 +3424,7 @@ class BossScene extends Phaser.Scene {
             }
         }
 
-        this.bossHpBarFill.clear();
-        const hpRatio = Math.max(0, Math.min(1, this.boss.hp / this.boss.maxHp));
-        this.bossHpBarFill.fillStyle(this.boss.config.color, 1);
-        this.bossHpBarFill.fillRect(512 - 250 + 4, 20 + 4, (500 - 8) * hpRatio, 24 - 8);
+        this._renderBossHud(delta);
 
         const ui = this.scene.get('UIScene');
         if (ui && ui.updateHUD) ui.updateHUD(this.player, BOSSES[this.bossKey].area);
@@ -3443,6 +3462,60 @@ class BossScene extends Phaser.Scene {
             this.playerDead = true;
             this._deathSequence();
         }
+    }
+
+    _renderBossHud(delta) {
+        if (!this._bossHpBarRect || !this.boss) return;
+        const rect = this._bossHpBarRect;
+        const hpRatio = Math.max(0, Math.min(1, this.boss.hp / this.boss.maxHp));
+        const afterimageStep = Math.max(0.008, (Math.max(0, delta) / 1000) * BOSS_HUD_AFTERIMAGE_STEP_PER_SECOND);
+        this.bossHpTrailRatio = advanceBossHpAfterimage(this.bossHpTrailRatio, hpRatio, afterimageStep);
+        const phaseHud = buildBossPhaseHudSummary({
+            phases: this.boss.config.phases,
+            currentPhase: this.boss.currentPhase
+        });
+        const phaseAlertActive = this.time.now < (this.boss.phaseAlertUntil || 0);
+        const blinkOn = Math.floor(this.time.now / 120) % 2 === 0;
+        const frameColor = phaseAlertActive
+            ? (blinkOn ? 0xFFE08A : 0xFF8A5B)
+            : 0x5B657A;
+        const phaseTextColor = phaseAlertActive
+            ? (blinkOn ? '#fff3c4' : '#ffcf85')
+            : '#ffd27a';
+        const innerX = rect.x + rect.pad;
+        const innerY = rect.y + rect.pad;
+        const innerW = rect.w - rect.pad * 2;
+        const innerH = rect.h - rect.pad * 2;
+
+        this.bossHpBarBg.clear();
+        this.bossHpBarBg.fillStyle(0x2A2430, 1);
+        this.bossHpBarBg.fillRect(rect.x, rect.y, rect.w, rect.h);
+
+        this.bossHpBarMarkers.clear();
+        this.bossHpBarMarkers.lineStyle(2, 0xFFF3C2, 0.65);
+        phaseHud.thresholdMarkers.forEach((ratio) => {
+            const markerX = innerX + innerW * ratio;
+            this.bossHpBarMarkers.lineBetween(markerX, rect.y + 2, markerX, rect.y + rect.h - 2);
+        });
+
+        this.bossHpBarAfterimage.clear();
+        this.bossHpBarAfterimage.fillStyle(0xF5B58A, 0.78);
+        this.bossHpBarAfterimage.fillRect(innerX, innerY, innerW * this.bossHpTrailRatio, innerH);
+
+        this.bossHpBarFill.clear();
+        this.bossHpBarFill.fillStyle(this.boss.config.color, 1);
+        this.bossHpBarFill.fillRect(innerX, innerY, innerW * hpRatio, innerH);
+
+        this.bossHpBarFrame.clear();
+        this.bossHpBarFrame.lineStyle(phaseAlertActive ? 3 : 2, frameColor, 1);
+        this.bossHpBarFrame.strokeRect(rect.x, rect.y, rect.w, rect.h);
+
+        this.bossHpLabel.setText(this.boss.config.sin + ' ' + this.boss.config.name);
+        this.bossHpLabel.setStyle({ fill: phaseAlertActive ? phaseTextColor : '#ffffff' });
+        this.bossPhaseText.setText(phaseHud.phaseLabel);
+        this.bossPhaseText.setStyle({ fill: phaseTextColor });
+        this.bossPhaseThresholdText.setText(phaseHud.nextThresholdLabel);
+        this.bossPhaseThresholdText.setStyle({ fill: phaseAlertActive ? '#ffe7ad' : '#ffe8b2' });
     }
 
     _victorySequence() {

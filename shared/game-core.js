@@ -219,6 +219,12 @@
         return Math.min(max, Math.max(min, rounded));
     }
 
+    function clampRatio(value, fallback) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return fallback;
+        return Math.min(1, Math.max(0, n));
+    }
+
     function sanitizeStringArray(value) {
         if (!Array.isArray(value)) return [];
         return value.filter(v => typeof v === 'string');
@@ -537,6 +543,32 @@
         };
     }
 
+    function advanceBossHpAfterimage(previousRatio, targetRatio, stepRatio) {
+        const safePrevious = clampRatio(previousRatio, 1);
+        const safeTarget = clampRatio(targetRatio, 0);
+        const safeStep = Math.max(0, Number(stepRatio) || 0);
+        if (safeTarget >= safePrevious) return safeTarget;
+        return Math.max(safeTarget, safePrevious - safeStep);
+    }
+
+    function buildBossPhaseHudSummary(options) {
+        const safe = options && typeof options === 'object' ? options : {};
+        const phases = Array.isArray(safe.phases) ? safe.phases : [];
+        const totalPhases = Math.max(1, phases.length);
+        const currentPhase = clampInt(safe.currentPhase, 0, totalPhases - 1, 0);
+        const thresholdMarkers = phases
+            .map(phase => clampRatio(phase && phase.hpPercent, -1))
+            .filter(ratio => ratio > 0 && ratio < 1);
+        const nextPhase = currentPhase + 1 < phases.length ? phases[currentPhase + 1] : null;
+        const nextThreshold = nextPhase ? clampRatio(nextPhase.hpPercent, -1) : -1;
+
+        return {
+            phaseLabel: `Phase ${currentPhase + 1}/${totalPhases}`,
+            nextThresholdLabel: nextThreshold >= 0 ? `下阶段 ${Math.round(nextThreshold * 100)}%` : '',
+            thresholdMarkers
+        };
+    }
+
     function getCraftingRecipe(recipeKey) {
         return CRAFTING_RECIPES[recipeKey] || null;
     }
@@ -792,6 +824,8 @@
         computeStatusTickDamage,
         resolveConsumableUse,
         buildStatusHudSummary,
+        advanceBossHpAfterimage,
+        buildBossPhaseHudSummary,
         getRunModifierByKey,
         normalizeRunModifiers,
         pickRunModifiers,
