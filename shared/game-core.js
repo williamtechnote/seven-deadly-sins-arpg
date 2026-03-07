@@ -779,8 +779,10 @@
             ? [selectedChoice]
             : allChoices.slice(0, 2);
         const routeLines = visibleChoices.map((choice) => {
-            const prefix = normalizedRoom.resolved ? '已选 ' : '';
-            return `${prefix}${choice.label}: ${describeRunEventChoiceRoute(choice)}`.trim();
+            if (normalizedRoom.resolved) {
+                return `已选: ${choice.label}`.trim();
+            }
+            return `${choice.label}: ${describeRunEventChoiceRoute(choice)}`.trim();
         });
         const routeSummary = routeLines.join('\n');
         const resolutionText = normalizedRoom.resolved && selectedChoice
@@ -797,6 +799,37 @@
             routeSummary,
             resolutionText
         };
+    }
+
+    function buildRunEventRoomHudLines(runEventRoom, poolOverride) {
+        const summary = buildRunEventRoomHudSummary(runEventRoom, poolOverride);
+        if (!summary.visible) return [];
+
+        const lines = [
+            `事件房: ${summary.name}`,
+            summary.metaLabel || `${summary.typeLabel} · ${summary.statusLabel || ''}`.trim()
+        ];
+
+        if (summary.statusLabel === '已触发') {
+            const selectedLine = Array.isArray(summary.routeLines) && summary.routeLines.length > 0
+                ? summary.routeLines[0]
+                : '';
+            if (selectedLine && summary.resolutionText) {
+                lines.push(`${selectedLine} · ${summary.resolutionText}`);
+            } else if (selectedLine) {
+                lines.push(selectedLine);
+            } else if (summary.resolutionText) {
+                lines.push(`结算: ${summary.resolutionText}`);
+            }
+            return lines;
+        }
+
+        if (Array.isArray(summary.routeLines) && summary.routeLines.length > 0) {
+            lines.push(...summary.routeLines);
+        } else if (summary.routeSummary) {
+            lines.push(summary.routeSummary);
+        }
+        return lines;
     }
 
     function pickRunModifiers(randomFn, count, poolOverride) {
@@ -1404,6 +1437,7 @@
         buildRunModifierEffects,
         buildRunEventRoomEffects,
         buildRunEventRoomHudSummary,
+        buildRunEventRoomHudLines,
         getRunEventRoomByKey,
         getRunEventRoomChoices,
         normalizeRunEventRoom,

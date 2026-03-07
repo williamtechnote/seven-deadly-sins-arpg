@@ -31,6 +31,7 @@ const {
     resolveRunEventRoomChoice,
     buildRunEventRoomEffects,
     buildRunEventRoomHudSummary,
+    buildRunEventRoomHudLines,
     resolveConsumableUse,
     buildStatusHudSummary,
     advanceBossHpAfterimage,
@@ -353,6 +354,7 @@ function testRunEventRoomSelection() {
 
 function testRunEventRoomHudSummary() {
     assert.equal(typeof buildRunEventRoomHudSummary, 'function', 'event room HUD summary helper should be exported');
+    assert.equal(typeof buildRunEventRoomHudLines, 'function', 'event room HUD line builder should be exported');
 
     const unresolvedSummary = buildRunEventRoomHudSummary({
         key: 'supplyCache',
@@ -380,8 +382,8 @@ function testRunEventRoomHudSummary() {
     assert.equal(resolvedSummary.metaLabel, '祝福 · 已触发', 'HUD summary should keep the compressed blessing metadata');
     assert.deepEqual(
         resolvedSummary.routeLines,
-        ['已选 迅击祷言: 特攻冷却-22%'],
-        'HUD summary should collapse to one chosen-route line after settlement'
+        ['已选: 迅击祷言'],
+        'HUD summary should collapse resolved chosen-route lines to a short label'
     );
     assert.equal(
         resolvedSummary.resolutionText,
@@ -414,6 +416,11 @@ function testRunEventRoomHudSummary() {
         '生命-30, 金币+120',
         'resolved trade summary should compress hp-for-gold settlements into compact delta text'
     );
+    assert.deepEqual(
+        resolvedTradeSummary.routeLines,
+        ['已选: 豪赌'],
+        'resolved trade summary should keep only the chosen label on the route line'
+    );
 
     const resolvedSupplySummary = buildRunEventRoomHudSummary({
         key: 'supplyCache',
@@ -441,6 +448,60 @@ function testRunEventRoomHudSummary() {
         resolvedHealingSummary.resolutionText,
         '生命+36, 净化',
         'resolved healing summary should compress restore-and-cleanse settlements into compact delta text'
+    );
+}
+
+function testRunEventRoomHudLines() {
+    const unresolvedLines = buildRunEventRoomHudLines({
+        key: 'supplyCache',
+        discovered: true,
+        resolved: false
+    });
+    assert.deepEqual(
+        unresolvedLines,
+        [
+            '事件房: 战备商柜',
+            '交易 · 已发现',
+            '战地净化包: 金币-45, 净化药剂x1',
+            '狂战补给: 金币-60, 狂战油x1'
+        ],
+        'unresolved event rooms should keep one line per available route'
+    );
+
+    const resolvedLines = buildRunEventRoomHudLines({
+        key: 'prayerShrine',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'tempoPrayer',
+        selectedChoiceLabel: '迅击祷言',
+        resolutionText: '特攻冷却 -22%'
+    });
+    assert.deepEqual(
+        resolvedLines,
+        [
+            '事件房: 祈愿圣坛',
+            '祝福 · 已触发',
+            '已选: 迅击祷言 · 特攻冷却-22%'
+        ],
+        'resolved event rooms should merge the chosen route and compact settlement into one line'
+    );
+
+    const resolvedTradeLines = buildRunEventRoomHudLines({
+        key: 'gamblersShrine',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'highStakeWager',
+        selectedChoiceLabel: '豪赌',
+        resolutionText: '失去 30 生命，获得 120 金币'
+    });
+    assert.deepEqual(
+        resolvedTradeLines,
+        [
+            '事件房: 赌徒圣坛',
+            '交易 · 已触发',
+            '已选: 豪赌 · 生命-30, 金币+120'
+        ],
+        'resolved trade event rooms should merge the chosen label and actual settlement delta'
     );
 }
 
@@ -625,6 +686,7 @@ function main() {
     runTest('run modifier selection/effects', testRunModifierSelectionAndEffects);
     runTest('run event room selection', testRunEventRoomSelection);
     runTest('run event room HUD summary', testRunEventRoomHudSummary);
+    runTest('run event room HUD lines', testRunEventRoomHudLines);
     runTest('crafting recipe checks', testCraftingRecipeChecks);
     runTest('consumable use resolution', testConsumableUseResolution);
     runTest('status HUD summary', testStatusHudSummary);

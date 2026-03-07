@@ -38,7 +38,7 @@ const {
     pickRunModifiers,
     buildRunModifierEffects,
     buildRunEventRoomEffects,
-    buildRunEventRoomHudSummary,
+    buildRunEventRoomHudLines,
     getRunEventRoomByKey,
     getRunEventRoomChoices,
     normalizeRunEventRoom,
@@ -5010,17 +5010,7 @@ class UIScene extends Phaser.Scene {
 
         const eventRoom = GameState.getRunEventRoomSummary ? GameState.getRunEventRoomSummary() : null;
         if (eventRoom) {
-            const hudSummary = buildRunEventRoomHudSummary(eventRoom, RUN_EVENT_ROOM_POOL);
-            const lines = [
-                `事件房: ${eventRoom.name}`,
-                hudSummary.metaLabel || `${hudSummary.typeLabel} · ${hudSummary.statusLabel || ''}`.trim()
-            ];
-            if (Array.isArray(hudSummary.routeLines) && hudSummary.routeLines.length > 0) {
-                lines.push(...hudSummary.routeLines);
-            } else if (hudSummary.routeSummary) {
-                lines.push(hudSummary.routeSummary);
-            }
-            if (eventRoom.resolved && hudSummary.resolutionText) lines.push(`结算: ${hudSummary.resolutionText}`);
+            const lines = buildRunEventRoomHudLines(eventRoom, RUN_EVENT_ROOM_POOL);
             this.eventRoomText.setText(lines.join('\n'));
             this.eventRoomText.setStyle({ fill: eventRoom.resolved ? '#9fa8b3' : '#ffd27a' });
         } else {
