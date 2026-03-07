@@ -38,8 +38,10 @@ const {
     pickRunModifiers,
     buildRunModifierEffects,
     getRunEventRoomByKey,
+    getRunEventRoomChoices,
     normalizeRunEventRoom,
     pickRunEventRoom,
+    resolveRunEventRoomChoice,
     getUpgradeCostForLevel,
     getRequiredMaterialForWeapon,
     canUpgradeWeapon,
@@ -516,10 +518,15 @@ const GameState = {
         this.ensureRunEventRoom();
         if (!this.runEventRoom) return null;
         return {
+            key: this.runEventRoom.key,
             name: this.runEventRoom.name,
             description: this.runEventRoom.description,
+            type: this.runEventRoom.type,
             discovered: !!this.runEventRoom.discovered,
-            resolved: !!this.runEventRoom.resolved
+            resolved: !!this.runEventRoom.resolved,
+            selectedChoiceKey: this.runEventRoom.selectedChoiceKey || null,
+            selectedChoiceLabel: this.runEventRoom.selectedChoiceLabel || '',
+            resolutionText: this.runEventRoom.resolutionText || ''
         };
     },
     rollRunChallenge() {
@@ -2246,40 +2253,80 @@ class LevelScene extends Phaser.Scene {
         this.physics.add.overlap(this.player, this.pickups, (_player, pickup) => this._collectPickup(pickup));
         this.playerDead = false;
         this.deathText = null;
+        this.nearestRunEventRoom = null;
+        this._runEventChoiceOpen = false;
+        this._runEventChoiceOptions = [];
+        this._createRunEventEncounter(rooms[1]);
 
         // Input
         const spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-        spaceKey.on('down', () => this.player.tryDodge());
-        this.input.keyboard.on('keydown-Q', () => this.player.switchWeaponLeft());
-        this.input.keyboard.on('keydown-E', () => this.player.switchWeaponRight());
-        this.input.keyboard.on('keydown-ONE', () => handleQuickSlotUse(this, this.player, 0));
-        this.input.keyboard.on('keydown-TWO', () => handleQuickSlotUse(this, this.player, 1));
-        this.input.keyboard.on('keydown-THREE', () => handleQuickSlotUse(this, this.player, 2));
-        this.input.keyboard.on('keydown-FOUR', () => handleQuickSlotUse(this, this.player, 3));
+        spaceKey.on('down', () => {
+            if (this._runEventChoiceOpen) return;
+            this.player.tryDodge();
+        });
+        this.input.keyboard.on('keydown-Q', () => {
+            if (this._runEventChoiceOpen) return;
+            this.player.switchWeaponLeft();
+        });
+        this.input.keyboard.on('keydown-E', () => {
+            if (this._runEventChoiceOpen) return;
+            this.player.switchWeaponRight();
+        });
+        this.input.keyboard.on('keydown-ONE', () => {
+            if (this._handleRunEventChoiceHotkey(0)) return;
+            handleQuickSlotUse(this, this.player, 0);
+        });
+        this.input.keyboard.on('keydown-TWO', () => {
+            if (this._handleRunEventChoiceHotkey(1)) return;
+            handleQuickSlotUse(this, this.player, 1);
+        });
+        this.input.keyboard.on('keydown-THREE', () => {
+            if (this._runEventChoiceOpen) return;
+            handleQuickSlotUse(this, this.player, 2);
+        });
+        this.input.keyboard.on('keydown-FOUR', () => {
+            if (this._runEventChoiceOpen) return;
+            handleQuickSlotUse(this, this.player, 3);
+        });
         this.input.keyboard.on('keydown-TAB', () => {
+            if (this._runEventChoiceOpen) return;
             if (this.scene.isActive('InventoryScene')) this.scene.stop('InventoryScene');
             else this.scene.launch('InventoryScene');
         });
-        this.input.keyboard.on('keydown-ESC', () => openPauseMenu(this));
+        this.input.keyboard.on('keydown-ESC', () => {
+            if (this._runEventChoiceOpen) {
+                this._closeRunEventChoicePanel();
+                return;
+            }
+            openPauseMenu(this);
+        });
+        this.input.keyboard.on('keydown-F', () => {
+            if (this._runEventChoiceOpen) {
+                this._closeRunEventChoicePanel();
+                return;
+            }
+            this._openRunEventChoicePanel();
+        });
 
         this.input.on('pointerdown', (pointer) => {
-            if (this.playerDead) return;
+            if (this.playerDead || this._runEventChoiceOpen) return;
             let hitbox = null;
             if (pointer.button === 0) hitbox = this.player.tryAttack();
             else if (pointer.button === 2) hitbox = this.player.trySpecialAttack();
             if (hitbox) this.activeHitboxes.push(hitbox);
         });
         this.input.keyboard.on('keydown-J', () => {
-            if (this.playerDead) return;
+            if (this.playerDead || this._runEventChoiceOpen) return;
             const hitbox = this.player.tryAttack();
             if (hitbox) this.activeHitboxes.push(hitbox);
         });
         this.input.keyboard.on('keydown-K', () => {
-            if (this.playerDead) return;
+            if (this.playerDead || this._runEventChoiceOpen) return;
             const hitbox = this.player.trySpecialAttack();
             if (hitbox) this.activeHitboxes.push(hitbox);
         });
         this.input.keyboard.on('keydown-H', () => {
+            if (this._runEventChoiceOpen) return;
             if (!this.scene.isActive('HelpScene')) {
                 this.scene.pause();
                 this.scene.launch('HelpScene', { parentScene: 'LevelScene' });
@@ -2387,9 +2434,180 @@ class LevelScene extends Phaser.Scene {
         });
     }
 
+    _createRunEventEncounter(anchorRoom) {
+        const eventRoom = GameState.getRunEventRoomSummary ? GameState.getRunEventRoomSummary() : null;
+        if (!eventRoom || eventRoom.key !== 'gamblersShrine' || !anchorRoom) return;
+
+        const altarX = anchorRoom.x + anchorRoom.w / 2;
+        const altarY = anchorRoom.y + anchorRoom.h / 2;
+        const shrine = this.physics.add.sprite(altarX, altarY, 'portal');
+        shrine.setTint(0xF6C86C);
+        shrine.setScale(0.85);
+        shrine.setDepth(8);
+        shrine.body.setCircle(24);
+        shrine.body.setAllowGravity(false);
+        shrine.body.moves = false;
+        shrine.body.setImmovable(true);
+
+        const label = this.add.text(altarX, altarY - 42, eventRoom.name, {
+            fontSize: '16px',
+            fill: '#ffe6a3',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(9);
+
+        const indicator = this.add.text(altarX, altarY - 64, '按F抉择', {
+            fontSize: '12px',
+            fill: '#FFD700'
+        }).setOrigin(0.5).setDepth(9).setVisible(false);
+
+        this.runEventRoomShrine = shrine;
+        this.runEventRoomLabel = label;
+        this.runEventRoomIndicator = indicator;
+        this._createRunEventChoicePanel();
+        this._refreshRunEventEncounterState();
+    }
+
+    _createRunEventChoicePanel() {
+        const cam = this.cameras.main;
+        const cx = cam.width / 2;
+        const cy = cam.height / 2;
+        const overlay = this.add.rectangle(cx, cy, cam.width, cam.height, 0x000000, 0.7)
+            .setScrollFactor(0)
+            .setDepth(120)
+            .setVisible(false)
+            .setInteractive();
+        const panel = this.add.rectangle(cx, cy, 560, 300, 0x161922, 0.96)
+            .setScrollFactor(0)
+            .setDepth(121)
+            .setStrokeStyle(2, 0xF6C86C)
+            .setVisible(false);
+        const title = this.add.text(cx, cy - 108, '', {
+            fontSize: '24px',
+            fill: '#ffe6a3',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(122).setVisible(false);
+        const description = this.add.text(cx, cy - 74, '', {
+            fontSize: '14px',
+            fill: '#d6dde7',
+            align: 'center',
+            wordWrap: { width: 460 }
+        }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(122).setVisible(false);
+        const optionTexts = [0, 1].map((index) => this.add.text(cx, cy - 2 + index * 78, '', {
+            fontSize: '16px',
+            fill: '#fff6cf',
+            align: 'center',
+            wordWrap: { width: 470 },
+            lineSpacing: 4
+        }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(122).setVisible(false));
+        const footer = this.add.text(cx, cy + 120, '按 1/2 选择，按 F 或 Esc 取消', {
+            fontSize: '13px',
+            fill: '#9fb0c4'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(122).setVisible(false);
+
+        this.runEventChoicePanel = { overlay, panel, title, description, optionTexts, footer };
+    }
+
+    _refreshRunEventEncounterState() {
+        if (!this.runEventRoomShrine) return;
+        const eventRoom = GameState.getRunEventRoomSummary ? GameState.getRunEventRoomSummary() : null;
+        const resolved = !eventRoom || !!eventRoom.resolved;
+        this.runEventRoomShrine.setTint(resolved ? 0x7D8694 : 0xF6C86C);
+        this.runEventRoomShrine.setAlpha(resolved ? 0.55 : 1);
+        if (this.runEventRoomLabel) {
+            this.runEventRoomLabel.setText(resolved ? '赌徒圣坛 · 已结算' : '赌徒圣坛');
+            this.runEventRoomLabel.setColor(resolved ? '#b0b7c2' : '#ffe6a3');
+        }
+        if (this.runEventRoomIndicator) {
+            this.runEventRoomIndicator.setVisible(false);
+        }
+    }
+
+    _updateRunEventEncounterHint() {
+        this.nearestRunEventRoom = null;
+        if (!this.runEventRoomShrine || !this.runEventRoomIndicator) return;
+        const eventRoom = GameState.getRunEventRoomSummary ? GameState.getRunEventRoomSummary() : null;
+        const available = !!eventRoom && !eventRoom.resolved;
+        const inRange = Phaser.Math.Distance.Between(
+            this.player.x,
+            this.player.y,
+            this.runEventRoomShrine.x,
+            this.runEventRoomShrine.y
+        ) <= 92;
+        this.nearestRunEventRoom = available && inRange ? this.runEventRoomShrine : null;
+        this.runEventRoomIndicator.setVisible(available && inRange && !this._runEventChoiceOpen);
+    }
+
+    _openRunEventChoicePanel() {
+        const eventRoom = GameState.getRunEventRoomSummary ? GameState.getRunEventRoomSummary() : null;
+        if (!eventRoom || eventRoom.resolved || !this.nearestRunEventRoom || !this.runEventChoicePanel) return;
+        const choices = getRunEventRoomChoices(eventRoom.key, RUN_EVENT_ROOM_POOL);
+        if (choices.length < 2) return;
+
+        this._runEventChoiceOptions = choices.slice(0, 2);
+        this._runEventChoiceOpen = true;
+        this.player.setVelocity(0, 0);
+
+        this.runEventChoicePanel.title.setText(eventRoom.name);
+        this.runEventChoicePanel.description.setText(eventRoom.description);
+        this.runEventChoicePanel.optionTexts.forEach((textNode, index) => {
+            const choice = this._runEventChoiceOptions[index];
+            textNode.setText(choice ? `${index + 1}. ${choice.label}\n${choice.description}` : '');
+            textNode.setVisible(true);
+        });
+        Object.values(this.runEventChoicePanel).forEach((node) => {
+            if (node && node.setVisible) node.setVisible(true);
+        });
+    }
+
+    _closeRunEventChoicePanel() {
+        this._runEventChoiceOpen = false;
+        this._runEventChoiceOptions = [];
+        if (!this.runEventChoicePanel) return;
+        Object.values(this.runEventChoicePanel).forEach((node) => {
+            if (node && node.setVisible) node.setVisible(false);
+        });
+        this.runEventChoicePanel.optionTexts.forEach((textNode) => textNode.setVisible(false));
+    }
+
+    _handleRunEventChoiceHotkey(choiceIndex) {
+        if (!this._runEventChoiceOpen) return false;
+        const choice = this._runEventChoiceOptions[choiceIndex];
+        if (!choice) return true;
+
+        const startGold = GameState.gold || 0;
+        const startHp = this.player.hp;
+        const settlement = resolveRunEventRoomChoice({
+            gold: startGold,
+            playerHp: this.player.hp,
+            playerMaxHp: this.player.maxHp
+        }, GameState.runEventRoom, choice.key, RUN_EVENT_ROOM_POOL);
+        if (!settlement.ok) {
+            AudioSystem.playUi('ui');
+            this._closeRunEventChoicePanel();
+            return true;
+        }
+
+        GameState.gold = settlement.nextState.gold;
+        GameState.runEventRoom = settlement.eventRoom;
+        this.player.hp = Math.max(1, Math.min(this.player.maxHp, settlement.nextState.playerHp));
+        GameState.save();
+
+        this._closeRunEventChoicePanel();
+        this._refreshRunEventEncounterState();
+        this.cameras.main.flash(150, 255, 215, 120, false);
+        AudioSystem.playUi('pickup');
+
+        const goldDelta = settlement.nextState.gold - startGold;
+        const hpDelta = startHp - settlement.nextState.playerHp;
+        this._showFloatingText(this.runEventRoomShrine.x, this.runEventRoomShrine.y - 18, `${settlement.choice.label} +${goldDelta} 金币`, '#FFD27A');
+        this._showFloatingText(this.runEventRoomShrine.x, this.runEventRoomShrine.y + 10, `-${hpDelta} HP`, '#FF9A9A');
+        return true;
+    }
+
     update(time, delta) {
         if (this.playerDead) return;
 
+        this._updateRunEventEncounterHint();
         this.player.update(time, delta);
 
         if (!this._isInWalkable(this.player.x, this.player.y)) {
@@ -2400,6 +2618,10 @@ class LevelScene extends Phaser.Scene {
 
         const ui = this.scene.get('UIScene');
         if (ui && ui.updateHUD) ui.updateHUD(this.player, BOSSES[this.bossKey].area);
+        if (this._runEventChoiceOpen) {
+            this.player.setVelocity(0, 0);
+            return;
+        }
 
         const defaultHitboxRadius = 45;
         for (let i = this.activeHitboxes.length - 1; i >= 0; i--) {
@@ -4663,7 +4885,13 @@ class UIScene extends Phaser.Scene {
         const eventRoom = GameState.getRunEventRoomSummary ? GameState.getRunEventRoomSummary() : null;
         if (eventRoom) {
             const state = eventRoom.resolved ? '已触发' : (eventRoom.discovered ? '已发现' : '未发现');
-            this.eventRoomText.setText(`事件房: ${eventRoom.name}\n状态: ${state}`);
+            const extraLine = eventRoom.resolved
+                ? `结算: ${eventRoom.selectedChoiceLabel || '已结算'}`
+                : (eventRoom.description ? `提示: ${eventRoom.description}` : '');
+            const resolutionLine = eventRoom.resolved && eventRoom.resolutionText
+                ? `\n${eventRoom.resolutionText}`
+                : '';
+            this.eventRoomText.setText(`事件房: ${eventRoom.name}\n状态: ${state}${extraLine ? `\n${extraLine}` : ''}${resolutionLine}`);
             this.eventRoomText.setStyle({ fill: eventRoom.resolved ? '#9fa8b3' : '#ffd27a' });
         } else {
             this.eventRoomText.setText('');
@@ -4864,7 +5092,7 @@ class HelpScene extends Phaser.Scene {
             { title: '道具', items: ['1-4  —  使用快捷栏道具', '净化药剂/狂战油可在铁匠制作'] },
             { title: '状态', items: ['灼烧/流血会持续掉血', '减速会降低移动速度'] },
             { title: '本局词缀', items: runModifierLines },
-            { title: '界面', items: ['Tab — 背包', 'Esc — 暂停', 'H — 操作指引'] }
+            { title: '交互/界面', items: ['F — NPC / 事件房交互', 'Tab — 背包', 'Esc — 暂停', 'H — 操作指引'] }
         ];
 
         let curY = py - panelH / 2 + 72;

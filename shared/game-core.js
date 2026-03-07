@@ -161,8 +161,30 @@
         {
             key: 'gamblersShrine',
             name: '赌徒圣坛',
-            description: '支付少量生命换取金币',
-            type: 'trade'
+            description: '以生命为筹码，换取不同档位的金币回报',
+            type: 'trade',
+            choices: [
+                {
+                    key: 'highStakeWager',
+                    label: '豪赌',
+                    description: '失去当前生命 30%，换取 120 金币',
+                    effect: {
+                        type: 'hpForGold',
+                        hpCostRatio: 0.3,
+                        goldGain: 120
+                    }
+                },
+                {
+                    key: 'carefulWager',
+                    label: '稳押',
+                    description: '失去当前生命 12%，换取 45 金币',
+                    effect: {
+                        type: 'hpForGold',
+                        hpCostRatio: 0.12,
+                        goldGain: 45
+                    }
+                }
+            ]
         },
         {
             key: 'healingFountain',
@@ -286,18 +308,58 @@
         return pool.find(event => event && event.key === eventKey) || null;
     }
 
+    function normalizeRunEventRoomChoices(choices) {
+        if (!Array.isArray(choices)) return [];
+        return choices
+            .filter(choice => choice && typeof choice.key === 'string')
+            .map(choice => ({
+                key: choice.key,
+                label: typeof choice.label === 'string' ? choice.label : choice.key,
+                description: typeof choice.description === 'string' ? choice.description : '',
+                effect: choice.effect && typeof choice.effect === 'object'
+                    ? { ...choice.effect }
+                    : null
+            }));
+    }
+
+    function getRunEventRoomChoices(eventRoomOrKey, poolOverride) {
+        const eventKey = typeof eventRoomOrKey === 'string'
+            ? eventRoomOrKey
+            : (eventRoomOrKey && typeof eventRoomOrKey.key === 'string' ? eventRoomOrKey.key : '');
+        if (!eventKey) return [];
+        const event = getRunEventRoomByKey(eventKey, poolOverride);
+        if (!event) return [];
+        return normalizeRunEventRoomChoices(event.choices);
+    }
+
     function normalizeRunEventRoom(runEventRoom, poolOverride) {
         if (!runEventRoom || typeof runEventRoom !== 'object') return null;
         const key = typeof runEventRoom.key === 'string' ? runEventRoom.key : '';
         const base = getRunEventRoomByKey(key, poolOverride);
         if (!base) return null;
+        const choices = getRunEventRoomChoices(base.key, poolOverride);
+        const selectedChoiceKey = typeof runEventRoom.selectedChoiceKey === 'string'
+            ? runEventRoom.selectedChoiceKey
+            : null;
+        const selectedChoice = choices.find(choice => choice.key === selectedChoiceKey) || null;
         return {
             key: base.key,
             name: base.name,
             description: base.description,
             type: base.type,
             discovered: !!runEventRoom.discovered,
-            resolved: !!runEventRoom.resolved
+            resolved: !!runEventRoom.resolved,
+            selectedChoiceKey: selectedChoice ? selectedChoice.key : null,
+            selectedChoiceLabel: selectedChoice
+                ? (
+                    typeof runEventRoom.selectedChoiceLabel === 'string' && runEventRoom.selectedChoiceLabel.trim()
+                        ? runEventRoom.selectedChoiceLabel
+                        : selectedChoice.label
+                )
+                : null,
+            resolutionText: selectedChoice && typeof runEventRoom.resolutionText === 'string'
+                ? runEventRoom.resolutionText
+                : ''
         };
     }
 
@@ -315,7 +377,67 @@
             description: picked.description,
             type: picked.type,
             discovered: false,
-            resolved: false
+            resolved: false,
+            selectedChoiceKey: null,
+            selectedChoiceLabel: null,
+            resolutionText: ''
+        };
+    }
+
+    function resolveRunEventRoomChoice(state, runEventRoom, choiceKey, poolOverride) {
+        const normalizedRoom = normalizeRunEventRoom(runEventRoom, poolOverride);
+        if (!normalizedRoom) {
+            return { ok: false, reason: 'invalid_event_room', eventRoom: null, choice: null, nextState: null };
+        }
+        if (normalizedRoom.resolved) {
+            return { ok: false, reason: 'already_resolved', eventRoom: normalizedRoom, choice: null, nextState: null };
+        }
+
+        const choice = getRunEventRoomChoices(normalizedRoom.key, poolOverride).find(item => item.key === choiceKey) || null;
+        if (!choice) {
+            return { ok: false, reason: 'invalid_choice', eventRoom: normalizedRoom, choice: null, nextState: null };
+        }
+
+        const safeState = state && typeof state === 'object' ? state : {};
+        const playerMaxHp = Math.max(1, clampInt(safeState.playerMaxHp, 1, Number.MAX_SAFE_INTEGER, 100));
+        const currentHp = clampInt(safeState.playerHp, 1, playerMaxHp, playerMaxHp);
+        const currentGold = clampInt(safeState.gold, 0, Number.MAX_SAFE_INTEGER, 0);
+        const effect = choice.effect && typeof choice.effect === 'object' ? choice.effect : {};
+
+        let hpLoss = 0;
+        let goldGain = 0;
+
+        if (effect.type === 'hpForGold') {
+            const ratio = Number(effect.hpCostRatio);
+            const normalizedRatio = Number.isFinite(ratio) ? Math.max(0, ratio) : 0;
+            goldGain = clampInt(effect.goldGain, 0, Number.MAX_SAFE_INTEGER, 0);
+            hpLoss = Math.floor(currentHp * normalizedRatio);
+            hpLoss = Math.min(Math.max(0, hpLoss), Math.max(0, currentHp - 1));
+        }
+
+        const nextState = {
+            ...safeState,
+            gold: currentGold + goldGain,
+            playerHp: Math.max(1, currentHp - hpLoss),
+            playerMaxHp
+        };
+        const resolutionText = goldGain > 0
+            ? `失去 ${hpLoss} 生命，获得 ${goldGain} 金币`
+            : choice.description;
+
+        return {
+            ok: true,
+            reason: null,
+            choice,
+            nextState,
+            eventRoom: {
+                ...normalizedRoom,
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: choice.key,
+                selectedChoiceLabel: choice.label,
+                resolutionText
+            }
         };
     }
 
@@ -905,8 +1027,10 @@
         pickRunModifiers,
         buildRunModifierEffects,
         getRunEventRoomByKey,
+        getRunEventRoomChoices,
         normalizeRunEventRoom,
         pickRunEventRoom,
+        resolveRunEventRoomChoice,
         getWeaponLevel,
         getScaledWeaponStats,
         getUpgradeCostForLevel,

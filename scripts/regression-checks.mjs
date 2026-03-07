@@ -25,8 +25,10 @@ const {
     pickRunModifiers,
     buildRunModifierEffects,
     getRunEventRoomByKey,
+    getRunEventRoomChoices,
     normalizeRunEventRoom,
     pickRunEventRoom,
+    resolveRunEventRoomChoice,
     resolveConsumableUse,
     buildStatusHudSummary,
     advanceBossHpAfterimage,
@@ -123,6 +125,14 @@ function testMaterialBoundUpgradeChecks() {
 }
 
 function testSaveLoadIntegrity() {
+    const resolvedEventRoom = {
+        key: 'gamblersShrine',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'highStakeWager',
+        selectedChoiceLabel: '豪赌',
+        resolutionText: '失去 30 生命，获得 120 金币'
+    };
     const source = {
         inventory: { wrathEssence: 2, hpPotion: 3 },
         gold: 456,
@@ -132,7 +142,7 @@ function testSaveLoadIntegrity() {
         unlockedWeapons: ['sword', 'hammer'],
         selectedWeaponKey: 'hammer',
         runModifiers: ['frenziedFoes', 'fortuneWindfall'],
-        runEventRoom: null,
+        runEventRoom: resolvedEventRoom,
         quickSlots: ['hpPotion', null, 'staminaPotion', null]
     };
 
@@ -147,7 +157,17 @@ function testSaveLoadIntegrity() {
         unlockedWeapons: ['sword', 'hammer'],
         selectedWeaponKey: 'hammer',
         runModifiers: ['frenziedFoes', 'fortuneWindfall'],
-        runEventRoom: null,
+        runEventRoom: {
+            key: 'gamblersShrine',
+            name: '赌徒圣坛',
+            description: '以生命为筹码，换取不同档位的金币回报',
+            type: 'trade',
+            discovered: true,
+            resolved: true,
+            selectedChoiceKey: 'highStakeWager',
+            selectedChoiceLabel: '豪赌',
+            resolutionText: '失去 30 生命，获得 120 金币'
+        },
         quickSlots: ['hpPotion', null, 'staminaPotion', null]
     }, 'serialized+deserialized state should stay stable');
 
@@ -190,16 +210,42 @@ function testRunEventRoomSelection() {
 
     const picked = pickRunEventRoom(() => 0);
     assert.equal(picked.key, RUN_EVENT_ROOM_POOL[0].key, 'deterministic event pick should select first entry');
+    assert.equal(picked.selectedChoiceKey, null, 'fresh event pick should not have a selected choice');
+    assert.equal(picked.resolutionText, '', 'fresh event pick should not have a settlement summary');
 
     const byKey = getRunEventRoomByKey(picked.key);
     assert.ok(byKey && byKey.key === picked.key, 'event lookup by key should work');
 
+    const choices = getRunEventRoomChoices(picked);
+    assert.deepEqual(choices.map(choice => choice.key), ['highStakeWager', 'carefulWager'], 'first event should expose deterministic choice keys');
+
     const normalized = normalizeRunEventRoom({ key: picked.key, discovered: true, resolved: false });
     assert.equal(normalized.key, picked.key, 'normalize should keep valid key');
     assert.equal(normalized.discovered, true, 'normalize should keep discovered flag');
+    assert.equal(normalized.selectedChoiceKey, null, 'normalize should default choice key to null');
 
     const invalid = normalizeRunEventRoom({ key: 'not-exist' });
     assert.equal(invalid, null, 'normalize should drop invalid event key');
+
+    const settlement = resolveRunEventRoomChoice({
+        gold: 40,
+        playerHp: 100,
+        playerMaxHp: 120
+    }, picked, 'highStakeWager');
+    assert.equal(settlement.ok, true, 'valid event choice should resolve');
+    assert.equal(settlement.nextState.gold, 160, 'high stake should grant the configured gold');
+    assert.equal(settlement.nextState.playerHp, 70, 'high stake should deduct 30% current HP');
+    assert.equal(settlement.eventRoom.resolved, true, 'resolved event should be marked resolved');
+    assert.equal(settlement.eventRoom.selectedChoiceKey, 'highStakeWager', 'resolved event should persist selected choice key');
+    assert.match(settlement.eventRoom.resolutionText, /120 金币/, 'resolution summary should mention the reward');
+
+    const repeat = resolveRunEventRoomChoice({
+        gold: 160,
+        playerHp: 70,
+        playerMaxHp: 120
+    }, settlement.eventRoom, 'carefulWager');
+    assert.equal(repeat.ok, false, 'resolved event should reject repeat settlement');
+    assert.equal(repeat.reason, 'already_resolved', 'repeat settlement should report already_resolved');
 }
 
 function testCraftingRecipeChecks() {
