@@ -383,6 +383,24 @@ function testRunEventRoomHudSummary() {
         ['已选 迅击祷言: 特攻冷却-22%'],
         'HUD summary should collapse to one chosen-route line after settlement'
     );
+    assert.equal(
+        resolvedSummary.resolutionText,
+        '特攻冷却-22%',
+        'resolved blessing summary should compress cooldown settlements into compact effect text'
+    );
+    const resolvedRiskBuffSummary = buildRunEventRoomHudSummary({
+        key: 'bloodContract',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'crimsonEdge',
+        selectedChoiceLabel: '猩红锋契',
+        resolutionText: '本局伤害 +35%，承伤 +18%'
+    });
+    assert.equal(
+        resolvedRiskBuffSummary.resolutionText,
+        '伤害+35%, 承伤+18%',
+        'resolved risk-buff summary should compress offensive-risk settlements into compact delta text'
+    );
     const resolvedTradeSummary = buildRunEventRoomHudSummary({
         key: 'gamblersShrine',
         discovered: true,

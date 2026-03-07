@@ -730,6 +730,24 @@
             }
         }
 
+        if (effect.type === 'runEffectBuff') {
+            const runEffects = effect.runEffects && typeof effect.runEffects === 'object' ? effect.runEffects : {};
+            const defs = [
+                ['playerDamageMultiplier', '伤害'],
+                ['playerDamageTakenMultiplier', '承伤'],
+                ['goldDropMultiplier', '金币掉落'],
+                ['extraDropRateMultiplier', '额外掉落率'],
+                ['playerStaminaRegenMultiplier', '体力恢复'],
+                ['playerSpecialCooldownMultiplier', '特攻冷却'],
+                ['enemySpeedMultiplier', '敌人速度'],
+                ['enemyHpMultiplier', '敌人生命']
+            ];
+            const parts = defs
+                .filter(([key]) => Number.isFinite(Number(runEffects[key])) && Number(runEffects[key]) > 0 && Number(runEffects[key]) !== 1)
+                .map(([key, label]) => `${label}${formatRoutePercentDelta(runEffects[key])}`);
+            if (parts.length > 0) return parts.join(', ');
+        }
+
         return source
             .replace(/本局/g, '')
             .replace(/，/g, ', ')
