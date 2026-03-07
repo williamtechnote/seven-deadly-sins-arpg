@@ -1614,8 +1614,8 @@ function testQuickSlotAutoAssignNotice() {
     );
     assert.equal(
         buildQuickSlotAutoAssignNotice(0, { didOverwrite: true, replacedItemKey: 'hpPotion' }),
-        '已自动装入快捷栏 1（已覆盖 1 号槽位：HP）',
-        'auto-assign notice should explicitly call out both slot-1 overwrites and the replaced item short label when the quick bar is full'
+        '已自动装入快捷栏 1（已覆盖 HP）',
+        'auto-assign notice should keep the replaced item short label visible without repeating the slot number inside the overwrite clause'
     );
     assert.equal(
         buildQuickSlotAutoAssignNotice(0, { didOverwrite: true, assignedItemKey: 'hpPotion', replacedItemKey: 'hpPotion' }),
@@ -1624,8 +1624,8 @@ function testQuickSlotAutoAssignNotice() {
     );
     assert.equal(
         buildQuickSlotAutoAssignNotice(0, { didOverwrite: true, assignedItemKey: 'staminaPotion', replacedItemKey: 'hpPotion' }),
-        '已自动装入快捷栏 1（已覆盖 1 号槽位：HP → ST）',
-        'auto-assign notice should show the replacement direction when the overwrite changes to a different short label'
+        '已自动装入快捷栏 1（已覆盖 HP → ST）',
+        'auto-assign notice should show the replacement direction without restating the slot number once the slot label is already in the main prefix'
     );
 }
 
@@ -1710,7 +1710,7 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /快捷栏已满时会回写 1 号槽位，并提示“已覆盖 1 号槽位：<旧短名> → <新短名>”/,
+        /快捷栏已满时会回写 1 号槽位，并提示“已覆盖 <旧短名> → <新短名>”/,
         'README should explain that the full-quickbar overwrite toast shows the replacement direction when labels differ'
     );
     assert.match(
@@ -1734,7 +1734,7 @@ function testHelpOverlayQuickSlotLoop() {
     const source = loadGameSource();
     assert.match(
         source,
-        /快捷栏已满时会覆盖 1 号槽位，并提示“已覆盖 1 号槽位：<旧短名> → <新短名>”；若新旧短名相同则压缩为“已覆盖同类 <短名>”/,
+        /快捷栏已满时会覆盖 1 号槽位，并提示“已覆盖 <旧短名> → <新短名>”；若新旧短名相同则压缩为“已覆盖同类 <短名>”/,
         'help overlay should explain both the directional overwrite copy and the compressed same-label fallback'
     );
 }
