@@ -757,6 +757,7 @@
 
     function getRunEventRoomResolvedPrefix(type) {
         if (type === 'trade') return '交易';
+        if (type === 'healing') return '治疗';
         if (type === 'riskBuff' || type === 'blessing') return '效果';
         return '已选';
     }

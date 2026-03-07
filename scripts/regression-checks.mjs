@@ -449,6 +449,11 @@ function testRunEventRoomHudSummary() {
         selectedChoiceLabel: '净泉啜饮',
         resolutionText: '恢复 36 生命，并净化负面状态'
     });
+    assert.deepEqual(
+        resolvedHealingSummary.routeLines,
+        ['治疗: 净泉啜饮'],
+        'resolved healing summary should switch to a healing-specific chosen-route prefix'
+    );
     assert.equal(
         resolvedHealingSummary.resolutionText,
         '生命+36, 净化',
@@ -507,6 +512,24 @@ function testRunEventRoomHudLines() {
             '交易: 豪赌 · 生命-30, 金币+120'
         ],
         'resolved trade event rooms should merge the chosen label and actual settlement delta with a trade prefix'
+    );
+
+    const resolvedHealingLines = buildRunEventRoomHudLines({
+        key: 'healingFountain',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'purifyingSip',
+        selectedChoiceLabel: '净泉啜饮',
+        resolutionText: '恢复 36 生命，并净化负面状态'
+    });
+    assert.deepEqual(
+        resolvedHealingLines,
+        [
+            '事件房: 疗愈泉眼',
+            '治疗 · 已触发',
+            '治疗: 净泉啜饮 · 生命+36, 净化'
+        ],
+        'resolved healing event rooms should merge the chosen label and actual settlement delta with a healing prefix'
     );
 }
 
