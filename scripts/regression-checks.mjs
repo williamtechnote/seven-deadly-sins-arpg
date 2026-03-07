@@ -479,6 +479,25 @@ function testRunEventRoomHudSummary() {
         'resolved healing summary should compress restore-and-cleanse settlements into compact delta text'
     );
 
+    const resolvedHealingDoubleFallbackSummary = buildRunEventRoomHudSummary({
+        key: 'healingFountain',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'purifyingSip',
+        selectedChoiceLabel: '',
+        resolutionText: ''
+    });
+    assert.deepEqual(
+        resolvedHealingDoubleFallbackSummary.routeLines,
+        ['治疗: 未知选项'],
+        'resolved healing summary should keep the healing prefix and explicit unknown-option fallback when both stored fragments are missing'
+    );
+    assert.equal(
+        resolvedHealingDoubleFallbackSummary.resolutionText,
+        '结算待同步',
+        'resolved healing summary should keep the stable settlement placeholder when both stored fragments are missing'
+    );
+
     const resolvedBlessingMissingLabelSummary = buildRunEventRoomHudSummary({
         key: 'prayerShrine',
         discovered: true,
@@ -700,6 +719,24 @@ function testRunEventRoomHudLines() {
             '治疗: 净泉啜饮 · 生命+36, 净化'
         ],
         'resolved healing event rooms should merge the chosen label and actual settlement delta with a healing prefix'
+    );
+
+    const resolvedHealingDoubleFallbackLines = buildRunEventRoomHudLines({
+        key: 'healingFountain',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'purifyingSip',
+        selectedChoiceLabel: '',
+        resolutionText: ''
+    });
+    assert.deepEqual(
+        resolvedHealingDoubleFallbackLines,
+        [
+            '事件房: 疗愈泉眼',
+            '治疗 · 已触发',
+            '治疗: 未知选项 · 结算待同步'
+        ],
+        'resolved healing event rooms should keep a stable merged fallback line when both stored fragments are missing'
     );
 
     const resolvedUnknownLines = buildRunEventRoomHudLines({

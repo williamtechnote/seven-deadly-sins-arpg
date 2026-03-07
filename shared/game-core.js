@@ -476,6 +476,10 @@
         const persistedResolutionText = typeof runEventRoom.resolutionText === 'string'
             ? runEventRoom.resolutionText
             : '';
+        const forceHealingDoubleFallback = !!runEventRoom.resolved
+            && base.type === 'healing'
+            && !persistedChoiceLabel
+            && !persistedResolutionText;
         return {
             key: base.key,
             name: base.name,
@@ -490,7 +494,7 @@
                 ? (
                     persistedChoiceLabel
                         ? persistedChoiceLabel
-                        : selectedChoice.label
+                        : (forceHealingDoubleFallback ? '' : selectedChoice.label)
                 )
                 : (runEventRoom.resolved && persistedChoiceLabel ? persistedChoiceLabel : null),
             resolutionText: runEventRoom.resolved ? persistedResolutionText : ''
@@ -790,8 +794,12 @@
             : null;
         const stateLabel = normalizedRoom.resolved ? '已触发' : (normalizedRoom.discovered ? '已发现' : '未发现');
         const resolvedPrefix = getRunEventRoomResolvedPrefix(normalizedRoom.type);
+        const forceHealingDoubleFallback = normalizedRoom.resolved
+            && normalizedRoom.type === 'healing'
+            && !normalizedRoom.selectedChoiceLabel
+            && !normalizedRoom.resolutionText;
         const resolvedChoiceLabel = normalizedRoom.selectedChoiceLabel
-            || (selectedChoice ? selectedChoice.label : '')
+            || (!forceHealingDoubleFallback && selectedChoice ? selectedChoice.label : '')
             || (normalizedRoom.resolved ? '未知选项' : '');
         const visibleChoices = normalizedRoom.resolved
             ? []
