@@ -1608,6 +1608,11 @@ function testQuickSlotAutoAssignNotice() {
         'auto-assign notice should keep a slot-led plus-marker fallback when the assigned label is unavailable'
     );
     assert.equal(
+        buildQuickSlotAutoAssignNotice(0, { assignedItemName: '生命药水' }),
+        '快捷栏1：+生命',
+        'auto-assign notice should derive a compact fallback label from the assigned item name when no handcrafted short label exists'
+    );
+    assert.equal(
         buildQuickSlotAutoAssignNotice(3, { assignedItemKey: 'staminaPotion' }),
         '快捷栏4：+ST',
         'auto-assign notice should compress the non-overwrite path into a slot-led plus-marker shortform when the assigned label is known'
@@ -1626,6 +1631,11 @@ function testQuickSlotAutoAssignNotice() {
         buildQuickSlotAutoAssignNotice(0, { didOverwrite: true, assignedItemKey: 'staminaPotion', replacedItemKey: 'hpPotion' }),
         '快捷栏1：HP→ST',
         'auto-assign notice should show overwrite direction in the shortest slot-led form'
+    );
+    assert.equal(
+        buildQuickSlotAutoAssignNotice(1, { didOverwrite: true, assignedItemName: '净化药剂', replacedItemName: '狂战油' }),
+        '快捷栏2：狂战→净化',
+        'auto-assign notice should reuse the name-derived fallback labels on overwrite paths when neither item has a handcrafted short label'
     );
 }
 
@@ -1691,6 +1701,21 @@ function testKeyboardHudQolHooks() {
     );
     assert.match(
         source,
+        /const assignedItemName = item && item\.name;/,
+        'inventory consumable clicks should capture the assigned item display name for derived fallback labels'
+    );
+    assert.match(
+        source,
+        /const replacedItemName = replacedItemKey && ITEMS\[replacedItemKey\][\s\S]*?ITEMS\[replacedItemKey\]\.name[\s\S]*?: '';/,
+        'inventory consumable clicks should capture the replaced item display name for derived overwrite fallback labels'
+    );
+    assert.match(
+        source,
+        /assignedItemName,[\s\S]*?replacedItemKey,[\s\S]*?replacedItemName/,
+        'inventory consumable clicks should pass both item names into the shared quick-slot notice helper'
+    );
+    assert.match(
+        source,
         /slot\.itemText\.setText\(buildQuickSlotItemLabel\(itemKey,\s*itemCount\)\);/,
         'HUD quick slots should render compact helper-driven labels with counts'
     );
@@ -1720,8 +1745,8 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /若临时拿不到新短名，则回退为“快捷栏1：替换 <旧短名>”/,
-        'README should document the overwrite shortform fallback when only the replaced label is known'
+        /若临时拿不到新短名，则会改为沿用道具名生成的“快捷栏1：<旧标签>→<新标签>”短句，例如“快捷栏1：狂战→净化”/,
+        'README should document the name-derived overwrite fallback when handcrafted short labels are unavailable'
     );
     assert.match(
         source,
@@ -1735,8 +1760,8 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /快捷栏N：\+道具/,
-        'README should document the missing-label fallback for the non-overwrite placement toast'
+        /若临时拿不到显式短名，则会改为沿用道具名生成的“快捷栏N：\+<道具名词干>”短句，例如“快捷栏N：\+生命”/,
+        'README should document the name-derived fallback for the non-overwrite placement toast'
     );
 }
 
@@ -1749,13 +1774,13 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /若临时拿不到新短名则回退为“快捷栏N：\+道具”/,
-        'help overlay should explain the missing-label fallback for the non-overwrite toast'
+        /若临时拿不到显式短名则会沿用道具名生成“快捷栏N：\+生命”这类短句/,
+        'help overlay should explain the name-derived fallback for the non-overwrite toast'
     );
     assert.match(
         source,
-        /快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”/,
-        'help overlay should explain the shortform overwrite toast variants'
+        /快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”；若拿不到显式短名则改用“快捷栏1：狂战→净化”这类道具名短句/,
+        'help overlay should explain the overwrite toast variants, including the name-derived fallback path'
     );
 }
 

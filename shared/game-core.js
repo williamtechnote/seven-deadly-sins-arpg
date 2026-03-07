@@ -431,6 +431,21 @@
         berserkerOil: '油'
     };
 
+    function deriveQuickSlotNoticeLabelFromName(itemName) {
+        const safeItemName = typeof itemName === 'string'
+            ? itemName.replace(/\s+/g, '').trim()
+            : '';
+        if (!safeItemName) return '';
+        const stem = safeItemName.replace(/(药水|药剂|药|油)$/u, '');
+        return stem || safeItemName;
+    }
+
+    function resolveQuickSlotNoticeLabel(itemKey, itemName) {
+        return QUICK_SLOT_SHORT_LABELS[itemKey]
+            || deriveQuickSlotNoticeLabelFromName(itemName)
+            || '道具';
+    }
+
     function buildQuickSlotItemLabel(itemKey, count) {
         if (!itemKey) return '-';
         const shortLabel = QUICK_SLOT_SHORT_LABELS[itemKey] || '道具';
@@ -448,12 +463,18 @@
         const safeSlotIndex = clampInt(slotIndex, 0, 3, 0);
         const didOverwrite = !!(options && options.didOverwrite);
         const assignedItemKey = options && options.assignedItemKey;
+        const assignedItemName = options && options.assignedItemName;
         const replacedItemKey = options && options.replacedItemKey;
-        const assignedItemShortLabel = QUICK_SLOT_SHORT_LABELS[assignedItemKey] || '';
-        const replacedItemShortLabel = QUICK_SLOT_SHORT_LABELS[replacedItemKey] || '道具';
+        const replacedItemName = options && options.replacedItemName;
+        const assignedItemDerivedLabel = QUICK_SLOT_SHORT_LABELS[assignedItemKey]
+            || deriveQuickSlotNoticeLabelFromName(assignedItemName);
+        const replacedItemDerivedLabel = QUICK_SLOT_SHORT_LABELS[replacedItemKey]
+            || deriveQuickSlotNoticeLabelFromName(replacedItemName);
+        const assignedItemShortLabel = assignedItemDerivedLabel || '道具';
+        const replacedItemShortLabel = replacedItemDerivedLabel || '道具';
         const slotLabel = `快捷栏${safeSlotIndex + 1}：`;
         if (didOverwrite) {
-            if (!assignedItemShortLabel) {
+            if (!assignedItemDerivedLabel) {
                 return `${slotLabel}替换 ${replacedItemShortLabel}`;
             }
             if (assignedItemShortLabel === replacedItemShortLabel) {
@@ -461,10 +482,7 @@
             }
             return `${slotLabel}${replacedItemShortLabel}→${assignedItemShortLabel}`;
         }
-        if (assignedItemShortLabel) {
-            return `${slotLabel}+${assignedItemShortLabel}`;
-        }
-        return `${slotLabel}+道具`;
+        return `${slotLabel}+${assignedItemShortLabel}`;
     }
 
     function normalizeInventory(inventory) {

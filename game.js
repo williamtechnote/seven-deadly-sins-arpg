@@ -4474,11 +4474,17 @@ class InventoryScene extends Phaser.Scene {
                     const didOverwrite = !GameState.quickSlots.some(slotKey => !slotKey);
                     const slot = getQuickSlotAutoAssignIndex(GameState.quickSlots);
                     const replacedItemKey = didOverwrite ? GameState.quickSlots[slot] : null;
+                    const assignedItemName = item && item.name;
+                    const replacedItemName = replacedItemKey && ITEMS[replacedItemKey]
+                        ? ITEMS[replacedItemKey].name
+                        : '';
                     GameState.quickSlots[slot] = key;
                     this._showAutoAssignMessage(buildQuickSlotAutoAssignNotice(slot, {
                         didOverwrite,
                         assignedItemKey: key,
-                        replacedItemKey
+                        assignedItemName,
+                        replacedItemKey,
+                        replacedItemName
                     }));
                     this._buildGrid();
                 });
@@ -5310,7 +5316,7 @@ class HelpScene extends Phaser.Scene {
             { title: '战斗', items: ['U / 鼠标左键  —  普通攻击', 'O / 鼠标右键  —  特殊攻击'] },
             { title: '防御', items: ['Space  —  闪避翻滚（无敌帧）'] },
             { title: '武器', items: ['Q / E  —  切换武器'] },
-            { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位，并提示“快捷栏N：+<短名>”；若临时拿不到新短名则回退为“快捷栏N：+道具”；快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”', '净化药剂/狂战油可在铁匠制作'] },
+            { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位，并提示“快捷栏N：+<短名>”；若临时拿不到显式短名则会沿用道具名生成“快捷栏N：+生命”这类短句；快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”；若拿不到显式短名则改用“快捷栏1：狂战→净化”这类道具名短句', '净化药剂/狂战油可在铁匠制作'] },
             { title: '状态', items: ['灼烧/流血会持续掉血', '减速会降低移动速度'] },
             { title: '本局词缀', items: runModifierLines },
             { title: '交互/界面', items: ['F — NPC / 事件房交互', 'Tab — 背包', 'Esc — 暂停', 'H — 操作指引'] }
