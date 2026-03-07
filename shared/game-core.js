@@ -802,8 +802,16 @@
             )
             : visibleChoices.map((choice) => `${choice.label}: ${describeRunEventChoiceRoute(choice)}`.trim());
         const routeSummary = routeLines.join('\n');
-        const resolutionText = normalizedRoom.resolved && normalizedRoom.resolutionText
-            ? buildCompactRunEventResolutionText(normalizedRoom, selectedChoice)
+        const resolutionText = normalizedRoom.resolved
+            ? (
+                normalizedRoom.resolutionText
+                    ? buildCompactRunEventResolutionText(normalizedRoom, selectedChoice)
+                    : (
+                        resolvedChoiceLabel && getRunEventRoomResolvedPrefix(normalizedRoom.type) === '已选'
+                            ? '结算待同步'
+                            : ''
+                    )
+            )
             : (normalizedRoom.resolutionText || '');
 
         return {

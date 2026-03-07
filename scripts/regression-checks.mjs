@@ -497,6 +497,25 @@ function testRunEventRoomHudSummary() {
         '金币+88',
         'resolved unknown-type summary should still compact the stored settlement text'
     );
+
+    const resolvedUnknownMissingSettlementSummary = buildRunEventRoomHudSummary({
+        key: 'mysteryArchive',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'retiredChoice',
+        selectedChoiceLabel: '封印索引',
+        resolutionText: ''
+    }, unknownTypePool);
+    assert.deepEqual(
+        resolvedUnknownMissingSettlementSummary.routeLines,
+        ['已选: 封印索引'],
+        'resolved unknown-type summary should keep the generic chosen-route prefix even when settlement text is missing'
+    );
+    assert.equal(
+        resolvedUnknownMissingSettlementSummary.resolutionText,
+        '结算待同步',
+        'resolved unknown-type summary should fall back to a stable settlement placeholder when stored settlement text is missing'
+    );
 }
 
 function testRunEventRoomHudLines() {
@@ -605,6 +624,24 @@ function testRunEventRoomHudLines() {
             '已选: 封印索引 · 金币+88'
         ],
         'resolved unknown-type event rooms should keep the generic 已选 prefix and merge the compact settlement text'
+    );
+
+    const resolvedUnknownMissingSettlementLines = buildRunEventRoomHudLines({
+        key: 'mysteryArchive',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'retiredChoice',
+        selectedChoiceLabel: '封印索引',
+        resolutionText: ''
+    }, unknownTypePool);
+    assert.deepEqual(
+        resolvedUnknownMissingSettlementLines,
+        [
+            '事件房: 谜藏书库',
+            '未知 · 已触发',
+            '已选: 封印索引 · 结算待同步'
+        ],
+        'resolved unknown-type event rooms should keep a stable merged fallback line when settlement text is missing'
     );
 }
 
