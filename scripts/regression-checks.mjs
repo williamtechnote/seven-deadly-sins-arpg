@@ -38,6 +38,7 @@ const {
     buildRunEventRoomHudLines,
     buildRunEventRoomWorldLabelRouteLine,
     buildRunEventRoomWorldLabel,
+    buildRunEventRoomPromptLabel,
     resolveConsumableUse,
     buildStatusHudSummary,
     advanceBossHpAfterimage,
@@ -1039,6 +1040,54 @@ function testRunEventRoomWorldLabel() {
     );
 }
 
+function testRunEventRoomPromptLabel() {
+    const unknownTypePool = [
+        {
+            key: 'mysteryArchive',
+            name: '谜藏书库',
+            description: '未来扩展或未知房型的回退夹具',
+            type: 'mystery',
+            choices: [
+                {
+                    key: 'sealedIndex',
+                    label: '封印索引',
+                    description: '金币 +88',
+                    effect: {
+                        type: 'grantGold'
+                    }
+                }
+            ]
+        }
+    ];
+
+    assert.equal(typeof buildRunEventRoomPromptLabel, 'function', 'event room prompt-label helper should be exported');
+    assert.equal(
+        buildRunEventRoomPromptLabel({ key: 'gamblersShrine', discovered: true, resolved: false }),
+        '按F交易',
+        'trade event rooms should show the trade short tag in the shrine prompt'
+    );
+    assert.equal(
+        buildRunEventRoomPromptLabel({ key: 'healingFountain', discovered: true, resolved: false }),
+        '按F治疗',
+        'healing event rooms should show the healing short tag in the shrine prompt'
+    );
+    assert.equal(
+        buildRunEventRoomPromptLabel({ key: 'prayerShrine', discovered: true, resolved: false }),
+        '按F效果',
+        'blessing event rooms should show the effect short tag in the shrine prompt'
+    );
+    assert.equal(
+        buildRunEventRoomPromptLabel({ key: 'bloodContract', discovered: true, resolved: false }),
+        '按F效果',
+        'risk buff event rooms should share the effect short tag in the shrine prompt'
+    );
+    assert.equal(
+        buildRunEventRoomPromptLabel({ key: 'mysteryArchive', discovered: true, resolved: false }, unknownTypePool),
+        '按F抉择',
+        'unknown or future event rooms should keep the generic prompt fallback'
+    );
+}
+
 function testCraftingRecipeChecks() {
     assert.ok(CRAFTING_RECIPES.cleanseTonic, 'cleanse recipe should exist');
     assert.ok(CRAFTING_RECIPES.berserkerOil, 'berserker recipe should exist');
@@ -1225,6 +1274,7 @@ function main() {
     runTest('run event room HUD summary', testRunEventRoomHudSummary);
     runTest('run event room HUD lines', testRunEventRoomHudLines);
     runTest('run event room world label', testRunEventRoomWorldLabel);
+    runTest('run event room prompt label', testRunEventRoomPromptLabel);
     runTest('crafting recipe checks', testCraftingRecipeChecks);
     runTest('consumable use resolution', testConsumableUseResolution);
     runTest('status HUD summary', testStatusHudSummary);

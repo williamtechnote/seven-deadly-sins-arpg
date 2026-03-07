@@ -947,6 +947,13 @@
         return `${normalizedRoom.name} · 已结算`;
     }
 
+    function buildRunEventRoomPromptLabel(runEventRoom, poolOverride) {
+        const normalizedRoom = normalizeRunEventRoom(runEventRoom, poolOverride);
+        if (!normalizedRoom) return '按F抉择';
+        const prefix = getRunEventRoomResolvedPrefix(normalizedRoom.type);
+        return prefix === '已选' ? '按F抉择' : `按F${prefix}`;
+    }
+
     function pickRunModifiers(randomFn, count, poolOverride) {
         const pool = Array.isArray(poolOverride) ? poolOverride : RUN_MODIFIER_POOL;
         const uniquePool = pool.filter((mod, idx) => (
@@ -1559,6 +1566,7 @@
         buildRunEventRoomHudLines,
         buildRunEventRoomWorldLabelRouteLine,
         buildRunEventRoomWorldLabel,
+        buildRunEventRoomPromptLabel,
         getRunEventRoomByKey,
         getRunEventRoomChoices,
         normalizeRunEventRoom,

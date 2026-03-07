@@ -41,6 +41,7 @@ const {
     buildRunEventRoomChoicePanelPreview,
     buildRunEventRoomHudLines,
     buildRunEventRoomWorldLabel,
+    buildRunEventRoomPromptLabel,
     getRunEventRoomByKey,
     getRunEventRoomChoices,
     normalizeRunEventRoom,
@@ -2526,7 +2527,7 @@ class LevelScene extends Phaser.Scene {
             fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(9);
 
-        const indicator = this.add.text(altarX, altarY - 64, '按F抉择', {
+        const indicator = this.add.text(altarX, altarY - 64, buildRunEventRoomPromptLabel(eventRoom, RUN_EVENT_ROOM_POOL), {
             fontSize: '12px',
             fill: style.accentColor
         }).setOrigin(0.5).setDepth(9).setVisible(false);
@@ -2600,6 +2601,7 @@ class LevelScene extends Phaser.Scene {
         if (this.runEventRoomIndicator) {
             this.runEventRoomIndicator.setVisible(false);
             this.runEventRoomIndicator.setColor(style.accentColor);
+            this.runEventRoomIndicator.setText(buildRunEventRoomPromptLabel(eventRoom, RUN_EVENT_ROOM_POOL));
         }
     }
 
@@ -2615,6 +2617,7 @@ class LevelScene extends Phaser.Scene {
             this.runEventRoomShrine.y
         ) <= 92;
         this.nearestRunEventRoom = available && inRange ? this.runEventRoomShrine : null;
+        this.runEventRoomIndicator.setText(buildRunEventRoomPromptLabel(eventRoom, RUN_EVENT_ROOM_POOL));
         this.runEventRoomIndicator.setVisible(available && inRange && !this._runEventChoiceOpen);
     }
 
