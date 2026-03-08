@@ -544,14 +544,51 @@
         const runModifierHidden = !!(options && options.runModifierHidden);
         if (viewportTier !== 'ultraCompact' || !hidden || !runModifierHidden) return '';
 
+        const measureBadgeWidth = (text) => {
+            if (typeof text !== 'string' || !text) return 0;
+            if (options && typeof options.measureLabelWidth === 'function') {
+                const measuredWidth = Number(options.measureLabelWidth(text));
+                if (Number.isFinite(measuredWidth) && measuredWidth > 0) {
+                    return measuredWidth;
+                }
+            }
+            if (options && typeof options.measureGlyphWidth === 'function') {
+                return Array.from(text).reduce((sum, glyph) => {
+                    const glyphWidth = Number(options.measureGlyphWidth(glyph));
+                    return sum + (Number.isFinite(glyphWidth) && glyphWidth > 0 ? glyphWidth : 0);
+                }, 0);
+            }
+            return Array.from(text).reduce((sum, glyph) => {
+                const codePoint = glyph.codePointAt(0);
+                const isAscii = Number.isFinite(codePoint) && codePoint >= 0x20 && codePoint <= 0x7e;
+                return sum + (isAscii ? 8 : 10);
+            }, 0);
+        };
+        const pickBadgeText = (variants) => {
+            const safeVariants = Array.isArray(variants)
+                ? variants.filter(text => typeof text === 'string' && text)
+                : [];
+            if (safeVariants.length === 0) return '';
+            const maxBadgeWidth = Number(options && options.maxBadgeWidth);
+            if (!Number.isFinite(maxBadgeWidth) || maxBadgeWidth <= 0) {
+                return safeVariants[0];
+            }
+            for (const variant of safeVariants) {
+                if (measureBadgeWidth(variant) <= maxBadgeWidth) {
+                    return variant;
+                }
+            }
+            return safeVariants[safeVariants.length - 1];
+        };
         const target = clampInt(safeChallenge.target, 0, Number.MAX_SAFE_INTEGER, 0);
         const progress = clampInt(safeChallenge.progress, 0, target || Number.MAX_SAFE_INTEGER, 0);
         const rewardGold = clampInt(safeChallenge.rewardGold, 0, Number.MAX_SAFE_INTEGER, 0);
         if (safeChallenge.completed) {
-            return rewardGold > 0 ? `完成+${rewardGold}金` : '完成';
+            return pickBadgeText(rewardGold > 0 ? [`完成+${rewardGold}金`, '完成'] : ['完成']);
         }
         if (progress <= 0) return '';
-        return `进${Math.min(progress, target)}/${target || 0}`;
+        const progressLabel = `${Math.min(progress, target)}/${target || 0}`;
+        return pickBadgeText([`进${progressLabel}`, progressLabel]);
     }
 
     function getRunChallengeSidebarBadgeAppearance(challenge, options) {

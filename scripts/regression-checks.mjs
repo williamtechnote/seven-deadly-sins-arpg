@@ -1987,6 +1987,19 @@ function testRunChallengeSidebarLines() {
     assert.equal(typeof buildRunChallengeSidebarLines, 'function', 'run challenge sidebar helper should be exported');
     assert.equal(typeof buildRunChallengeSidebarBadge, 'function', 'run challenge badge helper should be exported');
     assert.equal(typeof getRunChallengeSidebarBadgeAppearance, 'function', 'run challenge badge appearance helper should be exported');
+    const measureBadgeWidth = (label) => Array.from(label).reduce((sum, glyph) => sum + ({
+        '完': 10,
+        '成': 10,
+        '进': 10,
+        '金': 10,
+        '+': 6,
+        '/': 6,
+        '0': 6,
+        '1': 6,
+        '2': 6,
+        '3': 6,
+        '9': 6
+    }[glyph] || 10), 0);
     assert.deepEqual(
         buildRunChallengeSidebarLines({
             label: '击败 30 个敌人',
@@ -2096,6 +2109,40 @@ function testRunChallengeSidebarLines() {
         }, { viewportTier: 'ultraCompact', hidden: true, runModifierHidden: true }),
         '',
         'ultra-compact challenge badge helper should stay silent until the hidden challenge has meaningful progress'
+    );
+    assert.equal(
+        buildRunChallengeSidebarBadge({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, {
+            viewportTier: 'ultraCompact',
+            hidden: true,
+            runModifierHidden: true,
+            maxBadgeWidth: 34,
+            measureLabelWidth: measureBadgeWidth
+        }),
+        '12/30',
+        'ultra-compact challenge badge helper should drop the leading progress marker when the fallback badge width budget gets tighter'
+    );
+    assert.equal(
+        buildRunChallengeSidebarBadge({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 90,
+            completed: true
+        }, {
+            viewportTier: 'ultraCompact',
+            hidden: true,
+            runModifierHidden: true,
+            maxBadgeWidth: 34,
+            measureLabelWidth: measureBadgeWidth
+        }),
+        '完成',
+        'ultra-compact completed challenge badge helper should drop reward copy before it squeezes the shared heading line'
     );
     assert.deepEqual(
         getRunChallengeSidebarBadgeAppearance({
@@ -2270,7 +2317,7 @@ function testSidebarMeasurementHooks() {
     );
     assert.match(
         source,
-        /const badgeMaxWidth = Math\.max\(44,\s*Math\.floor\(maxWidth \* 0\.42\)\);[\s\S]*?const titleMaxWidth = Math\.max\(48,\s*maxWidth - badgeWidth - badgeGap\);/,
+        /const badgeMaxWidth = this\._getRunModifierBadgeMaxWidth\(maxWidth\);[\s\S]*?const titleMaxWidth = Math\.max\(48,\s*maxWidth - badgeWidth - badgeGap\);/,
         'run-modifier heading layout should reserve an explicit width budget for the badge before fitting the title'
     );
     assert.match(
@@ -2285,8 +2332,8 @@ function testSidebarMeasurementHooks() {
     );
     assert.match(
         source,
-        /const challengeBadgeAppearance = challenge \? getRunChallengeSidebarBadgeAppearance\(challenge,\s*{\s*viewportTier:\s*this\._getHudSidebarViewportTier\(\),\s*hidden:\s*!\(!layout\.showSidePanel \|\| sidebarLayout\.visibility\.challengeText\),\s*runModifierHidden:\s*!sidebarLayout\.visibility\.runModifierText\s*}\)\s*:\s*\{\s*text:\s*'',\s*fill:\s*'',\s*alpha:\s*1\s*\};/,
-        'UIScene should derive the fallback badge through the shared helper only after both the challenge block and modifier body have dropped'
+        /const challengeBadgeAppearance = challenge \? getRunChallengeSidebarBadgeAppearance\(challenge,\s*{\s*viewportTier:\s*this\._getHudSidebarViewportTier\(\),\s*hidden:\s*!\(!layout\.showSidePanel \|\| sidebarLayout\.visibility\.challengeText\),\s*runModifierHidden:\s*!sidebarLayout\.visibility\.runModifierText,\s*maxBadgeWidth:\s*badgeMaxWidth,\s*measureLabelWidth:\s*text => this\._measureHudSidebarTextWidth\(text,\s*'sidebarChallengeBadge'\)\s*}\)\s*:\s*\{\s*text:\s*'',\s*fill:\s*'',\s*alpha:\s*1\s*\};/,
+        'UIScene should derive the fallback badge through the shared helper only after both the challenge block and modifier body have dropped, while passing the real badge width budget and Phaser-backed measurement'
     );
     assert.match(
         source,
@@ -2454,8 +2501,8 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /若该挑战摘要与本局词缀正文都因溢出被隐藏，则会在挑战起步后把 `进12\/30` \/ `完成\+90金` 这类更轻量的进度徽记挂到“本局词缀”标题后/,
-        'README should document that the lightweight challenge badge waits until both the challenge block and modifier body disappear, then uses the shorter in-progress copy'
+        /若该挑战摘要与本局词缀正文都因溢出被隐藏，则会在挑战起步后把 `进12\/30` \/ `完成` 这类更轻量的进度徽记挂到“本局词缀”标题后；若标题预算进一步吃紧，则进行中态还会继续压成 `12\/30`/,
+        'README should document that the lightweight challenge badge waits until both the challenge block and modifier body disappear, then further shortens both completion and in-progress copy under tighter width pressure'
     );
     assert.match(
         source,
@@ -2533,8 +2580,8 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /若该挑战摘要与本局词缀正文都因溢出被隐藏，则会在挑战起步后把“进12\/30”\/“完成\+奖励”压成挂在“本局词缀”标题后的轻量徽记/,
-        'help overlay should document that the lightweight challenge badge waits until both the challenge block and modifier body disappear, then uses the shorter in-progress copy'
+        /若该挑战摘要与本局词缀正文都因溢出被隐藏，则会在挑战起步后把“进12\/30”\/“完成”压成挂在“本局词缀”标题后的轻量徽记；若标题预算进一步吃紧，则进行中态还会继续压成“12\/30”/,
+        'help overlay should document that the lightweight challenge badge waits until both the challenge block and modifier body disappear, then further shortens both completion and in-progress copy under tighter width pressure'
     );
     assert.match(
         source,
