@@ -553,6 +553,23 @@
         return `挑战${Math.min(progress, target)}/${target || 0}`;
     }
 
+    function getRunChallengeSidebarBadgeAppearance(challenge, options) {
+        const text = buildRunChallengeSidebarBadge(challenge, options);
+        if (!text) {
+            return {
+                text: '',
+                fill: '',
+                alpha: 1
+            };
+        }
+        const safeChallenge = challenge && typeof challenge === 'object' ? challenge : {};
+        return {
+            text,
+            fill: safeChallenge.completed ? '#9fc6aa' : '#b7c2d9',
+            alpha: safeChallenge.completed ? 0.88 : 0.82
+        };
+    }
+
     const QUICK_SLOT_SHORT_LABELS = {
         hpPotion: 'HP',
         staminaPotion: 'ST',
@@ -2072,6 +2089,7 @@
         buildCombatActionHudSummary,
         buildRunChallengeSidebarLines,
         buildRunChallengeSidebarBadge,
+        getRunChallengeSidebarBadgeAppearance,
         buildQuickSlotItemLabel,
         buildQuickSlotAutoAssignNotice,
         getViewportTextClampX,

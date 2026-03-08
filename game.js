@@ -57,7 +57,7 @@ const {
     buildRunEventRoomEffects,
     buildRunEventRoomChoicePanelPreview,
     buildRunChallengeSidebarLines,
-    buildRunChallengeSidebarBadge,
+    getRunChallengeSidebarBadgeAppearance,
     buildRunEventRoomHudLines,
     buildRunEventRoomWorldLabel,
     buildRunEventRoomPromptLabel,
@@ -5319,6 +5319,10 @@ class UIScene extends Phaser.Scene {
             fontSize: '12px',
             fill: '#ffd27a'
         }).setOrigin(1, 0).setScrollFactor(0);
+        this.runModifierBadgeText = this.add.text(width - pad, this._hudLayout.sidePanelStartY + 26, '', {
+            fontSize: '11px',
+            fill: '#b7c2d9'
+        }).setOrigin(1, 0).setScrollFactor(0).setAlpha(0.82).setVisible(false);
         this.runModifierText = this.add.text(width - pad, this._hudLayout.sidePanelStartY + 42, '', {
             fontSize: '11px',
             fill: '#d7e6ff',
@@ -5423,6 +5427,11 @@ class UIScene extends Phaser.Scene {
                 style = {
                     fontSize: '12px',
                     fill: '#ffd27a'
+                };
+            } else if (styleKey === 'sidebarChallengeBadge') {
+                style = {
+                    fontSize: '11px',
+                    fill: '#b7c2d9'
                 };
             } else if (styleKey === 'challengeSidebar') {
                 style = {
@@ -5535,6 +5544,36 @@ class UIScene extends Phaser.Scene {
         return Math.max(180, Math.min(320, width - 96));
     }
 
+    _updateRunModifierHeading(badgeAppearance) {
+        const layout = this._hudLayout || this._buildHudLayout(false);
+        const anchorX = layout.width - layout.pad;
+        const maxWidth = this._getHudSidebarMaxWidth();
+        const titleY = Number.isFinite(this.runModifierTitle.y) ? this.runModifierTitle.y : layout.sidePanelStartY;
+        const safeBadgeAppearance = badgeAppearance && typeof badgeAppearance === 'object'
+            ? badgeAppearance
+            : { text: '', fill: '', alpha: 1 };
+        if (!safeBadgeAppearance.text) {
+            this.runModifierTitle.setPosition(anchorX, titleY);
+            this.runModifierTitle.setText(this._fitHudSidebarTextLine('本局词缀', this._getHudSidebarMaxWidth(), 'sidebarSectionTitle'));
+            this.runModifierBadgeText.setText('');
+            this.runModifierBadgeText.setVisible(false);
+            return;
+        }
+
+        const badgeGap = 8;
+        const badgeMaxWidth = Math.max(44, Math.floor(maxWidth * 0.42));
+        const fittedBadgeText = this._fitHudSidebarTextLine(safeBadgeAppearance.text, badgeMaxWidth, 'sidebarChallengeBadge');
+        this.runModifierBadgeText.setText(fittedBadgeText);
+        this.runModifierBadgeText.setStyle({ fill: badgeAppearance.fill, alpha: badgeAppearance.alpha });
+        this.runModifierBadgeText.setAlpha(badgeAppearance.alpha);
+        this.runModifierBadgeText.setPosition(anchorX, titleY);
+        this.runModifierBadgeText.setVisible(true);
+        const badgeWidth = this.runModifierBadgeText.width;
+        const titleMaxWidth = Math.max(48, maxWidth - badgeWidth - badgeGap);
+        this.runModifierTitle.setPosition(anchorX - badgeWidth - badgeGap, titleY);
+        this.runModifierTitle.setText(this._fitHudSidebarTextLine('本局词缀', titleMaxWidth, 'sidebarSectionTitle'));
+    }
+
     _getHudSidebarMaxBottom() {
         const layout = this._hudLayout || this._buildHudLayout(false);
         const sidebarPolicy = this._getHudSidebarOverflowPolicy();
@@ -5548,12 +5587,14 @@ class UIScene extends Phaser.Scene {
         const visibility = {
             areaNameText: showSidePanel && !!sidebarLayout.visibility.areaNameText,
             runModifierTitle: showSidePanel && !!sidebarLayout.visibility.runModifierTitle,
+            runModifierBadgeText: showSidePanel && !!sidebarLayout.visibility.runModifierTitle && !!(this.runModifierBadgeText && this.runModifierBadgeText.text),
             runModifierText: showSidePanel && !!sidebarLayout.visibility.runModifierText,
             challengeText: showSidePanel && !!sidebarLayout.visibility.challengeText,
             eventRoomText: showSidePanel && !!sidebarLayout.visibility.eventRoomText
         };
         this.areaNameText.setVisible(visibility.areaNameText);
         this.runModifierTitle.setVisible(visibility.runModifierTitle);
+        this.runModifierBadgeText.setVisible(visibility.runModifierBadgeText);
         this.runModifierText.setVisible(visibility.runModifierText);
         this.challengeText.setVisible(visibility.challengeText);
         this.eventRoomText.setVisible(visibility.eventRoomText);
@@ -5697,6 +5738,8 @@ class UIScene extends Phaser.Scene {
         // Area name
         this.areaNameText.setText(this._fitHudSidebarTextLine(areaName || '', this._getHudSidebarMaxWidth(), 'areaNameSidebar'));
         this.runModifierTitle.setText(this._fitHudSidebarTextLine('本局词缀', this._getHudSidebarMaxWidth(), 'sidebarSectionTitle'));
+        this.runModifierBadgeText.setText('');
+        this.runModifierBadgeText.setVisible(false);
 
         const modifierLines = (GameState.runModifiers || []).map((key, idx) => `${idx + 1}. ${getRunModifierLabel(key)}`);
         this.runModifierText.setText(this._fitHudSidebarTextBlock(modifierLines, this._getHudSidebarMaxWidth(), 'runModifierSidebar', 'runModifierSidebar').join('\n'));
@@ -5719,11 +5762,11 @@ class UIScene extends Phaser.Scene {
             this.eventRoomText.setText('');
         }
         const sidebarLayout = this._layoutHudSidebarBlocks();
-        const challengeBadge = challenge ? buildRunChallengeSidebarBadge(challenge, {
+        const challengeBadgeAppearance = challenge ? getRunChallengeSidebarBadgeAppearance(challenge, {
             viewportTier: this._getHudSidebarViewportTier(),
             hidden: !(!layout.showSidePanel || sidebarLayout.visibility.challengeText)
-        }) : '';
-        this.runModifierTitle.setText(this._fitHudSidebarTextLine(challengeBadge ? `本局词缀 · ${challengeBadge}` : '本局词缀', this._getHudSidebarMaxWidth(), 'sidebarSectionTitle'));
+        }) : { text: '', fill: '', alpha: 1 };
+        this._updateRunModifierHeading(challengeBadgeAppearance);
         this._applyHudSidebarVisibility(!!layout.showSidePanel, sidebarLayout);
 
         const statusSummary = player.getStatusHudSummary
@@ -5932,7 +5975,7 @@ class HelpScene extends Phaser.Scene {
             { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位，并提示“快捷栏N：+<短名>”；若临时拿不到显式短名则会沿用道具名生成“快捷栏N：+生命”这类短句；提示现在会优先按 Phaser 文本实际宽度钳制，因此“快捷栏N：+HP恢复”这类混排会尽量保留更多有效信息；若当前环境拿不到真实测量结果则回退为宽度权重估算；若道具名词干过长则会截成“快捷栏N：+圣疗秘…”这类省略短句；快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”；若拿不到显式短名则改用“快捷栏1：狂战→净化”这类道具名短句；若这些道具名过长则同样会截成“快捷栏1：古代狂…→神圣净…”这类省略短句', '背包悬停说明也会按实际文本宽度贴边，因此靠近屏幕右缘时不会继续沿用固定 200px 估算', '净化药剂/狂战油可在铁匠制作'] },
             { title: '状态', items: ['灼烧/流血会持续掉血', '减速会降低移动速度'] },
             { title: '本局词缀', items: runModifierLines },
-            { title: '交互/界面', items: ['F — NPC / 事件房交互', '事件房祭坛靠近提示也会按 Phaser 文本实际宽度贴在当前视口内，因此贴近屏幕边缘时不会被裁出画面', '右侧固定侧栏里的章节标题、区域名、本局词缀、本局挑战与事件房摘要会优先按 Phaser 文本实际宽度钳制，并按实际文本高度动态纵向排布，避免长标题 / 长路线结算继续互相顶出 HUD', '若视口进入 compact 档位，则本局词缀与事件房摘要会额外收敛为有限行数，并在最后一行补省略号', '若视口进一步进入 ultra-compact 档位，则会先进一步收紧各区块间距与底边缓冲，本局词缀会压到 1 行、事件房摘要压到 2 行、本局挑战压到单行进度摘要；若该挑战摘要仍因溢出被隐藏，则会在挑战起步后把“挑战12/30”/“完成+奖励”压成挂在“本局词缀”标题后的轻量徽记', '若侧栏总高度仍超出安全范围，则会优先隐藏事件房摘要，其次再隐藏本局词缀正文，最后才隐藏本局挑战摘要', 'Tab — 背包', 'Esc — 暂停', 'H — 操作指引'] }
+            { title: '交互/界面', items: ['F — NPC / 事件房交互', '事件房祭坛靠近提示也会按 Phaser 文本实际宽度贴在当前视口内，因此贴近屏幕边缘时不会被裁出画面', '右侧固定侧栏里的章节标题、区域名、本局词缀、本局挑战与事件房摘要会优先按 Phaser 文本实际宽度钳制，并按实际文本高度动态纵向排布，避免长标题 / 长路线结算继续互相顶出 HUD', '若视口进入 compact 档位，则本局词缀与事件房摘要会额外收敛为有限行数，并在最后一行补省略号', '若视口进一步进入 ultra-compact 档位，则会先进一步收紧各区块间距与底边缓冲，本局词缀会压到 1 行、事件房摘要压到 2 行、本局挑战压到单行进度摘要；若该挑战摘要仍因溢出被隐藏，则会在挑战起步后把“挑战12/30”/“完成+奖励”压成挂在“本局词缀”标题后的轻量徽记', '该轻量徽记会拆成独立弱化色阶，并与“本局词缀”标题分开贴边，避免继续共用同一强调色', '若侧栏总高度仍超出安全范围，则会优先隐藏事件房摘要，其次再隐藏本局词缀正文，最后才隐藏本局挑战摘要', 'Tab — 背包', 'Esc — 暂停', 'H — 操作指引'] }
         ];
 
         let curY = py - panelH / 2 + 72;

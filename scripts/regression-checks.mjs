@@ -38,6 +38,7 @@ const {
     buildRunEventRoomHudLines,
     buildRunChallengeSidebarLines,
     buildRunChallengeSidebarBadge,
+    getRunChallengeSidebarBadgeAppearance,
     buildRunEventRoomWorldLabelRouteLine,
     buildRunEventRoomWorldLabel,
     buildRunEventRoomPromptLabel,
@@ -1985,6 +1986,7 @@ function testHudSidebarViewportPolicy() {
 function testRunChallengeSidebarLines() {
     assert.equal(typeof buildRunChallengeSidebarLines, 'function', 'run challenge sidebar helper should be exported');
     assert.equal(typeof buildRunChallengeSidebarBadge, 'function', 'run challenge badge helper should be exported');
+    assert.equal(typeof getRunChallengeSidebarBadgeAppearance, 'function', 'run challenge badge appearance helper should be exported');
     assert.deepEqual(
         buildRunChallengeSidebarLines({
             label: '击败 30 个敌人',
@@ -2083,6 +2085,36 @@ function testRunChallengeSidebarLines() {
         }, { viewportTier: 'ultraCompact', hidden: true }),
         '',
         'ultra-compact challenge badge helper should stay silent until the hidden challenge has meaningful progress'
+    );
+    assert.deepEqual(
+        getRunChallengeSidebarBadgeAppearance({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, { viewportTier: 'ultraCompact', hidden: true }),
+        {
+            text: '挑战12/30',
+            fill: '#b7c2d9',
+            alpha: 0.82
+        },
+        'in-progress challenge badges should use a subdued secondary tint once split away from the section title'
+    );
+    assert.deepEqual(
+        getRunChallengeSidebarBadgeAppearance({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 90,
+            completed: true
+        }, { viewportTier: 'ultraCompact', hidden: true }),
+        {
+            text: '完成+90金',
+            fill: '#9fc6aa',
+            alpha: 0.88
+        },
+        'completed challenge badges should keep a muted completion tint instead of reusing the brighter challenge copy color'
     );
 }
 
@@ -2217,13 +2249,38 @@ function testSidebarMeasurementHooks() {
     );
     assert.match(
         source,
-        /const challengeBadge = challenge \? buildRunChallengeSidebarBadge\(challenge,\s*{\s*viewportTier:\s*this\._getHudSidebarViewportTier\(\),\s*hidden:\s*!\(!layout\.showSidePanel \|\| sidebarLayout\.visibility\.challengeText\)\s*}\)\s*:\s*'';/,
-        'UIScene should derive a lightweight challenge badge from the shared helper when ultra-compact overflow hides the main challenge block'
+        /this\.runModifierBadgeText\s*=\s*this\.add\.text\(width - pad,\s*this\._hudLayout\.sidePanelStartY \+ 26,\s*'',\s*{/,
+        'UIScene should create a dedicated run-modifier challenge badge text node for ultra-compact fallback badges'
     );
     assert.match(
         source,
-        /this\.runModifierTitle\.setText\(this\._fitHudSidebarTextLine\(challengeBadge \? `本局词缀 · \$\{challengeBadge\}` : '本局词缀',\s*this\._getHudSidebarMaxWidth\(\),\s*'sidebarSectionTitle'\)\);/,
-        'sidebar title should append the lightweight challenge badge only when the main challenge block is hidden'
+        /_updateRunModifierHeading\(\s*badgeAppearance\s*\)\s*{/,
+        'UIScene should centralize independent run-modifier title and badge layout in a dedicated helper'
+    );
+    assert.match(
+        source,
+        /const badgeMaxWidth = Math\.max\(44,\s*Math\.floor\(maxWidth \* 0\.42\)\);[\s\S]*?const titleMaxWidth = Math\.max\(48,\s*maxWidth - badgeWidth - badgeGap\);/,
+        'run-modifier heading layout should reserve an explicit width budget for the badge before fitting the title'
+    );
+    assert.match(
+        source,
+        /this\._updateRunModifierHeading\(challengeBadgeAppearance\);/,
+        'sidebar update should route lightweight challenge badges through the dedicated heading layout helper'
+    );
+    assert.match(
+        source,
+        /this\.runModifierBadgeText\.setStyle\(\{\s*fill:\s*badgeAppearance\.fill,\s*alpha:\s*badgeAppearance\.alpha\s*\}\);/,
+        'dedicated challenge badge text should apply the shared subdued appearance state instead of inheriting the title tint'
+    );
+    assert.match(
+        source,
+        /const challengeBadgeAppearance = challenge \? getRunChallengeSidebarBadgeAppearance\(challenge,\s*{\s*viewportTier:\s*this\._getHudSidebarViewportTier\(\),\s*hidden:\s*!\(!layout\.showSidePanel \|\| sidebarLayout\.visibility\.challengeText\)\s*}\)\s*:\s*\{\s*text:\s*'',\s*fill:\s*'',\s*alpha:\s*1\s*\};/,
+        'UIScene should derive split badge text and subdued appearance through the shared helper when the main challenge block is hidden'
+    );
+    assert.match(
+        source,
+        /this\.runModifierTitle\.setText\(this\._fitHudSidebarTextLine\('本局词缀',\s*titleMaxWidth,\s*'sidebarSectionTitle'\)\);/,
+        'sidebar title should keep its own fitted width budget even when a lightweight challenge badge is present'
     );
     assert.match(
         source,
@@ -2389,6 +2446,11 @@ function testReadmeKeyboardInventoryLoop() {
         /若该挑战摘要仍因溢出被隐藏，则会在挑战起步后把 `挑战12\/30` \/ `完成\+90金` 这类更轻量的进度徽记挂到“本局词缀”标题后/,
         'README should document the shorter lightweight challenge badge fallback and its delayed trigger once the ultra-compact challenge block disappears'
     );
+    assert.match(
+        source,
+        /该轻量徽记会拆成独立弱化色阶并与“本局词缀”标题分开贴边，避免继续与标题正文共用同一强调色/,
+        'README should document the split, lower-emphasis badge hierarchy for the ultra-compact challenge fallback'
+    );
 }
 
 function testHelpOverlayQuickSlotLoop() {
@@ -2462,6 +2524,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若该挑战摘要仍因溢出被隐藏，则会在挑战起步后把“挑战12\/30”\/“完成\+奖励”压成挂在“本局词缀”标题后的轻量徽记/,
         'help overlay should document the shorter lightweight challenge badge fallback and its delayed trigger once the ultra-compact challenge block disappears'
+    );
+    assert.match(
+        source,
+        /该轻量徽记会拆成独立弱化色阶，并与“本局词缀”标题分开贴边，避免继续共用同一强调色/,
+        'help overlay should document the split, lower-emphasis badge hierarchy for the ultra-compact challenge fallback'
     );
 }
 
