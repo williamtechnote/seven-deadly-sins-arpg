@@ -547,9 +547,10 @@
         const progress = clampInt(safeChallenge.progress, 0, target || Number.MAX_SAFE_INTEGER, 0);
         const rewardGold = clampInt(safeChallenge.rewardGold, 0, Number.MAX_SAFE_INTEGER, 0);
         if (safeChallenge.completed) {
-            return rewardGold > 0 ? `挑战完成 +${rewardGold}金` : '挑战完成';
+            return rewardGold > 0 ? `完成+${rewardGold}金` : '完成';
         }
-        return `挑战 ${Math.min(progress, target)}/${target || 0}`;
+        if (progress <= 0) return '';
+        return `挑战${Math.min(progress, target)}/${target || 0}`;
     }
 
     const QUICK_SLOT_SHORT_LABELS = {

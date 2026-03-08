@@ -2048,8 +2048,8 @@ function testRunChallengeSidebarLines() {
             rewardGold: 90,
             completed: false
         }, { viewportTier: 'ultraCompact', hidden: true }),
-        '挑战 12/30',
-        'ultra-compact challenge badge helper should preserve progress when the main challenge block is hidden'
+        '挑战12/30',
+        'ultra-compact challenge badge helper should preserve progress with a shorter badge once the main challenge block is hidden'
     );
     assert.equal(
         buildRunChallengeSidebarBadge({
@@ -2059,8 +2059,8 @@ function testRunChallengeSidebarLines() {
             rewardGold: 90,
             completed: true
         }, { viewportTier: 'ultraCompact', hidden: true }),
-        '挑战完成 +90金',
-        'ultra-compact challenge badge helper should preserve completion and reward when the main challenge block is hidden'
+        '完成+90金',
+        'ultra-compact challenge badge helper should preserve completion and reward with a shorter badge when the main challenge block is hidden'
     );
     assert.equal(
         buildRunChallengeSidebarBadge({
@@ -2072,6 +2072,17 @@ function testRunChallengeSidebarLines() {
         }, { viewportTier: 'ultraCompact', hidden: false }),
         '',
         'challenge badge helper should stay silent while the full challenge block is still visible'
+    );
+    assert.equal(
+        buildRunChallengeSidebarBadge({
+            label: '击败 30 个敌人',
+            progress: 0,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, { viewportTier: 'ultraCompact', hidden: true }),
+        '',
+        'ultra-compact challenge badge helper should stay silent until the hidden challenge has meaningful progress'
     );
 }
 
@@ -2375,8 +2386,8 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /若该挑战摘要仍因溢出被隐藏，则会把 `挑战 12\/30` \/ `挑战完成 \+90金` 这类更轻量的进度徽记挂到“本局词缀”标题后/,
-        'README should document the lightweight challenge badge fallback once the ultra-compact challenge block disappears'
+        /若该挑战摘要仍因溢出被隐藏，则会在挑战起步后把 `挑战12\/30` \/ `完成\+90金` 这类更轻量的进度徽记挂到“本局词缀”标题后/,
+        'README should document the shorter lightweight challenge badge fallback and its delayed trigger once the ultra-compact challenge block disappears'
     );
 }
 
@@ -2449,8 +2460,8 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /若该挑战摘要仍因溢出被隐藏，则会把“挑战 进度 \/ 挑战完成 \+奖励”压成挂在“本局词缀”标题后的轻量徽记/,
-        'help overlay should document the lightweight challenge badge fallback once the ultra-compact challenge block disappears'
+        /若该挑战摘要仍因溢出被隐藏，则会在挑战起步后把“挑战12\/30”\/“完成\+奖励”压成挂在“本局词缀”标题后的轻量徽记/,
+        'help overlay should document the shorter lightweight challenge badge fallback and its delayed trigger once the ultra-compact challenge block disappears'
     );
 }
 
