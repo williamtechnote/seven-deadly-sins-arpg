@@ -2190,9 +2190,14 @@ function testRunModifierHeadingBadgeLayout() {
         'ultra-compact sidebar headings should further shrink badge width share and heading gap'
     );
     assert.deepEqual(
+        getRunModifierHeadingBadgeLayout(150, { viewportTier: 'ultraCompact' }),
+        { maxWidth: 45, gap: 5 },
+        'ultra-compact sidebar headings should enter a tighter budget tier before the badge hits its floor width'
+    );
+    assert.deepEqual(
         getRunModifierHeadingBadgeLayout(120, { viewportTier: 'ultraCompact' }),
-        { maxWidth: 40, gap: 6 },
-        'ultra-compact sidebar headings should still clamp the badge to a safe floor width'
+        { maxWidth: 40, gap: 4 },
+        'ultra-compact sidebar headings should still clamp the badge to a safe floor width while tightening the heading gap again'
     );
 }
 
@@ -2536,8 +2541,8 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /该轻量徽记会拆成独立弱化色阶，并进一步下调字级与透明度后再与“本局词缀”标题分开贴边，同时进一步收紧自身宽度预算与固定间距，优先把更多横向空间留给标题正文/,
-        'README should document the quieter typography plus the tighter width-budget and gap policy for the final ultra-compact challenge badge fallback'
+        /该轻量徽记会拆成独立弱化色阶，并进一步下调字级与透明度后再与“本局词缀”标题分开贴边；若标题预算继续压窄，则会按更紧预算分档继续下调 badge 宽度占比与固定 gap，优先把更多横向空间留给标题正文/,
+        'README should document the quieter typography plus the tighter width-budget tiers for the final ultra-compact challenge badge fallback'
     );
 }
 
@@ -2615,8 +2620,8 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /该轻量徽记会拆成独立弱化色阶，并进一步下调字级与透明度后再与“本局词缀”标题分开贴边，同时进一步收紧 badge 宽度预算与固定间距，优先把更多横向空间留给标题正文/,
-        'help overlay should document the quieter typography plus the tighter width-budget and gap policy for the final ultra-compact challenge badge fallback'
+        /该轻量徽记会拆成独立弱化色阶，并进一步下调字级与透明度后再与“本局词缀”标题分开贴边；若标题预算继续压窄，则会按更紧预算分档继续下调 badge 宽度占比与固定 gap，优先把更多横向空间留给标题正文/,
+        'help overlay should document the quieter typography plus the tighter width-budget tiers for the final ultra-compact challenge badge fallback'
     );
 }
 

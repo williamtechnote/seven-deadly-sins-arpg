@@ -489,9 +489,14 @@
             ? options.viewportTier
             : 'regular';
         const ultraCompact = viewportTier === 'ultraCompact';
+        const tightTier = ultraCompact && safeMaxWidth <= 160;
+        const finalTightTier = ultraCompact && safeMaxWidth <= 132;
+        const widthShare = ultraCompact
+            ? (finalTightTier ? 0.28 : (tightTier ? 0.3 : 0.34))
+            : 0.42;
         return {
-            maxWidth: Math.max(ultraCompact ? 40 : 44, Math.floor(safeMaxWidth * (ultraCompact ? 0.34 : 0.42))),
-            gap: ultraCompact ? 6 : 8
+            maxWidth: Math.max(ultraCompact ? 40 : 44, Math.floor(safeMaxWidth * widthShare)),
+            gap: ultraCompact ? (finalTightTier ? 4 : (tightTier ? 5 : 6)) : 8
         };
     }
 
