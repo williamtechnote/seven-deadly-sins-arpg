@@ -48,6 +48,7 @@ const {
     getInventoryTooltipClampX,
     clampTextToWidth,
     clampTextLinesToWidth,
+    clampTextLinesToWidthAndCount,
     buildVerticalTextStackLayout,
     getQuickSlotAutoAssignIndex,
     resolveKeyboardAimState,
@@ -1880,7 +1881,11 @@ function testMeasuredTextClampHelper() {
         'H': 6,
         'P': 6,
         '恢': 10,
-        '复': 10
+        '复': 10,
+        '1': 6,
+        '2': 6,
+        '3': 6,
+        '.': 4
     };
     const measureGlyphWidth = (glyph) => glyphWidths[glyph] || 10;
     assert.equal(
@@ -1898,6 +1903,12 @@ function testMeasuredTextClampHelper() {
         clampTextLinesToWidth(['本局挑战：已完成', '击败 30 个敌人', '进度:30/30  奖励:+90 金币'], 68, { measureGlyphWidth }),
         ['本局挑战：已…', '击败 30 个…', '进度:30/…'],
         'multiline measured clamp should fit each sidebar line independently against measured widths'
+    );
+    assert.equal(typeof clampTextLinesToWidthAndCount, 'function', 'measured text line-cap helper should be exported');
+    assert.deepEqual(
+        clampTextLinesToWidthAndCount(['1. 暴怒连战', '2. 永夜诅咒', '3. 贪婪税'], 60, 2, { measureGlyphWidth }),
+        ['1. 暴怒连战', '2. 永夜诅…'],
+        'line-cap helper should preserve earlier fitted lines and ellipsize the final visible line when additional lines are dropped'
     );
 }
 
@@ -1972,6 +1983,21 @@ function testSidebarMeasurementHooks() {
     );
     assert.match(
         source,
+        /_getHudSidebarLineCap\(sectionKey\)\s*{/,
+        'UIScene should expose a dedicated narrow-viewport line-cap policy helper for sidebar sections'
+    );
+    assert.match(
+        source,
+        /_fitHudSidebarTextBlock\(lines,\s*maxWidth,\s*styleKey,\s*sectionKey\)\s*{/,
+        'UIScene should expose a dedicated block fitter that combines width clamp and optional line caps'
+    );
+    assert.match(
+        source,
+        /clampTextLinesToWidthAndCount\(lines,\s*maxWidth,\s*lineCap,\s*{[\s\S]*?_measureHudSidebarTextWidth\(glyph,\s*styleKey\)/,
+        'sidebar block fitting should reuse the shared measured line-cap helper when a compact viewport cap applies'
+    );
+    assert.match(
+        source,
         /this\.runModifierTitle\.setText\(this\._fitHudSidebarTextLine\('本局词缀',\s*this\._getHudSidebarMaxWidth\(\),\s*'sidebarSectionTitle'\)\);/,
         'sidebar section headings should route through the measured single-line fitting helper'
     );
@@ -1982,8 +2008,8 @@ function testSidebarMeasurementHooks() {
     );
     assert.match(
         source,
-        /this\.runModifierText\.setText\(this\._fitHudSidebarTextLines\(modifierLines,\s*this\._getHudSidebarMaxWidth\(\),\s*'runModifierSidebar'\)\.join\('\\n'\)\);/,
-        'run-modifier sidebar should route generated lines through the measured sidebar fitting helper'
+        /this\.runModifierText\.setText\(this\._fitHudSidebarTextBlock\(modifierLines,\s*this\._getHudSidebarMaxWidth\(\),\s*'runModifierSidebar',\s*'runModifierSidebar'\)\.join\('\\n'\)\);/,
+        'run-modifier sidebar should route generated lines through the measured sidebar line-cap helper'
     );
     assert.match(
         source,
@@ -2007,8 +2033,8 @@ function testSidebarMeasurementHooks() {
     );
     assert.match(
         source,
-        /this\.eventRoomText\.setText\(this\._fitHudSidebarTextLines\(lines,\s*this\._getHudSidebarMaxWidth\(\),\s*'eventRoomSidebar'\)\.join\('\\n'\)\);/,
-        'event-room sidebar should route generated HUD lines through the measured sidebar fitting helper'
+        /this\.eventRoomText\.setText\(this\._fitHudSidebarTextBlock\(lines,\s*this\._getHudSidebarMaxWidth\(\),\s*'eventRoomSidebar',\s*'eventRoomSidebar'\)\.join\('\\n'\)\);/,
+        'event-room sidebar should route generated HUD lines through the measured sidebar line-cap helper'
     );
     assert.match(
         source,
@@ -2099,6 +2125,11 @@ function testReadmeKeyboardInventoryLoop() {
         /右侧固定侧栏里的章节标题、区域名、本局词缀、本局挑战与事件房摘要会优先按 Phaser 文本实际宽度钳制，并按实际文本高度动态纵向排布/,
         'README should document measured fitting and vertical stacking for the fixed right sidebar'
     );
+    assert.match(
+        source,
+        /若视口较窄，则本局词缀与事件房摘要会额外收敛为有限行数，并在最后一行补省略号/,
+        'README should document the narrow-viewport line-cap and ellipsis policy for long sidebar blocks'
+    );
 }
 
 function testHelpOverlayQuickSlotLoop() {
@@ -2152,6 +2183,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /右侧固定侧栏里的章节标题、区域名、本局词缀、本局挑战与事件房摘要会优先按 Phaser 文本实际宽度钳制，并按实际文本高度动态纵向排布/,
         'help overlay should document measured fitting and vertical stacking for the fixed right sidebar'
+    );
+    assert.match(
+        source,
+        /若视口较窄，则本局词缀与事件房摘要会额外收敛为有限行数，并在最后一行补省略号/,
+        'help overlay should document the narrow-viewport line-cap and ellipsis policy for long sidebar blocks'
     );
 }
 

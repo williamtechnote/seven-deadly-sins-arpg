@@ -30,6 +30,7 @@ const {
     getInventoryTooltipClampX,
     clampTextToWidth,
     clampTextLinesToWidth,
+    clampTextLinesToWidthAndCount,
     buildVerticalTextStackLayout,
     getQuickSlotAutoAssignIndex,
     normalizeSaveData,
@@ -5480,6 +5481,35 @@ class UIScene extends Phaser.Scene {
         });
     }
 
+    _getHudSidebarLineCap(sectionKey) {
+        const layout = this._hudLayout || this._buildHudLayout(false);
+        const viewportWidth = Number.isFinite(layout.width) && layout.width > 0
+            ? layout.width
+            : this.cameras.main.width;
+        const viewportHeight = this.cameras && this.cameras.main
+            ? this.cameras.main.height
+            : 0;
+        const isCompactViewport = viewportWidth <= 1024 || viewportHeight <= 768;
+        if (!isCompactViewport) return 0;
+        if (sectionKey === 'runModifierSidebar') return 2;
+        if (sectionKey === 'eventRoomSidebar') return 3;
+        return 0;
+    }
+
+    _fitHudSidebarTextBlock(lines, maxWidth, styleKey, sectionKey) {
+        const lineCap = this._getHudSidebarLineCap(sectionKey);
+        if (lineCap > 0) {
+            return clampTextLinesToWidthAndCount(lines, maxWidth, lineCap, {
+                measureGlyphWidth: glyph => this._measureHudSidebarTextWidth(glyph, styleKey),
+                measurementCache: new Map()
+            });
+        }
+        return clampTextLinesToWidth(lines, maxWidth, {
+            measureGlyphWidth: glyph => this._measureHudSidebarTextWidth(glyph, styleKey),
+            measurementCache: new Map()
+        });
+    }
+
     _getHudSidebarMaxWidth() {
         const layout = this._hudLayout || this._buildHudLayout(false);
         const width = Number.isFinite(layout.width) && layout.width > 0
@@ -5616,7 +5646,7 @@ class UIScene extends Phaser.Scene {
         this.runModifierTitle.setText(this._fitHudSidebarTextLine('本局词缀', this._getHudSidebarMaxWidth(), 'sidebarSectionTitle'));
 
         const modifierLines = (GameState.runModifiers || []).map((key, idx) => `${idx + 1}. ${getRunModifierLabel(key)}`);
-        this.runModifierText.setText(this._fitHudSidebarTextLines(modifierLines, this._getHudSidebarMaxWidth(), 'runModifierSidebar').join('\n'));
+        this.runModifierText.setText(this._fitHudSidebarTextBlock(modifierLines, this._getHudSidebarMaxWidth(), 'runModifierSidebar', 'runModifierSidebar').join('\n'));
 
         const challenge = GameState.getRunChallengeSummary ? GameState.getRunChallengeSummary() : null;
         if (challenge) {
@@ -5636,7 +5666,7 @@ class UIScene extends Phaser.Scene {
         const eventRoom = GameState.getRunEventRoomSummary ? GameState.getRunEventRoomSummary() : null;
         if (eventRoom) {
             const lines = buildRunEventRoomHudLines(eventRoom, RUN_EVENT_ROOM_POOL);
-            this.eventRoomText.setText(this._fitHudSidebarTextLines(lines, this._getHudSidebarMaxWidth(), 'eventRoomSidebar').join('\n'));
+            this.eventRoomText.setText(this._fitHudSidebarTextBlock(lines, this._getHudSidebarMaxWidth(), 'eventRoomSidebar', 'eventRoomSidebar').join('\n'));
             this.eventRoomText.setStyle({ fill: eventRoom.resolved ? '#9fa8b3' : '#ffd27a' });
         } else {
             this.eventRoomText.setText('');
@@ -5849,7 +5879,7 @@ class HelpScene extends Phaser.Scene {
             { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位，并提示“快捷栏N：+<短名>”；若临时拿不到显式短名则会沿用道具名生成“快捷栏N：+生命”这类短句；提示现在会优先按 Phaser 文本实际宽度钳制，因此“快捷栏N：+HP恢复”这类混排会尽量保留更多有效信息；若当前环境拿不到真实测量结果则回退为宽度权重估算；若道具名词干过长则会截成“快捷栏N：+圣疗秘…”这类省略短句；快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”；若拿不到显式短名则改用“快捷栏1：狂战→净化”这类道具名短句；若这些道具名过长则同样会截成“快捷栏1：古代狂…→神圣净…”这类省略短句', '背包悬停说明也会按实际文本宽度贴边，因此靠近屏幕右缘时不会继续沿用固定 200px 估算', '净化药剂/狂战油可在铁匠制作'] },
             { title: '状态', items: ['灼烧/流血会持续掉血', '减速会降低移动速度'] },
             { title: '本局词缀', items: runModifierLines },
-            { title: '交互/界面', items: ['F — NPC / 事件房交互', '事件房祭坛靠近提示也会按 Phaser 文本实际宽度贴在当前视口内，因此贴近屏幕边缘时不会被裁出画面', '右侧固定侧栏里的章节标题、区域名、本局词缀、本局挑战与事件房摘要会优先按 Phaser 文本实际宽度钳制，并按实际文本高度动态纵向排布，避免长标题 / 长路线结算继续互相顶出 HUD', 'Tab — 背包', 'Esc — 暂停', 'H — 操作指引'] }
+            { title: '交互/界面', items: ['F — NPC / 事件房交互', '事件房祭坛靠近提示也会按 Phaser 文本实际宽度贴在当前视口内，因此贴近屏幕边缘时不会被裁出画面', '右侧固定侧栏里的章节标题、区域名、本局词缀、本局挑战与事件房摘要会优先按 Phaser 文本实际宽度钳制，并按实际文本高度动态纵向排布，避免长标题 / 长路线结算继续互相顶出 HUD', '若视口较窄，则本局词缀与事件房摘要会额外收敛为有限行数，并在最后一行补省略号', 'Tab — 背包', 'Esc — 暂停', 'H — 操作指引'] }
         ];
 
         let curY = py - panelH / 2 + 72;

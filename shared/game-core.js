@@ -625,6 +625,39 @@
         }));
     }
 
+    function clampTextLinesToWidthAndCount(lines, maxWidth, maxLines, options) {
+        const safeMaxLines = Number.isFinite(maxLines) ? Math.max(0, Math.floor(maxLines)) : 0;
+        if (safeMaxLines <= 0) return [];
+        const measureGlyphWidth = options && typeof options.measureGlyphWidth === 'function'
+            ? options.measureGlyphWidth
+            : null;
+        const measurementCache = options && options.measurementCache instanceof Map
+            ? options.measurementCache
+            : (measureGlyphWidth ? new Map() : null);
+        const ellipsis = options && typeof options.ellipsis === 'string' && options.ellipsis
+            ? options.ellipsis
+            : '…';
+        const fittedLines = clampTextLinesToWidth(lines, maxWidth, {
+            measureGlyphWidth,
+            measurementCache,
+            ellipsis
+        });
+        if (fittedLines.length <= safeMaxLines) {
+            return fittedLines;
+        }
+        const visibleLines = fittedLines.slice(0, safeMaxLines);
+        const lastVisibleLine = visibleLines[safeMaxLines - 1] || '';
+        const normalizedLastVisibleLine = lastVisibleLine.endsWith(ellipsis)
+            ? lastVisibleLine.slice(0, Math.max(0, lastVisibleLine.length - ellipsis.length))
+            : lastVisibleLine;
+        visibleLines[safeMaxLines - 1] = clampTextToWidth(`${normalizedLastVisibleLine}${ellipsis}`, maxWidth, {
+            measureGlyphWidth,
+            measurementCache,
+            ellipsis
+        });
+        return visibleLines;
+    }
+
     function buildVerticalTextStackLayout(blocks, startY) {
         const safeBlocks = Array.isArray(blocks) ? blocks : [];
         const safeStartY = Number.isFinite(startY) ? startY : 0;
@@ -1861,6 +1894,7 @@
         getInventoryTooltipClampX,
         clampTextToWidth,
         clampTextLinesToWidth,
+        clampTextLinesToWidthAndCount,
         buildVerticalTextStackLayout,
         getQuickSlotAutoAssignIndex,
         normalizeSaveData,
