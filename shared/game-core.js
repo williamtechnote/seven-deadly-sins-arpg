@@ -535,6 +535,23 @@
         ];
     }
 
+    function buildRunChallengeSidebarBadge(challenge, options) {
+        const safeChallenge = challenge && typeof challenge === 'object' ? challenge : {};
+        const viewportTier = options && typeof options.viewportTier === 'string'
+            ? options.viewportTier
+            : 'regular';
+        const hidden = !!(options && options.hidden);
+        if (viewportTier !== 'ultraCompact' || !hidden) return '';
+
+        const target = clampInt(safeChallenge.target, 0, Number.MAX_SAFE_INTEGER, 0);
+        const progress = clampInt(safeChallenge.progress, 0, target || Number.MAX_SAFE_INTEGER, 0);
+        const rewardGold = clampInt(safeChallenge.rewardGold, 0, Number.MAX_SAFE_INTEGER, 0);
+        if (safeChallenge.completed) {
+            return rewardGold > 0 ? `挑战完成 +${rewardGold}金` : '挑战完成';
+        }
+        return `挑战 ${Math.min(progress, target)}/${target || 0}`;
+    }
+
     const QUICK_SLOT_SHORT_LABELS = {
         hpPotion: 'HP',
         staminaPotion: 'ST',
@@ -2053,6 +2070,7 @@
         formatAimDirectionLabel,
         buildCombatActionHudSummary,
         buildRunChallengeSidebarLines,
+        buildRunChallengeSidebarBadge,
         buildQuickSlotItemLabel,
         buildQuickSlotAutoAssignNotice,
         getViewportTextClampX,

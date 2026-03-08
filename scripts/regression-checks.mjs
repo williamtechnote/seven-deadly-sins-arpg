@@ -37,6 +37,7 @@ const {
     buildRunEventRoomHudSummary,
     buildRunEventRoomHudLines,
     buildRunChallengeSidebarLines,
+    buildRunChallengeSidebarBadge,
     buildRunEventRoomWorldLabelRouteLine,
     buildRunEventRoomWorldLabel,
     buildRunEventRoomPromptLabel,
@@ -1983,6 +1984,7 @@ function testHudSidebarViewportPolicy() {
 
 function testRunChallengeSidebarLines() {
     assert.equal(typeof buildRunChallengeSidebarLines, 'function', 'run challenge sidebar helper should be exported');
+    assert.equal(typeof buildRunChallengeSidebarBadge, 'function', 'run challenge badge helper should be exported');
     assert.deepEqual(
         buildRunChallengeSidebarLines({
             label: '击败 30 个敌人',
@@ -2037,6 +2039,39 @@ function testRunChallengeSidebarLines() {
         }, { viewportTier: 'ultraCompact' }),
         ['挑战完成 · +90金'],
         'ultra-compact challenge sidebar helper should collapse completed challenges into a single completion line'
+    );
+    assert.equal(
+        buildRunChallengeSidebarBadge({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, { viewportTier: 'ultraCompact', hidden: true }),
+        '挑战 12/30',
+        'ultra-compact challenge badge helper should preserve progress when the main challenge block is hidden'
+    );
+    assert.equal(
+        buildRunChallengeSidebarBadge({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 90,
+            completed: true
+        }, { viewportTier: 'ultraCompact', hidden: true }),
+        '挑战完成 +90金',
+        'ultra-compact challenge badge helper should preserve completion and reward when the main challenge block is hidden'
+    );
+    assert.equal(
+        buildRunChallengeSidebarBadge({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, { viewportTier: 'ultraCompact', hidden: false }),
+        '',
+        'challenge badge helper should stay silent while the full challenge block is still visible'
     );
 }
 
@@ -2168,6 +2203,16 @@ function testSidebarMeasurementHooks() {
         source,
         /this\.challengeText\.setText\(this\._fitHudSidebarTextBlock\(challengeLines,\s*this\._getHudSidebarMaxWidth\(\),\s*'challengeSidebar',\s*'challengeSidebar'\)\.join\('\\n'\)\);/,
         'challenge sidebar should route helper-generated lines through the measured sidebar block fitter'
+    );
+    assert.match(
+        source,
+        /const challengeBadge = challenge \? buildRunChallengeSidebarBadge\(challenge,\s*{\s*viewportTier:\s*this\._getHudSidebarViewportTier\(\),\s*hidden:\s*!\(!layout\.showSidePanel \|\| sidebarLayout\.visibility\.challengeText\)\s*}\)\s*:\s*'';/,
+        'UIScene should derive a lightweight challenge badge from the shared helper when ultra-compact overflow hides the main challenge block'
+    );
+    assert.match(
+        source,
+        /this\.runModifierTitle\.setText\(this\._fitHudSidebarTextLine\(challengeBadge \? `本局词缀 · \$\{challengeBadge\}` : '本局词缀',\s*this\._getHudSidebarMaxWidth\(\),\s*'sidebarSectionTitle'\)\);/,
+        'sidebar title should append the lightweight challenge badge only when the main challenge block is hidden'
     );
     assert.match(
         source,
@@ -2328,6 +2373,11 @@ function testReadmeKeyboardInventoryLoop() {
         /若侧栏总高度仍超出安全范围，则会优先隐藏事件房摘要，其次再隐藏本局词缀正文，最后才隐藏本局挑战摘要/,
         'README should document the final overflow-priority hiding order for the fixed sidebar'
     );
+    assert.match(
+        source,
+        /若该挑战摘要仍因溢出被隐藏，则会把 `挑战 12\/30` \/ `挑战完成 \+90金` 这类更轻量的进度徽记挂到“本局词缀”标题后/,
+        'README should document the lightweight challenge badge fallback once the ultra-compact challenge block disappears'
+    );
 }
 
 function testHelpOverlayQuickSlotLoop() {
@@ -2396,6 +2446,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若侧栏总高度仍超出安全范围，则会优先隐藏事件房摘要，其次再隐藏本局词缀正文，最后才隐藏本局挑战摘要/,
         'help overlay should document the final overflow-priority hiding order for the fixed sidebar'
+    );
+    assert.match(
+        source,
+        /若该挑战摘要仍因溢出被隐藏，则会把“挑战 进度 \/ 挑战完成 \+奖励”压成挂在“本局词缀”标题后的轻量徽记/,
+        'help overlay should document the lightweight challenge badge fallback once the ultra-compact challenge block disappears'
     );
 }
 
