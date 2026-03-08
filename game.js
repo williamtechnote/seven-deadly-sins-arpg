@@ -26,7 +26,9 @@ const {
     buildQuickSlotItemLabel,
     buildQuickSlotAutoAssignNotice,
     getViewportTextClampX,
+    getViewportCenteredTextClampX,
     getInventoryTooltipClampX,
+    clampTextToWidth,
     getQuickSlotAutoAssignIndex,
     normalizeSaveData,
     serializeSaveData,
@@ -2580,9 +2582,12 @@ class LevelScene extends Phaser.Scene {
             this._levelTextMeasureNodes = {};
         }
         if (!this._levelTextMeasureNodes[styleKey]) {
-            const style = styleKey === 'runEventPrompt'
-                ? { fontSize: '12px', fill: '#FFD27A' }
-                : { fontSize: '14px', fill: '#ffffff' };
+            let style = { fontSize: '14px', fill: '#ffffff' };
+            if (styleKey === 'runEventPrompt') {
+                style = { fontSize: '12px', fill: '#FFD27A' };
+            } else if (styleKey === 'runEventWorldLabel') {
+                style = { fontSize: '16px', fill: '#ffe6a3', fontStyle: 'bold' };
+            }
             this._levelTextMeasureNodes[styleKey] = this.add.text(-1000, -1000, '', style)
                 .setVisible(false)
                 .setDepth(0);
@@ -2607,6 +2612,13 @@ class LevelScene extends Phaser.Scene {
         return width;
     }
 
+    _fitLevelTextToWidth(text, maxWidth, styleKey) {
+        return clampTextToWidth(text, maxWidth, {
+            measureGlyphWidth: glyph => this._measureLevelTextWidth(glyph, styleKey),
+            measurementCache: new Map()
+        });
+    }
+
     _refreshRunEventPromptPosition() {
         if (!this.runEventRoomShrine || !this.runEventRoomIndicator) return;
         this.runEventRoomIndicator.setY(this.runEventRoomShrine.y - 64);
@@ -2618,6 +2630,22 @@ class LevelScene extends Phaser.Scene {
         const promptWidth = this._measureLevelTextWidth(text, 'runEventPrompt');
         const clampedX = getViewportTextClampX(this.runEventRoomShrine.x, promptWidth, this.cameras.main.width, 12, this.cameras.main.worldView.x);
         this.runEventRoomIndicator.setX(clampedX);
+    }
+
+    _refreshRunEventWorldLabelPosition(text) {
+        if (!this.runEventRoomShrine || !this.runEventRoomLabel) return;
+        this.runEventRoomLabel.setY(this.runEventRoomShrine.y - 42);
+        if (!text) {
+            this.runEventRoomLabel.setText('');
+            this.runEventRoomLabel.setX(this.runEventRoomShrine.x);
+            return;
+        }
+        const maxWidth = Math.max(0, this.cameras.main.width - 24);
+        const fittedLabel = this._fitLevelTextToWidth(text, maxWidth, 'runEventWorldLabel');
+        this.runEventRoomLabel.setText(fittedLabel);
+        const labelWidth = this._measureLevelTextWidth(fittedLabel, 'runEventWorldLabel');
+        const clampedX = getViewportCenteredTextClampX(this.runEventRoomShrine.x, labelWidth, this.cameras.main.width, 12, this.cameras.main.worldView.x);
+        this.runEventRoomLabel.setX(clampedX);
     }
 
     _createRunEventChoicePanel() {
@@ -2673,11 +2701,12 @@ class LevelScene extends Phaser.Scene {
         const eventRoom = GameState.getRunEventRoomSummary ? GameState.getRunEventRoomSummary() : null;
         const resolved = !eventRoom || !!eventRoom.resolved;
         const style = this._getRunEventRoomVisualConfig(eventRoom);
+        const worldLabelText = eventRoom ? buildRunEventRoomWorldLabel(eventRoom, RUN_EVENT_ROOM_POOL) : '';
         this.runEventRoomShrine.setTint(resolved ? style.resolvedTint : style.activeTint);
         this.runEventRoomShrine.setAlpha(resolved ? 0.55 : 1);
         if (this.runEventRoomLabel) {
-            this.runEventRoomLabel.setText(eventRoom ? buildRunEventRoomWorldLabel(eventRoom, RUN_EVENT_ROOM_POOL) : '');
             this.runEventRoomLabel.setColor(resolved ? style.resolvedLabelColor : style.labelColor);
+            this._refreshRunEventWorldLabelPosition(worldLabelText);
         }
         if (this.runEventRoomIndicator) {
             this.runEventRoomIndicator.setVisible(false);
@@ -2691,6 +2720,7 @@ class LevelScene extends Phaser.Scene {
         this.nearestRunEventRoom = null;
         if (!this.runEventRoomShrine || !this.runEventRoomIndicator) return;
         const eventRoom = GameState.getRunEventRoomSummary ? GameState.getRunEventRoomSummary() : null;
+        const worldLabelText = eventRoom ? buildRunEventRoomWorldLabel(eventRoom, RUN_EVENT_ROOM_POOL) : '';
         const available = !!eventRoom && !eventRoom.resolved;
         const inRange = Phaser.Math.Distance.Between(
             this.player.x,
@@ -2701,6 +2731,7 @@ class LevelScene extends Phaser.Scene {
         this.nearestRunEventRoom = available && inRange ? this.runEventRoomShrine : null;
         this.runEventRoomIndicator.setText(buildRunEventRoomPromptLabel(eventRoom, RUN_EVENT_ROOM_POOL));
         this._refreshRunEventPromptPosition();
+        this._refreshRunEventWorldLabelPosition(worldLabelText);
         this.runEventRoomIndicator.setVisible(available && inRange && !this._runEventChoiceOpen);
     }
 
@@ -3997,6 +4028,51 @@ class BossScene extends Phaser.Scene {
         });
     }
 
+    _getBossHudMeasureNode(styleKey) {
+        if (!this._bossHudMeasureNodes) {
+            this._bossHudMeasureNodes = {};
+        }
+        if (!this._bossHudMeasureNodes[styleKey]) {
+            let style = { fontSize: '11px', fill: '#fff6da' };
+            if (styleKey === 'bossTelegraphMain') {
+                style = { fontSize: '11px', fill: '#fff6da', fontStyle: 'bold' };
+            } else if (styleKey === 'bossTelegraphWindow') {
+                style = { fontSize: '11px', fill: '#ffe1a1', fontStyle: 'bold' };
+            } else if (styleKey === 'bossTelegraphHint') {
+                style = { fontSize: '10px', fill: '#ffdcb3', align: 'center' };
+            }
+            this._bossHudMeasureNodes[styleKey] = this.add.text(-1000, -1000, '', style)
+                .setVisible(false)
+                .setScrollFactor(0)
+                .setDepth(0);
+        }
+        return this._bossHudMeasureNodes[styleKey];
+    }
+
+    _measureBossHudTextWidth(text, styleKey) {
+        const safeText = typeof text === 'string' ? text : '';
+        if (!safeText) return 0;
+        if (!this._bossHudTextWidthCache) {
+            this._bossHudTextWidthCache = new Map();
+        }
+        const cacheKey = `${styleKey}:${safeText}`;
+        if (this._bossHudTextWidthCache.has(cacheKey)) {
+            return this._bossHudTextWidthCache.get(cacheKey);
+        }
+        const measureText = this._getBossHudMeasureNode(styleKey);
+        measureText.setText(safeText);
+        const width = measureText.width;
+        this._bossHudTextWidthCache.set(cacheKey, width);
+        return width;
+    }
+
+    _fitBossHudTextToWidth(text, maxWidth, styleKey) {
+        return clampTextToWidth(text, maxWidth, {
+            measureGlyphWidth: glyph => this._measureBossHudTextWidth(glyph, styleKey),
+            measurementCache: new Map()
+        });
+    }
+
     _clampToArena(sprite) {
         if (!sprite || !sprite.active || !this._arenaRect) return;
         const rect = this._arenaRect;
@@ -4210,6 +4286,9 @@ class BossScene extends Phaser.Scene {
             const telegraphRect = this._bossTelegraphRect;
             const typeKey = this.boss.activeTelegraph ? this.boss.activeTelegraph.typeKey : 'DASH';
             const telegraphColor = BOSS_TELEGRAPH_TYPE_COLORS[typeKey] || 0xF5B58A;
+            const telegraphMainText = telegraphHud.typeLabel
+                ? `${telegraphHud.typeLabel} | ${telegraphHud.attackLabel}`
+                : telegraphHud.attackLabel;
             this.bossTelegraphBarBg.fillStyle(0x261F2D, 0.92);
             this.bossTelegraphBarBg.fillRoundedRect(telegraphRect.x, telegraphRect.y, telegraphRect.w, telegraphRect.h, 4);
             this.bossTelegraphBarFill.fillStyle(telegraphColor, 0.9);
@@ -4220,9 +4299,9 @@ class BossScene extends Phaser.Scene {
                 telegraphRect.h,
                 4
             );
-            this.bossTelegraphText.setText(`${telegraphHud.typeLabel} | ${telegraphHud.attackLabel}`);
-            this.bossTelegraphWindowText.setText(telegraphHud.counterWindowLabel);
-            this.bossTelegraphHintText.setText(telegraphHud.hintLabel || '');
+            this.bossTelegraphText.setText(this._fitBossHudTextToWidth(telegraphMainText, telegraphRect.w - 120, 'bossTelegraphMain'));
+            this.bossTelegraphWindowText.setText(this._fitBossHudTextToWidth(telegraphHud.counterWindowLabel, 112, 'bossTelegraphWindow'));
+            this.bossTelegraphHintText.setText(this._fitBossHudTextToWidth(telegraphHud.hintLabel || '', telegraphRect.w, 'bossTelegraphHint'));
         } else {
             this.bossTelegraphText.setText('');
             this.bossTelegraphWindowText.setText('');

@@ -542,8 +542,70 @@
         return Math.min(Math.max(safeAnchorX, minX), maxX);
     }
 
+    function getViewportCenteredTextClampX(anchorX, textWidth, viewportWidth, padding, viewportLeft) {
+        const safePadding = clampInt(padding, 0, Number.MAX_SAFE_INTEGER, 10);
+        const safeViewportLeft = Number.isFinite(viewportLeft) ? viewportLeft : 0;
+        const safeTextWidth = Number.isFinite(textWidth) && textWidth > 0 ? textWidth : 0;
+        const safeHalfWidth = safeTextWidth / 2;
+        const safeViewportWidth = Number.isFinite(viewportWidth) && viewportWidth > 0
+            ? viewportWidth
+            : (safePadding * 2) + safeTextWidth;
+        const safeAnchorX = Number.isFinite(anchorX)
+            ? anchorX
+            : (safeViewportLeft + safePadding + safeHalfWidth);
+        const minX = safeViewportLeft + safePadding + safeHalfWidth;
+        const maxX = Math.max(minX, safeViewportLeft + safeViewportWidth - safePadding - safeHalfWidth);
+        return Math.min(Math.max(safeAnchorX, minX), maxX);
+    }
+
     function getInventoryTooltipClampX(anchorX, tooltipWidth, viewportWidth, padding) {
         return getViewportTextClampX(anchorX, tooltipWidth, viewportWidth, padding, 0);
+    }
+
+    function clampTextToWidth(text, maxWidth, options) {
+        if (typeof text !== 'string') return '';
+        const safeText = text.trim();
+        if (!safeText) return '';
+        const safeMaxWidth = Number.isFinite(maxWidth) ? Math.max(0, maxWidth) : 0;
+        if (safeMaxWidth <= 0) return '';
+        const measureGlyphWidth = options && typeof options.measureGlyphWidth === 'function'
+            ? options.measureGlyphWidth
+            : null;
+        const measurementCache = options && options.measurementCache instanceof Map
+            ? options.measurementCache
+            : null;
+        const ellipsis = options && typeof options.ellipsis === 'string' && options.ellipsis
+            ? options.ellipsis
+            : '…';
+        const glyphs = Array.from(safeText);
+        const getGlyphWidth = (glyph) => (
+            measureGlyphWidth
+                ? getMeasuredQuickSlotNoticeGlyphWidth(glyph, measureGlyphWidth, measurementCache)
+                : getQuickSlotNoticeGlyphWidth(glyph)
+        );
+        const totalWidth = glyphs.reduce((sum, glyph) => sum + getGlyphWidth(glyph), 0);
+        if (totalWidth <= safeMaxWidth) {
+            return safeText;
+        }
+        const ellipsisWidth = Array.from(ellipsis).reduce((sum, glyph) => sum + getGlyphWidth(glyph), 0);
+        if (ellipsisWidth >= safeMaxWidth) {
+            return ellipsis;
+        }
+        const availableWidth = safeMaxWidth - ellipsisWidth;
+        let keptWidth = 0;
+        const keptGlyphs = [];
+        for (const glyph of glyphs) {
+            const glyphWidth = getGlyphWidth(glyph);
+            if ((keptWidth + glyphWidth) > availableWidth) {
+                break;
+            }
+            keptGlyphs.push(glyph);
+            keptWidth += glyphWidth;
+        }
+        if (keptGlyphs.length === 0) {
+            return ellipsis;
+        }
+        return `${keptGlyphs.join('')}${ellipsis}`;
     }
 
     function getQuickSlotAutoAssignIndex(quickSlots) {
@@ -1761,7 +1823,9 @@
         buildQuickSlotItemLabel,
         buildQuickSlotAutoAssignNotice,
         getViewportTextClampX,
+        getViewportCenteredTextClampX,
         getInventoryTooltipClampX,
+        clampTextToWidth,
         getQuickSlotAutoAssignIndex,
         normalizeSaveData,
         serializeSaveData,

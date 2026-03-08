@@ -44,7 +44,9 @@ const {
     buildQuickSlotItemLabel,
     buildQuickSlotAutoAssignNotice,
     getViewportTextClampX,
+    getViewportCenteredTextClampX,
     getInventoryTooltipClampX,
+    clampTextToWidth,
     getQuickSlotAutoAssignIndex,
     resolveKeyboardAimState,
     resolveConsumableUse,
@@ -1805,6 +1807,7 @@ function testKeyboardHudQolHooks() {
 
 function testInventoryTooltipClampXHelper() {
     assert.equal(typeof getViewportTextClampX, 'function', 'generic viewport text clamp helper should be exported');
+    assert.equal(typeof getViewportCenteredTextClampX, 'function', 'centered viewport text clamp helper should be exported');
     assert.equal(typeof getInventoryTooltipClampX, 'function', 'inventory tooltip clamp helper should be exported');
     assert.equal(
         getViewportTextClampX(120, 80, 1024),
@@ -1820,6 +1823,26 @@ function testInventoryTooltipClampXHelper() {
         getViewportTextClampX(1990, 120, 1024, 10, 1024),
         1918,
         'generic clamp should support world-space viewport offsets'
+    );
+    assert.equal(
+        getViewportCenteredTextClampX(120, 80, 1024),
+        120,
+        'centered clamp should keep anchors that already fit within the viewport'
+    );
+    assert.equal(
+        getViewportCenteredTextClampX(40, 180, 1024),
+        100,
+        'centered clamp should shift long centered labels right when their left half would leave the viewport'
+    );
+    assert.equal(
+        getViewportCenteredTextClampX(980, 180, 1024),
+        924,
+        'centered clamp should shift long centered labels left when their right half would leave the viewport'
+    );
+    assert.equal(
+        getViewportCenteredTextClampX(1990, 120, 1024, 10, 1024),
+        1978,
+        'centered clamp should respect viewport offsets for world-space centered labels'
     );
     assert.equal(
         getInventoryTooltipClampX(120, 80, 1024),
@@ -1838,6 +1861,38 @@ function testInventoryTooltipClampXHelper() {
     );
 }
 
+function testMeasuredTextClampHelper() {
+    assert.equal(typeof clampTextToWidth, 'function', 'measured text clamp helper should be exported');
+    const glyphWidths = {
+        '类': 10,
+        '型': 10,
+        ' ': 4,
+        '特': 10,
+        '殊': 10,
+        '|': 4,
+        '幻': 10,
+        '影': 10,
+        '风': 10,
+        '暴': 10,
+        '…': 8,
+        'H': 6,
+        'P': 6,
+        '恢': 10,
+        '复': 10
+    };
+    const measureGlyphWidth = (glyph) => glyphWidths[glyph] || 10;
+    assert.equal(
+        clampTextToWidth('HP恢复', 40, { measureGlyphWidth }),
+        'HP恢复',
+        'measured clamp should keep text that already fits'
+    );
+    assert.equal(
+        clampTextToWidth('类型 特殊 | 幻影风暴', 70, { measureGlyphWidth }),
+        '类型 特殊 | …',
+        'measured clamp should ellipsize long strings against measured glyph widths'
+    );
+}
+
 function testRunEventPromptMeasurementHooks() {
     const source = loadGameSource();
     assert.match(
@@ -1849,6 +1904,39 @@ function testRunEventPromptMeasurementHooks() {
         source,
         /getViewportTextClampX\(this\.runEventRoomShrine\.x,\s*promptWidth,\s*this\.cameras\.main\.width,\s*12,\s*this\.cameras\.main\.worldView\.x\)/,
         'run-event prompt placement should clamp against the active camera viewport using the shared helper'
+    );
+}
+
+function testRunEventWorldLabelMeasurementHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /_fitLevelTextToWidth\(text,\s*maxWidth,\s*'runEventWorldLabel'\)/,
+        'LevelScene should fit run-event world labels through a dedicated measured text helper'
+    );
+    assert.match(
+        source,
+        /getViewportCenteredTextClampX\(this\.runEventRoomShrine\.x,\s*labelWidth,\s*this\.cameras\.main\.width,\s*12,\s*this\.cameras\.main\.worldView\.x\)/,
+        'run-event world labels should clamp centered anchors against the active camera viewport'
+    );
+}
+
+function testBossHudMeasurementHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /_fitBossHudTextToWidth\(text,\s*maxWidth,\s*styleKey\)/,
+        'BossScene should fit telegraph strings through a dedicated Boss HUD measurement helper'
+    );
+    assert.match(
+        source,
+        /const telegraphMainText = telegraphHud\.typeLabel[\s\S]*?this\.bossTelegraphText\.setText\(this\._fitBossHudTextToWidth\(telegraphMainText,\s*telegraphRect\.w - 120,\s*'bossTelegraphMain'\)\);/,
+        'Boss telegraph title should be measured against the available warning-bar width'
+    );
+    assert.match(
+        source,
+        /this\.bossTelegraphHintText\.setText\(this\._fitBossHudTextToWidth\(telegraphHud\.hintLabel \|\| '',\s*telegraphRect\.w,\s*'bossTelegraphHint'\)\);/,
+        'Boss telegraph hint should be measured against the full hint lane width'
     );
 }
 
@@ -2192,7 +2280,9 @@ function main() {
     runTest('quick-slot auto-assign helper', testQuickSlotAutoAssignIndex);
     runTest('quick-slot auto-assign notice', testQuickSlotAutoAssignNotice);
     runTest('inventory tooltip clamp helper', testInventoryTooltipClampXHelper);
+    runTest('measured text clamp helper', testMeasuredTextClampHelper);
     runTest('run-event prompt measurement hooks', testRunEventPromptMeasurementHooks);
+    runTest('run-event world-label measurement hooks', testRunEventWorldLabelMeasurementHooks);
     runTest('combat action HUD summary helper', testCombatActionHudSummary);
     runTest('quick-slot item label helper', testQuickSlotItemLabel);
     runTest('keyboard HUD QoL hooks', testKeyboardHudQolHooks);
@@ -2202,6 +2292,7 @@ function main() {
     runTest('boss HUD layout and victory guards', testBossHudLayoutAndVictoryGuards);
     runTest('boss victory combat cleanup', testBossVictoryCombatCleanup);
     runTest('pause weapon info layout guards', testPauseWeaponInfoLayoutGuards);
+    runTest('boss HUD measurement hooks', testBossHudMeasurementHooks);
     runTest('boss victory always transitions', testBossVictoryAlwaysTransitions);
     runTest('boss victory fail-safe independence', testBossVictoryFailSafeIndependence);
     runTest('boss defeat outer finally guard', testBossDefeatOuterFinallyGuard);
