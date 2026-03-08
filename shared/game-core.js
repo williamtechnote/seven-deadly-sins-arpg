@@ -424,6 +424,47 @@
         return `普攻 U: ${formatCooldownSecondsLabel(safe.attackCooldownMs)}  特攻 O: ${formatCooldownSecondsLabel(safe.specialCooldownMs)}  闪避: Space`;
     }
 
+    function normalizeRunChallengeSidebarLabel(label, compact) {
+        if (typeof label !== 'string') return '';
+        const safeLabel = label.trim();
+        if (!safeLabel) return '';
+        if (!compact) return safeLabel;
+        return safeLabel
+            .replace(/^挑战[:：]\s*/u, '')
+            .replace(/^本局/u, '')
+            .trim();
+    }
+
+    function buildRunChallengeSidebarLines(challenge, options) {
+        const safeChallenge = challenge && typeof challenge === 'object' ? challenge : {};
+        const compact = !!(options && options.compact);
+        const target = clampInt(safeChallenge.target, 0, Number.MAX_SAFE_INTEGER, 0);
+        const progress = clampInt(safeChallenge.progress, 0, target || Number.MAX_SAFE_INTEGER, 0);
+        const rewardGold = clampInt(safeChallenge.rewardGold, 0, Number.MAX_SAFE_INTEGER, 0);
+        const completed = !!safeChallenge.completed;
+        const normalizedLabel = normalizeRunChallengeSidebarLabel(safeChallenge.label, compact) || '未知挑战';
+        const progressLabel = `${Math.min(progress, target)}/${target || 0}`;
+
+        if (compact) {
+            if (completed) {
+                return [
+                    '本局挑战：已完成',
+                    rewardGold > 0 ? `${normalizedLabel} · +${rewardGold}金` : normalizedLabel
+                ];
+            }
+            return [
+                `本局挑战 ${progressLabel}`,
+                normalizedLabel
+            ];
+        }
+
+        return [
+            completed ? '本局挑战：已完成' : '本局挑战',
+            safeChallenge.label || normalizedLabel,
+            `进度:${progressLabel}  奖励:+${rewardGold} 金币`
+        ];
+    }
+
     const QUICK_SLOT_SHORT_LABELS = {
         hpPotion: 'HP',
         staminaPotion: 'ST',
@@ -673,6 +714,60 @@
             currentY += height + gapAfter;
         });
         return positions;
+    }
+
+    function buildPriorityTextStackLayout(blocks, startY, options) {
+        const safeBlocks = Array.isArray(blocks)
+            ? blocks.map((block) => ({ ...(block || {}) }))
+            : [];
+        const safeStartY = Number.isFinite(startY) ? startY : 0;
+        const safeMaxBottom = options && Number.isFinite(options.maxBottom)
+            ? options.maxBottom
+            : Number.POSITIVE_INFINITY;
+        const hiddenKeys = [];
+
+        const computeBottom = (positions) => {
+            let bottom = safeStartY;
+            safeBlocks.forEach((block) => {
+                if (!block || typeof block.key !== 'string' || !block.key || block.active === false) return;
+                const height = Number.isFinite(block.height) ? Math.max(0, block.height) : 0;
+                const top = Number.isFinite(positions[block.key]) ? positions[block.key] : safeStartY;
+                bottom = Math.max(bottom, top + height);
+            });
+            return bottom;
+        };
+
+        let positions = buildVerticalTextStackLayout(safeBlocks, safeStartY);
+        let bottom = computeBottom(positions);
+        const droppableBlocks = safeBlocks
+            .filter((block) => block && block.active !== false && block.droppable && typeof block.key === 'string' && block.key)
+            .sort((a, b) => {
+                const aPriority = Number.isFinite(a.collapsePriority) ? a.collapsePriority : 0;
+                const bPriority = Number.isFinite(b.collapsePriority) ? b.collapsePriority : 0;
+                return bPriority - aPriority;
+            });
+
+        while (bottom > safeMaxBottom && droppableBlocks.length > 0) {
+            const droppedBlock = droppableBlocks.shift();
+            if (!droppedBlock) break;
+            droppedBlock.active = false;
+            hiddenKeys.push(droppedBlock.key);
+            positions = buildVerticalTextStackLayout(safeBlocks, safeStartY);
+            bottom = computeBottom(positions);
+        }
+
+        const visibility = {};
+        safeBlocks.forEach((block) => {
+            if (!block || typeof block.key !== 'string' || !block.key) return;
+            visibility[block.key] = block.active !== false;
+        });
+
+        return {
+            positions,
+            visibility,
+            hiddenKeys,
+            bottom
+        };
     }
 
     function getQuickSlotAutoAssignIndex(quickSlots) {
@@ -1887,6 +1982,7 @@
         resolveKeyboardAimState,
         formatAimDirectionLabel,
         buildCombatActionHudSummary,
+        buildRunChallengeSidebarLines,
         buildQuickSlotItemLabel,
         buildQuickSlotAutoAssignNotice,
         getViewportTextClampX,
@@ -1896,6 +1992,7 @@
         clampTextLinesToWidth,
         clampTextLinesToWidthAndCount,
         buildVerticalTextStackLayout,
+        buildPriorityTextStackLayout,
         getQuickSlotAutoAssignIndex,
         normalizeSaveData,
         serializeSaveData,

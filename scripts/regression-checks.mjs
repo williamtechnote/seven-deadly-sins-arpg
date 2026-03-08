@@ -36,6 +36,7 @@ const {
     buildRunEventRoomEffects,
     buildRunEventRoomHudSummary,
     buildRunEventRoomHudLines,
+    buildRunChallengeSidebarLines,
     buildRunEventRoomWorldLabelRouteLine,
     buildRunEventRoomWorldLabel,
     buildRunEventRoomPromptLabel,
@@ -50,6 +51,7 @@ const {
     clampTextLinesToWidth,
     clampTextLinesToWidthAndCount,
     buildVerticalTextStackLayout,
+    buildPriorityTextStackLayout,
     getQuickSlotAutoAssignIndex,
     resolveKeyboardAimState,
     resolveConsumableUse,
@@ -1912,6 +1914,43 @@ function testMeasuredTextClampHelper() {
     );
 }
 
+function testRunChallengeSidebarLines() {
+    assert.equal(typeof buildRunChallengeSidebarLines, 'function', 'run challenge sidebar helper should be exported');
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, { compact: false }),
+        ['本局挑战', '击败 30 个敌人', '进度:12/30  奖励:+90 金币'],
+        'full challenge sidebar helper should preserve the existing three-line summary'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, { compact: true }),
+        ['本局挑战 12/30', '击败 30 个敌人'],
+        'compact challenge sidebar helper should collapse active challenges into two lines'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 90,
+            completed: true
+        }, { compact: true }),
+        ['本局挑战：已完成', '击败 30 个敌人 · +90金'],
+        'compact challenge sidebar helper should preserve completion state and reward once the challenge is done'
+    );
+}
+
 function testRunEventPromptMeasurementHooks() {
     const source = loadGameSource();
     assert.match(
@@ -1983,6 +2022,11 @@ function testSidebarMeasurementHooks() {
     );
     assert.match(
         source,
+        /_isCompactHudSidebarViewport\(\)\s*{/,
+        'UIScene should centralize compact sidebar viewport detection'
+    );
+    assert.match(
+        source,
         /_getHudSidebarLineCap\(sectionKey\)\s*{/,
         'UIScene should expose a dedicated narrow-viewport line-cap policy helper for sidebar sections'
     );
@@ -2013,8 +2057,38 @@ function testSidebarMeasurementHooks() {
     );
     assert.match(
         source,
-        /this\.challengeText\.setText\(this\._fitHudSidebarTextLines\(\[\s*head,\s*challenge\.label,\s*`进度:\$\{progress\}\s\s\$\{reward\}`\s*],\s*this\._getHudSidebarMaxWidth\(\),\s*'challengeSidebar'\)\.join\('\\n'\)\);/,
-        'challenge sidebar should route all lines through the measured sidebar fitting helper'
+        /buildRunChallengeSidebarLines\(challenge,\s*{\s*compact:\s*this\._isCompactHudSidebarViewport\(\)\s*}\)/,
+        'challenge sidebar should build its lines through a shared compact-capable helper'
+    );
+    assert.match(
+        source,
+        /this\.challengeText\.setText\(this\._fitHudSidebarTextBlock\(challengeLines,\s*this\._getHudSidebarMaxWidth\(\),\s*'challengeSidebar',\s*'challengeSidebar'\)\.join\('\\n'\)\);/,
+        'challenge sidebar should route helper-generated lines through the measured sidebar block fitter'
+    );
+    assert.match(
+        source,
+        /buildPriorityTextStackLayout\(/,
+        'fixed sidebar layout should route through a priority-aware stack helper when overflow handling is needed'
+    );
+    assert.match(
+        source,
+        /eventRoomText:\s*showSidePanel\s*&&\s*!!sidebarLayout\.visibility\.eventRoomText/,
+        'event-room sidebar visibility should honor the overflow-priority visibility map'
+    );
+    assert.match(
+        source,
+        /runModifierText:\s*showSidePanel\s*&&\s*!!sidebarLayout\.visibility\.runModifierText/,
+        'run-modifier sidebar visibility should honor the overflow-priority visibility map'
+    );
+    assert.match(
+        source,
+        /const sidebarLayout = this\._layoutHudSidebarBlocks\(\);/,
+        'HUD layout application should use the sidebar layout result to drive final visibility'
+    );
+    assert.match(
+        source,
+        /maxBottom:\s*this\._getHudSidebarMaxBottom\(\)/,
+        'priority-aware sidebar layout should clamp against a dedicated safe bottom threshold'
     );
     assert.match(
         source,
@@ -2043,8 +2117,8 @@ function testSidebarMeasurementHooks() {
     );
     assert.match(
         source,
-        /const blockLayout = buildVerticalTextStackLayout\(\[/,
-        'fixed sidebar vertical layout should be derived from the shared stack-layout helper'
+        /const sidebarLayout = buildPriorityTextStackLayout\(\[/,
+        'fixed sidebar vertical layout should be derived from the shared priority-aware stack helper'
     );
 }
 
@@ -2130,6 +2204,16 @@ function testReadmeKeyboardInventoryLoop() {
         /若视口较窄，则本局词缀与事件房摘要会额外收敛为有限行数，并在最后一行补省略号/,
         'README should document the narrow-viewport line-cap and ellipsis policy for long sidebar blocks'
     );
+    assert.match(
+        source,
+        /若视口较窄，本局挑战摘要会压缩为 2 行紧凑版/,
+        'README should document the compact two-line challenge summary for smaller viewports'
+    );
+    assert.match(
+        source,
+        /若侧栏总高度仍超出安全范围，则会优先隐藏事件房摘要，其次再隐藏本局词缀正文/,
+        'README should document the overflow-priority hiding order for the fixed sidebar'
+    );
 }
 
 function testHelpOverlayQuickSlotLoop() {
@@ -2189,6 +2273,16 @@ function testHelpOverlayQuickSlotLoop() {
         /若视口较窄，则本局词缀与事件房摘要会额外收敛为有限行数，并在最后一行补省略号/,
         'help overlay should document the narrow-viewport line-cap and ellipsis policy for long sidebar blocks'
     );
+    assert.match(
+        source,
+        /若视口较窄，本局挑战摘要会压缩为 2 行紧凑版/,
+        'help overlay should document the compact two-line challenge summary for smaller viewports'
+    );
+    assert.match(
+        source,
+        /若侧栏总高度仍超出安全范围，则会优先隐藏事件房摘要，其次再隐藏本局词缀正文/,
+        'help overlay should document the overflow-priority hiding order for the fixed sidebar'
+    );
 }
 
 function testVerticalTextStackLayout() {
@@ -2210,6 +2304,44 @@ function testVerticalTextStackLayout() {
             event: 123
         },
         'vertical text stack layout should skip inactive blocks while preserving the next active anchor'
+    );
+}
+
+function testPriorityTextStackLayoutHelper() {
+    assert.equal(typeof buildPriorityTextStackLayout, 'function', 'priority-aware text stack layout helper should be exported');
+    const layout = buildPriorityTextStackLayout([
+        { key: 'areaNameText', height: 22, gapAfter: 4, active: true, droppable: false },
+        { key: 'runModifierTitle', height: 14, gapAfter: 2, active: true, droppable: false },
+        { key: 'runModifierText', height: 39, gapAfter: 12, active: true, droppable: true, collapsePriority: 2 },
+        { key: 'challengeText', height: 26, gapAfter: 12, active: true, droppable: false },
+        { key: 'eventRoomText', height: 39, gapAfter: 0, active: true, droppable: true, collapsePriority: 3 }
+    ], 30, { maxBottom: 124 });
+    assert.deepEqual(
+        layout.positions,
+        {
+            areaNameText: 30,
+            runModifierTitle: 56,
+            runModifierText: 72,
+            challengeText: 72,
+            eventRoomText: 110
+        },
+        'priority-aware stack layout should recompute positions after hiding lower-priority blocks'
+    );
+    assert.deepEqual(
+        layout.visibility,
+        {
+            areaNameText: true,
+            runModifierTitle: true,
+            runModifierText: false,
+            challengeText: true,
+            eventRoomText: false
+        },
+        'priority-aware stack layout should hide lower-priority droppable blocks until the stack fits'
+    );
+    assert.deepEqual(
+        layout.hiddenKeys,
+        ['eventRoomText', 'runModifierText'],
+        'priority-aware stack layout should report the hidden keys in collapse order'
     );
 }
 
@@ -2431,6 +2563,7 @@ function main() {
     runTest('quick-slot auto-assign notice', testQuickSlotAutoAssignNotice);
     runTest('inventory tooltip clamp helper', testInventoryTooltipClampXHelper);
     runTest('measured text clamp helper', testMeasuredTextClampHelper);
+    runTest('run challenge sidebar lines', testRunChallengeSidebarLines);
     runTest('run-event prompt measurement hooks', testRunEventPromptMeasurementHooks);
     runTest('run-event world-label measurement hooks', testRunEventWorldLabelMeasurementHooks);
     runTest('fixed sidebar measurement hooks', testSidebarMeasurementHooks);
@@ -2439,6 +2572,7 @@ function main() {
     runTest('keyboard HUD QoL hooks', testKeyboardHudQolHooks);
     runTest('README keyboard inventory loop', testReadmeKeyboardInventoryLoop);
     runTest('help overlay quick-slot loop', testHelpOverlayQuickSlotLoop);
+    runTest('priority text stack layout helper', testPriorityTextStackLayoutHelper);
     runTest('player death freeze hook', testPlayerDeathFreezeHook);
     runTest('boss HUD layout and victory guards', testBossHudLayoutAndVictoryGuards);
     runTest('boss victory combat cleanup', testBossVictoryCombatCleanup);

@@ -32,6 +32,7 @@ const {
     clampTextLinesToWidth,
     clampTextLinesToWidthAndCount,
     buildVerticalTextStackLayout,
+    buildPriorityTextStackLayout,
     getQuickSlotAutoAssignIndex,
     normalizeSaveData,
     serializeSaveData,
@@ -52,6 +53,7 @@ const {
     buildRunModifierEffects,
     buildRunEventRoomEffects,
     buildRunEventRoomChoicePanelPreview,
+    buildRunChallengeSidebarLines,
     buildRunEventRoomHudLines,
     buildRunEventRoomWorldLabel,
     buildRunEventRoomPromptLabel,
@@ -5384,13 +5386,9 @@ class UIScene extends Phaser.Scene {
         this.hpText.setPosition(pad + 28 + 200 + 8, layout.hpBarY + 4);
         this.stLabel.setPosition(pad, layout.staminaBarY);
         this.staminaText.setPosition(pad + 28 + 200 + 8, layout.staminaBarY + 2);
-        this._layoutHudSidebarBlocks();
         const showSidePanel = !!layout.showSidePanel;
-        this.areaNameText.setVisible(showSidePanel);
-        this.runModifierTitle.setVisible(showSidePanel);
-        this.runModifierText.setVisible(showSidePanel);
-        this.challengeText.setVisible(showSidePanel);
-        this.eventRoomText.setVisible(showSidePanel);
+        const sidebarLayout = this._layoutHudSidebarBlocks();
+        this._applyHudSidebarVisibility(showSidePanel, sidebarLayout);
         this.hpBarBg.clear();
         this.hpBarBg.fillStyle(0x8B0000, 1);
         this.hpBarBg.fillRect(pad + 28, layout.hpBarY, 200, 20);
@@ -5481,7 +5479,7 @@ class UIScene extends Phaser.Scene {
         });
     }
 
-    _getHudSidebarLineCap(sectionKey) {
+    _isCompactHudSidebarViewport() {
         const layout = this._hudLayout || this._buildHudLayout(false);
         const viewportWidth = Number.isFinite(layout.width) && layout.width > 0
             ? layout.width
@@ -5489,8 +5487,12 @@ class UIScene extends Phaser.Scene {
         const viewportHeight = this.cameras && this.cameras.main
             ? this.cameras.main.height
             : 0;
-        const isCompactViewport = viewportWidth <= 1024 || viewportHeight <= 768;
-        if (!isCompactViewport) return 0;
+        return viewportWidth <= 1024 || viewportHeight <= 768;
+    }
+
+    _getHudSidebarLineCap(sectionKey) {
+        if (!this._isCompactHudSidebarViewport()) return 0;
+        if (sectionKey === 'challengeSidebar') return 2;
         if (sectionKey === 'runModifierSidebar') return 2;
         if (sectionKey === 'eventRoomSidebar') return 3;
         return 0;
@@ -5518,6 +5520,29 @@ class UIScene extends Phaser.Scene {
         return Math.max(180, Math.min(320, width - 96));
     }
 
+    _getHudSidebarMaxBottom() {
+        const layout = this._hudLayout || this._buildHudLayout(false);
+        const viewportHeight = this.cameras && this.cameras.main
+            ? this.cameras.main.height
+            : 0;
+        return Math.max(layout.sidePanelStartY + 120, viewportHeight - layout.pad - 96);
+    }
+
+    _applyHudSidebarVisibility(showSidePanel, sidebarLayout) {
+        const visibility = {
+            areaNameText: showSidePanel && !!sidebarLayout.visibility.areaNameText,
+            runModifierTitle: showSidePanel && !!sidebarLayout.visibility.runModifierTitle,
+            runModifierText: showSidePanel && !!sidebarLayout.visibility.runModifierText,
+            challengeText: showSidePanel && !!sidebarLayout.visibility.challengeText,
+            eventRoomText: showSidePanel && !!sidebarLayout.visibility.eventRoomText
+        };
+        this.areaNameText.setVisible(visibility.areaNameText);
+        this.runModifierTitle.setVisible(visibility.runModifierTitle);
+        this.runModifierText.setVisible(visibility.runModifierText);
+        this.challengeText.setVisible(visibility.challengeText);
+        this.eventRoomText.setVisible(visibility.eventRoomText);
+    }
+
     _layoutHudSidebarBlocks() {
         const layout = this._hudLayout || this._buildHudLayout(false);
         const anchorX = layout.width - layout.pad;
@@ -5525,43 +5550,53 @@ class UIScene extends Phaser.Scene {
         const hasModifierLines = !!(this.runModifierText && this.runModifierText.text);
         const hasChallenge = !!(this.challengeText && this.challengeText.text);
         const hasEventRoom = !!(this.eventRoomText && this.eventRoomText.text);
-        const blockLayout = buildVerticalTextStackLayout([
+        const sidebarLayout = buildPriorityTextStackLayout([
             {
                 key: 'areaNameText',
                 height: hasAreaName ? this.areaNameText.height : 0,
                 gapAfter: 4,
-                active: hasAreaName
+                active: hasAreaName,
+                droppable: false
             },
             {
                 key: 'runModifierTitle',
                 height: this.runModifierTitle.height,
                 gapAfter: 2,
-                active: true
+                active: true,
+                droppable: false
             },
             {
                 key: 'runModifierText',
                 height: hasModifierLines ? this.runModifierText.height : 0,
                 gapAfter: 12,
-                active: hasModifierLines
+                active: hasModifierLines,
+                droppable: true,
+                collapsePriority: 2
             },
             {
                 key: 'challengeText',
                 height: hasChallenge ? this.challengeText.height : 0,
                 gapAfter: 12,
-                active: hasChallenge
+                active: hasChallenge,
+                droppable: false
             },
             {
                 key: 'eventRoomText',
                 height: hasEventRoom ? this.eventRoomText.height : 0,
                 gapAfter: 0,
-                active: hasEventRoom
+                active: hasEventRoom,
+                droppable: true,
+                collapsePriority: 3
             }
-        ], layout.sidePanelStartY);
-        this.areaNameText.setPosition(anchorX, blockLayout.areaNameText || layout.sidePanelStartY);
-        this.runModifierTitle.setPosition(anchorX, blockLayout.runModifierTitle || layout.sidePanelStartY);
-        this.runModifierText.setPosition(anchorX, blockLayout.runModifierText || blockLayout.runModifierTitle || layout.sidePanelStartY);
-        this.challengeText.setPosition(anchorX, blockLayout.challengeText || blockLayout.runModifierText || blockLayout.runModifierTitle || layout.sidePanelStartY);
-        this.eventRoomText.setPosition(anchorX, blockLayout.eventRoomText || blockLayout.challengeText || blockLayout.runModifierText || blockLayout.runModifierTitle || layout.sidePanelStartY);
+        ], layout.sidePanelStartY, {
+            maxBottom: this._getHudSidebarMaxBottom()
+        });
+        this.areaNameText.setPosition(anchorX, sidebarLayout.positions.areaNameText || layout.sidePanelStartY);
+        this.runModifierTitle.setPosition(anchorX, sidebarLayout.positions.runModifierTitle || layout.sidePanelStartY);
+        this.runModifierText.setPosition(anchorX, sidebarLayout.positions.runModifierText || sidebarLayout.positions.runModifierTitle || layout.sidePanelStartY);
+        this.challengeText.setPosition(anchorX, sidebarLayout.positions.challengeText || sidebarLayout.positions.runModifierText || sidebarLayout.positions.runModifierTitle || layout.sidePanelStartY);
+        this.eventRoomText.setPosition(anchorX, sidebarLayout.positions.eventRoomText || sidebarLayout.positions.challengeText || sidebarLayout.positions.runModifierText || sidebarLayout.positions.runModifierTitle || layout.sidePanelStartY);
+        return sidebarLayout;
     }
 
     setBossHudLayout(enabled) {
@@ -5650,14 +5685,8 @@ class UIScene extends Phaser.Scene {
 
         const challenge = GameState.getRunChallengeSummary ? GameState.getRunChallengeSummary() : null;
         if (challenge) {
-            const head = challenge.completed ? '本局挑战：已完成' : '本局挑战';
-            const progress = `${Math.min(challenge.progress, challenge.target)}/${challenge.target}`;
-            const reward = `奖励:+${challenge.rewardGold} 金币`;
-            this.challengeText.setText(this._fitHudSidebarTextLines([
-                head,
-                challenge.label,
-                `进度:${progress}  ${reward}`
-            ], this._getHudSidebarMaxWidth(), 'challengeSidebar').join('\n'));
+            const challengeLines = buildRunChallengeSidebarLines(challenge, { compact: this._isCompactHudSidebarViewport() });
+            this.challengeText.setText(this._fitHudSidebarTextBlock(challengeLines, this._getHudSidebarMaxWidth(), 'challengeSidebar', 'challengeSidebar').join('\n'));
             this.challengeText.setStyle({ fill: challenge.completed ? '#9effd6' : '#7CFFB2' });
         } else {
             this.challengeText.setText('');
@@ -5671,7 +5700,8 @@ class UIScene extends Phaser.Scene {
         } else {
             this.eventRoomText.setText('');
         }
-        this._layoutHudSidebarBlocks();
+        const sidebarLayout = this._layoutHudSidebarBlocks();
+        this._applyHudSidebarVisibility(!!layout.showSidePanel, sidebarLayout);
 
         const statusSummary = player.getStatusHudSummary
             ? player.getStatusHudSummary()
@@ -5879,7 +5909,7 @@ class HelpScene extends Phaser.Scene {
             { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位，并提示“快捷栏N：+<短名>”；若临时拿不到显式短名则会沿用道具名生成“快捷栏N：+生命”这类短句；提示现在会优先按 Phaser 文本实际宽度钳制，因此“快捷栏N：+HP恢复”这类混排会尽量保留更多有效信息；若当前环境拿不到真实测量结果则回退为宽度权重估算；若道具名词干过长则会截成“快捷栏N：+圣疗秘…”这类省略短句；快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”；若拿不到显式短名则改用“快捷栏1：狂战→净化”这类道具名短句；若这些道具名过长则同样会截成“快捷栏1：古代狂…→神圣净…”这类省略短句', '背包悬停说明也会按实际文本宽度贴边，因此靠近屏幕右缘时不会继续沿用固定 200px 估算', '净化药剂/狂战油可在铁匠制作'] },
             { title: '状态', items: ['灼烧/流血会持续掉血', '减速会降低移动速度'] },
             { title: '本局词缀', items: runModifierLines },
-            { title: '交互/界面', items: ['F — NPC / 事件房交互', '事件房祭坛靠近提示也会按 Phaser 文本实际宽度贴在当前视口内，因此贴近屏幕边缘时不会被裁出画面', '右侧固定侧栏里的章节标题、区域名、本局词缀、本局挑战与事件房摘要会优先按 Phaser 文本实际宽度钳制，并按实际文本高度动态纵向排布，避免长标题 / 长路线结算继续互相顶出 HUD', '若视口较窄，则本局词缀与事件房摘要会额外收敛为有限行数，并在最后一行补省略号', 'Tab — 背包', 'Esc — 暂停', 'H — 操作指引'] }
+            { title: '交互/界面', items: ['F — NPC / 事件房交互', '事件房祭坛靠近提示也会按 Phaser 文本实际宽度贴在当前视口内，因此贴近屏幕边缘时不会被裁出画面', '右侧固定侧栏里的章节标题、区域名、本局词缀、本局挑战与事件房摘要会优先按 Phaser 文本实际宽度钳制，并按实际文本高度动态纵向排布，避免长标题 / 长路线结算继续互相顶出 HUD', '若视口较窄，则本局词缀与事件房摘要会额外收敛为有限行数，并在最后一行补省略号', '若视口较窄，本局挑战摘要会压缩为 2 行紧凑版', '若侧栏总高度仍超出安全范围，则会优先隐藏事件房摘要，其次再隐藏本局词缀正文', 'Tab — 背包', 'Esc — 暂停', 'H — 操作指引'] }
         ];
 
         let curY = py - panelH / 2 + 72;
