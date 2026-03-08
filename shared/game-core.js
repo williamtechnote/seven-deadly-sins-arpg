@@ -529,15 +529,21 @@
         return `${shortLabel} x${safeCount}`;
     }
 
-    function getInventoryTooltipClampX(anchorX, tooltipWidth, viewportWidth, padding) {
+    function getViewportTextClampX(anchorX, textWidth, viewportWidth, padding, viewportLeft) {
         const safePadding = clampInt(padding, 0, Number.MAX_SAFE_INTEGER, 10);
-        const safeAnchorX = Number.isFinite(anchorX) ? anchorX : safePadding;
-        const safeTooltipWidth = Number.isFinite(tooltipWidth) && tooltipWidth > 0 ? tooltipWidth : 0;
+        const safeViewportLeft = Number.isFinite(viewportLeft) ? viewportLeft : 0;
+        const safeAnchorX = Number.isFinite(anchorX) ? anchorX : (safeViewportLeft + safePadding);
+        const safeTextWidth = Number.isFinite(textWidth) && textWidth > 0 ? textWidth : 0;
         const safeViewportWidth = Number.isFinite(viewportWidth) && viewportWidth > 0
             ? viewportWidth
-            : (safePadding * 2) + safeTooltipWidth;
-        const maxX = Math.max(safePadding, safeViewportWidth - safeTooltipWidth - safePadding);
-        return Math.min(Math.max(safeAnchorX, safePadding), maxX);
+            : (safePadding * 2) + safeTextWidth;
+        const minX = safeViewportLeft + safePadding;
+        const maxX = Math.max(minX, safeViewportLeft + safeViewportWidth - safeTextWidth - safePadding);
+        return Math.min(Math.max(safeAnchorX, minX), maxX);
+    }
+
+    function getInventoryTooltipClampX(anchorX, tooltipWidth, viewportWidth, padding) {
+        return getViewportTextClampX(anchorX, tooltipWidth, viewportWidth, padding, 0);
     }
 
     function getQuickSlotAutoAssignIndex(quickSlots) {
@@ -1754,6 +1760,7 @@
         buildCombatActionHudSummary,
         buildQuickSlotItemLabel,
         buildQuickSlotAutoAssignNotice,
+        getViewportTextClampX,
         getInventoryTooltipClampX,
         getQuickSlotAutoAssignIndex,
         normalizeSaveData,

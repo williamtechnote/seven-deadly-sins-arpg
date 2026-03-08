@@ -25,6 +25,7 @@ const {
     buildCombatActionHudSummary,
     buildQuickSlotItemLabel,
     buildQuickSlotAutoAssignNotice,
+    getViewportTextClampX,
     getInventoryTooltipClampX,
     getQuickSlotAutoAssignIndex,
     normalizeSaveData,
@@ -2322,6 +2323,8 @@ class LevelScene extends Phaser.Scene {
         this.nearestRunEventRoom = null;
         this._runEventChoiceOpen = false;
         this._runEventChoiceOptions = [];
+        this._levelTextWidthCache = new Map();
+        this._levelTextMeasureNodes = {};
         this._createRunEventEncounter(rooms[1]);
 
         // Input
@@ -2572,6 +2575,51 @@ class LevelScene extends Phaser.Scene {
         this._refreshRunEventEncounterState();
     }
 
+    _getLevelTextMeasureNode(styleKey) {
+        if (!this._levelTextMeasureNodes) {
+            this._levelTextMeasureNodes = {};
+        }
+        if (!this._levelTextMeasureNodes[styleKey]) {
+            const style = styleKey === 'runEventPrompt'
+                ? { fontSize: '12px', fill: '#FFD27A' }
+                : { fontSize: '14px', fill: '#ffffff' };
+            this._levelTextMeasureNodes[styleKey] = this.add.text(-1000, -1000, '', style)
+                .setVisible(false)
+                .setDepth(0);
+        }
+        return this._levelTextMeasureNodes[styleKey];
+    }
+
+    _measureLevelTextWidth(text, styleKey) {
+        const safeText = typeof text === 'string' ? text : '';
+        if (!safeText) return 0;
+        if (!this._levelTextWidthCache) {
+            this._levelTextWidthCache = new Map();
+        }
+        const cacheKey = `${styleKey}:${safeText}`;
+        if (this._levelTextWidthCache.has(cacheKey)) {
+            return this._levelTextWidthCache.get(cacheKey);
+        }
+        const measureText = this._getLevelTextMeasureNode(styleKey);
+        measureText.setText(safeText);
+        const width = measureText.width;
+        this._levelTextWidthCache.set(cacheKey, width);
+        return width;
+    }
+
+    _refreshRunEventPromptPosition() {
+        if (!this.runEventRoomShrine || !this.runEventRoomIndicator) return;
+        this.runEventRoomIndicator.setY(this.runEventRoomShrine.y - 64);
+        const text = this.runEventRoomIndicator.text || '';
+        if (!text) {
+            this.runEventRoomIndicator.setX(this.runEventRoomShrine.x);
+            return;
+        }
+        const promptWidth = this._measureLevelTextWidth(text, 'runEventPrompt');
+        const clampedX = getViewportTextClampX(this.runEventRoomShrine.x, promptWidth, this.cameras.main.width, 12, this.cameras.main.worldView.x);
+        this.runEventRoomIndicator.setX(clampedX);
+    }
+
     _createRunEventChoicePanel() {
         const cam = this.cameras.main;
         const cx = cam.width / 2;
@@ -2635,6 +2683,7 @@ class LevelScene extends Phaser.Scene {
             this.runEventRoomIndicator.setVisible(false);
             this.runEventRoomIndicator.setColor(style.accentColor);
             this.runEventRoomIndicator.setText(buildRunEventRoomPromptLabel(eventRoom, RUN_EVENT_ROOM_POOL));
+            this._refreshRunEventPromptPosition();
         }
     }
 
@@ -2651,6 +2700,7 @@ class LevelScene extends Phaser.Scene {
         ) <= 92;
         this.nearestRunEventRoom = available && inRange ? this.runEventRoomShrine : null;
         this.runEventRoomIndicator.setText(buildRunEventRoomPromptLabel(eventRoom, RUN_EVENT_ROOM_POOL));
+        this._refreshRunEventPromptPosition();
         this.runEventRoomIndicator.setVisible(available && inRange && !this._runEventChoiceOpen);
     }
 
@@ -5580,7 +5630,7 @@ class HelpScene extends Phaser.Scene {
             { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位，并提示“快捷栏N：+<短名>”；若临时拿不到显式短名则会沿用道具名生成“快捷栏N：+生命”这类短句；提示现在会优先按 Phaser 文本实际宽度钳制，因此“快捷栏N：+HP恢复”这类混排会尽量保留更多有效信息；若当前环境拿不到真实测量结果则回退为宽度权重估算；若道具名词干过长则会截成“快捷栏N：+圣疗秘…”这类省略短句；快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”；若拿不到显式短名则改用“快捷栏1：狂战→净化”这类道具名短句；若这些道具名过长则同样会截成“快捷栏1：古代狂…→神圣净…”这类省略短句', '背包悬停说明也会按实际文本宽度贴边，因此靠近屏幕右缘时不会继续沿用固定 200px 估算', '净化药剂/狂战油可在铁匠制作'] },
             { title: '状态', items: ['灼烧/流血会持续掉血', '减速会降低移动速度'] },
             { title: '本局词缀', items: runModifierLines },
-            { title: '交互/界面', items: ['F — NPC / 事件房交互', 'Tab — 背包', 'Esc — 暂停', 'H — 操作指引'] }
+            { title: '交互/界面', items: ['F — NPC / 事件房交互', '事件房祭坛靠近提示也会按 Phaser 文本实际宽度贴在当前视口内，因此贴近屏幕边缘时不会被裁出画面', 'Tab — 背包', 'Esc — 暂停', 'H — 操作指引'] }
         ];
 
         let curY = py - panelH / 2 + 72;

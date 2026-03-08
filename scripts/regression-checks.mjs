@@ -43,6 +43,7 @@ const {
     buildCombatActionHudSummary,
     buildQuickSlotItemLabel,
     buildQuickSlotAutoAssignNotice,
+    getViewportTextClampX,
     getInventoryTooltipClampX,
     getQuickSlotAutoAssignIndex,
     resolveKeyboardAimState,
@@ -1803,7 +1804,23 @@ function testKeyboardHudQolHooks() {
 }
 
 function testInventoryTooltipClampXHelper() {
+    assert.equal(typeof getViewportTextClampX, 'function', 'generic viewport text clamp helper should be exported');
     assert.equal(typeof getInventoryTooltipClampX, 'function', 'inventory tooltip clamp helper should be exported');
+    assert.equal(
+        getViewportTextClampX(120, 80, 1024),
+        120,
+        'generic clamp should keep positions that already fit within the viewport'
+    );
+    assert.equal(
+        getViewportTextClampX(940, 180, 1024),
+        834,
+        'generic clamp should shift overly wide labels left by their rendered width near the right edge'
+    );
+    assert.equal(
+        getViewportTextClampX(1990, 120, 1024, 10, 1024),
+        1918,
+        'generic clamp should support world-space viewport offsets'
+    );
     assert.equal(
         getInventoryTooltipClampX(120, 80, 1024),
         120,
@@ -1818,6 +1835,20 @@ function testInventoryTooltipClampXHelper() {
         getInventoryTooltipClampX(0, 180, 1024),
         10,
         'tooltip clamp should preserve the minimum left padding'
+    );
+}
+
+function testRunEventPromptMeasurementHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /_measureLevelTextWidth\(text,\s*'runEventPrompt'/,
+        'LevelScene should measure run-event prompt widths through a dedicated cached Phaser text helper'
+    );
+    assert.match(
+        source,
+        /getViewportTextClampX\(this\.runEventRoomShrine\.x,\s*promptWidth,\s*this\.cameras\.main\.width,\s*12,\s*this\.cameras\.main\.worldView\.x\)/,
+        'run-event prompt placement should clamp against the active camera viewport using the shared helper'
     );
 }
 
@@ -1888,6 +1919,11 @@ function testReadmeKeyboardInventoryLoop() {
         /背包悬停说明也会按实际文本宽度贴边，因此靠近屏幕右缘时不会继续沿用固定 200px 估算/,
         'README should document the width-aware inventory tooltip placement'
     );
+    assert.match(
+        source,
+        /事件房祭坛靠近提示也会按 Phaser 文本实际宽度贴在当前视口内，因此贴近屏幕边缘时不会被裁出画面/,
+        'README should document viewport-safe measured event-room prompts'
+    );
 }
 
 function testHelpOverlayQuickSlotLoop() {
@@ -1931,6 +1967,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /背包悬停说明也会按实际文本宽度贴边，因此靠近屏幕右缘时不会继续沿用固定 200px 估算/,
         'help overlay should document the width-aware inventory tooltip placement'
+    );
+    assert.match(
+        source,
+        /事件房祭坛靠近提示也会按 Phaser 文本实际宽度贴在当前视口内，因此贴近屏幕边缘时不会被裁出画面/,
+        'help overlay should document viewport-safe measured event-room prompts'
     );
 }
 
@@ -2151,6 +2192,7 @@ function main() {
     runTest('quick-slot auto-assign helper', testQuickSlotAutoAssignIndex);
     runTest('quick-slot auto-assign notice', testQuickSlotAutoAssignNotice);
     runTest('inventory tooltip clamp helper', testInventoryTooltipClampXHelper);
+    runTest('run-event prompt measurement hooks', testRunEventPromptMeasurementHooks);
     runTest('combat action HUD summary helper', testCombatActionHudSummary);
     runTest('quick-slot item label helper', testQuickSlotItemLabel);
     runTest('keyboard HUD QoL hooks', testKeyboardHudQolHooks);
