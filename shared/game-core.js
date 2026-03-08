@@ -483,6 +483,18 @@
         };
     }
 
+    function getRunModifierHeadingBadgeLayout(maxWidth, options) {
+        const safeMaxWidth = Number.isFinite(maxWidth) && maxWidth > 0 ? maxWidth : 180;
+        const viewportTier = options && typeof options.viewportTier === 'string'
+            ? options.viewportTier
+            : 'regular';
+        const ultraCompact = viewportTier === 'ultraCompact';
+        return {
+            maxWidth: Math.max(ultraCompact ? 40 : 44, Math.floor(safeMaxWidth * (ultraCompact ? 0.34 : 0.42))),
+            gap: ultraCompact ? 6 : 8
+        };
+    }
+
     function normalizeRunChallengeSidebarLabel(label, compact) {
         if (typeof label !== 'string') return '';
         const safeLabel = label.trim();
@@ -2139,6 +2151,7 @@
         getHudSidebarViewportTier,
         getHudSidebarLineCap,
         getHudSidebarOverflowPolicy,
+        getRunModifierHeadingBadgeLayout,
         buildVerticalTextStackLayout,
         buildPriorityTextStackLayout,
         getQuickSlotAutoAssignIndex,

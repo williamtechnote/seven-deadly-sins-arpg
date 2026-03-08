@@ -39,6 +39,7 @@ const {
     buildRunChallengeSidebarLines,
     buildRunChallengeSidebarBadge,
     getRunChallengeSidebarBadgeAppearance,
+    getRunModifierHeadingBadgeLayout,
     buildRunEventRoomWorldLabelRouteLine,
     buildRunEventRoomWorldLabel,
     buildRunEventRoomPromptLabel,
@@ -2176,6 +2177,25 @@ function testRunChallengeSidebarLines() {
     );
 }
 
+function testRunModifierHeadingBadgeLayout() {
+    assert.equal(typeof getRunModifierHeadingBadgeLayout, 'function', 'run-modifier heading badge layout helper should be exported');
+    assert.deepEqual(
+        getRunModifierHeadingBadgeLayout(180, { viewportTier: 'regular' }),
+        { maxWidth: 75, gap: 8 },
+        'regular sidebar headings should preserve the existing badge-width share and gap'
+    );
+    assert.deepEqual(
+        getRunModifierHeadingBadgeLayout(180, { viewportTier: 'ultraCompact' }),
+        { maxWidth: 61, gap: 6 },
+        'ultra-compact sidebar headings should further shrink badge width share and heading gap'
+    );
+    assert.deepEqual(
+        getRunModifierHeadingBadgeLayout(120, { viewportTier: 'ultraCompact' }),
+        { maxWidth: 40, gap: 6 },
+        'ultra-compact sidebar headings should still clamp the badge to a safe floor width'
+    );
+}
+
 function testRunEventPromptMeasurementHooks() {
     const source = loadGameSource();
     assert.match(
@@ -2317,7 +2337,17 @@ function testSidebarMeasurementHooks() {
     );
     assert.match(
         source,
-        /const badgeMaxWidth = this\._getRunModifierBadgeMaxWidth\(maxWidth\);[\s\S]*?const titleMaxWidth = Math\.max\(48,\s*maxWidth - badgeWidth - badgeGap\);/,
+        /_getRunModifierBadgeMaxWidth\(maxWidth\)\s*{\s*const badgeLayout = getRunModifierHeadingBadgeLayout\(maxWidth,\s*\{\s*viewportTier:\s*this\._getHudSidebarViewportTier\(\)\s*\}\);\s*return badgeLayout\.maxWidth;\s*}/,
+        'badge max-width helper should delegate to the shared run-modifier heading layout policy'
+    );
+    assert.match(
+        source,
+        /_getRunModifierBadgeGap\(maxWidth\)\s*{\s*const badgeLayout = getRunModifierHeadingBadgeLayout\(maxWidth,\s*\{\s*viewportTier:\s*this\._getHudSidebarViewportTier\(\)\s*\}\);\s*return badgeLayout\.gap;\s*}/,
+        'badge gap helper should delegate to the shared run-modifier heading layout policy'
+    );
+    assert.match(
+        source,
+        /const badgeGap = this\._getRunModifierBadgeGap\(maxWidth\);[\s\S]*?const badgeMaxWidth = this\._getRunModifierBadgeMaxWidth\(maxWidth\);[\s\S]*?const titleMaxWidth = Math\.max\(48,\s*maxWidth - badgeWidth - badgeGap\);/,
         'run-modifier heading layout should reserve an explicit width budget for the badge before fitting the title'
     );
     assert.match(
@@ -2506,8 +2536,8 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /该轻量徽记会拆成独立弱化色阶，并进一步下调字级与透明度后再与“本局词缀”标题分开贴边，避免继续与标题正文共用同一强调色/,
-        'README should document the quieter typography and hierarchy for the final ultra-compact challenge badge fallback'
+        /该轻量徽记会拆成独立弱化色阶，并进一步下调字级与透明度后再与“本局词缀”标题分开贴边，同时进一步收紧自身宽度预算与固定间距，优先把更多横向空间留给标题正文/,
+        'README should document the quieter typography plus the tighter width-budget and gap policy for the final ultra-compact challenge badge fallback'
     );
 }
 
@@ -2585,8 +2615,8 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /该轻量徽记会拆成独立弱化色阶，并进一步下调字级与透明度后再与“本局词缀”标题分开贴边，避免继续共用同一强调色/,
-        'help overlay should document the quieter typography and hierarchy for the final ultra-compact challenge badge fallback'
+        /该轻量徽记会拆成独立弱化色阶，并进一步下调字级与透明度后再与“本局词缀”标题分开贴边，同时进一步收紧 badge 宽度预算与固定间距，优先把更多横向空间留给标题正文/,
+        'help overlay should document the quieter typography plus the tighter width-budget and gap policy for the final ultra-compact challenge badge fallback'
     );
 }
 
@@ -2894,6 +2924,7 @@ function main() {
     runTest('measured text clamp helper', testMeasuredTextClampHelper);
     runTest('sidebar viewport policy helper', testHudSidebarViewportPolicy);
     runTest('run challenge sidebar lines', testRunChallengeSidebarLines);
+    runTest('run modifier heading badge layout', testRunModifierHeadingBadgeLayout);
     runTest('run-event prompt measurement hooks', testRunEventPromptMeasurementHooks);
     runTest('run-event world-label measurement hooks', testRunEventWorldLabelMeasurementHooks);
     runTest('fixed sidebar measurement hooks', testSidebarMeasurementHooks);
