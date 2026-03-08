@@ -38,6 +38,7 @@ const {
     buildRunEventRoomHudLines,
     buildRunChallengeSidebarLines,
     buildRunChallengeSidebarBadge,
+    getRunChallengeCompletedBadgeVariants,
     getRunChallengeSidebarBadgeAppearance,
     getRunModifierHeadingBadgeLayout,
     buildRunEventRoomWorldLabelRouteLine,
@@ -2031,6 +2032,7 @@ function testHudSidebarViewportPolicy() {
 function testRunChallengeSidebarLines() {
     assert.equal(typeof buildRunChallengeSidebarLines, 'function', 'run challenge sidebar helper should be exported');
     assert.equal(typeof buildRunChallengeSidebarBadge, 'function', 'run challenge badge helper should be exported');
+    assert.equal(typeof getRunChallengeCompletedBadgeVariants, 'function', 'completed run challenge badge variants helper should be exported');
     assert.equal(typeof getRunChallengeSidebarBadgeAppearance, 'function', 'run challenge badge appearance helper should be exported');
     const measureBadgeWidth = (label) => Array.from(label).reduce((sum, glyph) => sum + ({
         '完': 10,
@@ -2044,6 +2046,14 @@ function testRunChallengeSidebarLines() {
         '2': 6,
         '3': 6,
         '9': 6
+    }[glyph] || 10), 0);
+    const measureCompletedBadgeWidth = (label) => Array.from(label).reduce((sum, glyph) => sum + ({
+        '完': 15,
+        '成': 15,
+        '金': 15,
+        '+': 8,
+        '9': 8,
+        '0': 8
     }[glyph] || 10), 0);
     assert.deepEqual(
         buildRunChallengeSidebarLines({
@@ -2189,6 +2199,17 @@ function testRunChallengeSidebarLines() {
         '进12',
         'ultra-compact challenge badge helper should fall back to a no-ellipsis progress stub once even the ratio badge no longer fits'
     );
+    assert.deepEqual(
+        getRunChallengeCompletedBadgeVariants({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 90,
+            completed: true
+        }),
+        ['完成+90金', '完成'],
+        'completed challenge badge helper should expose the final reward-to-complete fallback chain explicitly'
+    );
     assert.equal(
         buildRunChallengeSidebarBadge({
             label: '击败 30 个敌人',
@@ -2217,11 +2238,45 @@ function testRunChallengeSidebarLines() {
             viewportTier: 'ultraCompact',
             hidden: true,
             runModifierHidden: true,
+            maxBadgeWidth: getHudSidebarHeadingBadgeMetrics(220, 640, 1024, 768).badgeMaxWidth,
+            measureLabelWidth: measureCompletedBadgeWidth
+        }),
+        '完成',
+        'display-size-derived final-tight badge budgets should still fall back from reward copy to the readable 完成 label'
+    );
+    assert.equal(
+        buildRunChallengeSidebarBadge({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 90,
+            completed: true
+        }, {
+            viewportTier: 'ultraCompact',
+            hidden: true,
+            runModifierHidden: true,
             maxBadgeWidth: 18,
             measureLabelWidth: measureBadgeWidth
         }),
         '',
         'ultra-compact completed challenge badge helper should go silent once even the minimum readable completion badge no longer fits'
+    );
+    assert.equal(
+        buildRunChallengeSidebarBadge({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 90,
+            completed: true
+        }, {
+            viewportTier: 'ultraCompact',
+            hidden: true,
+            runModifierHidden: true,
+            maxBadgeWidth: getHudSidebarHeadingBadgeMetrics(204, 640, 1024, 768).badgeMaxWidth,
+            measureLabelWidth: measureCompletedBadgeWidth
+        }),
+        '',
+        'display-size-derived ultra-tight badge floors should hide the completed badge once even 完成 no longer fits'
     );
     assert.deepEqual(
         getRunChallengeSidebarBadgeAppearance({
@@ -2305,6 +2360,18 @@ function testRunModifierHeadingBadgeLayout() {
             badgeGap: 4
         },
         'sidebar heading badge metrics should keep badge width and gap on the final ultra-tight floor derived from the actual display budget'
+    );
+    assert.deepEqual(
+        getHudSidebarHeadingBadgeMetrics(204, 640, 1024, 768),
+        {
+            displayWidth: 204,
+            displayHeight: 640,
+            viewportTier: 'ultraCompact',
+            maxWidth: 108,
+            badgeMaxWidth: 28,
+            badgeGap: 3
+        },
+        'sidebar heading badge metrics should expose the final ultra-tight badge floor derived from the actual display budget'
     );
 }
 
@@ -2668,8 +2735,8 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /若连完成态的 `完成` 都放不下，则会静默隐藏 badge，把同一行预算完全还给标题/,
-        'README should document the final completed-badge silent fallback once the minimum readable completion label no longer fits'
+        /完成态还会先从 `完成\+90金` 这类奖励短句回退为 `完成`；若连完成态的 `完成` 都放不下，则会静默隐藏 badge，把同一行预算完全还给标题/,
+        'README should document the full completed-badge reward-to-complete-to-silent fallback chain'
     );
     assert.match(
         source,
@@ -2757,8 +2824,8 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /若连完成态的“完成”都放不下，则会静默隐藏 badge，把同一行预算完全还给标题/,
-        'help overlay should document the final completed-badge silent fallback once the minimum readable completion label no longer fits'
+        /完成态还会先从“完成\+90金”这类奖励短句回退为“完成”；若连完成态的“完成”都放不下，则会静默隐藏 badge，把同一行预算完全还给标题/,
+        'help overlay should document the full completed-badge reward-to-complete-to-silent fallback chain'
     );
     assert.match(
         source,

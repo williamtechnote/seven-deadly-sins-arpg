@@ -1,9 +1,12 @@
 # TODO.md — seven-deadly-sins-arpg
 
 ## Active
-- [ ] 为右侧 HUD 侧栏补充“完成态最终回退”回归守卫，覆盖 completed badge 从奖励短句 -> `完成` -> 静默隐藏的最终链路
+- [ ] 为完成态轻量挑战徽记补充“静默隐藏后外观同步清空”回归守卫，覆盖 appearance helper 在空 badge 时不保留完成态 tint
 
 ## Completed
+- [x] 为完成态轻量挑战徽记补充“实际 badge 预算触发 `完成 -> 静默隐藏`”回归守卫，覆盖最窄 ultra-tight heading badge budget 下的最小可读宽度兜底（完成：2026-03-09 07:57 SGT）
+- [x] 为完成态轻量挑战徽记补充“实际 badge 预算触发 `完成+奖励 -> 完成`”回归守卫，覆盖 display-size 派生 heading badge budget 下的完成态宽度回退（完成：2026-03-09 07:57 SGT）
+- [x] 为右侧 HUD 侧栏补充“完成态最终回退”回归守卫任务拆解，覆盖 completed badge 从奖励短句 -> `完成` -> 静默隐藏的最终链路（完成：2026-03-09 07:52 SGT）
 - [x] 为右侧 HUD 侧栏补充“实际显示尺寸 -> 宽度预算”回归守卫，覆盖共享 maxWidth 与 badge heading 分档联动（完成：2026-03-09 07:48 SGT）
 - [x] 为右侧 HUD 侧栏补充“实际显示尺寸 -> 分档”回归守卫，覆盖显示尺寸与逻辑视口冲突时仍以真实显示尺寸判定 compact / ultra-compact（完成：2026-03-09 07:48 SGT）
 - [x] 右侧 HUD 侧栏的 compact / ultra-compact / ultra-tight 分档改为基于实际显示尺寸与有效宽度预算触发，避免固定逻辑画布尺寸让这些回退路径在运行时失效（完成：2026-03-09 07:42 SGT）

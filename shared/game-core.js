@@ -639,14 +639,19 @@
         };
         const target = clampInt(safeChallenge.target, 0, Number.MAX_SAFE_INTEGER, 0);
         const progress = clampInt(safeChallenge.progress, 0, target || Number.MAX_SAFE_INTEGER, 0);
-        const rewardGold = clampInt(safeChallenge.rewardGold, 0, Number.MAX_SAFE_INTEGER, 0);
         if (safeChallenge.completed) {
-            return pickBadgeText(rewardGold > 0 ? [`完成+${rewardGold}金`, '完成'] : ['完成'], { allowEmptyFallback: true });
+            return pickBadgeText(getRunChallengeCompletedBadgeVariants(safeChallenge), { allowEmptyFallback: true });
         }
         if (progress <= 0) return '';
         const progressLabel = `${Math.min(progress, target)}/${target || 0}`;
         const compactProgressLabel = `进${target > 0 ? Math.min(progress, target) : progress}`;
         return pickBadgeText([`进${progressLabel}`, progressLabel, compactProgressLabel]);
+    }
+
+    function getRunChallengeCompletedBadgeVariants(challenge) {
+        const safeChallenge = challenge && typeof challenge === 'object' ? challenge : {};
+        const rewardGold = clampInt(safeChallenge.rewardGold, 0, Number.MAX_SAFE_INTEGER, 0);
+        return rewardGold > 0 ? [`完成+${rewardGold}金`, '完成'] : ['完成'];
     }
 
     function getRunChallengeSidebarBadgeAppearance(challenge, options) {
@@ -2185,6 +2190,7 @@
         buildCombatActionHudSummary,
         buildRunChallengeSidebarLines,
         buildRunChallengeSidebarBadge,
+        getRunChallengeCompletedBadgeVariants,
         getRunChallengeSidebarBadgeAppearance,
         buildQuickSlotItemLabel,
         buildQuickSlotAutoAssignNotice,
