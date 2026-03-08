@@ -541,7 +541,8 @@
             ? options.viewportTier
             : 'regular';
         const hidden = !!(options && options.hidden);
-        if (viewportTier !== 'ultraCompact' || !hidden) return '';
+        const runModifierHidden = !!(options && options.runModifierHidden);
+        if (viewportTier !== 'ultraCompact' || !hidden || !runModifierHidden) return '';
 
         const target = clampInt(safeChallenge.target, 0, Number.MAX_SAFE_INTEGER, 0);
         const progress = clampInt(safeChallenge.progress, 0, target || Number.MAX_SAFE_INTEGER, 0);
@@ -550,7 +551,7 @@
             return rewardGold > 0 ? `完成+${rewardGold}金` : '完成';
         }
         if (progress <= 0) return '';
-        return `挑战${Math.min(progress, target)}/${target || 0}`;
+        return `进${Math.min(progress, target)}/${target || 0}`;
     }
 
     function getRunChallengeSidebarBadgeAppearance(challenge, options) {
@@ -565,8 +566,8 @@
         const safeChallenge = challenge && typeof challenge === 'object' ? challenge : {};
         return {
             text,
-            fill: safeChallenge.completed ? '#9fc6aa' : '#b7c2d9',
-            alpha: safeChallenge.completed ? 0.88 : 0.82
+            fill: safeChallenge.completed ? '#8fb39a' : '#a8b3c7',
+            alpha: safeChallenge.completed ? 0.78 : 0.72
         };
     }
 

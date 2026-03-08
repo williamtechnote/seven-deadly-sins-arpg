@@ -2049,9 +2049,9 @@ function testRunChallengeSidebarLines() {
             target: 30,
             rewardGold: 90,
             completed: false
-        }, { viewportTier: 'ultraCompact', hidden: true }),
-        '挑战12/30',
-        'ultra-compact challenge badge helper should preserve progress with a shorter badge once the main challenge block is hidden'
+        }, { viewportTier: 'ultraCompact', hidden: true, runModifierHidden: true }),
+        '进12/30',
+        'ultra-compact challenge badge helper should further shorten in-progress copy once both the challenge block and modifier body are hidden'
     );
     assert.equal(
         buildRunChallengeSidebarBadge({
@@ -2060,7 +2060,7 @@ function testRunChallengeSidebarLines() {
             target: 30,
             rewardGold: 90,
             completed: true
-        }, { viewportTier: 'ultraCompact', hidden: true }),
+        }, { viewportTier: 'ultraCompact', hidden: true, runModifierHidden: true }),
         '完成+90金',
         'ultra-compact challenge badge helper should preserve completion and reward with a shorter badge when the main challenge block is hidden'
     );
@@ -2078,11 +2078,22 @@ function testRunChallengeSidebarLines() {
     assert.equal(
         buildRunChallengeSidebarBadge({
             label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, { viewportTier: 'ultraCompact', hidden: true, runModifierHidden: false }),
+        '',
+        'ultra-compact challenge badge helper should stay silent while the run-modifier body is still visible'
+    );
+    assert.equal(
+        buildRunChallengeSidebarBadge({
+            label: '击败 30 个敌人',
             progress: 0,
             target: 30,
             rewardGold: 90,
             completed: false
-        }, { viewportTier: 'ultraCompact', hidden: true }),
+        }, { viewportTier: 'ultraCompact', hidden: true, runModifierHidden: true }),
         '',
         'ultra-compact challenge badge helper should stay silent until the hidden challenge has meaningful progress'
     );
@@ -2093,13 +2104,13 @@ function testRunChallengeSidebarLines() {
             target: 30,
             rewardGold: 90,
             completed: false
-        }, { viewportTier: 'ultraCompact', hidden: true }),
+        }, { viewportTier: 'ultraCompact', hidden: true, runModifierHidden: true }),
         {
-            text: '挑战12/30',
-            fill: '#b7c2d9',
-            alpha: 0.82
+            text: '进12/30',
+            fill: '#a8b3c7',
+            alpha: 0.72
         },
-        'in-progress challenge badges should use a subdued secondary tint once split away from the section title'
+        'in-progress challenge badges should further lower their emphasis once they only appear after the modifier body is gone'
     );
     assert.deepEqual(
         getRunChallengeSidebarBadgeAppearance({
@@ -2108,13 +2119,13 @@ function testRunChallengeSidebarLines() {
             target: 30,
             rewardGold: 90,
             completed: true
-        }, { viewportTier: 'ultraCompact', hidden: true }),
+        }, { viewportTier: 'ultraCompact', hidden: true, runModifierHidden: true }),
         {
             text: '完成+90金',
-            fill: '#9fc6aa',
-            alpha: 0.88
+            fill: '#8fb39a',
+            alpha: 0.78
         },
-        'completed challenge badges should keep a muted completion tint instead of reusing the brighter challenge copy color'
+        'completed challenge badges should keep a more muted completion tint in the final ultra-compact fallback state'
     );
 }
 
@@ -2274,8 +2285,8 @@ function testSidebarMeasurementHooks() {
     );
     assert.match(
         source,
-        /const challengeBadgeAppearance = challenge \? getRunChallengeSidebarBadgeAppearance\(challenge,\s*{\s*viewportTier:\s*this\._getHudSidebarViewportTier\(\),\s*hidden:\s*!\(!layout\.showSidePanel \|\| sidebarLayout\.visibility\.challengeText\)\s*}\)\s*:\s*\{\s*text:\s*'',\s*fill:\s*'',\s*alpha:\s*1\s*\};/,
-        'UIScene should derive split badge text and subdued appearance through the shared helper when the main challenge block is hidden'
+        /const challengeBadgeAppearance = challenge \? getRunChallengeSidebarBadgeAppearance\(challenge,\s*{\s*viewportTier:\s*this\._getHudSidebarViewportTier\(\),\s*hidden:\s*!\(!layout\.showSidePanel \|\| sidebarLayout\.visibility\.challengeText\),\s*runModifierHidden:\s*!sidebarLayout\.visibility\.runModifierText\s*}\)\s*:\s*\{\s*text:\s*'',\s*fill:\s*'',\s*alpha:\s*1\s*\};/,
+        'UIScene should derive the fallback badge through the shared helper only after both the challenge block and modifier body have dropped'
     );
     assert.match(
         source,
@@ -2443,13 +2454,13 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /若该挑战摘要仍因溢出被隐藏，则会在挑战起步后把 `挑战12\/30` \/ `完成\+90金` 这类更轻量的进度徽记挂到“本局词缀”标题后/,
-        'README should document the shorter lightweight challenge badge fallback and its delayed trigger once the ultra-compact challenge block disappears'
+        /若该挑战摘要与本局词缀正文都因溢出被隐藏，则会在挑战起步后把 `进12\/30` \/ `完成\+90金` 这类更轻量的进度徽记挂到“本局词缀”标题后/,
+        'README should document that the lightweight challenge badge waits until both the challenge block and modifier body disappear, then uses the shorter in-progress copy'
     );
     assert.match(
         source,
-        /该轻量徽记会拆成独立弱化色阶并与“本局词缀”标题分开贴边，避免继续与标题正文共用同一强调色/,
-        'README should document the split, lower-emphasis badge hierarchy for the ultra-compact challenge fallback'
+        /该轻量徽记会拆成独立弱化色阶，并进一步下调字级与透明度后再与“本局词缀”标题分开贴边，避免继续与标题正文共用同一强调色/,
+        'README should document the quieter typography and hierarchy for the final ultra-compact challenge badge fallback'
     );
 }
 
@@ -2522,13 +2533,13 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /若该挑战摘要仍因溢出被隐藏，则会在挑战起步后把“挑战12\/30”\/“完成\+奖励”压成挂在“本局词缀”标题后的轻量徽记/,
-        'help overlay should document the shorter lightweight challenge badge fallback and its delayed trigger once the ultra-compact challenge block disappears'
+        /若该挑战摘要与本局词缀正文都因溢出被隐藏，则会在挑战起步后把“进12\/30”\/“完成\+奖励”压成挂在“本局词缀”标题后的轻量徽记/,
+        'help overlay should document that the lightweight challenge badge waits until both the challenge block and modifier body disappear, then uses the shorter in-progress copy'
     );
     assert.match(
         source,
-        /该轻量徽记会拆成独立弱化色阶，并与“本局词缀”标题分开贴边，避免继续共用同一强调色/,
-        'help overlay should document the split, lower-emphasis badge hierarchy for the ultra-compact challenge fallback'
+        /该轻量徽记会拆成独立弱化色阶，并进一步下调字级与透明度后再与“本局词缀”标题分开贴边，避免继续共用同一强调色/,
+        'help overlay should document the quieter typography and hierarchy for the final ultra-compact challenge badge fallback'
     );
 }
 

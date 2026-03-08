@@ -5320,9 +5320,9 @@ class UIScene extends Phaser.Scene {
             fill: '#ffd27a'
         }).setOrigin(1, 0).setScrollFactor(0);
         this.runModifierBadgeText = this.add.text(width - pad, this._hudLayout.sidePanelStartY + 26, '', {
-            fontSize: '11px',
+            fontSize: '10px',
             fill: '#b7c2d9'
-        }).setOrigin(1, 0).setScrollFactor(0).setAlpha(0.82).setVisible(false);
+        }).setOrigin(1, 0).setScrollFactor(0).setAlpha(0.72).setVisible(false);
         this.runModifierText = this.add.text(width - pad, this._hudLayout.sidePanelStartY + 42, '', {
             fontSize: '11px',
             fill: '#d7e6ff',
@@ -5764,7 +5764,8 @@ class UIScene extends Phaser.Scene {
         const sidebarLayout = this._layoutHudSidebarBlocks();
         const challengeBadgeAppearance = challenge ? getRunChallengeSidebarBadgeAppearance(challenge, {
             viewportTier: this._getHudSidebarViewportTier(),
-            hidden: !(!layout.showSidePanel || sidebarLayout.visibility.challengeText)
+            hidden: !(!layout.showSidePanel || sidebarLayout.visibility.challengeText),
+            runModifierHidden: !sidebarLayout.visibility.runModifierText
         }) : { text: '', fill: '', alpha: 1 };
         this._updateRunModifierHeading(challengeBadgeAppearance);
         this._applyHudSidebarVisibility(!!layout.showSidePanel, sidebarLayout);
@@ -5975,7 +5976,7 @@ class HelpScene extends Phaser.Scene {
             { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位，并提示“快捷栏N：+<短名>”；若临时拿不到显式短名则会沿用道具名生成“快捷栏N：+生命”这类短句；提示现在会优先按 Phaser 文本实际宽度钳制，因此“快捷栏N：+HP恢复”这类混排会尽量保留更多有效信息；若当前环境拿不到真实测量结果则回退为宽度权重估算；若道具名词干过长则会截成“快捷栏N：+圣疗秘…”这类省略短句；快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”；若拿不到显式短名则改用“快捷栏1：狂战→净化”这类道具名短句；若这些道具名过长则同样会截成“快捷栏1：古代狂…→神圣净…”这类省略短句', '背包悬停说明也会按实际文本宽度贴边，因此靠近屏幕右缘时不会继续沿用固定 200px 估算', '净化药剂/狂战油可在铁匠制作'] },
             { title: '状态', items: ['灼烧/流血会持续掉血', '减速会降低移动速度'] },
             { title: '本局词缀', items: runModifierLines },
-            { title: '交互/界面', items: ['F — NPC / 事件房交互', '事件房祭坛靠近提示也会按 Phaser 文本实际宽度贴在当前视口内，因此贴近屏幕边缘时不会被裁出画面', '右侧固定侧栏里的章节标题、区域名、本局词缀、本局挑战与事件房摘要会优先按 Phaser 文本实际宽度钳制，并按实际文本高度动态纵向排布，避免长标题 / 长路线结算继续互相顶出 HUD', '若视口进入 compact 档位，则本局词缀与事件房摘要会额外收敛为有限行数，并在最后一行补省略号', '若视口进一步进入 ultra-compact 档位，则会先进一步收紧各区块间距与底边缓冲，本局词缀会压到 1 行、事件房摘要压到 2 行、本局挑战压到单行进度摘要；若该挑战摘要仍因溢出被隐藏，则会在挑战起步后把“挑战12/30”/“完成+奖励”压成挂在“本局词缀”标题后的轻量徽记', '该轻量徽记会拆成独立弱化色阶，并与“本局词缀”标题分开贴边，避免继续共用同一强调色', '若侧栏总高度仍超出安全范围，则会优先隐藏事件房摘要，其次再隐藏本局词缀正文，最后才隐藏本局挑战摘要', 'Tab — 背包', 'Esc — 暂停', 'H — 操作指引'] }
+            { title: '交互/界面', items: ['F — NPC / 事件房交互', '事件房祭坛靠近提示也会按 Phaser 文本实际宽度贴在当前视口内，因此贴近屏幕边缘时不会被裁出画面', '右侧固定侧栏里的章节标题、区域名、本局词缀、本局挑战与事件房摘要会优先按 Phaser 文本实际宽度钳制，并按实际文本高度动态纵向排布，避免长标题 / 长路线结算继续互相顶出 HUD', '若视口进入 compact 档位，则本局词缀与事件房摘要会额外收敛为有限行数，并在最后一行补省略号', '若视口进一步进入 ultra-compact 档位，则会先进一步收紧各区块间距与底边缓冲，本局词缀会压到 1 行、事件房摘要压到 2 行、本局挑战压到单行进度摘要；若该挑战摘要与本局词缀正文都因溢出被隐藏，则会在挑战起步后把“进12/30”/“完成+奖励”压成挂在“本局词缀”标题后的轻量徽记', '该轻量徽记会拆成独立弱化色阶，并进一步下调字级与透明度后再与“本局词缀”标题分开贴边，避免继续共用同一强调色', '若侧栏总高度仍超出安全范围，则会优先隐藏事件房摘要，其次再隐藏本局词缀正文，最后才隐藏本局挑战摘要', 'Tab — 背包', 'Esc — 暂停', 'H — 操作指引'] }
         ];
 
         let curY = py - panelH / 2 + 72;
