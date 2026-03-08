@@ -625,6 +625,23 @@
         }));
     }
 
+    function buildVerticalTextStackLayout(blocks, startY) {
+        const safeBlocks = Array.isArray(blocks) ? blocks : [];
+        const safeStartY = Number.isFinite(startY) ? startY : 0;
+        const positions = {};
+        let currentY = safeStartY;
+        safeBlocks.forEach((block) => {
+            if (!block || typeof block.key !== 'string' || !block.key) return;
+            positions[block.key] = currentY;
+            const isActive = block.active !== false;
+            if (!isActive) return;
+            const height = Number.isFinite(block.height) ? Math.max(0, block.height) : 0;
+            const gapAfter = Number.isFinite(block.gapAfter) ? Math.max(0, block.gapAfter) : 0;
+            currentY += height + gapAfter;
+        });
+        return positions;
+    }
+
     function getQuickSlotAutoAssignIndex(quickSlots) {
         const safeQuickSlots = normalizeQuickSlots(quickSlots);
         const firstEmptyIndex = safeQuickSlots.findIndex(slot => !slot);
@@ -1844,6 +1861,7 @@
         getInventoryTooltipClampX,
         clampTextToWidth,
         clampTextLinesToWidth,
+        buildVerticalTextStackLayout,
         getQuickSlotAutoAssignIndex,
         normalizeSaveData,
         serializeSaveData,

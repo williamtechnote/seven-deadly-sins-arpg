@@ -48,6 +48,7 @@ const {
     getInventoryTooltipClampX,
     clampTextToWidth,
     clampTextLinesToWidth,
+    buildVerticalTextStackLayout,
     getQuickSlotAutoAssignIndex,
     resolveKeyboardAimState,
     resolveConsumableUse,
@@ -1971,6 +1972,11 @@ function testSidebarMeasurementHooks() {
     );
     assert.match(
         source,
+        /this\.runModifierTitle\.setText\(this\._fitHudSidebarTextLine\('本局词缀',\s*this\._getHudSidebarMaxWidth\(\),\s*'sidebarSectionTitle'\)\);/,
+        'sidebar section headings should route through the measured single-line fitting helper'
+    );
+    assert.match(
+        source,
         /this\.areaNameText\.setText\(this\._fitHudSidebarTextLine\(areaName\s*\|\|\s*'',\s*this\._getHudSidebarMaxWidth\(\),\s*'areaNameSidebar'\)\);/,
         'area-name sidebar should route its heading through the measured sidebar fitting helper'
     );
@@ -1986,6 +1992,11 @@ function testSidebarMeasurementHooks() {
     );
     assert.match(
         source,
+        /styleKey === 'sidebarSectionTitle'/,
+        'sidebar measurement nodes should define a dedicated sidebar-section-title style'
+    );
+    assert.match(
+        source,
         /styleKey === 'runModifierSidebar'/,
         'sidebar measurement nodes should define a dedicated run-modifier style'
     );
@@ -1998,6 +2009,16 @@ function testSidebarMeasurementHooks() {
         source,
         /this\.eventRoomText\.setText\(this\._fitHudSidebarTextLines\(lines,\s*this\._getHudSidebarMaxWidth\(\),\s*'eventRoomSidebar'\)\.join\('\\n'\)\);/,
         'event-room sidebar should route generated HUD lines through the measured sidebar fitting helper'
+    );
+    assert.match(
+        source,
+        /_layoutHudSidebarBlocks\(\)\s*{/,
+        'UIScene should expose a dedicated fixed-sidebar vertical layout helper'
+    );
+    assert.match(
+        source,
+        /const blockLayout = buildVerticalTextStackLayout\(\[/,
+        'fixed sidebar vertical layout should be derived from the shared stack-layout helper'
     );
 }
 
@@ -2075,8 +2096,8 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /右侧固定侧栏里的区域名、本局词缀、本局挑战与事件房摘要也会优先按 Phaser 文本实际宽度逐行钳制/,
-        'README should document measured fitting for the remaining fixed right-sidebar headings and summaries'
+        /右侧固定侧栏里的章节标题、区域名、本局词缀、本局挑战与事件房摘要会优先按 Phaser 文本实际宽度钳制，并按实际文本高度动态纵向排布/,
+        'README should document measured fitting and vertical stacking for the fixed right sidebar'
     );
 }
 
@@ -2129,8 +2150,30 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /右侧固定侧栏里的区域名、本局词缀、本局挑战与事件房摘要也会优先按 Phaser 文本实际宽度逐行钳制/,
-        'help overlay should document measured fitting for the remaining fixed right-sidebar headings and summaries'
+        /右侧固定侧栏里的章节标题、区域名、本局词缀、本局挑战与事件房摘要会优先按 Phaser 文本实际宽度钳制，并按实际文本高度动态纵向排布/,
+        'help overlay should document measured fitting and vertical stacking for the fixed right sidebar'
+    );
+}
+
+function testVerticalTextStackLayout() {
+    assert.equal(typeof buildVerticalTextStackLayout, 'function', 'vertical text stack layout helper should be exported');
+    const layout = buildVerticalTextStackLayout([
+        { key: 'area', height: 22, gapAfter: 4, active: true },
+        { key: 'title', height: 14, gapAfter: 2, active: true },
+        { key: 'modifiers', height: 39, gapAfter: 12, active: true },
+        { key: 'challenge', height: 0, gapAfter: 10, active: false },
+        { key: 'event', height: 26, gapAfter: 0, active: true }
+    ], 30);
+    assert.deepEqual(
+        layout,
+        {
+            area: 30,
+            title: 56,
+            modifiers: 72,
+            challenge: 123,
+            event: 123
+        },
+        'vertical text stack layout should skip inactive blocks while preserving the next active anchor'
     );
 }
 
