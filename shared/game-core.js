@@ -458,6 +458,31 @@
         return 0;
     }
 
+    function getHudSidebarOverflowPolicy(viewportTier) {
+        const safeTier = typeof viewportTier === 'string' ? viewportTier : 'regular';
+        const ultraCompact = safeTier === 'ultraCompact';
+        return {
+            maxBottomInset: ultraCompact ? 72 : 96,
+            gaps: {
+                areaNameText: ultraCompact ? 2 : 4,
+                runModifierTitle: ultraCompact ? 1 : 2,
+                runModifierText: ultraCompact ? 8 : 12,
+                challengeText: ultraCompact ? 8 : 12,
+                eventRoomText: 0
+            },
+            droppable: {
+                runModifierText: true,
+                challengeText: ultraCompact,
+                eventRoomText: true
+            },
+            collapsePriority: {
+                runModifierText: 2,
+                challengeText: 1,
+                eventRoomText: 3
+            }
+        };
+    }
+
     function normalizeRunChallengeSidebarLabel(label, compact) {
         if (typeof label !== 'string') return '';
         const safeLabel = label.trim();
@@ -2038,6 +2063,7 @@
         clampTextLinesToWidthAndCount,
         getHudSidebarViewportTier,
         getHudSidebarLineCap,
+        getHudSidebarOverflowPolicy,
         buildVerticalTextStackLayout,
         buildPriorityTextStackLayout,
         getQuickSlotAutoAssignIndex,

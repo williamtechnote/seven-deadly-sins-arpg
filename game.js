@@ -33,6 +33,7 @@ const {
     clampTextLinesToWidthAndCount,
     getHudSidebarViewportTier,
     getHudSidebarLineCap,
+    getHudSidebarOverflowPolicy,
     buildVerticalTextStackLayout,
     buildPriorityTextStackLayout,
     getQuickSlotAutoAssignIndex,
@@ -5507,6 +5508,10 @@ class UIScene extends Phaser.Scene {
         return getHudSidebarLineCap(sectionKey, this._getHudSidebarViewportTier());
     }
 
+    _getHudSidebarOverflowPolicy() {
+        return getHudSidebarOverflowPolicy(this._getHudSidebarViewportTier());
+    }
+
     _fitHudSidebarTextBlock(lines, maxWidth, styleKey, sectionKey) {
         const lineCap = this._getHudSidebarLineCap(sectionKey);
         if (lineCap > 0) {
@@ -5531,10 +5536,11 @@ class UIScene extends Phaser.Scene {
 
     _getHudSidebarMaxBottom() {
         const layout = this._hudLayout || this._buildHudLayout(false);
+        const sidebarPolicy = this._getHudSidebarOverflowPolicy();
         const viewportHeight = this.cameras && this.cameras.main
             ? this.cameras.main.height
             : 0;
-        return Math.max(layout.sidePanelStartY + 120, viewportHeight - layout.pad - 96);
+        return Math.max(layout.sidePanelStartY + 120, viewportHeight - layout.pad - sidebarPolicy.maxBottomInset);
     }
 
     _applyHudSidebarVisibility(showSidePanel, sidebarLayout) {
@@ -5554,6 +5560,7 @@ class UIScene extends Phaser.Scene {
 
     _layoutHudSidebarBlocks() {
         const layout = this._hudLayout || this._buildHudLayout(false);
+        const sidebarPolicy = this._getHudSidebarOverflowPolicy();
         const anchorX = layout.width - layout.pad;
         const hasAreaName = !!(this.areaNameText && this.areaNameText.text);
         const hasModifierLines = !!(this.runModifierText && this.runModifierText.text);
@@ -5563,39 +5570,40 @@ class UIScene extends Phaser.Scene {
             {
                 key: 'areaNameText',
                 height: hasAreaName ? this.areaNameText.height : 0,
-                gapAfter: 4,
+                gapAfter: sidebarPolicy.gaps.areaNameText,
                 active: hasAreaName,
                 droppable: false
             },
             {
                 key: 'runModifierTitle',
                 height: this.runModifierTitle.height,
-                gapAfter: 2,
+                gapAfter: sidebarPolicy.gaps.runModifierTitle,
                 active: true,
                 droppable: false
             },
             {
                 key: 'runModifierText',
                 height: hasModifierLines ? this.runModifierText.height : 0,
-                gapAfter: 12,
+                gapAfter: sidebarPolicy.gaps.runModifierText,
                 active: hasModifierLines,
-                droppable: true,
-                collapsePriority: 2
+                droppable: !!sidebarPolicy.droppable.runModifierText,
+                collapsePriority: sidebarPolicy.collapsePriority.runModifierText
             },
             {
                 key: 'challengeText',
                 height: hasChallenge ? this.challengeText.height : 0,
-                gapAfter: 12,
+                gapAfter: sidebarPolicy.gaps.challengeText,
                 active: hasChallenge,
-                droppable: false
+                droppable: !!sidebarPolicy.droppable.challengeText,
+                collapsePriority: sidebarPolicy.collapsePriority.challengeText
             },
             {
                 key: 'eventRoomText',
                 height: hasEventRoom ? this.eventRoomText.height : 0,
-                gapAfter: 0,
+                gapAfter: sidebarPolicy.gaps.eventRoomText,
                 active: hasEventRoom,
-                droppable: true,
-                collapsePriority: 3
+                droppable: !!sidebarPolicy.droppable.eventRoomText,
+                collapsePriority: sidebarPolicy.collapsePriority.eventRoomText
             }
         ], layout.sidePanelStartY, {
             maxBottom: this._getHudSidebarMaxBottom()
@@ -5918,7 +5926,7 @@ class HelpScene extends Phaser.Scene {
             { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位，并提示“快捷栏N：+<短名>”；若临时拿不到显式短名则会沿用道具名生成“快捷栏N：+生命”这类短句；提示现在会优先按 Phaser 文本实际宽度钳制，因此“快捷栏N：+HP恢复”这类混排会尽量保留更多有效信息；若当前环境拿不到真实测量结果则回退为宽度权重估算；若道具名词干过长则会截成“快捷栏N：+圣疗秘…”这类省略短句；快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”；若拿不到显式短名则改用“快捷栏1：狂战→净化”这类道具名短句；若这些道具名过长则同样会截成“快捷栏1：古代狂…→神圣净…”这类省略短句', '背包悬停说明也会按实际文本宽度贴边，因此靠近屏幕右缘时不会继续沿用固定 200px 估算', '净化药剂/狂战油可在铁匠制作'] },
             { title: '状态', items: ['灼烧/流血会持续掉血', '减速会降低移动速度'] },
             { title: '本局词缀', items: runModifierLines },
-            { title: '交互/界面', items: ['F — NPC / 事件房交互', '事件房祭坛靠近提示也会按 Phaser 文本实际宽度贴在当前视口内，因此贴近屏幕边缘时不会被裁出画面', '右侧固定侧栏里的章节标题、区域名、本局词缀、本局挑战与事件房摘要会优先按 Phaser 文本实际宽度钳制，并按实际文本高度动态纵向排布，避免长标题 / 长路线结算继续互相顶出 HUD', '若视口进入 compact 档位，则本局词缀与事件房摘要会额外收敛为有限行数，并在最后一行补省略号', '若视口进一步进入 ultra-compact 档位，则本局词缀会压到 1 行、事件房摘要压到 2 行、本局挑战压到单行进度摘要', '若侧栏总高度仍超出安全范围，则会优先隐藏事件房摘要，其次再隐藏本局词缀正文', 'Tab — 背包', 'Esc — 暂停', 'H — 操作指引'] }
+            { title: '交互/界面', items: ['F — NPC / 事件房交互', '事件房祭坛靠近提示也会按 Phaser 文本实际宽度贴在当前视口内，因此贴近屏幕边缘时不会被裁出画面', '右侧固定侧栏里的章节标题、区域名、本局词缀、本局挑战与事件房摘要会优先按 Phaser 文本实际宽度钳制，并按实际文本高度动态纵向排布，避免长标题 / 长路线结算继续互相顶出 HUD', '若视口进入 compact 档位，则本局词缀与事件房摘要会额外收敛为有限行数，并在最后一行补省略号', '若视口进一步进入 ultra-compact 档位，则会先进一步收紧各区块间距与底边缓冲，本局词缀会压到 1 行、事件房摘要压到 2 行、本局挑战压到单行进度摘要', '若侧栏总高度仍超出安全范围，则会优先隐藏事件房摘要，其次再隐藏本局词缀正文，最后才隐藏本局挑战摘要', 'Tab — 背包', 'Esc — 暂停', 'H — 操作指引'] }
         ];
 
         let curY = py - panelH / 2 + 72;

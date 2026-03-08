@@ -52,6 +52,7 @@ const {
     clampTextLinesToWidthAndCount,
     getHudSidebarViewportTier,
     getHudSidebarLineCap,
+    getHudSidebarOverflowPolicy,
     buildVerticalTextStackLayout,
     buildPriorityTextStackLayout,
     getQuickSlotAutoAssignIndex,
@@ -1923,12 +1924,61 @@ function testHudSidebarViewportPolicy() {
     assert.equal(getHudSidebarViewportTier(1280, 680), 'ultraCompact', 'short viewports should downgrade the sidebar tier to ultra-compact');
     assert.equal(getHudSidebarViewportTier(900, 900), 'ultraCompact', 'very narrow viewports should downgrade the sidebar tier to ultra-compact');
     assert.equal(typeof getHudSidebarLineCap, 'function', 'sidebar line-cap policy helper should be exported');
+    assert.equal(typeof getHudSidebarOverflowPolicy, 'function', 'sidebar overflow policy helper should be exported');
     assert.equal(getHudSidebarLineCap('challengeSidebar', 'regular'), 0, 'regular sidebar tiers should not cap challenge lines');
     assert.equal(getHudSidebarLineCap('runModifierSidebar', 'compact'), 2, 'compact sidebars should keep two run-modifier lines');
     assert.equal(getHudSidebarLineCap('eventRoomSidebar', 'compact'), 3, 'compact sidebars should keep three event-room lines');
     assert.equal(getHudSidebarLineCap('runModifierSidebar', 'ultraCompact'), 1, 'ultra-compact sidebars should collapse run modifiers to one line');
     assert.equal(getHudSidebarLineCap('challengeSidebar', 'ultraCompact'), 1, 'ultra-compact sidebars should collapse challenge copy to one line');
     assert.equal(getHudSidebarLineCap('eventRoomSidebar', 'ultraCompact'), 2, 'ultra-compact sidebars should keep only two event-room lines');
+    assert.deepEqual(
+        getHudSidebarOverflowPolicy('regular'),
+        {
+            maxBottomInset: 96,
+            gaps: {
+                areaNameText: 4,
+                runModifierTitle: 2,
+                runModifierText: 12,
+                challengeText: 12,
+                eventRoomText: 0
+            },
+            droppable: {
+                runModifierText: true,
+                challengeText: false,
+                eventRoomText: true
+            },
+            collapsePriority: {
+                runModifierText: 2,
+                challengeText: 1,
+                eventRoomText: 3
+            }
+        },
+        'regular sidebar overflow policy should preserve the existing spacing and drop order'
+    );
+    assert.deepEqual(
+        getHudSidebarOverflowPolicy('ultraCompact'),
+        {
+            maxBottomInset: 72,
+            gaps: {
+                areaNameText: 2,
+                runModifierTitle: 1,
+                runModifierText: 8,
+                challengeText: 8,
+                eventRoomText: 0
+            },
+            droppable: {
+                runModifierText: true,
+                challengeText: true,
+                eventRoomText: true
+            },
+            collapsePriority: {
+                runModifierText: 2,
+                challengeText: 1,
+                eventRoomText: 3
+            }
+        },
+        'ultra-compact sidebar overflow policy should tighten spacing and allow challenge copy to drop last'
+    );
 }
 
 function testRunChallengeSidebarLines() {
@@ -2071,6 +2121,11 @@ function testSidebarMeasurementHooks() {
     );
     assert.match(
         source,
+        /getHudSidebarOverflowPolicy\(this\._getHudSidebarViewportTier\(\)\)/,
+        'UIScene should centralize sidebar overflow spacing and droppable policy through the shared helper'
+    );
+    assert.match(
+        source,
         /_getHudSidebarLineCap\(sectionKey\)\s*{/,
         'UIScene should expose a dedicated narrow-viewport line-cap policy helper for sidebar sections'
     );
@@ -2118,6 +2173,16 @@ function testSidebarMeasurementHooks() {
         source,
         /buildPriorityTextStackLayout\(/,
         'fixed sidebar layout should route through a priority-aware stack helper when overflow handling is needed'
+    );
+    assert.match(
+        source,
+        /droppable:\s*!!sidebarPolicy\.droppable\.challengeText/,
+        'challenge sidebar visibility should become last-resort droppable through the shared overflow policy'
+    );
+    assert.match(
+        source,
+        /gapAfter:\s*sidebarPolicy\.gaps\.challengeText/,
+        'challenge sidebar block should consume shared ultra-compact stack spacing'
     );
     assert.match(
         source,
@@ -2255,13 +2320,13 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /若进一步进入 ultra-compact 档位，则本局词缀会压到 1 行、事件房摘要压到 2 行，本局挑战也会收敛为单行 `挑战 进度 · 奖励` 摘要/,
-        'README should document the ultra-compact single-line challenge summary and tighter sidebar caps'
+        /若进一步进入 ultra-compact 档位，则会先进一步收紧各区块间距与底边缓冲，本局词缀会压到 1 行、事件房摘要压到 2 行，本局挑战也会收敛为单行 `挑战 进度 · 奖励` 摘要/,
+        'README should document the ultra-compact spacing reduction before the tightest sidebar caps'
     );
     assert.match(
         source,
-        /若侧栏总高度仍超出安全范围，则会优先隐藏事件房摘要，其次再隐藏本局词缀正文/,
-        'README should document the overflow-priority hiding order for the fixed sidebar'
+        /若侧栏总高度仍超出安全范围，则会优先隐藏事件房摘要，其次再隐藏本局词缀正文，最后才隐藏本局挑战摘要/,
+        'README should document the final overflow-priority hiding order for the fixed sidebar'
     );
 }
 
@@ -2324,13 +2389,13 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /若视口进一步进入 ultra-compact 档位，则本局词缀会压到 1 行、事件房摘要压到 2 行、本局挑战压到单行进度摘要/,
-        'help overlay should document the ultra-compact single-line challenge summary and tighter sidebar caps'
+        /若视口进一步进入 ultra-compact 档位，则会先进一步收紧各区块间距与底边缓冲，本局词缀会压到 1 行、事件房摘要压到 2 行、本局挑战压到单行进度摘要/,
+        'help overlay should document the ultra-compact spacing reduction before the tightest sidebar caps'
     );
     assert.match(
         source,
-        /若侧栏总高度仍超出安全范围，则会优先隐藏事件房摘要，其次再隐藏本局词缀正文/,
-        'help overlay should document the overflow-priority hiding order for the fixed sidebar'
+        /若侧栏总高度仍超出安全范围，则会优先隐藏事件房摘要，其次再隐藏本局词缀正文，最后才隐藏本局挑战摘要/,
+        'help overlay should document the final overflow-priority hiding order for the fixed sidebar'
     );
 }
 
@@ -2391,6 +2456,30 @@ function testPriorityTextStackLayoutHelper() {
         layout.hiddenKeys,
         ['eventRoomText', 'runModifierText'],
         'priority-aware stack layout should report the hidden keys in collapse order'
+    );
+
+    const ultraCompactLayout = buildPriorityTextStackLayout([
+        { key: 'areaNameText', height: 22, gapAfter: 2, active: true, droppable: false },
+        { key: 'runModifierTitle', height: 14, gapAfter: 1, active: true, droppable: false },
+        { key: 'runModifierText', height: 18, gapAfter: 8, active: true, droppable: true, collapsePriority: 2 },
+        { key: 'challengeText', height: 18, gapAfter: 8, active: true, droppable: true, collapsePriority: 1 },
+        { key: 'eventRoomText', height: 18, gapAfter: 0, active: true, droppable: true, collapsePriority: 3 }
+    ], 30, { maxBottom: 80 });
+    assert.deepEqual(
+        ultraCompactLayout.visibility,
+        {
+            areaNameText: true,
+            runModifierTitle: true,
+            runModifierText: false,
+            challengeText: false,
+            eventRoomText: false
+        },
+        'priority-aware stack layout should allow challenge copy to disappear only after higher-priority droppable blocks are removed'
+    );
+    assert.deepEqual(
+        ultraCompactLayout.hiddenKeys,
+        ['eventRoomText', 'runModifierText', 'challengeText'],
+        'priority-aware stack layout should drop challenge copy last when ultra-compact overflow still remains'
     );
 }
 
