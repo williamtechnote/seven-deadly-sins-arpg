@@ -440,6 +440,27 @@
         return 'regular';
     }
 
+    function getHudSidebarResponsiveMetrics(displayWidth, displayHeight, viewportWidth, viewportHeight) {
+        const safeViewportWidth = Number.isFinite(viewportWidth) && viewportWidth > 0
+            ? viewportWidth
+            : Number.POSITIVE_INFINITY;
+        const safeViewportHeight = Number.isFinite(viewportHeight) && viewportHeight > 0
+            ? viewportHeight
+            : Number.POSITIVE_INFINITY;
+        const safeDisplayWidth = Number.isFinite(displayWidth) && displayWidth > 0
+            ? displayWidth
+            : safeViewportWidth;
+        const safeDisplayHeight = Number.isFinite(displayHeight) && displayHeight > 0
+            ? displayHeight
+            : safeViewportHeight;
+        return {
+            displayWidth: safeDisplayWidth,
+            displayHeight: safeDisplayHeight,
+            viewportTier: getHudSidebarViewportTier(safeDisplayWidth, safeDisplayHeight),
+            maxWidth: Math.max(96, Math.min(320, Math.floor(safeDisplayWidth - 96)))
+        };
+    }
+
     function getHudSidebarLineCap(sectionKey, viewportTier) {
         const safeSectionKey = typeof sectionKey === 'string' ? sectionKey : '';
         const safeTier = typeof viewportTier === 'string' ? viewportTier : 'regular';
@@ -582,7 +603,7 @@
                 return sum + (isAscii ? 8 : 10);
             }, 0);
         };
-        const pickBadgeText = (variants) => {
+        const pickBadgeText = (variants, pickerOptions) => {
             const safeVariants = Array.isArray(variants)
                 ? variants.filter(text => typeof text === 'string' && text)
                 : [];
@@ -596,13 +617,16 @@
                     return variant;
                 }
             }
+            if (pickerOptions && pickerOptions.allowEmptyFallback) {
+                return '';
+            }
             return safeVariants[safeVariants.length - 1];
         };
         const target = clampInt(safeChallenge.target, 0, Number.MAX_SAFE_INTEGER, 0);
         const progress = clampInt(safeChallenge.progress, 0, target || Number.MAX_SAFE_INTEGER, 0);
         const rewardGold = clampInt(safeChallenge.rewardGold, 0, Number.MAX_SAFE_INTEGER, 0);
         if (safeChallenge.completed) {
-            return pickBadgeText(rewardGold > 0 ? [`完成+${rewardGold}金`, '完成'] : ['完成']);
+            return pickBadgeText(rewardGold > 0 ? [`完成+${rewardGold}金`, '完成'] : ['完成'], { allowEmptyFallback: true });
         }
         if (progress <= 0) return '';
         const progressLabel = `${Math.min(progress, target)}/${target || 0}`;
@@ -2155,6 +2179,7 @@
         clampTextToWidth,
         clampTextLinesToWidth,
         clampTextLinesToWidthAndCount,
+        getHudSidebarResponsiveMetrics,
         getHudSidebarViewportTier,
         getHudSidebarLineCap,
         getHudSidebarOverflowPolicy,

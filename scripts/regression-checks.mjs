@@ -53,6 +53,7 @@ const {
     clampTextToWidth,
     clampTextLinesToWidth,
     clampTextLinesToWidthAndCount,
+    getHudSidebarResponsiveMetrics,
     getHudSidebarViewportTier,
     getHudSidebarLineCap,
     getHudSidebarOverflowPolicy,
@@ -1922,10 +1923,41 @@ function testMeasuredTextClampHelper() {
 
 function testHudSidebarViewportPolicy() {
     assert.equal(typeof getHudSidebarViewportTier, 'function', 'sidebar viewport-tier helper should be exported');
+    assert.equal(typeof getHudSidebarResponsiveMetrics, 'function', 'sidebar responsive metrics helper should be exported');
     assert.equal(getHudSidebarViewportTier(1280, 800), 'regular', 'wide/tall viewports should keep the regular sidebar tier');
     assert.equal(getHudSidebarViewportTier(1024, 900), 'compact', 'narrow viewports should downgrade the sidebar tier to compact');
     assert.equal(getHudSidebarViewportTier(1280, 680), 'ultraCompact', 'short viewports should downgrade the sidebar tier to ultra-compact');
     assert.equal(getHudSidebarViewportTier(900, 900), 'ultraCompact', 'very narrow viewports should downgrade the sidebar tier to ultra-compact');
+    assert.deepEqual(
+        getHudSidebarResponsiveMetrics(390, 844, 1024, 768),
+        {
+            displayWidth: 390,
+            displayHeight: 844,
+            viewportTier: 'ultraCompact',
+            maxWidth: 294
+        },
+        'sidebar responsive metrics should use actual display size to trigger the tighter ultra-compact budget on narrow screens'
+    );
+    assert.deepEqual(
+        getHudSidebarResponsiveMetrics(undefined, undefined, 1024, 768),
+        {
+            displayWidth: 1024,
+            displayHeight: 768,
+            viewportTier: 'compact',
+            maxWidth: 320
+        },
+        'sidebar responsive metrics should fall back to the logical viewport when display-size data is unavailable'
+    );
+    assert.deepEqual(
+        getHudSidebarResponsiveMetrics(220, 640, 1024, 768),
+        {
+            displayWidth: 220,
+            displayHeight: 640,
+            viewportTier: 'ultraCompact',
+            maxWidth: 124
+        },
+        'sidebar responsive metrics should expose the much tighter badge-width budgets needed on extremely small displays'
+    );
     assert.equal(typeof getHudSidebarLineCap, 'function', 'sidebar line-cap policy helper should be exported');
     assert.equal(typeof getHudSidebarOverflowPolicy, 'function', 'sidebar overflow policy helper should be exported');
     assert.equal(getHudSidebarLineCap('challengeSidebar', 'regular'), 0, 'regular sidebar tiers should not cap challenge lines');
@@ -2162,6 +2194,23 @@ function testRunChallengeSidebarLines() {
         '完成',
         'ultra-compact completed challenge badge helper should drop reward copy before it squeezes the shared heading line'
     );
+    assert.equal(
+        buildRunChallengeSidebarBadge({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 90,
+            completed: true
+        }, {
+            viewportTier: 'ultraCompact',
+            hidden: true,
+            runModifierHidden: true,
+            maxBadgeWidth: 18,
+            measureLabelWidth: measureBadgeWidth
+        }),
+        '',
+        'ultra-compact completed challenge badge helper should go silent once even the minimum readable completion badge no longer fits'
+    );
     assert.deepEqual(
         getRunChallengeSidebarBadgeAppearance({
             label: '击败 30 个敌人',
@@ -2274,8 +2323,8 @@ function testSidebarMeasurementHooks() {
     const source = loadGameSource();
     assert.match(
         source,
-        /_getHudSidebarViewportTier\(\)\s*{[\s\S]*?getHudSidebarViewportTier\(viewportWidth,\s*viewportHeight\)/,
-        'UIScene should centralize sidebar viewport tiers through the shared tier helper'
+        /_getHudSidebarResponsiveMetrics\(\)\s*{[\s\S]*?return getHudSidebarResponsiveMetrics\(/,
+        'UIScene should centralize sidebar responsiveness through the shared responsive metrics helper'
     );
     assert.match(
         source,
@@ -2301,6 +2350,21 @@ function testSidebarMeasurementHooks() {
         source,
         /_isCompactHudSidebarViewport\(\)\s*{/,
         'UIScene should centralize compact sidebar viewport detection'
+    );
+    assert.match(
+        source,
+        /_getHudSidebarResponsiveMetrics\(\)\s*{\s*const layout = this\._hudLayout \|\| this\._buildHudLayout\(false\);[\s\S]*?const displaySize = this\.scale && this\.scale\.displaySize \? this\.scale\.displaySize : null;[\s\S]*?return getHudSidebarResponsiveMetrics\(\s*displaySize && Number\.isFinite\(displaySize\.width\) \? displaySize\.width : 0,\s*displaySize && Number\.isFinite\(displaySize\.height\) \? displaySize\.height : 0,\s*viewportWidth,\s*viewportHeight\s*\);\s*}/,
+        'UIScene should derive sidebar responsiveness from actual display size with a logical-viewport fallback'
+    );
+    assert.match(
+        source,
+        /_getHudSidebarViewportTier\(\)\s*{\s*return this\._getHudSidebarResponsiveMetrics\(\)\.viewportTier;\s*}/,
+        'UIScene should read the sidebar tier from the shared responsive metrics helper'
+    );
+    assert.match(
+        source,
+        /_getHudSidebarMaxWidth\(\)\s*{\s*return this\._getHudSidebarResponsiveMetrics\(\)\.maxWidth;\s*}/,
+        'UIScene should read the sidebar width budget from the shared responsive metrics helper'
     );
     assert.match(
         source,
@@ -2558,8 +2622,18 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /这些 compact \/ ultra-compact \/ ultra-tight 分档现在会按实际显示尺寸触发，而不再只依赖固定逻辑画布尺寸/,
+        'README should document that the tighter sidebar tiers are now driven by actual display size'
+    );
+    assert.match(
+        source,
         /若该挑战摘要与本局词缀正文都因溢出被隐藏，则会在挑战起步后把 `进12\/30` \/ `完成` 这类更轻量的进度徽记挂到“本局词缀”标题后；若标题预算进一步吃紧，则进行中态还会继续压成 `12\/30`；若进入 ultra-tight 更紧预算，则会再回退为 `进12` 这类无省略最终短句/,
         'README should document that the lightweight challenge badge waits until both the challenge block and modifier body disappear, then falls back to a no-ellipsis progress stub under the final ultra-tight width tier'
+    );
+    assert.match(
+        source,
+        /若连完成态的 `完成` 都放不下，则会静默隐藏 badge，把同一行预算完全还给标题/,
+        'README should document the final completed-badge silent fallback once the minimum readable completion label no longer fits'
     );
     assert.match(
         source,
@@ -2637,8 +2711,18 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
+        /这些 compact \/ ultra-compact \/ ultra-tight 分档会按实际显示尺寸触发，而不再只依赖固定逻辑画布尺寸/,
+        'help overlay should document that the tighter sidebar tiers are now driven by actual display size'
+    );
+    assert.match(
+        source,
         /若该挑战摘要与本局词缀正文都因溢出被隐藏，则会在挑战起步后把“进12\/30”\/“完成”压成挂在“本局词缀”标题后的轻量徽记；若标题预算进一步吃紧，则进行中态还会继续压成“12\/30”；若进入 ultra-tight 更紧预算，则会再回退为“进12”这类无省略最终短句/,
         'help overlay should document that the lightweight challenge badge waits until both the challenge block and modifier body disappear, then falls back to a no-ellipsis progress stub under the final ultra-tight width tier'
+    );
+    assert.match(
+        source,
+        /若连完成态的“完成”都放不下，则会静默隐藏 badge，把同一行预算完全还给标题/,
+        'help overlay should document the final completed-badge silent fallback once the minimum readable completion label no longer fits'
     );
     assert.match(
         source,
