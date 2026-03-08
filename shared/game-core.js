@@ -522,6 +522,21 @@
         };
     }
 
+    function getHudSidebarHeadingBadgeMetrics(displayWidth, displayHeight, viewportWidth, viewportHeight) {
+        const responsiveMetrics = getHudSidebarResponsiveMetrics(displayWidth, displayHeight, viewportWidth, viewportHeight);
+        const badgeLayout = getRunModifierHeadingBadgeLayout(responsiveMetrics.maxWidth, {
+            viewportTier: responsiveMetrics.viewportTier
+        });
+        return {
+            displayWidth: responsiveMetrics.displayWidth,
+            displayHeight: responsiveMetrics.displayHeight,
+            viewportTier: responsiveMetrics.viewportTier,
+            maxWidth: responsiveMetrics.maxWidth,
+            badgeMaxWidth: badgeLayout.maxWidth,
+            badgeGap: badgeLayout.gap
+        };
+    }
+
     function normalizeRunChallengeSidebarLabel(label, compact) {
         if (typeof label !== 'string') return '';
         const safeLabel = label.trim();
@@ -2180,6 +2195,7 @@
         clampTextLinesToWidth,
         clampTextLinesToWidthAndCount,
         getHudSidebarResponsiveMetrics,
+        getHudSidebarHeadingBadgeMetrics,
         getHudSidebarViewportTier,
         getHudSidebarLineCap,
         getHudSidebarOverflowPolicy,

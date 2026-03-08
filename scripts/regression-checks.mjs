@@ -54,6 +54,7 @@ const {
     clampTextLinesToWidth,
     clampTextLinesToWidthAndCount,
     getHudSidebarResponsiveMetrics,
+    getHudSidebarHeadingBadgeMetrics,
     getHudSidebarViewportTier,
     getHudSidebarLineCap,
     getHudSidebarOverflowPolicy,
@@ -1924,10 +1925,21 @@ function testMeasuredTextClampHelper() {
 function testHudSidebarViewportPolicy() {
     assert.equal(typeof getHudSidebarViewportTier, 'function', 'sidebar viewport-tier helper should be exported');
     assert.equal(typeof getHudSidebarResponsiveMetrics, 'function', 'sidebar responsive metrics helper should be exported');
+    assert.equal(typeof getHudSidebarHeadingBadgeMetrics, 'function', 'sidebar heading badge metrics helper should be exported');
     assert.equal(getHudSidebarViewportTier(1280, 800), 'regular', 'wide/tall viewports should keep the regular sidebar tier');
     assert.equal(getHudSidebarViewportTier(1024, 900), 'compact', 'narrow viewports should downgrade the sidebar tier to compact');
     assert.equal(getHudSidebarViewportTier(1280, 680), 'ultraCompact', 'short viewports should downgrade the sidebar tier to ultra-compact');
     assert.equal(getHudSidebarViewportTier(900, 900), 'ultraCompact', 'very narrow viewports should downgrade the sidebar tier to ultra-compact');
+    assert.deepEqual(
+        getHudSidebarResponsiveMetrics(1400, 900, 900, 640),
+        {
+            displayWidth: 1400,
+            displayHeight: 900,
+            viewportTier: 'regular',
+            maxWidth: 320
+        },
+        'sidebar responsive metrics should keep the regular tier when actual display size is roomy even if the logical viewport still looks cramped'
+    );
     assert.deepEqual(
         getHudSidebarResponsiveMetrics(390, 844, 1024, 768),
         {
@@ -2269,6 +2281,30 @@ function testRunModifierHeadingBadgeLayout() {
         getRunModifierHeadingBadgeLayout(108, { viewportTier: 'ultraCompact' }),
         { maxWidth: 28, gap: 3 },
         'ultra-compact sidebar headings should introduce one more ultra-tight badge tier before title truncation destabilizes'
+    );
+    assert.deepEqual(
+        getHudSidebarHeadingBadgeMetrics(246, 640, 1024, 768),
+        {
+            displayWidth: 246,
+            displayHeight: 640,
+            viewportTier: 'ultraCompact',
+            maxWidth: 150,
+            badgeMaxWidth: 45,
+            badgeGap: 5
+        },
+        'sidebar heading badge metrics should reuse the display-size-derived maxWidth when entering the tighter ultra-compact badge budget tier'
+    );
+    assert.deepEqual(
+        getHudSidebarHeadingBadgeMetrics(220, 640, 1024, 768),
+        {
+            displayWidth: 220,
+            displayHeight: 640,
+            viewportTier: 'ultraCompact',
+            maxWidth: 124,
+            badgeMaxWidth: 40,
+            badgeGap: 4
+        },
+        'sidebar heading badge metrics should keep badge width and gap on the final ultra-tight floor derived from the actual display budget'
     );
 }
 
