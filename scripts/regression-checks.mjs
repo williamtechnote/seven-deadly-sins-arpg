@@ -1951,6 +1951,16 @@ function testSidebarMeasurementHooks() {
     const source = loadGameSource();
     assert.match(
         source,
+        /_fitHudSidebarTextLine\(text,\s*maxWidth,\s*styleKey\)\s*{/,
+        'UIScene should expose a dedicated single-line fitting helper for fixed sidebar headings'
+    );
+    assert.match(
+        source,
+        /clampTextToWidth\(text,\s*maxWidth,\s*{[\s\S]*?_measureHudSidebarTextWidth\(glyph,\s*styleKey\)/,
+        'single-line sidebar fitting should reuse the shared measured clamp helper with Phaser-backed glyph measurement'
+    );
+    assert.match(
+        source,
         /_fitHudSidebarTextLines\(lines,\s*maxWidth,\s*styleKey\)\s*{/,
         'UIScene should expose a dedicated multiline fitting helper for fixed sidebar copy'
     );
@@ -1961,8 +1971,28 @@ function testSidebarMeasurementHooks() {
     );
     assert.match(
         source,
+        /this\.areaNameText\.setText\(this\._fitHudSidebarTextLine\(areaName\s*\|\|\s*'',\s*this\._getHudSidebarMaxWidth\(\),\s*'areaNameSidebar'\)\);/,
+        'area-name sidebar should route its heading through the measured sidebar fitting helper'
+    );
+    assert.match(
+        source,
+        /this\.runModifierText\.setText\(this\._fitHudSidebarTextLines\(modifierLines,\s*this\._getHudSidebarMaxWidth\(\),\s*'runModifierSidebar'\)\.join\('\\n'\)\);/,
+        'run-modifier sidebar should route generated lines through the measured sidebar fitting helper'
+    );
+    assert.match(
+        source,
         /this\.challengeText\.setText\(this\._fitHudSidebarTextLines\(\[\s*head,\s*challenge\.label,\s*`进度:\$\{progress\}\s\s\$\{reward\}`\s*],\s*this\._getHudSidebarMaxWidth\(\),\s*'challengeSidebar'\)\.join\('\\n'\)\);/,
         'challenge sidebar should route all lines through the measured sidebar fitting helper'
+    );
+    assert.match(
+        source,
+        /styleKey === 'runModifierSidebar'/,
+        'sidebar measurement nodes should define a dedicated run-modifier style'
+    );
+    assert.match(
+        source,
+        /styleKey === 'areaNameSidebar'/,
+        'sidebar measurement nodes should define a dedicated area-name style'
     );
     assert.match(
         source,
@@ -2045,8 +2075,8 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /右侧固定侧栏里的本局挑战与事件房摘要也会优先按 Phaser 文本实际宽度逐行钳制/,
-        'README should document measured fitting for the fixed right sidebar challenge and event-room summaries'
+        /右侧固定侧栏里的区域名、本局词缀、本局挑战与事件房摘要也会优先按 Phaser 文本实际宽度逐行钳制/,
+        'README should document measured fitting for the remaining fixed right-sidebar headings and summaries'
     );
 }
 
@@ -2099,8 +2129,8 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /右侧固定侧栏里的本局挑战与事件房摘要也会优先按 Phaser 文本实际宽度逐行钳制/,
-        'help overlay should document measured fitting for the fixed right sidebar challenge and event-room summaries'
+        /右侧固定侧栏里的区域名、本局词缀、本局挑战与事件房摘要也会优先按 Phaser 文本实际宽度逐行钳制/,
+        'help overlay should document measured fitting for the remaining fixed right-sidebar headings and summaries'
     );
 }
 
