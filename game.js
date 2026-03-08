@@ -29,6 +29,7 @@ const {
     getViewportCenteredTextClampX,
     getInventoryTooltipClampX,
     clampTextToWidth,
+    clampTextLinesToWidth,
     getQuickSlotAutoAssignIndex,
     normalizeSaveData,
     serializeSaveData,
@@ -5400,6 +5401,72 @@ class UIScene extends Phaser.Scene {
         this.staminaBarBg.fillRect(pad + 28, layout.staminaBarY, 200, 14);
     }
 
+    _getHudSidebarMeasureNode(styleKey) {
+        if (!this._hudSidebarMeasureNodes) {
+            this._hudSidebarMeasureNodes = {};
+        }
+        if (!this._hudSidebarMeasureNodes[styleKey]) {
+            let style = {
+                fontSize: '11px',
+                fill: '#d7e6ff',
+                align: 'right',
+                lineSpacing: 2
+            };
+            if (styleKey === 'challengeSidebar') {
+                style = {
+                    fontSize: '11px',
+                    fill: '#7CFFB2',
+                    align: 'right',
+                    lineSpacing: 2
+                };
+            } else if (styleKey === 'eventRoomSidebar') {
+                style = {
+                    fontSize: '11px',
+                    fill: '#ffd27a',
+                    align: 'right',
+                    lineSpacing: 2
+                };
+            }
+            this._hudSidebarMeasureNodes[styleKey] = this.add.text(-1000, -1000, '', style)
+                .setVisible(false)
+                .setScrollFactor(0)
+                .setDepth(0);
+        }
+        return this._hudSidebarMeasureNodes[styleKey];
+    }
+
+    _measureHudSidebarTextWidth(text, styleKey) {
+        const safeText = typeof text === 'string' ? text : '';
+        if (!safeText) return 0;
+        if (!this._hudSidebarTextWidthCache) {
+            this._hudSidebarTextWidthCache = new Map();
+        }
+        const cacheKey = `${styleKey}:${safeText}`;
+        if (this._hudSidebarTextWidthCache.has(cacheKey)) {
+            return this._hudSidebarTextWidthCache.get(cacheKey);
+        }
+        const measureText = this._getHudSidebarMeasureNode(styleKey);
+        measureText.setText(safeText);
+        const width = measureText.width;
+        this._hudSidebarTextWidthCache.set(cacheKey, width);
+        return width;
+    }
+
+    _fitHudSidebarTextLines(lines, maxWidth, styleKey) {
+        return clampTextLinesToWidth(lines, maxWidth, {
+            measureGlyphWidth: glyph => this._measureHudSidebarTextWidth(glyph, styleKey),
+            measurementCache: new Map()
+        });
+    }
+
+    _getHudSidebarMaxWidth() {
+        const layout = this._hudLayout || this._buildHudLayout(false);
+        const width = Number.isFinite(layout.width) && layout.width > 0
+            ? layout.width
+            : this.cameras.main.width;
+        return Math.max(180, Math.min(320, width - 96));
+    }
+
     setBossHudLayout(enabled) {
         const desired = !!enabled;
         if (this._bossLayoutEnabled === desired && this._hudLayout) return;
@@ -5488,7 +5555,11 @@ class UIScene extends Phaser.Scene {
             const head = challenge.completed ? '本局挑战：已完成' : '本局挑战';
             const progress = `${Math.min(challenge.progress, challenge.target)}/${challenge.target}`;
             const reward = `奖励:+${challenge.rewardGold} 金币`;
-            this.challengeText.setText(`${head}\n${challenge.label}\n进度:${progress}  ${reward}`);
+            this.challengeText.setText(this._fitHudSidebarTextLines([
+                head,
+                challenge.label,
+                `进度:${progress}  ${reward}`
+            ], this._getHudSidebarMaxWidth(), 'challengeSidebar').join('\n'));
             this.challengeText.setStyle({ fill: challenge.completed ? '#9effd6' : '#7CFFB2' });
         } else {
             this.challengeText.setText('');
@@ -5497,7 +5568,7 @@ class UIScene extends Phaser.Scene {
         const eventRoom = GameState.getRunEventRoomSummary ? GameState.getRunEventRoomSummary() : null;
         if (eventRoom) {
             const lines = buildRunEventRoomHudLines(eventRoom, RUN_EVENT_ROOM_POOL);
-            this.eventRoomText.setText(lines.join('\n'));
+            this.eventRoomText.setText(this._fitHudSidebarTextLines(lines, this._getHudSidebarMaxWidth(), 'eventRoomSidebar').join('\n'));
             this.eventRoomText.setStyle({ fill: eventRoom.resolved ? '#9fa8b3' : '#ffd27a' });
         } else {
             this.eventRoomText.setText('');
@@ -5709,7 +5780,7 @@ class HelpScene extends Phaser.Scene {
             { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位，并提示“快捷栏N：+<短名>”；若临时拿不到显式短名则会沿用道具名生成“快捷栏N：+生命”这类短句；提示现在会优先按 Phaser 文本实际宽度钳制，因此“快捷栏N：+HP恢复”这类混排会尽量保留更多有效信息；若当前环境拿不到真实测量结果则回退为宽度权重估算；若道具名词干过长则会截成“快捷栏N：+圣疗秘…”这类省略短句；快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”；若拿不到显式短名则改用“快捷栏1：狂战→净化”这类道具名短句；若这些道具名过长则同样会截成“快捷栏1：古代狂…→神圣净…”这类省略短句', '背包悬停说明也会按实际文本宽度贴边，因此靠近屏幕右缘时不会继续沿用固定 200px 估算', '净化药剂/狂战油可在铁匠制作'] },
             { title: '状态', items: ['灼烧/流血会持续掉血', '减速会降低移动速度'] },
             { title: '本局词缀', items: runModifierLines },
-            { title: '交互/界面', items: ['F — NPC / 事件房交互', '事件房祭坛靠近提示也会按 Phaser 文本实际宽度贴在当前视口内，因此贴近屏幕边缘时不会被裁出画面', 'Tab — 背包', 'Esc — 暂停', 'H — 操作指引'] }
+            { title: '交互/界面', items: ['F — NPC / 事件房交互', '事件房祭坛靠近提示也会按 Phaser 文本实际宽度贴在当前视口内，因此贴近屏幕边缘时不会被裁出画面', '右侧固定侧栏里的本局挑战与事件房摘要也会优先按 Phaser 文本实际宽度逐行钳制，避免长挑战名 / 长路线结算继续顶出 HUD', 'Tab — 背包', 'Esc — 暂停', 'H — 操作指引'] }
         ];
 
         let curY = py - panelH / 2 + 72;

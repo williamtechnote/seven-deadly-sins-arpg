@@ -608,6 +608,23 @@
         return `${keptGlyphs.join('')}${ellipsis}`;
     }
 
+    function clampTextLinesToWidth(lines, maxWidth, options) {
+        const safeLines = Array.isArray(lines)
+            ? lines
+            : (typeof lines === 'string' ? lines.split('\n') : []);
+        const measureGlyphWidth = options && typeof options.measureGlyphWidth === 'function'
+            ? options.measureGlyphWidth
+            : null;
+        const measurementCache = options && options.measurementCache instanceof Map
+            ? options.measurementCache
+            : (measureGlyphWidth ? new Map() : null);
+        return safeLines.map((line) => clampTextToWidth(line, maxWidth, {
+            measureGlyphWidth,
+            measurementCache,
+            ellipsis: options && typeof options.ellipsis === 'string' ? options.ellipsis : undefined
+        }));
+    }
+
     function getQuickSlotAutoAssignIndex(quickSlots) {
         const safeQuickSlots = normalizeQuickSlots(quickSlots);
         const firstEmptyIndex = safeQuickSlots.findIndex(slot => !slot);
@@ -1826,6 +1843,7 @@
         getViewportCenteredTextClampX,
         getInventoryTooltipClampX,
         clampTextToWidth,
+        clampTextLinesToWidth,
         getQuickSlotAutoAssignIndex,
         normalizeSaveData,
         serializeSaveData,

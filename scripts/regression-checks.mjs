@@ -47,6 +47,7 @@ const {
     getViewportCenteredTextClampX,
     getInventoryTooltipClampX,
     clampTextToWidth,
+    clampTextLinesToWidth,
     getQuickSlotAutoAssignIndex,
     resolveKeyboardAimState,
     resolveConsumableUse,
@@ -1891,6 +1892,12 @@ function testMeasuredTextClampHelper() {
         '类型 特殊 | …',
         'measured clamp should ellipsize long strings against measured glyph widths'
     );
+    assert.equal(typeof clampTextLinesToWidth, 'function', 'multiline measured clamp helper should be exported');
+    assert.deepEqual(
+        clampTextLinesToWidth(['本局挑战：已完成', '击败 30 个敌人', '进度:30/30  奖励:+90 金币'], 68, { measureGlyphWidth }),
+        ['本局挑战：已…', '击败 30 个…', '进度:30/…'],
+        'multiline measured clamp should fit each sidebar line independently against measured widths'
+    );
 }
 
 function testRunEventPromptMeasurementHooks() {
@@ -1937,6 +1944,30 @@ function testBossHudMeasurementHooks() {
         source,
         /this\.bossTelegraphHintText\.setText\(this\._fitBossHudTextToWidth\(telegraphHud\.hintLabel \|\| '',\s*telegraphRect\.w,\s*'bossTelegraphHint'\)\);/,
         'Boss telegraph hint should be measured against the full hint lane width'
+    );
+}
+
+function testSidebarMeasurementHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /_fitHudSidebarTextLines\(lines,\s*maxWidth,\s*styleKey\)\s*{/,
+        'UIScene should expose a dedicated multiline fitting helper for fixed sidebar copy'
+    );
+    assert.match(
+        source,
+        /clampTextLinesToWidth\(lines,\s*maxWidth,\s*{[\s\S]*?_measureHudSidebarTextWidth\(glyph,\s*styleKey\)/,
+        'sidebar multiline fitting should reuse the shared multiline clamp helper with Phaser-backed glyph measurement'
+    );
+    assert.match(
+        source,
+        /this\.challengeText\.setText\(this\._fitHudSidebarTextLines\(\[\s*head,\s*challenge\.label,\s*`进度:\$\{progress\}\s\s\$\{reward\}`\s*],\s*this\._getHudSidebarMaxWidth\(\),\s*'challengeSidebar'\)\.join\('\\n'\)\);/,
+        'challenge sidebar should route all lines through the measured sidebar fitting helper'
+    );
+    assert.match(
+        source,
+        /this\.eventRoomText\.setText\(this\._fitHudSidebarTextLines\(lines,\s*this\._getHudSidebarMaxWidth\(\),\s*'eventRoomSidebar'\)\.join\('\\n'\)\);/,
+        'event-room sidebar should route generated HUD lines through the measured sidebar fitting helper'
     );
 }
 
@@ -2012,6 +2043,11 @@ function testReadmeKeyboardInventoryLoop() {
         /事件房祭坛靠近提示也会按 Phaser 文本实际宽度贴在当前视口内，因此贴近屏幕边缘时不会被裁出画面/,
         'README should document viewport-safe measured event-room prompts'
     );
+    assert.match(
+        source,
+        /右侧固定侧栏里的本局挑战与事件房摘要也会优先按 Phaser 文本实际宽度逐行钳制/,
+        'README should document measured fitting for the fixed right sidebar challenge and event-room summaries'
+    );
 }
 
 function testHelpOverlayQuickSlotLoop() {
@@ -2060,6 +2096,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /事件房祭坛靠近提示也会按 Phaser 文本实际宽度贴在当前视口内，因此贴近屏幕边缘时不会被裁出画面/,
         'help overlay should document viewport-safe measured event-room prompts'
+    );
+    assert.match(
+        source,
+        /右侧固定侧栏里的本局挑战与事件房摘要也会优先按 Phaser 文本实际宽度逐行钳制/,
+        'help overlay should document measured fitting for the fixed right sidebar challenge and event-room summaries'
     );
 }
 
@@ -2283,6 +2324,7 @@ function main() {
     runTest('measured text clamp helper', testMeasuredTextClampHelper);
     runTest('run-event prompt measurement hooks', testRunEventPromptMeasurementHooks);
     runTest('run-event world-label measurement hooks', testRunEventWorldLabelMeasurementHooks);
+    runTest('fixed sidebar measurement hooks', testSidebarMeasurementHooks);
     runTest('combat action HUD summary helper', testCombatActionHudSummary);
     runTest('quick-slot item label helper', testQuickSlotItemLabel);
     runTest('keyboard HUD QoL hooks', testKeyboardHudQolHooks);
