@@ -491,12 +491,13 @@
         const ultraCompact = viewportTier === 'ultraCompact';
         const tightTier = ultraCompact && safeMaxWidth <= 160;
         const finalTightTier = ultraCompact && safeMaxWidth <= 132;
+        const ultraTightTier = ultraCompact && safeMaxWidth <= 108;
         const widthShare = ultraCompact
-            ? (finalTightTier ? 0.28 : (tightTier ? 0.3 : 0.34))
+            ? (ultraTightTier ? 0.25 : (finalTightTier ? 0.28 : (tightTier ? 0.3 : 0.34)))
             : 0.42;
         return {
-            maxWidth: Math.max(ultraCompact ? 40 : 44, Math.floor(safeMaxWidth * widthShare)),
-            gap: ultraCompact ? (finalTightTier ? 4 : (tightTier ? 5 : 6)) : 8
+            maxWidth: Math.max(ultraCompact ? (ultraTightTier ? 28 : 40) : 44, Math.floor(safeMaxWidth * widthShare)),
+            gap: ultraCompact ? (ultraTightTier ? 3 : (finalTightTier ? 4 : (tightTier ? 5 : 6))) : 8
         };
     }
 
@@ -605,7 +606,8 @@
         }
         if (progress <= 0) return '';
         const progressLabel = `${Math.min(progress, target)}/${target || 0}`;
-        return pickBadgeText([`进${progressLabel}`, progressLabel]);
+        const compactProgressLabel = `进${target > 0 ? Math.min(progress, target) : progress}`;
+        return pickBadgeText([`进${progressLabel}`, progressLabel, compactProgressLabel]);
     }
 
     function getRunChallengeSidebarBadgeAppearance(challenge, options) {

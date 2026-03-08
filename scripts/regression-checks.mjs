@@ -2131,6 +2131,23 @@ function testRunChallengeSidebarLines() {
     assert.equal(
         buildRunChallengeSidebarBadge({
             label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, {
+            viewportTier: 'ultraCompact',
+            hidden: true,
+            runModifierHidden: true,
+            maxBadgeWidth: 28,
+            measureLabelWidth: measureBadgeWidth
+        }),
+        '进12',
+        'ultra-compact challenge badge helper should fall back to a no-ellipsis progress stub once even the ratio badge no longer fits'
+    );
+    assert.equal(
+        buildRunChallengeSidebarBadge({
+            label: '击败 30 个敌人',
             progress: 30,
             target: 30,
             rewardGold: 90,
@@ -2198,6 +2215,11 @@ function testRunModifierHeadingBadgeLayout() {
         getRunModifierHeadingBadgeLayout(120, { viewportTier: 'ultraCompact' }),
         { maxWidth: 40, gap: 4 },
         'ultra-compact sidebar headings should still clamp the badge to a safe floor width while tightening the heading gap again'
+    );
+    assert.deepEqual(
+        getRunModifierHeadingBadgeLayout(108, { viewportTier: 'ultraCompact' }),
+        { maxWidth: 28, gap: 3 },
+        'ultra-compact sidebar headings should introduce one more ultra-tight badge tier before title truncation destabilizes'
     );
 }
 
@@ -2536,13 +2558,13 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /若该挑战摘要与本局词缀正文都因溢出被隐藏，则会在挑战起步后把 `进12\/30` \/ `完成` 这类更轻量的进度徽记挂到“本局词缀”标题后；若标题预算进一步吃紧，则进行中态还会继续压成 `12\/30`/,
-        'README should document that the lightweight challenge badge waits until both the challenge block and modifier body disappear, then further shortens both completion and in-progress copy under tighter width pressure'
+        /若该挑战摘要与本局词缀正文都因溢出被隐藏，则会在挑战起步后把 `进12\/30` \/ `完成` 这类更轻量的进度徽记挂到“本局词缀”标题后；若标题预算进一步吃紧，则进行中态还会继续压成 `12\/30`；若进入 ultra-tight 更紧预算，则会再回退为 `进12` 这类无省略最终短句/,
+        'README should document that the lightweight challenge badge waits until both the challenge block and modifier body disappear, then falls back to a no-ellipsis progress stub under the final ultra-tight width tier'
     );
     assert.match(
         source,
-        /该轻量徽记会拆成独立弱化色阶，并进一步下调字级与透明度后再与“本局词缀”标题分开贴边；若标题预算继续压窄，则会按更紧预算分档继续下调 badge 宽度占比与固定 gap，优先把更多横向空间留给标题正文/,
-        'README should document the quieter typography plus the tighter width-budget tiers for the final ultra-compact challenge badge fallback'
+        /该轻量徽记会拆成独立弱化色阶，并进一步下调字级与透明度后再与“本局词缀”标题分开贴边；若标题预算继续压窄，则会按更紧预算分档继续下调 badge 宽度占比、最小宽度与固定 gap，优先把更多横向空间留给标题正文/,
+        'README should document the quieter typography plus the ultra-tight width-budget tier for the final ultra-compact challenge badge fallback'
     );
 }
 
@@ -2615,13 +2637,13 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /若该挑战摘要与本局词缀正文都因溢出被隐藏，则会在挑战起步后把“进12\/30”\/“完成”压成挂在“本局词缀”标题后的轻量徽记；若标题预算进一步吃紧，则进行中态还会继续压成“12\/30”/,
-        'help overlay should document that the lightweight challenge badge waits until both the challenge block and modifier body disappear, then further shortens both completion and in-progress copy under tighter width pressure'
+        /若该挑战摘要与本局词缀正文都因溢出被隐藏，则会在挑战起步后把“进12\/30”\/“完成”压成挂在“本局词缀”标题后的轻量徽记；若标题预算进一步吃紧，则进行中态还会继续压成“12\/30”；若进入 ultra-tight 更紧预算，则会再回退为“进12”这类无省略最终短句/,
+        'help overlay should document that the lightweight challenge badge waits until both the challenge block and modifier body disappear, then falls back to a no-ellipsis progress stub under the final ultra-tight width tier'
     );
     assert.match(
         source,
-        /该轻量徽记会拆成独立弱化色阶，并进一步下调字级与透明度后再与“本局词缀”标题分开贴边；若标题预算继续压窄，则会按更紧预算分档继续下调 badge 宽度占比与固定 gap，优先把更多横向空间留给标题正文/,
-        'help overlay should document the quieter typography plus the tighter width-budget tiers for the final ultra-compact challenge badge fallback'
+        /该轻量徽记会拆成独立弱化色阶，并进一步下调字级与透明度后再与“本局词缀”标题分开贴边；若标题预算继续压窄，则会按更紧预算分档继续下调 badge 宽度占比、最小宽度与固定 gap，优先把更多横向空间留给标题正文/,
+        'help overlay should document the quieter typography plus the ultra-tight width-budget tier for the final ultra-compact challenge badge fallback'
     );
 }
 

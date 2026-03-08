@@ -1,9 +1,11 @@
 # TODO.md — seven-deadly-sins-arpg
 
 ## Active
-- [ ] 继续验证 ultra-compact 轻量挑战徽记更紧预算分档下的最小可读宽度与标题截断稳定性，必要时再追加最终回退策略
+- [ ] 继续验证 ultra-compact 轻量挑战徽记在 ultra-tight 分档下的完成态最小可读宽度与标题截断稳定性，必要时再追加最终回退策略
 
 ## Completed
+- [x] ultra-compact 轻量挑战徽记在 ultra-tight 分档下若 `N/N` 仍放不下，则为进行中态回退为无省略的 `进N` 最终短句，避免 badge 被 Phaser 再截断（完成：2026-03-09 07:30 SGT）
+- [x] ultra-compact 轻量挑战徽记与“本局词缀”标题并排时，在更极端窄标题预算下新增 ultra-tight 分档，继续下调 badge 宽度占比、最小宽度与 gap，优先稳住标题截断（完成：2026-03-09 07:30 SGT）
 - [x] ultra-compact 轻量挑战徽记与“本局词缀”标题并排时，在更窄标题预算下继续分档收紧固定 gap，减少 badge 与标题之间的横向空耗（完成：2026-03-09 07:18 SGT）
 - [x] ultra-compact 轻量挑战徽记与“本局词缀”标题并排时，在更窄标题预算下继续分档下调 badge 宽度占比，优先把更多 heading 宽度留给标题正文（完成：2026-03-09 07:18 SGT）
 - [x] ultra-compact 轻量挑战徽记与“本局词缀”标题并排时进一步下调 badge 宽度占比，优先把更多 heading 宽度留给标题正文（完成：2026-03-09 07:12 SGT）
