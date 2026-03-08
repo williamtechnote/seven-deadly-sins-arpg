@@ -424,6 +424,40 @@
         return `普攻 U: ${formatCooldownSecondsLabel(safe.attackCooldownMs)}  特攻 O: ${formatCooldownSecondsLabel(safe.specialCooldownMs)}  闪避: Space`;
     }
 
+    function getHudSidebarViewportTier(viewportWidth, viewportHeight) {
+        const safeWidth = Number.isFinite(viewportWidth) && viewportWidth > 0
+            ? viewportWidth
+            : Number.POSITIVE_INFINITY;
+        const safeHeight = Number.isFinite(viewportHeight) && viewportHeight > 0
+            ? viewportHeight
+            : Number.POSITIVE_INFINITY;
+        if (safeWidth <= 900 || safeHeight <= 680) {
+            return 'ultraCompact';
+        }
+        if (safeWidth <= 1024 || safeHeight <= 768) {
+            return 'compact';
+        }
+        return 'regular';
+    }
+
+    function getHudSidebarLineCap(sectionKey, viewportTier) {
+        const safeSectionKey = typeof sectionKey === 'string' ? sectionKey : '';
+        const safeTier = typeof viewportTier === 'string' ? viewportTier : 'regular';
+        if (safeTier === 'ultraCompact') {
+            if (safeSectionKey === 'challengeSidebar') return 1;
+            if (safeSectionKey === 'runModifierSidebar') return 1;
+            if (safeSectionKey === 'eventRoomSidebar') return 2;
+            return 0;
+        }
+        if (safeTier === 'compact') {
+            if (safeSectionKey === 'challengeSidebar') return 2;
+            if (safeSectionKey === 'runModifierSidebar') return 2;
+            if (safeSectionKey === 'eventRoomSidebar') return 3;
+            return 0;
+        }
+        return 0;
+    }
+
     function normalizeRunChallengeSidebarLabel(label, compact) {
         if (typeof label !== 'string') return '';
         const safeLabel = label.trim();
@@ -437,13 +471,24 @@
 
     function buildRunChallengeSidebarLines(challenge, options) {
         const safeChallenge = challenge && typeof challenge === 'object' ? challenge : {};
-        const compact = !!(options && options.compact);
+        const viewportTier = options && typeof options.viewportTier === 'string'
+            ? options.viewportTier
+            : ((options && options.ultraCompact) ? 'ultraCompact' : ((options && options.compact) ? 'compact' : 'regular'));
+        const compact = viewportTier !== 'regular' || !!(options && options.compact);
+        const ultraCompact = viewportTier === 'ultraCompact' || !!(options && options.ultraCompact);
         const target = clampInt(safeChallenge.target, 0, Number.MAX_SAFE_INTEGER, 0);
         const progress = clampInt(safeChallenge.progress, 0, target || Number.MAX_SAFE_INTEGER, 0);
         const rewardGold = clampInt(safeChallenge.rewardGold, 0, Number.MAX_SAFE_INTEGER, 0);
         const completed = !!safeChallenge.completed;
         const normalizedLabel = normalizeRunChallengeSidebarLabel(safeChallenge.label, compact) || '未知挑战';
         const progressLabel = `${Math.min(progress, target)}/${target || 0}`;
+
+        if (ultraCompact) {
+            if (completed) {
+                return [rewardGold > 0 ? `挑战完成 · +${rewardGold}金` : '挑战完成'];
+            }
+            return [rewardGold > 0 ? `挑战 ${progressLabel} · +${rewardGold}金` : `挑战 ${progressLabel}`];
+        }
 
         if (compact) {
             if (completed) {
@@ -1991,6 +2036,8 @@
         clampTextToWidth,
         clampTextLinesToWidth,
         clampTextLinesToWidthAndCount,
+        getHudSidebarViewportTier,
+        getHudSidebarLineCap,
         buildVerticalTextStackLayout,
         buildPriorityTextStackLayout,
         getQuickSlotAutoAssignIndex,

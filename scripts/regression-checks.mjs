@@ -50,6 +50,8 @@ const {
     clampTextToWidth,
     clampTextLinesToWidth,
     clampTextLinesToWidthAndCount,
+    getHudSidebarViewportTier,
+    getHudSidebarLineCap,
     buildVerticalTextStackLayout,
     buildPriorityTextStackLayout,
     getQuickSlotAutoAssignIndex,
@@ -1914,6 +1916,21 @@ function testMeasuredTextClampHelper() {
     );
 }
 
+function testHudSidebarViewportPolicy() {
+    assert.equal(typeof getHudSidebarViewportTier, 'function', 'sidebar viewport-tier helper should be exported');
+    assert.equal(getHudSidebarViewportTier(1280, 800), 'regular', 'wide/tall viewports should keep the regular sidebar tier');
+    assert.equal(getHudSidebarViewportTier(1024, 900), 'compact', 'narrow viewports should downgrade the sidebar tier to compact');
+    assert.equal(getHudSidebarViewportTier(1280, 680), 'ultraCompact', 'short viewports should downgrade the sidebar tier to ultra-compact');
+    assert.equal(getHudSidebarViewportTier(900, 900), 'ultraCompact', 'very narrow viewports should downgrade the sidebar tier to ultra-compact');
+    assert.equal(typeof getHudSidebarLineCap, 'function', 'sidebar line-cap policy helper should be exported');
+    assert.equal(getHudSidebarLineCap('challengeSidebar', 'regular'), 0, 'regular sidebar tiers should not cap challenge lines');
+    assert.equal(getHudSidebarLineCap('runModifierSidebar', 'compact'), 2, 'compact sidebars should keep two run-modifier lines');
+    assert.equal(getHudSidebarLineCap('eventRoomSidebar', 'compact'), 3, 'compact sidebars should keep three event-room lines');
+    assert.equal(getHudSidebarLineCap('runModifierSidebar', 'ultraCompact'), 1, 'ultra-compact sidebars should collapse run modifiers to one line');
+    assert.equal(getHudSidebarLineCap('challengeSidebar', 'ultraCompact'), 1, 'ultra-compact sidebars should collapse challenge copy to one line');
+    assert.equal(getHudSidebarLineCap('eventRoomSidebar', 'ultraCompact'), 2, 'ultra-compact sidebars should keep only two event-room lines');
+}
+
 function testRunChallengeSidebarLines() {
     assert.equal(typeof buildRunChallengeSidebarLines, 'function', 'run challenge sidebar helper should be exported');
     assert.deepEqual(
@@ -1948,6 +1965,28 @@ function testRunChallengeSidebarLines() {
         }, { compact: true }),
         ['本局挑战：已完成', '击败 30 个敌人 · +90金'],
         'compact challenge sidebar helper should preserve completion state and reward once the challenge is done'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, { viewportTier: 'ultraCompact' }),
+        ['挑战 12/30 · +90金'],
+        'ultra-compact challenge sidebar helper should collapse active challenges into a single progress-first line'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 90,
+            completed: true
+        }, { viewportTier: 'ultraCompact' }),
+        ['挑战完成 · +90金'],
+        'ultra-compact challenge sidebar helper should collapse completed challenges into a single completion line'
     );
 }
 
@@ -2002,6 +2041,11 @@ function testSidebarMeasurementHooks() {
     const source = loadGameSource();
     assert.match(
         source,
+        /_getHudSidebarViewportTier\(\)\s*{[\s\S]*?getHudSidebarViewportTier\(viewportWidth,\s*viewportHeight\)/,
+        'UIScene should centralize sidebar viewport tiers through the shared tier helper'
+    );
+    assert.match(
+        source,
         /_fitHudSidebarTextLine\(text,\s*maxWidth,\s*styleKey\)\s*{/,
         'UIScene should expose a dedicated single-line fitting helper for fixed sidebar headings'
     );
@@ -2032,6 +2076,11 @@ function testSidebarMeasurementHooks() {
     );
     assert.match(
         source,
+        /getHudSidebarLineCap\(sectionKey,\s*this\._getHudSidebarViewportTier\(\)\)/,
+        'sidebar line-cap policy should be delegated to the shared viewport-tier helper'
+    );
+    assert.match(
+        source,
         /_fitHudSidebarTextBlock\(lines,\s*maxWidth,\s*styleKey,\s*sectionKey\)\s*{/,
         'UIScene should expose a dedicated block fitter that combines width clamp and optional line caps'
     );
@@ -2057,8 +2106,8 @@ function testSidebarMeasurementHooks() {
     );
     assert.match(
         source,
-        /buildRunChallengeSidebarLines\(challenge,\s*{\s*compact:\s*this\._isCompactHudSidebarViewport\(\)\s*}\)/,
-        'challenge sidebar should build its lines through a shared compact-capable helper'
+        /buildRunChallengeSidebarLines\(challenge,\s*{\s*viewportTier:\s*this\._getHudSidebarViewportTier\(\)\s*}\)/,
+        'challenge sidebar should build its lines through a shared viewport-tier-aware helper'
     );
     assert.match(
         source,
@@ -2201,13 +2250,13 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /若视口较窄，则本局词缀与事件房摘要会额外收敛为有限行数，并在最后一行补省略号/,
-        'README should document the narrow-viewport line-cap and ellipsis policy for long sidebar blocks'
+        /若视口进入 compact 档位，则本局词缀与事件房摘要会收敛为有限行数并在最后一行补省略号/,
+        'README should document the compact-tier line-cap and ellipsis policy for long sidebar blocks'
     );
     assert.match(
         source,
-        /若视口较窄，本局挑战摘要会压缩为 2 行紧凑版/,
-        'README should document the compact two-line challenge summary for smaller viewports'
+        /若进一步进入 ultra-compact 档位，则本局词缀会压到 1 行、事件房摘要压到 2 行，本局挑战也会收敛为单行 `挑战 进度 · 奖励` 摘要/,
+        'README should document the ultra-compact single-line challenge summary and tighter sidebar caps'
     );
     assert.match(
         source,
@@ -2270,13 +2319,13 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /若视口较窄，则本局词缀与事件房摘要会额外收敛为有限行数，并在最后一行补省略号/,
-        'help overlay should document the narrow-viewport line-cap and ellipsis policy for long sidebar blocks'
+        /若视口进入 compact 档位，则本局词缀与事件房摘要会额外收敛为有限行数，并在最后一行补省略号/,
+        'help overlay should document the compact-tier line-cap and ellipsis policy for long sidebar blocks'
     );
     assert.match(
         source,
-        /若视口较窄，本局挑战摘要会压缩为 2 行紧凑版/,
-        'help overlay should document the compact two-line challenge summary for smaller viewports'
+        /若视口进一步进入 ultra-compact 档位，则本局词缀会压到 1 行、事件房摘要压到 2 行、本局挑战压到单行进度摘要/,
+        'help overlay should document the ultra-compact single-line challenge summary and tighter sidebar caps'
     );
     assert.match(
         source,
@@ -2563,6 +2612,7 @@ function main() {
     runTest('quick-slot auto-assign notice', testQuickSlotAutoAssignNotice);
     runTest('inventory tooltip clamp helper', testInventoryTooltipClampXHelper);
     runTest('measured text clamp helper', testMeasuredTextClampHelper);
+    runTest('sidebar viewport policy helper', testHudSidebarViewportPolicy);
     runTest('run challenge sidebar lines', testRunChallengeSidebarLines);
     runTest('run-event prompt measurement hooks', testRunEventPromptMeasurementHooks);
     runTest('run-event world-label measurement hooks', testRunEventWorldLabelMeasurementHooks);
