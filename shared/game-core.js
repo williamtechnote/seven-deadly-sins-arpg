@@ -609,6 +609,13 @@
         return rewardLabel ? [`挑战完成 · ${rewardLabel}`, '挑战完成', '完成'] : ['挑战完成', '完成'];
     }
 
+    function getRunChallengeCompactInProgressDetailVariants(normalizedLabel, rewardLabel) {
+        if (rewardLabel) {
+            return [`${normalizedLabel} · ${rewardLabel}`, normalizedLabel];
+        }
+        return [normalizedLabel];
+    }
+
     function buildRunChallengeSidebarLines(challenge, options) {
         const safeChallenge = challenge && typeof challenge === 'object' ? challenge : {};
         const viewportTier = options && typeof options.viewportTier === 'string'
@@ -652,9 +659,17 @@
                     rewardLabel ? `${normalizedLabel} · ${rewardLabel}` : normalizedLabel
                 ];
             }
+            const compactDetailLine = pickChallengeLabelVariant(
+                getRunChallengeCompactInProgressDetailVariants(normalizedLabel, rewardLabel),
+                {
+                    maxWidth: Number(options && options.maxLineWidth),
+                    measureLabelWidth: options && options.measureLabelWidth,
+                    measureGlyphWidth: options && options.measureGlyphWidth
+                }
+            );
             return [
                 `本局挑战 ${progressLabel}`,
-                rewardLabel ? `${normalizedLabel} · ${rewardLabel}` : normalizedLabel
+                compactDetailLine
             ];
         }
 

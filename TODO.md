@@ -1,9 +1,11 @@
 # TODO.md — seven-deadly-sins-arpg
 
 ## Active
-- [ ] 评估 compact 进行中本局挑战双行摘要在更窄宽度预算下是否需要新增额外语义回退，而不是直接依赖现有两行布局
+- [ ] 评估 compact 完成态本局挑战双行摘要在更窄宽度预算下是否也需要同类 `挑战名 · 奖励 -> 挑战名` 语义回退
 
 ## Completed
+- [x] 为 compact 进行中本局挑战第二行补充 gold-only / future compound reward 更窄预算回归守卫，确认继续不新增 reward-only 中间短句（完成：2026-03-09 11:06 SGT）
+- [x] compact 进行中本局挑战第二行在更窄宽度预算下补充 `击败 30 个敌人 · +90金 -> 击败 30 个敌人` 语义回退，避免直接进入通用省略（完成：2026-03-09 11:06 SGT）
 - [x] 为 compact 进行中本局挑战补充 gold-only / future compound reward 回归守卫，确认继续复用共享奖励短句 helper（完成：2026-03-09 11:00 SGT）
 - [x] compact 进行中本局挑战双行摘要接入共享奖励短句 helper，并同步 README / 操作指引说明 compact 进行中也显式暴露奖励短句（完成：2026-03-09 11:00 SGT）
 - [x] compact 完成态本局挑战摘要接入共享奖励短句 helper，并为 regular / compact 复合奖励短句补充回归守卫（完成：2026-03-09 10:49 SGT）
