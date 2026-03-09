@@ -4,6 +4,9 @@
 - [ ] 暂无；下一轮从 run challenge / sidebar 响应式文案相邻区域继续选取具体守卫项
 
 ## Completed
+- [x] README / 操作指引同步 completed run challenge 在 `target<=0` 的异常数据下 regular 第三行改走 completed-state 回退，不再出现 `进行中`（完成：2026-03-09 15:31 SGT）
+- [x] regular 三行 completed challenge 摘要在 `target<=0` 且上游标签回退 `未知挑战` 时补充回归守卫，确认正文继续保留 `未知挑战`，不误退回 `进行中`（完成：2026-03-09 15:31 SGT）
+- [x] regular 三行 completed challenge 摘要在 `target<=0` 的异常数据下 suppress misleading in-progress copy，第三行改为沿用 `已完成  奖励:+90金 -> 已完成` / `已完成` 这组 completed-state 回退（完成：2026-03-09 15:31 SGT）
 - [x] README / 操作指引同步 in-progress run challenge 在 `target<=0` 的异常数据下 suppress misleading ratio copy，显式说明可见摘要保留进行中语义、隐藏 badge 保持静默（完成：2026-03-09 14:31 SGT）
 - [x] in-progress run challenge 在 `target<=0` 的异常数据下为 ultra-compact 可见摘要与隐藏 badge 补充回归守卫，确认继续沿用 `挑战进行中 -> 进行中` / `静默隐藏`，不输出 `挑战 0/0` / `进0/0` / `0/0`（完成：2026-03-09 14:31 SGT）
 - [x] in-progress run challenge 在 `target<=0` 的异常数据下为 regular / compact 摘要补充回归守卫，确认不再输出误导性的 `进度:0/0` / `0/0`（完成：2026-03-09 14:31 SGT）

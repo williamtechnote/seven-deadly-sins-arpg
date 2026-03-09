@@ -667,7 +667,11 @@
     }
 
     function getRunChallengeRegularCompletedDetailVariants(progressLabel, rewardLabel) {
-        return getRunChallengeRegularDetailVariants(progressLabel, rewardLabel);
+        const safeProgressLabel = typeof progressLabel === 'string' ? progressLabel.trim() : '';
+        if (!safeProgressLabel) {
+            return rewardLabel ? [`已完成  奖励:${rewardLabel}`, '已完成'] : ['已完成'];
+        }
+        return getRunChallengeRegularDetailVariants(safeProgressLabel, rewardLabel);
     }
 
     function getRunChallengeCompactDetailVariants(normalizedLabel, rewardLabel) {
