@@ -3952,6 +3952,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /若前缀去重后的正文回退为 `未知挑战` 但当前 challenge 仍有奖励短句，则 regular 三行摘要会继续保留 `未知挑战` 正文，并沿用 `进度:12\/30  奖励:\+90金` \/ `进度:30\/30  奖励:\+90金` 这条 reward-bearing 第三行语义，不额外插入新的中间短句/,
+        'README should document the unknown-label reward-bearing regular fallback without introducing extra intermediate copy'
+    );
+    assert.match(
+        source,
         /若上游挑战标题仍带 `本局挑战：` \/ `挑战：` 前缀，compact 第二行也会先去重再拼接奖励短句，避免紧凑摘要重复“挑战”标题/,
         'README should document that compact challenge detail lines dedupe upstream challenge prefixes before appending reward labels'
     );
@@ -3979,6 +3984,11 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /若前缀去重后的正文回退为 `未知挑战` 且当前 challenge 没有奖励短句，则 compact 第二行也会继续保留 `未知挑战` 这条 label-only 回退，不补 `\+0金` \/ `奖励:未知` 这类占位/,
         'README should document the unknown-label rewardless compact fallback without inserting placeholder reward copy'
+    );
+    assert.match(
+        source,
+        /若前缀去重后的正文回退为 `未知挑战` 且当前 challenge 仍有奖励短句，则 compact 第二行也会继续保留 `未知挑战 · \+90金` 这条 reward-bearing 回退，不额外插入新的中间短句/,
+        'README should document the unknown-label reward-bearing compact fallback without introducing extra intermediate copy'
     );
     assert.match(
         source,
@@ -4136,6 +4146,11 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
+        /若前缀去重后的正文回退为“未知挑战”但当前 challenge 仍有奖励短句，则 regular 三行摘要会继续保留“未知挑战”正文，并沿用“进度:12\/30  奖励:\+90金”\/“进度:30\/30  奖励:\+90金”这条 reward-bearing 第三行语义，不额外插入新的中间短句/,
+        'help overlay should document the unknown-label reward-bearing regular fallback without introducing extra intermediate copy'
+    );
+    assert.match(
+        source,
         /若上游挑战标题仍带“本局挑战：”\/“挑战：”前缀，compact 第二行也会先去重再拼接奖励短句，避免紧凑摘要重复“挑战”标题/,
         'help overlay should document that compact challenge detail lines dedupe upstream challenge prefixes before appending reward labels'
     );
@@ -4163,6 +4178,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若前缀去重后的正文回退为“未知挑战”且当前 challenge 没有奖励短句，则 compact 第二行也会继续保留“未知挑战”这条 label-only 回退，不补“\+0金”\/“奖励:未知”这类占位/,
         'help overlay should document the unknown-label rewardless compact fallback without inserting placeholder reward copy'
+    );
+    assert.match(
+        source,
+        /若前缀去重后的正文回退为“未知挑战”且当前 challenge 仍有奖励短句，则 compact 第二行也会继续保留“未知挑战 · \+90金”这条 reward-bearing 回退，不额外插入新的中间短句/,
+        'help overlay should document the unknown-label reward-bearing compact fallback without introducing extra intermediate copy'
     );
     assert.match(
         source,
