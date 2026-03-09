@@ -3529,6 +3529,27 @@ function testRunChallengeSidebarLines() {
         'reward-bearing ultra-compact in-progress challenge badges should stay silent when invalid targets collapse wider summaries and the upstream label falls back to 未知挑战'
     );
     assert.deepEqual(
+        getRunChallengeSidebarBadgeAppearance({
+            label: '本局挑战：挑战：本局',
+            progress: 12,
+            target: 0,
+            rewardGold: 90,
+            completed: false
+        }, {
+            viewportTier: 'ultraCompact',
+            hidden: true,
+            runModifierHidden: true,
+            maxBadgeWidth: 34,
+            measureLabelWidth: measureBadgeWidth
+        }),
+        {
+            text: '',
+            fill: '',
+            alpha: 1
+        },
+        'reward-bearing hidden in-progress challenge badge appearance should clear its subdued tint once invalid targets and unknown labels collapse the badge to silence'
+    );
+    assert.deepEqual(
         getRunChallengeCompletedBadgeVariants({
             label: '击败 30 个敌人',
             progress: 30,
@@ -4500,6 +4521,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /对应的轻量 badge appearance 也会回退为空文案并清空弱化 tint \/ alpha，避免标题行残留旧着色/,
+        'README should document that the silent reward-bearing hidden in-progress badge also clears its subdued appearance state'
+    );
+    assert.match(
+        source,
         /即使上游挑战标签在 regular \/ compact 路径里因前缀去重而回退成 `未知挑战`，ultra-compact 这条单行摘要也仍会保持同一组 `挑战 12\/30 · \+90金 -> 挑战 12\/30 -> 12\/30` \/ `挑战完成 · \+90金 -> 挑战完成 -> 完成` 语义短句，不额外插入 `未知挑战` 这类中间短句/,
         'README should document that ultra-compact challenge summaries stay on the same fallback ladder even when the body label falls back to 未知挑战'
     );
@@ -4761,6 +4787,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若未来异常数据把 in-progress challenge 的“target”压成 0 或更低，且当前 challenge 仍有奖励短句，隐藏后的轻量 in-progress challenge badge 也会继续保持静默，不输出“挑战 0\/0”\/“进0\/0”\/“0\/0”/,
         'help overlay should document that reward-bearing hidden in-progress badges stay silent on invalid targets'
+    );
+    assert.match(
+        source,
+        /对应的轻量 badge appearance 也会回退为空文案并清空弱化 tint\/alpha，避免标题行残留旧着色/,
+        'help overlay should document that the silent reward-bearing hidden in-progress badge also clears its subdued appearance state'
     );
     assert.match(
         source,
