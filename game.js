@@ -1892,6 +1892,12 @@ class HubScene extends Phaser.Scene {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
         AudioSystem.bindSceneInput(this);
+        if (this.input && this.input.keyboard) {
+            this.input.keyboard.enabled = true;
+            if (typeof this.input.keyboard.resetKeys === 'function') {
+                this.input.keyboard.resetKeys();
+            }
+        }
 
         this.cameras.main.setBackgroundColor('#1a1a2e');
 
@@ -4354,7 +4360,14 @@ class BossScene extends Phaser.Scene {
         }
         try {
             const finishVictoryTransition = () => {
-                this._forceVictoryTransition();
+                // Defer scene transition to next frame to avoid stopping/starting
+                // scenes from within a Phaser keyboard event handler (DialogScene
+                // keydown → advance → onComplete), which corrupts keyboard state.
+                if (typeof window !== 'undefined' && window.setTimeout) {
+                    window.setTimeout(() => this._forceVictoryTransition(), 0);
+                } else {
+                    this._forceVictoryTransition();
+                }
             };
             this._victoryFailSafeTimer = this.time.delayedCall(12000, () => {
                 finishVictoryTransition();
