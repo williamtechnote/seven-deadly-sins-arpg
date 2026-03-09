@@ -1980,16 +1980,8 @@ class HubScene extends Phaser.Scene {
         });
 
         this._portalTransitioning = false;
-        this.physics.add.overlap(this.player, this.portalGroup, (player, portal) => {
-            if (this._portalTransitioning) return;
-            this._portalTransitioning = true;
-            this.scene.stop('UIScene');
-            if (portal.bossKey === 'final') {
-                this.scene.start('BossScene', { bossKey: 'final' });
-            } else {
-                GameState.discoverRunEventRoom();
-                this.scene.start('LevelScene', { bossKey: portal.bossKey });
-            }
+        this.physics.add.overlap(this.player, this.portalGroup, (_player, portal) => {
+            this._startPortalTransition(portal && portal.bossKey);
         });
 
         this.portals.forEach(portal => {
@@ -2201,6 +2193,35 @@ class HubScene extends Phaser.Scene {
         this._miniMapDynamic.fillCircle(playerPos.x, playerPos.y, 3.5);
         this._miniMapDynamic.lineStyle(1, 0x00e5ff, 0.8);
         this._miniMapDynamic.strokeCircle(playerPos.x, playerPos.y, 6);
+    }
+
+    _startPortalTransition(bossKey) {
+        if (this._portalTransitioning || !bossKey) return;
+        this._portalTransitioning = true;
+        if (this.player && this.player.body && this.player.body.setVelocity) {
+            this.player.body.setVelocity(0, 0);
+        }
+
+        const begin = () => {
+            try {
+                if (this.scene.isActive('UIScene')) this.scene.stop('UIScene');
+                if (bossKey === 'final') {
+                    this.scene.start('BossScene', { bossKey: 'final' });
+                } else {
+                    GameState.discoverRunEventRoom();
+                    this.scene.start('LevelScene', { bossKey });
+                }
+            } catch (err) {
+                this._portalTransitioning = false;
+                if (!this.scene.isActive('UIScene')) this.scene.launch('UIScene');
+            }
+        };
+
+        if (this.time && typeof this.time.delayedCall === 'function') {
+            this.time.delayedCall(0, begin);
+        } else {
+            begin();
+        }
     }
 
     update(time, delta) {
