@@ -594,6 +594,30 @@
         return text.replace(/[\s\u3000]+/gu, ' ').trim();
     }
 
+    function isRunChallengePrefixToken(text) {
+        const normalizedToken = normalizeInlineCopyWhitespace(text).replace(/[：:\-—–·•|/]+$/gu, '');
+        return /^(?:本局\s*)?挑战$/u.test(normalizedToken) || /^本局$/u.test(normalizedToken);
+    }
+
+    function stripRunChallengeBracketedDecoratorPrefix(label) {
+        if (typeof label !== 'string' || !label) return '';
+        let strippedLabel = label;
+        let previousLabel = null;
+        while (strippedLabel && strippedLabel !== previousLabel) {
+            previousLabel = strippedLabel;
+            strippedLabel = strippedLabel.replace(
+                /^[\[［【(（]\s*([^\]］】)）]+?)\s*[\]］】)）]\s*/u,
+                (match, innerText) => (isRunChallengePrefixToken(innerText) ? '' : match)
+            );
+            strippedLabel = normalizeInlineCopyWhitespace(
+                strippedLabel !== previousLabel
+                    ? stripRunChallengeLeadingSeparators(strippedLabel)
+                    : strippedLabel
+            );
+        }
+        return strippedLabel;
+    }
+
     function stripRunChallengeLeadingSeparators(label) {
         if (typeof label !== 'string' || !label) return '';
         return label.replace(/^(?:(?:[:：\-—–·•|/])+[\s]*)+/u, '');
@@ -605,7 +629,7 @@
         let previousLabel = null;
         while (normalizedLabel && normalizedLabel !== previousLabel) {
             previousLabel = normalizedLabel;
-            const strippedLabel = normalizedLabel
+            const strippedLabel = stripRunChallengeBracketedDecoratorPrefix(normalizedLabel)
                 .replace(/^(?:本局)?挑战\s*[:：]?\s*/u, '')
                 .replace(/^本局\s*[:：]?\s*/u, '')
                 .replace(/^挑战\s*[:：]?\s*/u, '');
