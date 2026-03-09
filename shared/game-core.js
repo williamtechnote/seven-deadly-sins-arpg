@@ -631,17 +631,19 @@
         return rewardLabel ? [`挑战完成 · ${rewardLabel}`, '挑战完成', '完成'] : ['挑战完成', '完成'];
     }
 
-    function getRunChallengeInProgressInvalidTargetVisibleFallbacks(rewardLabel) {
+    function getRunChallengeInProgressInvalidTargetVisibleFallbacks(rewardLabel, normalizedLabel) {
         return {
             compactTitle: '本局挑战：进行中',
+            compactDetailVariants: getRunChallengeCompactInProgressDetailVariants(normalizedLabel, rewardLabel),
             regularDetailVariants: rewardLabel ? [`进行中  奖励:${rewardLabel}`, '进行中'] : ['进行中'],
             ultraCompactSummaryVariants: rewardLabel ? [`挑战进行中 · ${rewardLabel}`, '挑战进行中', '进行中'] : ['挑战进行中', '进行中']
         };
     }
 
-    function getRunChallengeCompletedInvalidTargetVisibleFallbacks(rewardLabel) {
+    function getRunChallengeCompletedInvalidTargetVisibleFallbacks(rewardLabel, normalizedLabel) {
         return {
             compactTitle: '本局挑战：已完成',
+            compactDetailVariants: getRunChallengeCompactCompletedDetailVariants(normalizedLabel, rewardLabel),
             regularDetailVariants: rewardLabel ? [`已完成  奖励:${rewardLabel}`, '已完成'] : ['已完成'],
             ultraCompactSummaryVariants: rewardLabel ? [`挑战完成 · ${rewardLabel}`, '挑战完成', '完成'] : ['挑战完成', '完成']
         };
@@ -737,8 +739,8 @@
         const progressLabel = target > 0 ? `${Math.min(progress, target)}/${target}` : '';
         const invalidTargetVisibleFallbacks = target <= 0
             ? (completed
-                ? getRunChallengeCompletedInvalidTargetVisibleFallbacks(rewardLabel)
-                : getRunChallengeInProgressInvalidTargetVisibleFallbacks(rewardLabel))
+                ? getRunChallengeCompletedInvalidTargetVisibleFallbacks(rewardLabel, normalizedLabel)
+                : getRunChallengeInProgressInvalidTargetVisibleFallbacks(rewardLabel, normalizedLabel))
             : null;
 
         if (ultraCompact) {
@@ -755,7 +757,9 @@
         if (compact) {
             if (completed) {
                 const compactDetailLine = pickChallengeLabelVariant(
-                    getRunChallengeCompactCompletedDetailVariants(normalizedLabel, rewardLabel),
+                    invalidTargetVisibleFallbacks
+                        ? invalidTargetVisibleFallbacks.compactDetailVariants
+                        : getRunChallengeCompactCompletedDetailVariants(normalizedLabel, rewardLabel),
                     {
                         maxWidth: Number(options && options.maxLineWidth),
                         measureLabelWidth: options && options.measureLabelWidth,
@@ -768,7 +772,9 @@
                 ];
             }
             const compactDetailLine = pickChallengeLabelVariant(
-                getRunChallengeCompactInProgressDetailVariants(normalizedLabel, rewardLabel),
+                invalidTargetVisibleFallbacks
+                    ? invalidTargetVisibleFallbacks.compactDetailVariants
+                    : getRunChallengeCompactInProgressDetailVariants(normalizedLabel, rewardLabel),
                 {
                     maxWidth: Number(options && options.maxLineWidth),
                     measureLabelWidth: options && options.measureLabelWidth,

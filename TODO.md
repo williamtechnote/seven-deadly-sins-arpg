@@ -1,9 +1,10 @@
 # TODO.md — seven-deadly-sins-arpg
 
 ## Active
-- [ ] visible invalid-target challenge reward-bearing 路径继续复用同组共享状态 helper，补齐剩余回归守卫，避免 regular / compact / ultra-compact 文案未来漂移
 
 ## Completed
+- [x] visible invalid-target challenge reward-bearing in-progress 路径继续复用同组共享状态 helper，补齐 regular / compact / ultra-compact 回归守卫，避免文案未来漂移（完成：2026-03-09 21:19 +08）
+- [x] visible invalid-target challenge reward-bearing completed 路径继续复用同组共享状态 helper，补齐 regular / compact / ultra-compact 回归守卫，避免文案未来漂移（完成：2026-03-09 21:19 +08）
 - [x] visible invalid-target challenge completed 且 no-reward 路径补充共享状态 helper / 回归守卫，显式统一 regular / compact / ultra-compact 的 `已完成` 回退链（完成：2026-03-09 18:05 +08）
 - [x] visible invalid-target challenge in-progress 且 no-reward 路径补充共享状态 helper / 回归守卫，显式统一 regular / compact / ultra-compact 的 `进行中` 回退链（完成：2026-03-09 18:05 +08）
 - [x] README / 操作指引同步 visible completed challenge 在 `target<=0` 且无奖励短句时继续沿用 `已完成` / `本局挑战：已完成` / `挑战完成 -> 完成` 这组 completed-state / no-reward 回退链，不误退回 `进行中`（完成：2026-03-09 17:45 +08）
