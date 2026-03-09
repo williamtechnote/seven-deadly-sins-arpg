@@ -1,9 +1,9 @@
 # TODO.md — seven-deadly-sins-arpg
 
 ## Active
-- [ ] heartbeat 审计补记 ultra-compact completed invalid-target unknown-label 分支回退与验证结果
 
 ## Completed
+- [x] heartbeat 审计补记 ultra-compact completed invalid-target unknown-label 分支回退与验证结果（完成：2026-03-09 17:19 +08）
 - [x] README / 操作指引同步 ultra-compact 单行 completed challenge 摘要在上游标签去重后回退 `未知挑战` 且 `target<=0` 时继续沿用 `挑战完成 · +90金 -> 挑战完成 -> 完成` 同一 completed-state 回退链，不额外插入 `未知挑战`（完成：2026-03-09 17:18 +08）
 - [x] ultra-compact 单行 completed challenge 摘要在上游标签去重后回退 `未知挑战` 且 `target<=0` 时补充回归守卫，确认继续沿用 `挑战完成 · +90金 -> 挑战完成 -> 完成` 同一 completed-state 回退链（完成：2026-03-09 17:18 +08）
 - [x] README / 操作指引同步 compact 双行 challenge 摘要在上游标签去重后回退 `未知挑战` 且 completed 数据 `target<=0` 时继续沿用 `未知挑战 · +90金` / `未知挑战` 这组 completed detail fallback，不误退回 `进行中`（完成：2026-03-09 16:09 +08）
