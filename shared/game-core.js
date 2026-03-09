@@ -598,6 +598,11 @@
         return rewardGold > 0 ? `+${rewardGold}金` : '';
     }
 
+    function buildRunChallengeCompletedFeedbackText(challenge) {
+        const rewardLabel = formatRunChallengeRewardShortLabel(challenge);
+        return rewardLabel ? `挑战完成 ${rewardLabel}` : '挑战完成';
+    }
+
     function getRunChallengeInProgressSummaryVariants(progressLabel, rewardLabel) {
         if (rewardLabel) {
             return [`挑战 ${progressLabel} · ${rewardLabel}`, `挑战 ${progressLabel}`, progressLabel];
@@ -2265,6 +2270,7 @@
         formatAimDirectionLabel,
         buildCombatActionHudSummary,
         formatRunChallengeRewardShortLabel,
+        buildRunChallengeCompletedFeedbackText,
         buildRunChallengeSidebarLines,
         buildRunChallengeSidebarBadge,
         getRunChallengeCompletedBadgeVariants,

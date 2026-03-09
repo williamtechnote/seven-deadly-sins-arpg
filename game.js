@@ -58,6 +58,7 @@ const {
     buildRunModifierEffects,
     buildRunEventRoomEffects,
     buildRunEventRoomChoicePanelPreview,
+    buildRunChallengeCompletedFeedbackText,
     buildRunChallengeSidebarLines,
     getRunChallengeSidebarBadgeAppearance,
     buildRunEventRoomHudLines,
@@ -135,7 +136,7 @@ const RUN_EVENT_CHOICE_PANEL_FOOTER_COLORS = {
 };
 
 const RUN_CHALLENGE_POOL = [
-    { key: 'enemySlayer', label: '挑战: 本局击败 30 个敌人', target: 30, rewardGold: 80 }
+    { key: 'enemySlayer', label: '挑战: 本局击败 30 个敌人', target: 30, rewardGold: 90 }
 ];
 
 const ATTACK_DISPLAY_NAMES = {
@@ -2946,7 +2947,14 @@ class LevelScene extends Phaser.Scene {
                         this._spawnDropPickups(enemy.x, enemy.y, drops);
                         const challengeCompleted = GameState.onEnemyDefeated();
                         if (challengeCompleted) {
-                            showFloatingCombatText(this, enemy.x, enemy.y - 24, '挑战完成 +金币', '#7CFFB2', 1200);
+                            showFloatingCombatText(
+                                this,
+                                enemy.x,
+                                enemy.y - 24,
+                                buildRunChallengeCompletedFeedbackText(GameState.getRunChallengeSummary() || GameState.runChallenge),
+                                '#7CFFB2',
+                                1200
+                            );
                         }
                     }
                 }
@@ -2974,7 +2982,14 @@ class LevelScene extends Phaser.Scene {
                 this._spawnDropPickups(enemy.x, enemy.y, enemy._statusDrops);
                 const challengeCompleted = GameState.onEnemyDefeated();
                 if (challengeCompleted) {
-                    showFloatingCombatText(this, enemy.x, enemy.y - 24, '挑战完成 +金币', '#7CFFB2', 1200);
+                    showFloatingCombatText(
+                        this,
+                        enemy.x,
+                        enemy.y - 24,
+                        buildRunChallengeCompletedFeedbackText(GameState.getRunChallengeSummary() || GameState.runChallenge),
+                        '#7CFFB2',
+                        1200
+                    );
                 }
                 enemy._statusDrops = null;
             }

@@ -39,6 +39,7 @@ const {
     buildRunChallengeSidebarLines,
     buildRunChallengeSidebarBadge,
     formatRunChallengeRewardShortLabel,
+    buildRunChallengeCompletedFeedbackText,
     getRunChallengeCompletedBadgeVariants,
     getRunChallengeSidebarBadgeAppearance,
     getRunModifierHeadingBadgeLayout,
@@ -2811,6 +2812,60 @@ function testRunChallengeSidebarLines() {
     );
 }
 
+function testRunChallengeRewardFeedback() {
+    assert.equal(
+        typeof buildRunChallengeCompletedFeedbackText,
+        'function',
+        'run challenge completion feedback helper should be exported'
+    );
+    assert.equal(
+        buildRunChallengeCompletedFeedbackText({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 90,
+            completed: true
+        }),
+        '挑战完成 +90金',
+        'default challenge completion feedback should surface the aligned gold reward short label'
+    );
+    assert.equal(
+        buildRunChallengeCompletedFeedbackText({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 9999,
+            rewardLabel: '+9999金 +净化',
+            completed: true
+        }),
+        '挑战完成 +9999金 +净化',
+        'challenge completion feedback should prefer an explicit future reward short label when provided'
+    );
+    assert.equal(
+        buildRunChallengeCompletedFeedbackText({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 0,
+            completed: true
+        }),
+        '挑战完成',
+        'challenge completion feedback should stay readable when no reward label is available'
+    );
+
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /RUN_CHALLENGE_POOL\s*=\s*\[\s*{\s*key:\s*'enemySlayer',\s*label:\s*'挑战:\s*本局击败 30 个敌人',\s*target:\s*30,\s*rewardGold:\s*90\s*}\s*]/,
+        'default run challenge seed should align its live reward with the documented +90金 baseline'
+    );
+    assert.match(
+        source,
+        /showFloatingCombatText\([\s\S]*?enemy\.x,\s*[\s\S]*?enemy\.y - 24,\s*[\s\S]*?buildRunChallengeCompletedFeedbackText\(GameState\.getRunChallengeSummary\(\)\s*\|\|\s*GameState\.runChallenge\)[\s\S]*?'#7CFFB2',\s*[\s\S]*?1200[\s\S]*?\)/,
+        'challenge completion combat text should be built from the shared reward feedback helper instead of a hardcoded generic label'
+    );
+}
+
 function testRunModifierHeadingBadgeLayout() {
     assert.equal(typeof getRunModifierHeadingBadgeLayout, 'function', 'run-modifier heading badge layout helper should be exported');
     assert.deepEqual(
@@ -3719,6 +3774,7 @@ function main() {
     runTest('measured text clamp helper', testMeasuredTextClampHelper);
     runTest('sidebar viewport policy helper', testHudSidebarViewportPolicy);
     runTest('run challenge sidebar lines', testRunChallengeSidebarLines);
+    runTest('run challenge reward feedback', testRunChallengeRewardFeedback);
     runTest('run modifier heading badge layout', testRunModifierHeadingBadgeLayout);
     runTest('run-event prompt measurement hooks', testRunEventPromptMeasurementHooks);
     runTest('run-event world-label measurement hooks', testRunEventWorldLabelMeasurementHooks);
