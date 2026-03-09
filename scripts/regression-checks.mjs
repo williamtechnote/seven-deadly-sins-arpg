@@ -4996,6 +4996,25 @@ function testBossVictoryWatchdogLoop() {
     );
 }
 
+function testHubPortalTransitionSafetyHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /this\.physics\.add\.overlap\(this\.player,\s*this\.portalGroup,\s*\(_player,\s*portal\)\s*=>\s*{[\s\S]*?this\._startPortalTransition\(portal\s*&&\s*portal\.bossKey\);[\s\S]*?}\);/,
+        'HubScene portal overlap should delegate to a dedicated transition helper to avoid in-callback scene-start deadlocks'
+    );
+    assert.match(
+        source,
+        /_startPortalTransition\(bossKey\)\s*{[\s\S]*?if \(this\._portalTransitioning \|\| !bossKey\) return;[\s\S]*?this\._portalTransitioning = true;[\s\S]*?this\.time\.delayedCall\(0,\s*begin\);/,
+        'HubScene should defer portal scene transitions to the next tick with re-entry guards'
+    );
+    assert.match(
+        source,
+        /catch \(err\)\s*{[\s\S]*?this\._portalTransitioning = false;[\s\S]*?if \(!this\.scene\.isActive\('UIScene'\)\) this\.scene\.launch\('UIScene'\);/,
+        'HubScene portal transition helper should recover from transition errors by clearing lock and relaunching UIScene'
+    );
+}
+
 function main() {
     runTest('weapon scaling monotonicity', testWeaponScalingMonotonicity);
     runTest('sword early reach baseline', testSwordEarlyReachBaseline);
@@ -5048,6 +5067,7 @@ function main() {
     runTest('boss defeat outer finally guard', testBossDefeatOuterFinallyGuard);
     runTest('boss victory sync-error fallback', testBossVictorySyncErrorFallback);
     runTest('boss victory watchdog loop', testBossVictoryWatchdogLoop);
+    runTest('hub portal transition safety hooks', testHubPortalTransitionSafetyHooks);
     console.log('All regression checks passed.');
 }
 
