@@ -649,7 +649,7 @@
             if (completed) {
                 return [
                     '本局挑战：已完成',
-                    rewardGold > 0 ? `${normalizedLabel} · +${rewardGold}金` : normalizedLabel
+                    rewardLabel ? `${normalizedLabel} · ${rewardLabel}` : normalizedLabel
                 ];
             }
             return [
@@ -661,7 +661,7 @@
         return [
             completed ? '本局挑战：已完成' : '本局挑战',
             safeChallenge.label || normalizedLabel,
-            `进度:${progressLabel}  奖励:+${rewardGold} 金币`
+            rewardLabel ? `进度:${progressLabel}  奖励:${rewardLabel}` : `进度:${progressLabel}`
         ];
     }
 

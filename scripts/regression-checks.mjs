@@ -1912,7 +1912,7 @@ function testMeasuredTextClampHelper() {
     );
     assert.equal(typeof clampTextLinesToWidth, 'function', 'multiline measured clamp helper should be exported');
     assert.deepEqual(
-        clampTextLinesToWidth(['本局挑战：已完成', '击败 30 个敌人', '进度:30/30  奖励:+90 金币'], 68, { measureGlyphWidth }),
+        clampTextLinesToWidth(['本局挑战：已完成', '击败 30 个敌人', '进度:30/30  奖励:+90金'], 68, { measureGlyphWidth }),
         ['本局挑战：已…', '击败 30 个…', '进度:30/…'],
         'multiline measured clamp should fit each sidebar line independently against measured widths'
     );
@@ -2101,8 +2101,20 @@ function testRunChallengeSidebarLines() {
             rewardGold: 90,
             completed: false
         }, { compact: false }),
-        ['本局挑战', '击败 30 个敌人', '进度:12/30  奖励:+90 金币'],
-        'full challenge sidebar helper should preserve the existing three-line summary'
+        ['本局挑战', '击败 30 个敌人', '进度:12/30  奖励:+90金'],
+        'full challenge sidebar helper should preserve the existing three-line summary while reusing the shared reward short label'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 9999,
+            rewardLabel: '+9999金 +净化',
+            completed: false
+        }, { compact: false }),
+        ['本局挑战', '击败 30 个敌人', '进度:12/30  奖励:+9999金 +净化'],
+        'full challenge sidebar helper should reuse the shared reward short label when a future compound reward is provided'
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
@@ -2125,6 +2137,18 @@ function testRunChallengeSidebarLines() {
         }, { compact: true }),
         ['本局挑战：已完成', '击败 30 个敌人 · +90金'],
         'compact challenge sidebar helper should preserve completion state and reward once the challenge is done'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 9999,
+            rewardLabel: '+9999金 +净化',
+            completed: true
+        }, { compact: true }),
+        ['本局挑战：已完成', '击败 30 个敌人 · +9999金 +净化'],
+        'compact challenge sidebar helper should reuse the shared reward short label when a future compound reward is provided'
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
@@ -3094,6 +3118,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /regular \/ compact 分档里凡是仍会显示奖励的路径，也会复用同一奖励短句 helper，避免与 ultra-compact 回退链出现文案漂移/,
+        'README should document that regular and compact reward-bearing summaries reuse the same short-label helper'
+    );
+    assert.match(
+        source,
         /若侧栏总高度仍超出安全范围，则会优先隐藏事件房摘要，其次再隐藏本局词缀正文，最后才隐藏本局挑战摘要/,
         'README should document the final overflow-priority hiding order for the fixed sidebar'
     );
@@ -3185,6 +3214,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若这条可见摘要的奖励短句未来扩展到“\+9999金 \+净化”这类复合形式，也会继续沿用同一条可见摘要与完成徽记回退链/,
         'help overlay should document that future compound reward short labels reuse the same fallback ladder'
+    );
+    assert.match(
+        source,
+        /regular \/ compact 分档里凡是仍会显示奖励的路径，也会复用同一奖励短句 helper，避免与 ultra-compact 回退链出现文案漂移/,
+        'help overlay should document that regular and compact reward-bearing summaries reuse the same short-label helper'
     );
     assert.match(
         source,
