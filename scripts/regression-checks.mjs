@@ -2151,6 +2151,21 @@ function testRunChallengeSidebarLines() {
             label: '击败 30 个敌人',
             progress: 12,
             target: 30,
+            rewardGold: 999,
+            completed: false
+        }, {
+            viewportTier: 'ultraCompact',
+            maxLineWidth: 100,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['挑战 12/30'],
+        'ultra-compact visible in-progress challenge summaries should still drop a large reward chunk before truncating semantic progress copy'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
             rewardGold: 90,
             completed: false
         }, {
@@ -2160,6 +2175,21 @@ function testRunChallengeSidebarLines() {
         }),
         ['12/30'],
         'ultra-compact visible challenge summaries should preserve the progress ratio as the final in-progress fallback before hiding'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 999,
+            completed: false
+        }, {
+            viewportTier: 'ultraCompact',
+            maxLineWidth: 50,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['12/30'],
+        'ultra-compact visible in-progress challenge summaries should keep the same final ratio fallback even when large rewards expand the first variant'
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
@@ -2181,6 +2211,21 @@ function testRunChallengeSidebarLines() {
             label: '击败 30 个敌人',
             progress: 30,
             target: 30,
+            rewardGold: 999,
+            completed: true
+        }, {
+            viewportTier: 'ultraCompact',
+            maxLineWidth: 90,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['挑战完成'],
+        'ultra-compact visible completed summaries should still drop a large reward chunk before truncating semantic completion copy'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
             rewardGold: 90,
             completed: true
         }, {
@@ -2190,6 +2235,21 @@ function testRunChallengeSidebarLines() {
         }),
         ['完成'],
         'ultra-compact visible completed summaries should preserve a minimal completion label before the challenge block disappears'
+    );
+    assert.equal(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 999,
+            completed: true
+        }, {
+            viewportTier: 'ultraCompact',
+            maxLineWidth: 40,
+            measureLabelWidth: measureChallengeSummaryWidth
+        })[0],
+        '完成',
+        'ultra-compact visible completed summaries should keep the same final completion fallback even when large rewards expand the first variant'
     );
     assert.equal(
         buildRunChallengeSidebarBadge({
@@ -2862,6 +2922,11 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /若进一步进入 ultra-compact 档位，则会先进一步收紧各区块间距与底边缓冲，本局词缀会压到 1 行、事件房摘要压到 2 行，本局挑战也会收敛为单行 `挑战 进度 · 奖励` 摘要/,
         'README should document the ultra-compact spacing reduction before the tightest sidebar caps'
+    );
+    assert.match(
+        source,
+        /即使奖励数值扩大到 `\+999金` 这类长度，进行中态也会继续沿用 `挑战 12\/30 · \+90金 -> 挑战 12\/30 -> 12\/30` 这条语义回退链，完成态则继续沿用 `挑战完成 · \+90金 -> 挑战完成 -> 完成`，而不会额外插入新的中间短句/,
+        'README should document that large reward values still use the existing visible challenge summary fallback ladders'
     );
     assert.match(
         source,

@@ -589,6 +589,17 @@
         return safeVariants[safeVariants.length - 1];
     }
 
+    function getRunChallengeInProgressSummaryVariants(progressLabel, rewardGold) {
+        if (rewardGold > 0) {
+            return [`挑战 ${progressLabel} · +${rewardGold}金`, `挑战 ${progressLabel}`, progressLabel];
+        }
+        return [`挑战 ${progressLabel}`, progressLabel];
+    }
+
+    function getRunChallengeCompletedSummaryVariants(rewardGold) {
+        return rewardGold > 0 ? [`挑战完成 · +${rewardGold}金`, '挑战完成', '完成'] : ['挑战完成', '完成'];
+    }
+
     function buildRunChallengeSidebarLines(challenge, options) {
         const safeChallenge = challenge && typeof challenge === 'object' ? challenge : {};
         const viewportTier = options && typeof options.viewportTier === 'string'
@@ -606,7 +617,7 @@
         if (ultraCompact) {
             if (completed) {
                 return [pickChallengeLabelVariant(
-                    rewardGold > 0 ? [`挑战完成 · +${rewardGold}金`, '挑战完成', '完成'] : ['挑战完成', '完成'],
+                    getRunChallengeCompletedSummaryVariants(rewardGold),
                     {
                         maxWidth: Number(options && options.maxLineWidth),
                         measureLabelWidth: options && options.measureLabelWidth,
@@ -615,7 +626,7 @@
                 )];
             }
             return [pickChallengeLabelVariant(
-                rewardGold > 0 ? [`挑战 ${progressLabel} · +${rewardGold}金`, `挑战 ${progressLabel}`, progressLabel] : [`挑战 ${progressLabel}`, progressLabel],
+                getRunChallengeInProgressSummaryVariants(progressLabel, rewardGold),
                 {
                     maxWidth: Number(options && options.maxLineWidth),
                     measureLabelWidth: options && options.measureLabelWidth,
