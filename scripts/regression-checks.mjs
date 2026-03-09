@@ -37,6 +37,8 @@ const {
     buildRunEventRoomHudSummary,
     buildRunEventRoomHudLines,
     getRunChallengeSafeSidebarLabel,
+    getRunChallengeInProgressInvalidTargetVisibleFallbacks,
+    getRunChallengeCompletedInvalidTargetVisibleFallbacks,
     buildRunChallengeSidebarLines,
     buildRunChallengeSidebarBadge,
     getRunChallengeInProgressBadgeVariants,
@@ -2044,6 +2046,16 @@ function testHudSidebarViewportPolicy() {
 function testRunChallengeSidebarLines() {
     assert.equal(typeof buildRunChallengeSidebarLines, 'function', 'run challenge sidebar helper should be exported');
     assert.equal(typeof buildRunChallengeSidebarBadge, 'function', 'run challenge badge helper should be exported');
+    assert.equal(
+        typeof getRunChallengeInProgressInvalidTargetVisibleFallbacks,
+        'function',
+        'in-progress invalid-target visible fallback helper should be exported'
+    );
+    assert.equal(
+        typeof getRunChallengeCompletedInvalidTargetVisibleFallbacks,
+        'function',
+        'completed invalid-target visible fallback helper should be exported'
+    );
     assert.equal(typeof getRunChallengeUltraCompactSummaryVariants, 'function', 'ultra-compact visible challenge summary variants helper should be exported');
     assert.equal(typeof getRunChallengeUltraCompactInProgressSummaryVariants, 'function', 'ultra-compact visible in-progress summary variants helper should be exported');
     assert.equal(typeof getRunChallengeUltraCompactCompletedSummaryVariants, 'function', 'ultra-compact visible completed summary variants helper should be exported');
@@ -2096,6 +2108,24 @@ function testRunChallengeSidebarLines() {
         '3': 6,
         '9': 6
     }[glyph] || 10), 0);
+    assert.deepEqual(
+        getRunChallengeInProgressInvalidTargetVisibleFallbacks(''),
+        {
+            compactTitle: '本局挑战：进行中',
+            regularDetailVariants: ['进行中'],
+            ultraCompactSummaryVariants: ['挑战进行中', '进行中']
+        },
+        'in-progress invalid-target visible fallback helper should expose the shared no-reward state-first ladders for regular, compact, and ultra-compact summaries'
+    );
+    assert.deepEqual(
+        getRunChallengeCompletedInvalidTargetVisibleFallbacks(''),
+        {
+            compactTitle: '本局挑战：已完成',
+            regularDetailVariants: ['已完成'],
+            ultraCompactSummaryVariants: ['挑战完成', '完成']
+        },
+        'completed invalid-target visible fallback helper should expose the shared no-reward state-first ladders for regular, compact, and ultra-compact summaries'
+    );
     assert.deepEqual(
         getRunChallengeRegularInProgressDetailVariants('12/30', ''),
         ['进度:12/30', '12/30'],

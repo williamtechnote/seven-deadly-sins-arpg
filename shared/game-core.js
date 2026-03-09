@@ -631,8 +631,28 @@
         return rewardLabel ? [`挑战完成 · ${rewardLabel}`, '挑战完成', '完成'] : ['挑战完成', '完成'];
     }
 
+    function getRunChallengeInProgressInvalidTargetVisibleFallbacks(rewardLabel) {
+        return {
+            compactTitle: '本局挑战：进行中',
+            regularDetailVariants: rewardLabel ? [`进行中  奖励:${rewardLabel}`, '进行中'] : ['进行中'],
+            ultraCompactSummaryVariants: rewardLabel ? [`挑战进行中 · ${rewardLabel}`, '挑战进行中', '进行中'] : ['挑战进行中', '进行中']
+        };
+    }
+
+    function getRunChallengeCompletedInvalidTargetVisibleFallbacks(rewardLabel) {
+        return {
+            compactTitle: '本局挑战：已完成',
+            regularDetailVariants: rewardLabel ? [`已完成  奖励:${rewardLabel}`, '已完成'] : ['已完成'],
+            ultraCompactSummaryVariants: rewardLabel ? [`挑战完成 · ${rewardLabel}`, '挑战完成', '完成'] : ['挑战完成', '完成']
+        };
+    }
+
     function getRunChallengeUltraCompactInProgressSummaryVariants(progressLabel, rewardLabel) {
-        return getRunChallengeInProgressSummaryVariants(progressLabel, rewardLabel);
+        const safeProgressLabel = typeof progressLabel === 'string' ? progressLabel.trim() : '';
+        if (!safeProgressLabel) {
+            return getRunChallengeInProgressInvalidTargetVisibleFallbacks(rewardLabel).ultraCompactSummaryVariants;
+        }
+        return getRunChallengeInProgressSummaryVariants(safeProgressLabel, rewardLabel);
     }
 
     function getRunChallengeUltraCompactCompletedSummaryVariants(rewardLabel) {
@@ -646,6 +666,11 @@
         const rewardLabel = formatRunChallengeRewardShortLabel(safeChallenge);
         const progressLabel = target > 0 ? `${Math.min(progress, target)}/${target}` : '';
         // Visible ultra-compact copy stays progress/completion-first even if the body label collapses to 未知挑战.
+        if (target <= 0) {
+            return safeChallenge.completed
+                ? getRunChallengeCompletedInvalidTargetVisibleFallbacks(rewardLabel).ultraCompactSummaryVariants
+                : getRunChallengeInProgressInvalidTargetVisibleFallbacks(rewardLabel).ultraCompactSummaryVariants;
+        }
         return safeChallenge.completed
             ? getRunChallengeUltraCompactCompletedSummaryVariants(rewardLabel)
             : getRunChallengeUltraCompactInProgressSummaryVariants(progressLabel, rewardLabel);
@@ -654,7 +679,7 @@
     function getRunChallengeRegularDetailVariants(progressLabel, rewardLabel) {
         const safeProgressLabel = typeof progressLabel === 'string' ? progressLabel.trim() : '';
         if (!safeProgressLabel) {
-            return rewardLabel ? [`进行中  奖励:${rewardLabel}`, '进行中'] : ['进行中'];
+            return getRunChallengeInProgressInvalidTargetVisibleFallbacks(rewardLabel).regularDetailVariants;
         }
         if (rewardLabel) {
             return [`进度:${safeProgressLabel}  奖励:${rewardLabel}`, `进度:${safeProgressLabel}`, safeProgressLabel];
@@ -669,7 +694,7 @@
     function getRunChallengeRegularCompletedDetailVariants(progressLabel, rewardLabel) {
         const safeProgressLabel = typeof progressLabel === 'string' ? progressLabel.trim() : '';
         if (!safeProgressLabel) {
-            return rewardLabel ? [`已完成  奖励:${rewardLabel}`, '已完成'] : ['已完成'];
+            return getRunChallengeCompletedInvalidTargetVisibleFallbacks(rewardLabel).regularDetailVariants;
         }
         return getRunChallengeRegularDetailVariants(safeProgressLabel, rewardLabel);
     }
@@ -710,6 +735,11 @@
         const completed = !!safeChallenge.completed;
         const normalizedLabel = getRunChallengeSafeSidebarLabel(safeChallenge.label);
         const progressLabel = target > 0 ? `${Math.min(progress, target)}/${target}` : '';
+        const invalidTargetVisibleFallbacks = target <= 0
+            ? (completed
+                ? getRunChallengeCompletedInvalidTargetVisibleFallbacks(rewardLabel)
+                : getRunChallengeInProgressInvalidTargetVisibleFallbacks(rewardLabel))
+            : null;
 
         if (ultraCompact) {
             return [pickChallengeLabelVariant(
@@ -733,7 +763,7 @@
                     }
                 );
                 return [
-                    '本局挑战：已完成',
+                    invalidTargetVisibleFallbacks ? invalidTargetVisibleFallbacks.compactTitle : '本局挑战：已完成',
                     compactDetailLine
                 ];
             }
@@ -746,7 +776,7 @@
                 }
             );
             return [
-                progressLabel ? `本局挑战 ${progressLabel}` : '本局挑战：进行中',
+                progressLabel ? `本局挑战 ${progressLabel}` : (invalidTargetVisibleFallbacks ? invalidTargetVisibleFallbacks.compactTitle : '本局挑战：进行中'),
                 compactDetailLine
             ];
         }
@@ -2355,6 +2385,8 @@
         formatRunChallengeRewardShortLabel,
         buildRunChallengeCompletedFeedbackText,
         getRunChallengeSafeSidebarLabel,
+        getRunChallengeInProgressInvalidTargetVisibleFallbacks,
+        getRunChallengeCompletedInvalidTargetVisibleFallbacks,
         getRunChallengeUltraCompactSummaryVariants,
         getRunChallengeUltraCompactInProgressSummaryVariants,
         getRunChallengeUltraCompactCompletedSummaryVariants,

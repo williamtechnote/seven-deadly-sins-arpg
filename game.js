@@ -6023,7 +6023,7 @@ class HelpScene extends Phaser.Scene {
                 interfaceSection.items.splice(
                     inProgressInvalidTargetIndex + 1,
                     0,
-                    '若未来异常数据把 in-progress challenge 的“target”压成 0 或更低，且当前 challenge 没有奖励短句，则 regular 第三行会继续沿用“进行中”；compact 标题继续保留“本局挑战：进行中”且第二行保留目标正文；ultra-compact 单行摘要也会继续沿用“挑战进行中 -> 进行中”这组 no-reward 状态回退，不补“0/0”/“奖励:+0金”/“奖励:未知”这类占位',
+                    '若未来异常数据把 in-progress challenge 的“target”压成 0 或更低，且当前 challenge 没有奖励短句，则 regular 第三行会继续沿用“进行中”；compact 标题继续保留“本局挑战：进行中”且第二行保留目标正文；ultra-compact 单行摘要也会继续沿用“挑战进行中 -> 进行中”这组 no-reward 状态回退，不补“0/0”/“奖励:+0金”/“奖励:未知”这类占位；这三档可见摘要现在会显式复用同一组 in-progress 状态 helper，避免未来文案漂移',
                     '若未来异常数据把 in-progress challenge 的“target”压成 0 或更低，且前缀去重后的正文已回退为“未知挑战”，compact 第二行也会继续沿用“未知挑战 · +90金”/“未知挑战”这组 detail fallback，不补“0/0”/“进度:0/0”这类误导性占位'
                 );
             }
@@ -6032,7 +6032,7 @@ class HelpScene extends Phaser.Scene {
                 interfaceSection.items.splice(
                     completedInvalidTargetIndex + 1,
                     0,
-                    '若未来异常数据把 completed challenge 的“target”压成 0 或更低，且当前 challenge 没有奖励短句，则 regular 第三行会继续沿用“已完成”；compact 标题继续保留“本局挑战：已完成”且第二行保留目标正文；ultra-compact 单行摘要也会继续沿用“挑战完成 -> 完成”这组 completed-state / no-reward 回退链，不误退回“进行中”，也不补“奖励:+0金”/“奖励:未知”',
+                    '若未来异常数据把 completed challenge 的“target”压成 0 或更低，且当前 challenge 没有奖励短句，则 regular 第三行会继续沿用“已完成”；compact 标题继续保留“本局挑战：已完成”且第二行保留目标正文；ultra-compact 单行摘要也会继续沿用“挑战完成 -> 完成”这组 completed-state / no-reward 回退链，不误退回“进行中”，也不补“奖励:+0金”/“奖励:未知”；这三档可见摘要现在会显式复用同一组 completed-state helper，避免未来文案漂移',
                     '若未来异常数据把 completed challenge 的“target”压成 0 或更低，且前缀去重后的正文已回退为“未知挑战”，compact 第二行也会继续沿用“未知挑战 · +90金”/“未知挑战”这组 completed detail fallback，不误退回“进行中”'
                 );
                 interfaceSection.items.splice(
