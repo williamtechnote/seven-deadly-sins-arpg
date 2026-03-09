@@ -614,18 +614,27 @@
         return rewardLabel ? [`挑战完成 · ${rewardLabel}`, '挑战完成', '完成'] : ['挑战完成', '完成'];
     }
 
-    function getRunChallengeCompactInProgressDetailVariants(normalizedLabel, rewardLabel) {
+    function getRunChallengeCompactDetailVariants(normalizedLabel, rewardLabel) {
+        const safeLabel = typeof normalizedLabel === 'string' ? normalizedLabel.trim() : '';
+        if (!safeLabel) return [];
+        const variants = [];
         if (rewardLabel) {
-            return [`${normalizedLabel} · ${rewardLabel}`, normalizedLabel];
+            variants.push(`${safeLabel} · ${rewardLabel}`);
         }
-        return [normalizedLabel];
+        variants.push(safeLabel);
+        const tightenedLabel = safeLabel.replace(/\s+/gu, '');
+        if (tightenedLabel && tightenedLabel !== safeLabel) {
+            variants.push(tightenedLabel);
+        }
+        return variants;
+    }
+
+    function getRunChallengeCompactInProgressDetailVariants(normalizedLabel, rewardLabel) {
+        return getRunChallengeCompactDetailVariants(normalizedLabel, rewardLabel);
     }
 
     function getRunChallengeCompactCompletedDetailVariants(normalizedLabel, rewardLabel) {
-        if (rewardLabel) {
-            return [`${normalizedLabel} · ${rewardLabel}`, normalizedLabel];
-        }
-        return [normalizedLabel];
+        return getRunChallengeCompactDetailVariants(normalizedLabel, rewardLabel);
     }
 
     function buildRunChallengeSidebarLines(challenge, options) {

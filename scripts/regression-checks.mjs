@@ -2196,6 +2196,22 @@ function testRunChallengeSidebarLines() {
     assert.deepEqual(
         buildRunChallengeSidebarLines({
             label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 9999,
+            rewardLabel: '+9999金 +净化',
+            completed: false
+        }, {
+            compact: true,
+            maxLineWidth: 64,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['本局挑战 12/30', '击败30个敌人'],
+        'compact in-progress challenge summaries should keep one more whitespace-tightened semantic fallback before generic truncation when future compound rewards still leave the detail line too wide'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
             progress: 30,
             target: 30,
             rewardGold: 90,
@@ -2268,6 +2284,22 @@ function testRunChallengeSidebarLines() {
         }),
         ['本局挑战：已完成', '击败 30 个敌人'],
         'compact completed challenge summaries should keep the same label-first fallback when a future compound reward grows too wide'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 9999,
+            rewardLabel: '+9999金 +净化',
+            completed: true
+        }, {
+            compact: true,
+            maxLineWidth: 64,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['本局挑战：已完成', '击败30个敌人'],
+        'compact completed challenge summaries should keep one more whitespace-tightened semantic fallback before generic truncation when future compound rewards still leave the detail line too wide'
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
@@ -3286,12 +3318,12 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /当 compact 进行中摘要的第二行宽度预算继续吃紧时，也会先沿用 `击败 30 个敌人 · \+90金 -> 击败 30 个敌人` 这条语义回退链，而不是直接退化成通用省略/,
+        /当 compact 进行中摘要的第二行宽度预算继续吃紧时，也会先沿用 `击败 30 个敌人 · \+90金 -> 击败 30 个敌人 -> 击败30个敌人` 这条语义回退链，而不是直接退化成通用省略/,
         'README should document the compact in-progress second-line semantic fallback before generic truncation'
     );
     assert.match(
         source,
-        /完成态的第二行宽度预算继续吃紧时，也会沿用同一条 `击败 30 个敌人 · \+90金 -> 击败 30 个敌人` 语义回退链/,
+        /完成态的第二行宽度预算继续吃紧时，也会沿用同一条 `击败 30 个敌人 · \+90金 -> 击败 30 个敌人 -> 击败30个敌人` 语义回退链/,
         'README should document the compact completed second-line semantic fallback before generic truncation'
     );
     assert.match(
@@ -3415,12 +3447,12 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /当 compact 进行中摘要的第二行宽度预算继续吃紧时，也会先沿用“击败 30 个敌人 · \+90金 -> 击败 30 个敌人”这条语义回退链，而不是直接退化成通用省略/,
+        /当 compact 进行中摘要的第二行宽度预算继续吃紧时，也会先沿用“击败 30 个敌人 · \+90金 -> 击败 30 个敌人 -> 击败30个敌人”这条语义回退链，而不是直接退化成通用省略/,
         'help overlay should document the compact in-progress second-line semantic fallback before generic truncation'
     );
     assert.match(
         source,
-        /完成态的第二行宽度预算继续吃紧时，也会沿用同一条“击败 30 个敌人 · \+90金 -> 击败 30 个敌人”语义回退链/,
+        /完成态的第二行宽度预算继续吃紧时，也会沿用同一条“击败 30 个敌人 · \+90金 -> 击败 30 个敌人 -> 击败30个敌人”语义回退链/,
         'help overlay should document the compact completed second-line semantic fallback before generic truncation'
     );
     assert.match(
