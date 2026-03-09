@@ -39,6 +39,8 @@ const {
     buildRunChallengeSidebarLines,
     buildRunChallengeSidebarBadge,
     getRunChallengeUltraCompactSummaryVariants,
+    getRunChallengeUltraCompactInProgressSummaryVariants,
+    getRunChallengeUltraCompactCompletedSummaryVariants,
     getRunChallengeRegularInProgressDetailVariants,
     getRunChallengeRegularCompletedDetailVariants,
     getRunChallengeCompactInProgressDetailVariants,
@@ -2040,6 +2042,8 @@ function testRunChallengeSidebarLines() {
     assert.equal(typeof buildRunChallengeSidebarLines, 'function', 'run challenge sidebar helper should be exported');
     assert.equal(typeof buildRunChallengeSidebarBadge, 'function', 'run challenge badge helper should be exported');
     assert.equal(typeof getRunChallengeUltraCompactSummaryVariants, 'function', 'ultra-compact visible challenge summary variants helper should be exported');
+    assert.equal(typeof getRunChallengeUltraCompactInProgressSummaryVariants, 'function', 'ultra-compact visible in-progress summary variants helper should be exported');
+    assert.equal(typeof getRunChallengeUltraCompactCompletedSummaryVariants, 'function', 'ultra-compact visible completed summary variants helper should be exported');
     assert.equal(typeof getRunChallengeRegularInProgressDetailVariants, 'function', 'regular in-progress challenge detail variants helper should be exported');
     assert.equal(typeof getRunChallengeRegularCompletedDetailVariants, 'function', 'regular completed challenge detail variants helper should be exported');
     assert.equal(typeof getRunChallengeCompactInProgressDetailVariants, 'function', 'compact in-progress challenge detail variants helper should be exported');
@@ -2110,6 +2114,16 @@ function testRunChallengeSidebarLines() {
         'compact completed detail variants should keep the existing label-first ladder when no reward label is available'
     );
     assert.deepEqual(
+        getRunChallengeUltraCompactInProgressSummaryVariants('12/30', ''),
+        ['挑战 12/30', '12/30'],
+        'ultra-compact visible in-progress summary variants should keep the existing progress-first ladder when no reward label is available'
+    );
+    assert.deepEqual(
+        getRunChallengeUltraCompactCompletedSummaryVariants(''),
+        ['挑战完成', '完成'],
+        'ultra-compact visible completed summary variants should keep the existing completion ladder when no reward label is available'
+    );
+    assert.deepEqual(
         getRunChallengeUltraCompactSummaryVariants({
             label: '本局挑战：挑战：本局',
             progress: 12,
@@ -2156,6 +2170,58 @@ function testRunChallengeSidebarLines() {
         }, { compact: false }),
         ['本局挑战', '击败 30 个敌人', '进度:12/30'],
         'full in-progress challenge summaries should keep the semantic progress line when no reward label is available'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 0,
+            completed: false
+        }, { viewportTier: 'ultraCompact' }),
+        ['挑战 12/30'],
+        'ultra-compact challenge sidebar helper should keep the in-progress no-reward summary on the same progress-first ladder'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 0,
+            completed: true
+        }, { viewportTier: 'ultraCompact' }),
+        ['挑战完成'],
+        'ultra-compact challenge sidebar helper should keep the completed no-reward summary on the same completion ladder'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 0,
+            completed: false
+        }, {
+            viewportTier: 'ultraCompact',
+            maxLineWidth: 34,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['12/30'],
+        'ultra-compact visible in-progress no-reward summaries should preserve the ratio as the final semantic fallback before hiding'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 0,
+            completed: true
+        }, {
+            viewportTier: 'ultraCompact',
+            maxLineWidth: 22,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['完成'],
+        'ultra-compact visible completed no-reward summaries should preserve a minimal completion fallback before the challenge block disappears'
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
@@ -3736,6 +3802,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /若当前 challenge 没有奖励短句，则 ultra-compact 单行摘要也会继续沿用 `挑战 12\/30 -> 12\/30` \/ `挑战完成 -> 完成` 这条 no-reward 回退梯子，不补 `\+0金` \/ `奖励:未知` 这类占位/,
+        'README should document the rewardless ultra-compact fallback ladder without inserting placeholder reward copy'
+    );
+    assert.match(
+        source,
         /即使上游挑战标签在 regular \/ compact 路径里因前缀去重而回退成 `未知挑战`，ultra-compact 这条单行摘要也仍会保持同一组 `挑战 12\/30 · \+90金 -> 挑战 12\/30 -> 12\/30` \/ `挑战完成 · \+90金 -> 挑战完成 -> 完成` 语义短句，不额外插入 `未知挑战` 这类中间短句/,
         'README should document that ultra-compact challenge summaries stay on the same fallback ladder even when the body label falls back to 未知挑战'
     );
@@ -3887,6 +3958,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若这条可见摘要的奖励短句未来扩展到“\+9999金 \+净化”这类复合形式，也会继续沿用同一条可见摘要与完成徽记回退链/,
         'help overlay should document that future compound reward short labels reuse the same fallback ladder'
+    );
+    assert.match(
+        source,
+        /若当前 challenge 没有奖励短句，则 ultra-compact 单行摘要也会继续沿用“挑战 12\/30 -> 12\/30”\/“挑战完成 -> 完成”这条 no-reward 回退梯子，不补“\+0金”\/“奖励:未知”这类占位/,
+        'help overlay should document the rewardless ultra-compact fallback ladder without inserting placeholder reward copy'
     );
     assert.match(
         source,

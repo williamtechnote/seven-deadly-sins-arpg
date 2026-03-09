@@ -627,6 +627,16 @@
         return rewardLabel ? [`挑战完成 · ${rewardLabel}`, '挑战完成', '完成'] : ['挑战完成', '完成'];
     }
 
+    function getRunChallengeUltraCompactInProgressSummaryVariants(progressLabel, rewardLabel) {
+        const safeProgressLabel = typeof progressLabel === 'string' ? progressLabel.trim() : '';
+        if (!safeProgressLabel) return [];
+        return getRunChallengeInProgressSummaryVariants(safeProgressLabel, rewardLabel);
+    }
+
+    function getRunChallengeUltraCompactCompletedSummaryVariants(rewardLabel) {
+        return getRunChallengeCompletedSummaryVariants(rewardLabel);
+    }
+
     function getRunChallengeUltraCompactSummaryVariants(challenge) {
         const safeChallenge = challenge && typeof challenge === 'object' ? challenge : {};
         const target = clampInt(safeChallenge.target, 0, Number.MAX_SAFE_INTEGER, 0);
@@ -635,8 +645,8 @@
         const progressLabel = `${Math.min(progress, target)}/${target || 0}`;
         // Visible ultra-compact copy stays progress/completion-first even if the body label collapses to 未知挑战.
         return safeChallenge.completed
-            ? getRunChallengeCompletedSummaryVariants(rewardLabel)
-            : getRunChallengeInProgressSummaryVariants(progressLabel, rewardLabel);
+            ? getRunChallengeUltraCompactCompletedSummaryVariants(rewardLabel)
+            : getRunChallengeUltraCompactInProgressSummaryVariants(progressLabel, rewardLabel);
     }
 
     function getRunChallengeRegularDetailVariants(progressLabel, rewardLabel) {
@@ -2321,6 +2331,8 @@
         formatRunChallengeRewardShortLabel,
         buildRunChallengeCompletedFeedbackText,
         getRunChallengeUltraCompactSummaryVariants,
+        getRunChallengeUltraCompactInProgressSummaryVariants,
+        getRunChallengeUltraCompactCompletedSummaryVariants,
         getRunChallengeRegularInProgressDetailVariants,
         getRunChallengeRegularCompletedDetailVariants,
         getRunChallengeCompactInProgressDetailVariants,
