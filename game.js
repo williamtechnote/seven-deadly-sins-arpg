@@ -1892,6 +1892,12 @@ class HubScene extends Phaser.Scene {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
         AudioSystem.bindSceneInput(this);
+        if (this.input && this.input.keyboard) {
+            this.input.keyboard.enabled = true;
+            if (typeof this.input.keyboard.resetKeys === 'function') {
+                this.input.keyboard.resetKeys();
+            }
+        }
 
         this.cameras.main.setBackgroundColor('#1a1a2e');
 
@@ -4438,6 +4444,15 @@ class BossScene extends Phaser.Scene {
         }
     }
 
+    _recoverKeyboardInput() {
+        const keyboard = this.input && this.input.keyboard;
+        if (!keyboard) return;
+        keyboard.enabled = true;
+        if (typeof keyboard.resetKeys === 'function') {
+            keyboard.resetKeys();
+        }
+    }
+
     _forceVictoryTransition() {
         if (this._victoryTransitionDone || this._victoryTransitionInFlight) return;
         this._victoryTransitionInFlight = true;
@@ -4459,6 +4474,7 @@ class BossScene extends Phaser.Scene {
         try {
             if (this.scene.isActive('DialogScene')) this.scene.stop('DialogScene');
             this.scene.stop('UIScene');
+            this._recoverKeyboardInput();
             if (this._bossHudLayoutApplied) this._bossHudLayoutApplied = false;
             const bossCfg = BOSSES[this.bossKey];
             if (bossCfg && bossCfg.isFinal) {

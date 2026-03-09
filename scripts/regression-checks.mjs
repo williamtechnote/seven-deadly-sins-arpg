@@ -4996,6 +4996,25 @@ function testBossVictoryWatchdogLoop() {
     );
 }
 
+function testBossVictoryInputRecoveryHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /_recoverKeyboardInput\(\)\s*{[\s\S]*?keyboard\.enabled = true;[\s\S]*?keyboard\.resetKeys\(\);/,
+        'BossScene should include a keyboard recovery helper for victory transitions'
+    );
+    assert.match(
+        source,
+        /this\.scene\.stop\('UIScene'\);[\s\S]*?this\._recoverKeyboardInput\(\);[\s\S]*?this\.scene\.start\('HubScene'\);/,
+        'BossScene should recover keyboard state before returning to HubScene'
+    );
+    assert.match(
+        source,
+        /class HubScene extends Phaser\.Scene[\s\S]*?create\(\)\s*{[\s\S]*?this\.input\.keyboard\.enabled = true;[\s\S]*?this\.input\.keyboard\.resetKeys\(\);/,
+        'HubScene should hard-reset keyboard state on create to avoid sticky input after boss transitions'
+    );
+}
+
 function main() {
     runTest('weapon scaling monotonicity', testWeaponScalingMonotonicity);
     runTest('sword early reach baseline', testSwordEarlyReachBaseline);
@@ -5048,6 +5067,7 @@ function main() {
     runTest('boss defeat outer finally guard', testBossDefeatOuterFinallyGuard);
     runTest('boss victory sync-error fallback', testBossVictorySyncErrorFallback);
     runTest('boss victory watchdog loop', testBossVictoryWatchdogLoop);
+    runTest('boss victory input recovery hooks', testBossVictoryInputRecoveryHooks);
     console.log('All regression checks passed.');
 }
 
