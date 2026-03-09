@@ -4274,6 +4274,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /若未来异常数据把 in-progress challenge 的 `target` 压成 0 或更低，且当前 challenge 没有奖励短句，则 regular 第三行会继续沿用 `进行中`；compact 标题继续保留 `本局挑战：进行中` 且第二行保留目标正文；ultra-compact 单行摘要也会继续沿用 `挑战进行中 -> 进行中` 这组 no-reward 状态回退，不补 `0\/0` \/ `奖励:\+0金` \/ `奖励:未知` 这类占位/,
+        'README should document the invalid-target in-progress no-reward fallback chain across regular, compact, and ultra-compact summaries'
+    );
+    assert.match(
+        source,
         /若未来异常数据把 in-progress challenge 的 `target` 压成 0 或更低，且前缀去重后的正文已回退为 `未知挑战`，compact 第二行也会继续沿用 `未知挑战 · \+90金` \/ `未知挑战` 这组 detail fallback，不补 `0\/0` \/ `进度:0\/0` 这类误导性占位/,
         'README should document the invalid-target compact in-progress unknown-label fallback without reintroducing misleading ratio copy'
     );
@@ -4281,6 +4286,11 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /若未来异常数据把 completed challenge 的 `target` 压成 0 或更低，则 regular 第三行会改为沿用 `已完成  奖励:\+90金 -> 已完成` 这组 completed-state 回退，不再误退回 `进行中`；即使正文已因前缀去重回退成 `未知挑战`，第三行也会继续保留 completed-state 语义/,
         'README should document the invalid-target regular completed fallback without regressing to in-progress copy'
+    );
+    assert.match(
+        source,
+        /若未来异常数据把 completed challenge 的 `target` 压成 0 或更低，且当前 challenge 没有奖励短句，则 regular 第三行会继续沿用 `已完成`；compact 标题继续保留 `本局挑战：已完成` 且第二行保留目标正文；ultra-compact 单行摘要也会继续沿用 `挑战完成 -> 完成` 这组 completed-state \/ no-reward 回退链，不误退回 `进行中`，也不补 `奖励:\+0金` \/ `奖励:未知`/,
+        'README should document the invalid-target completed no-reward fallback chain across regular, compact, and ultra-compact summaries'
     );
     assert.match(
         source,
@@ -4523,6 +4533,11 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
+        /若未来异常数据把 completed challenge 的“target”压成 0 或更低，且当前 challenge 没有奖励短句，则 regular 第三行会继续沿用“已完成”；compact 标题继续保留“本局挑战：已完成”且第二行保留目标正文；ultra-compact 单行摘要也会继续沿用“挑战完成 -> 完成”这组 completed-state \/ no-reward 回退链，不误退回“进行中”，也不补“奖励:\+0金”\/“奖励:未知”/,
+        'help overlay should document the invalid-target completed no-reward fallback chain across regular, compact, and ultra-compact summaries'
+    );
+    assert.match(
+        source,
         /若上游挑战标题仍带“本局挑战：”\/“挑战：”前缀，compact 第二行也会先去重再拼接奖励短句，避免紧凑摘要重复“挑战”标题/,
         'help overlay should document that compact challenge detail lines dedupe upstream challenge prefixes before appending reward labels'
     );
@@ -4575,6 +4590,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若未来异常数据把 in-progress challenge 的“target”压成 0 或更低，则 regular 第三行会改为沿用“进行中  奖励:\+90金 -> 进行中”这组状态优先回退，不再输出误导性的“进度:0\/0”\/“0\/0”；compact 标题也会改为“本局挑战：进行中”，继续保留第二行目标 \/ 奖励短句/,
         'help overlay should document the invalid-target regular and compact in-progress fallbacks without misleading 0/0 copy'
+    );
+    assert.match(
+        source,
+        /若未来异常数据把 in-progress challenge 的“target”压成 0 或更低，且当前 challenge 没有奖励短句，则 regular 第三行会继续沿用“进行中”；compact 标题继续保留“本局挑战：进行中”且第二行保留目标正文；ultra-compact 单行摘要也会继续沿用“挑战进行中 -> 进行中”这组 no-reward 状态回退，不补“0\/0”\/“奖励:\+0金”\/“奖励:未知”这类占位/,
+        'help overlay should document the invalid-target in-progress no-reward fallback chain across regular, compact, and ultra-compact summaries'
     );
     assert.match(
         source,

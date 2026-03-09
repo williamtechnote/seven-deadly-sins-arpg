@@ -1,8 +1,11 @@
 # TODO.md — seven-deadly-sins-arpg
 
 ## Active
+- [ ] visible invalid-target challenge no-reward 路径补充更显式的共享状态 helper / 回归守卫，避免 regular / compact / ultra-compact 文案未来漂移
 
 ## Completed
+- [x] README / 操作指引同步 visible completed challenge 在 `target<=0` 且无奖励短句时继续沿用 `已完成` / `本局挑战：已完成` / `挑战完成 -> 完成` 这组 completed-state / no-reward 回退链，不误退回 `进行中`（完成：2026-03-09 17:45 +08）
+- [x] README / 操作指引同步 visible in-progress challenge 在 `target<=0` 且无奖励短句时继续沿用 `进行中` / `本局挑战：进行中` / `挑战进行中 -> 进行中` 这组无占位回退链，不回填 `0/0` / `奖励:+0金` / `奖励:未知`（完成：2026-03-09 17:45 +08）
 - [x] README / 操作指引同步 hidden completed challenge badge 在 `target<=0` 下继续沿用 completed-state / no-reward 回退链说明（完成：2026-03-09 17:31 SGT）
 - [x] ultra-compact 轻量 completed challenge badge 在 `target<=0` 且无奖励短句时补充回归守卫，确认继续沿用 `完成 -> 静默隐藏` 同一 no-reward 回退链（完成：2026-03-09 17:31 SGT）
 - [x] ultra-compact 轻量 completed challenge badge 在 `target<=0` 且上游标签回退 `未知挑战` 时补充回归守卫，确认继续沿用 `完成+90金 -> 完成 -> 静默隐藏` 同一 completed-state 回退链（完成：2026-03-09 17:31 SGT）
