@@ -1,9 +1,10 @@
 # TODO.md — seven-deadly-sins-arpg
 
 ## Active
-- [ ] run-modifier heading 对 hidden in-progress challenge badge 静默路径补充 source/layout 回归守卫，确认 `_updateRunModifierHeading` 遇到空 appearance 时继续清空 badge 节点样式并释放标题宽度
 
 ## Completed
+- [x] run-modifier heading 对 hidden in-progress challenge badge 静默路径补充 source/layout 回归守卫，确认 `_updateRunModifierHeading` 遇到空 appearance 时继续清空 badge 节点样式并释放标题宽度（完成：2026-03-09 22:54 +08）
+- [x] README / 操作指引同步 run-modifier heading 在 hidden challenge badge 静默路径下会回收标题宽度预算，避免 badge 消失后标题仍沿用旧缩窄布局（完成：2026-03-09 22:54 +08）
 - [x] README / 操作指引同步 hidden in-progress challenge badge 在 invalid-target + `未知挑战` + reward-bearing 静默路径下空 appearance 会清空弱化 tint / alpha，避免标题行残留旧着色（完成：2026-03-09 21:39 +08）
 - [x] ultra-compact 隐藏 in-progress challenge badge 的静默路径补充 appearance 回归守卫，确认 invalid-target + `未知挑战` + reward-bearing 组合下空 badge 不残留进行中 tint（完成：2026-03-09 21:39 +08）
 - [x] README / 操作指引同步 hidden in-progress challenge badge 在 `未知挑战` + reward-bearing / invalid-target 路径下继续沿用 `进12/30 -> 12/30 -> 进12 -> 静默隐藏` / `静默隐藏` 这组 progress-only 回退链（完成：2026-03-09 21:30 +08）

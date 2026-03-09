@@ -36,6 +36,7 @@ const {
     getHudSidebarLineCap,
     getHudSidebarOverflowPolicy,
     getRunModifierHeadingBadgeLayout,
+    getRunModifierHeadingPresentation,
     buildVerticalTextStackLayout,
     buildPriorityTextStackLayout,
     getQuickSlotAutoAssignIndex,
@@ -5611,9 +5612,15 @@ class UIScene extends Phaser.Scene {
         const safeBadgeAppearance = badgeAppearance && typeof badgeAppearance === 'object'
             ? badgeAppearance
             : { text: '', fill: '', alpha: 1 };
+        const headingPresentation = getRunModifierHeadingPresentation(maxWidth, safeBadgeAppearance, {
+            viewportTier: this._getHudSidebarViewportTier(),
+            fitTitle: (text, titleWidth) => this._fitHudSidebarTextLine(text, titleWidth, 'sidebarSectionTitle'),
+            fitBadge: (text, badgeWidth) => this._fitHudSidebarTextLine(text, badgeWidth, 'sidebarChallengeBadge'),
+            measureBadgeWidth: text => this._measureHudSidebarTextWidth(text, 'sidebarChallengeBadge')
+        });
         if (!safeBadgeAppearance.text) {
             this.runModifierTitle.setPosition(anchorX, titleY);
-            this.runModifierTitle.setText(this._fitHudSidebarTextLine('本局词缀', this._getHudSidebarMaxWidth(), 'sidebarSectionTitle'));
+            this.runModifierTitle.setText(headingPresentation.titleText);
             this.runModifierBadgeText.setText('');
             this.runModifierBadgeText.setStyle({ fill: '', alpha: 1 });
             this.runModifierBadgeText.setAlpha(1);
@@ -5621,18 +5628,13 @@ class UIScene extends Phaser.Scene {
             return;
         }
 
-        const badgeGap = this._getRunModifierBadgeGap(maxWidth);
-        const badgeMaxWidth = this._getRunModifierBadgeMaxWidth(maxWidth);
-        const fittedBadgeText = this._fitHudSidebarTextLine(safeBadgeAppearance.text, badgeMaxWidth, 'sidebarChallengeBadge');
-        this.runModifierBadgeText.setText(fittedBadgeText);
-        this.runModifierBadgeText.setStyle({ fill: safeBadgeAppearance.fill, alpha: safeBadgeAppearance.alpha });
-        this.runModifierBadgeText.setAlpha(safeBadgeAppearance.alpha);
+        this.runModifierBadgeText.setText(headingPresentation.badgeText);
+        this.runModifierBadgeText.setStyle({ fill: headingPresentation.badgeFill, alpha: headingPresentation.badgeAlpha });
+        this.runModifierBadgeText.setAlpha(headingPresentation.badgeAlpha);
         this.runModifierBadgeText.setPosition(anchorX, titleY);
-        this.runModifierBadgeText.setVisible(true);
-        const badgeWidth = this.runModifierBadgeText.width;
-        const titleMaxWidth = Math.max(48, maxWidth - badgeWidth - badgeGap);
-        this.runModifierTitle.setPosition(anchorX - badgeWidth - badgeGap, titleY);
-        this.runModifierTitle.setText(this._fitHudSidebarTextLine('本局词缀', titleMaxWidth, 'sidebarSectionTitle'));
+        this.runModifierBadgeText.setVisible(headingPresentation.badgeVisible);
+        this.runModifierTitle.setPosition(anchorX - headingPresentation.badgeWidth - headingPresentation.badgeGap, titleY);
+        this.runModifierTitle.setText(headingPresentation.titleText);
     }
 
     _getHudSidebarMaxBottom() {
@@ -6059,7 +6061,8 @@ class HelpScene extends Phaser.Scene {
                     '若未来异常数据把 in-progress challenge 的“target”压成 0 或更低，且前缀去重后的正文已回退为“未知挑战”，compact 第二行也会继续沿用“未知挑战 · +90金”/“未知挑战”这组 detail fallback，不补“0/0”/“进度:0/0”这类误导性占位',
                     '即使当前 challenge 仍有奖励短句，且上游挑战标签在 regular / compact 路径里因前缀去重而回退成“未知挑战”，隐藏后的轻量 in-progress challenge badge 也仍会继续沿用“进12/30 -> 12/30 -> 进12 -> 静默隐藏”这组 progress-only 回退链，不额外插入“未知挑战”/“+90金”/“奖励:未知”这类中间占位',
                     '若未来异常数据把 in-progress challenge 的“target”压成 0 或更低，且当前 challenge 仍有奖励短句，隐藏后的轻量 in-progress challenge badge 也会继续保持静默，不输出“挑战 0/0”/“进0/0”/“0/0”',
-                    '对应的轻量 badge appearance 也会回退为空文案并清空弱化 tint/alpha，避免标题行残留旧着色'
+                    '对应的轻量 badge appearance 也会回退为空文案并清空弱化 tint/alpha，避免标题行残留旧着色',
+                    'run-modifier heading 在 hidden challenge badge 静默路径下也会同步回收标题宽度预算，避免 badge 消失后“本局词缀”标题继续沿用旧缩窄布局'
                 );
             }
             const completedInvalidTargetIndex = interfaceSection.items.indexOf('若未来异常数据把 completed challenge 的“target”压成 0 或更低，则 regular 第三行会改为沿用“已完成  奖励:+90金 -> 已完成”这组 completed-state 回退，不再误退回“进行中”；即使正文已因前缀去重回退成“未知挑战”，第三行也会继续保留 completed-state 语义');

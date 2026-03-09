@@ -522,6 +522,57 @@
         };
     }
 
+    function getRunModifierHeadingPresentation(maxWidth, badgeAppearance, options) {
+        const safeMaxWidth = Number.isFinite(maxWidth) && maxWidth > 0 ? maxWidth : 180;
+        const safeBadgeAppearance = badgeAppearance && typeof badgeAppearance === 'object'
+            ? badgeAppearance
+            : { text: '', fill: '', alpha: 1 };
+        const safeTitle = options && typeof options.title === 'string' && options.title
+            ? options.title
+            : '本局词缀';
+        const viewportTier = options && typeof options.viewportTier === 'string'
+            ? options.viewportTier
+            : 'regular';
+        const badgeLayout = getRunModifierHeadingBadgeLayout(safeMaxWidth, { viewportTier });
+        const fitTitle = options && typeof options.fitTitle === 'function'
+            ? options.fitTitle
+            : (text => text);
+        const fitBadge = options && typeof options.fitBadge === 'function'
+            ? options.fitBadge
+            : (text => text);
+        if (!safeBadgeAppearance.text) {
+            return {
+                titleText: fitTitle(safeTitle, safeMaxWidth),
+                titleMaxWidth: safeMaxWidth,
+                badgeText: '',
+                badgeVisible: false,
+                badgeFill: '',
+                badgeAlpha: 1,
+                badgeWidth: 0,
+                badgeGap: badgeLayout.gap
+            };
+        }
+
+        const badgeText = fitBadge(safeBadgeAppearance.text, badgeLayout.maxWidth);
+        const badgeWidth = badgeText
+            ? measureChallengeLabelWidth(badgeText, {
+                measureLabelWidth: options && options.measureBadgeWidth,
+                measureGlyphWidth: options && options.measureBadgeGlyphWidth
+            })
+            : 0;
+        const titleMaxWidth = Math.max(48, safeMaxWidth - badgeWidth - badgeLayout.gap);
+        return {
+            titleText: fitTitle(safeTitle, titleMaxWidth),
+            titleMaxWidth,
+            badgeText,
+            badgeVisible: !!badgeText,
+            badgeFill: typeof safeBadgeAppearance.fill === 'string' ? safeBadgeAppearance.fill : '',
+            badgeAlpha: Number.isFinite(safeBadgeAppearance.alpha) ? safeBadgeAppearance.alpha : 1,
+            badgeWidth,
+            badgeGap: badgeLayout.gap
+        };
+    }
+
     function getHudSidebarHeadingBadgeMetrics(displayWidth, displayHeight, viewportWidth, viewportHeight) {
         const responsiveMetrics = getHudSidebarResponsiveMetrics(displayWidth, displayHeight, viewportWidth, viewportHeight);
         const badgeLayout = getRunModifierHeadingBadgeLayout(responsiveMetrics.maxWidth, {
@@ -2427,6 +2478,7 @@
         getHudSidebarLineCap,
         getHudSidebarOverflowPolicy,
         getRunModifierHeadingBadgeLayout,
+        getRunModifierHeadingPresentation,
         buildVerticalTextStackLayout,
         buildPriorityTextStackLayout,
         getQuickSlotAutoAssignIndex,

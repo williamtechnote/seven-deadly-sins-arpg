@@ -56,6 +56,7 @@ const {
     getRunChallengeHiddenCompletedBadgeVariants,
     getRunChallengeSidebarBadgeAppearance,
     getRunModifierHeadingBadgeLayout,
+    getRunModifierHeadingPresentation,
     buildRunEventRoomWorldLabelRouteLine,
     buildRunEventRoomWorldLabel,
     buildRunEventRoomPromptLabel,
@@ -3973,6 +3974,7 @@ function testRunChallengeRewardFeedback() {
 
 function testRunModifierHeadingBadgeLayout() {
     assert.equal(typeof getRunModifierHeadingBadgeLayout, 'function', 'run-modifier heading badge layout helper should be exported');
+    assert.equal(typeof getRunModifierHeadingPresentation, 'function', 'run-modifier heading presentation helper should be exported');
     assert.deepEqual(
         getRunModifierHeadingBadgeLayout(180, { viewportTier: 'regular' }),
         { maxWidth: 75, gap: 8 },
@@ -4033,6 +4035,52 @@ function testRunModifierHeadingBadgeLayout() {
             badgeGap: 3
         },
         'sidebar heading badge metrics should expose the final ultra-tight badge floor derived from the actual display budget'
+    );
+    assert.deepEqual(
+        getRunModifierHeadingPresentation(108, {
+            text: '',
+            fill: '#a8b3c7',
+            alpha: 0.72
+        }, {
+            viewportTier: 'ultraCompact',
+            fitTitle: text => text,
+            fitBadge: text => text,
+            measureBadgeWidth: text => text.length * 10
+        }),
+        {
+            titleText: '本局词缀',
+            titleMaxWidth: 108,
+            badgeText: '',
+            badgeVisible: false,
+            badgeFill: '',
+            badgeAlpha: 1,
+            badgeWidth: 0,
+            badgeGap: 3
+        },
+        'run-modifier heading presentation helper should release the full title width and clear badge styling once the lightweight challenge badge goes silent'
+    );
+    assert.deepEqual(
+        getRunModifierHeadingPresentation(108, {
+            text: '12/30',
+            fill: '#a8b3c7',
+            alpha: 0.72
+        }, {
+            viewportTier: 'ultraCompact',
+            fitTitle: text => text,
+            fitBadge: text => text,
+            measureBadgeWidth: text => text.length * 6
+        }),
+        {
+            titleText: '本局词缀',
+            titleMaxWidth: 75,
+            badgeText: '12/30',
+            badgeVisible: true,
+            badgeFill: '#a8b3c7',
+            badgeAlpha: 0.72,
+            badgeWidth: 30,
+            badgeGap: 3
+        },
+        'run-modifier heading presentation helper should reserve the measured badge width and shared gap before fitting the title'
     );
 }
 
@@ -4202,8 +4250,8 @@ function testSidebarMeasurementHooks() {
     );
     assert.match(
         source,
-        /const badgeGap = this\._getRunModifierBadgeGap\(maxWidth\);[\s\S]*?const badgeMaxWidth = this\._getRunModifierBadgeMaxWidth\(maxWidth\);[\s\S]*?const titleMaxWidth = Math\.max\(48,\s*maxWidth - badgeWidth - badgeGap\);/,
-        'run-modifier heading layout should reserve an explicit width budget for the badge before fitting the title'
+        /const headingPresentation = getRunModifierHeadingPresentation\(maxWidth,\s*safeBadgeAppearance,\s*{[\s\S]*?fitTitle:\s*\(text,\s*titleWidth\)\s*=>\s*this\._fitHudSidebarTextLine\(text,\s*titleWidth,\s*'sidebarSectionTitle'\)[\s\S]*?fitBadge:\s*\(text,\s*badgeWidth\)\s*=>\s*this\._fitHudSidebarTextLine\(text,\s*badgeWidth,\s*'sidebarChallengeBadge'\)[\s\S]*?measureBadgeWidth:\s*text\s*=>\s*this\._measureHudSidebarTextWidth\(text,\s*'sidebarChallengeBadge'\)[\s\S]*?}\);/,
+        'run-modifier heading layout should reserve badge space through the shared presentation helper before fitting the title'
     );
     assert.match(
         source,
@@ -4212,8 +4260,13 @@ function testSidebarMeasurementHooks() {
     );
     assert.match(
         source,
-        /this\.runModifierBadgeText\.setStyle\(\{\s*fill:\s*safeBadgeAppearance\.fill,\s*alpha:\s*safeBadgeAppearance\.alpha\s*\}\);/,
+        /this\.runModifierBadgeText\.setStyle\(\{\s*fill:\s*headingPresentation\.badgeFill,\s*alpha:\s*headingPresentation\.badgeAlpha\s*\}\);/,
         'dedicated challenge badge text should apply the shared subdued appearance state instead of inheriting the title tint'
+    );
+    assert.match(
+        source,
+        /const headingPresentation = getRunModifierHeadingPresentation\(maxWidth,\s*safeBadgeAppearance,\s*{[\s\S]*?viewportTier:\s*this\._getHudSidebarViewportTier\(\)[\s\S]*?}\);/,
+        'run-modifier heading update should route its title-width and badge-width decisions through the shared heading presentation helper'
     );
     assert.match(
         source,
@@ -4227,8 +4280,8 @@ function testSidebarMeasurementHooks() {
     );
     assert.match(
         source,
-        /this\.runModifierTitle\.setText\(this\._fitHudSidebarTextLine\('本局词缀',\s*titleMaxWidth,\s*'sidebarSectionTitle'\)\);/,
-        'sidebar title should keep its own fitted width budget even when a lightweight challenge badge is present'
+        /this\.runModifierTitle\.setText\(headingPresentation\.titleText\);/,
+        'sidebar title should consume the shared heading presentation result instead of recomputing its own width budget inline'
     );
     assert.match(
         source,
@@ -4526,6 +4579,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /run-modifier heading 在 hidden challenge badge 静默路径下也会同步回收标题宽度预算/,
+        'README should document that the run-modifier heading reclaims the full title width once the hidden challenge badge goes silent'
+    );
+    assert.match(
+        source,
         /即使上游挑战标签在 regular \/ compact 路径里因前缀去重而回退成 `未知挑战`，ultra-compact 这条单行摘要也仍会保持同一组 `挑战 12\/30 · \+90金 -> 挑战 12\/30 -> 12\/30` \/ `挑战完成 · \+90金 -> 挑战完成 -> 完成` 语义短句，不额外插入 `未知挑战` 这类中间短句/,
         'README should document that ultra-compact challenge summaries stay on the same fallback ladder even when the body label falls back to 未知挑战'
     );
@@ -4792,6 +4850,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /对应的轻量 badge appearance 也会回退为空文案并清空弱化 tint\/alpha，避免标题行残留旧着色/,
         'help overlay should document that the silent reward-bearing hidden in-progress badge also clears its subdued appearance state'
+    );
+    assert.match(
+        source,
+        /run-modifier heading 在 hidden challenge badge 静默路径下也会同步回收标题宽度预算/,
+        'help overlay should document that the run-modifier heading reclaims the full title width once the hidden challenge badge goes silent'
     );
     assert.match(
         source,
