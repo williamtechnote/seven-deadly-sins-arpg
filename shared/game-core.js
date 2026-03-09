@@ -537,11 +537,10 @@
         };
     }
 
-    function normalizeRunChallengeSidebarLabel(label, compact) {
+    function normalizeRunChallengeSidebarLabel(label) {
         if (typeof label !== 'string') return '';
         const safeLabel = label.trim();
         if (!safeLabel) return '';
-        if (!compact) return safeLabel;
         return safeLabel
             .replace(/^(?:本局)?挑战[:：]?\s*/u, '')
             .replace(/^本局/u, '')
@@ -636,7 +635,7 @@
         const rewardGold = clampInt(safeChallenge.rewardGold, 0, Number.MAX_SAFE_INTEGER, 0);
         const rewardLabel = formatRunChallengeRewardShortLabel(safeChallenge);
         const completed = !!safeChallenge.completed;
-        const normalizedLabel = normalizeRunChallengeSidebarLabel(safeChallenge.label, compact) || '未知挑战';
+        const normalizedLabel = normalizeRunChallengeSidebarLabel(safeChallenge.label) || '未知挑战';
         const progressLabel = `${Math.min(progress, target)}/${target || 0}`;
 
         if (ultraCompact) {
@@ -691,7 +690,7 @@
 
         return [
             completed ? '本局挑战：已完成' : '本局挑战',
-            safeChallenge.label || normalizedLabel,
+            normalizedLabel,
             rewardLabel ? `进度:${progressLabel}  奖励:${rewardLabel}` : `进度:${progressLabel}`
         ];
     }
