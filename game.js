@@ -6033,6 +6033,12 @@ class HelpScene extends Phaser.Scene {
                     0,
                     '若未来异常数据把 completed challenge 的“target”压成 0 或更低，且前缀去重后的正文已回退为“未知挑战”，compact 第二行也会继续沿用“未知挑战 · +90金”/“未知挑战”这组 completed detail fallback，不误退回“进行中”'
                 );
+                interfaceSection.items.splice(
+                    completedInvalidTargetIndex + 2,
+                    0,
+                    '若未来异常数据把 completed challenge 的“target”压成 0 或更低，且上游挑战标签在 regular / compact 路径里因前缀去重而回退成“未知挑战”，隐藏后的轻量 completed challenge badge 在仍有奖励短句时也会继续沿用“完成+90金 -> 完成 -> 静默隐藏”这组 completed-state 回退链，不额外插入“未知挑战”这类中间短句',
+                    '若未来异常数据把 completed challenge 的“target”压成 0 或更低，且当前 challenge 没有奖励短句，则隐藏后的轻量 completed challenge badge 也会继续沿用“完成 -> 静默隐藏”这组 no-reward 回退链，不补“+0金”/“奖励:未知”这类占位'
+                );
             }
         }
 

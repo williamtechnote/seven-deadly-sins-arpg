@@ -3607,6 +3607,23 @@ function testRunChallengeSidebarLines() {
         buildRunChallengeSidebarBadge({
             label: '本局挑战：挑战：本局',
             progress: 30,
+            target: 0,
+            rewardGold: 90,
+            completed: true
+        }, {
+            viewportTier: 'ultraCompact',
+            hidden: true,
+            runModifierHidden: true,
+            maxBadgeWidth: 72,
+            measureLabelWidth: measureCompletedBadgeWidth
+        }),
+        '完成+90金',
+        'reward-bearing ultra-compact completed challenge badges should keep the same completed-state ladder when invalid targets and unknown labels collapse wider summaries'
+    );
+    assert.equal(
+        buildRunChallengeSidebarBadge({
+            label: '本局挑战：挑战：本局',
+            progress: 30,
             target: 30,
             rewardGold: 9999,
             rewardLabel: '+9999金 +净化',
@@ -3637,6 +3654,23 @@ function testRunChallengeSidebarLines() {
         }),
         '完成',
         'rewardless ultra-compact completed challenge badges should keep the same completion fallback when the upstream label collapses to 未知挑战'
+    );
+    assert.equal(
+        buildRunChallengeSidebarBadge({
+            label: '本局挑战：挑战：本局',
+            progress: 30,
+            target: 0,
+            rewardGold: 0,
+            completed: true
+        }, {
+            viewportTier: 'ultraCompact',
+            hidden: true,
+            runModifierHidden: true,
+            maxBadgeWidth: 34,
+            measureLabelWidth: measureBadgeWidth
+        }),
+        '完成',
+        'rewardless ultra-compact completed challenge badges should keep the same no-reward ladder when invalid targets collapse wider summaries'
     );
     assert.equal(
         buildRunChallengeSidebarBadge({
@@ -4375,6 +4409,16 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /若未来异常数据把 completed challenge 的 `target` 压成 0 或更低，且上游挑战标签在 regular \/ compact 路径里因前缀去重而回退成 `未知挑战`，隐藏后的轻量 completed challenge badge 在仍有奖励短句时也会继续沿用 `完成\+90金 -> 完成 -> 静默隐藏` 这组 completed-state 回退链，不额外插入 `未知挑战` 这类中间短句/,
+        'README should document the invalid-target hidden completed-badge reward fallback without introducing extra intermediate copy'
+    );
+    assert.match(
+        source,
+        /若未来异常数据把 completed challenge 的 `target` 压成 0 或更低，且当前 challenge 没有奖励短句，则隐藏后的轻量 completed challenge badge 也会继续沿用 `完成 -> 静默隐藏` 这组 no-reward 回退链，不补 `\+0金` \/ `奖励:未知` 这类占位/,
+        'README should document the invalid-target hidden completed-badge no-reward fallback without placeholder reward copy'
+    );
+    assert.match(
+        source,
         /即使上游挑战标签在 regular \/ compact 路径里因前缀去重而回退成 `未知挑战`，若隐藏后的轻量 completed challenge badge 奖励短句未来扩展到 `\+9999金 \+净化` 这类显式复合形式，也会继续沿用 `完成\+9999金 \+净化 -> 完成 -> 静默隐藏` 同一语义回退链，不额外插入 `未知挑战` 这类中间短句/,
         'README should document the unknown-label hidden completed-badge compound-reward fallback without introducing extra intermediate copy'
     );
@@ -4606,6 +4650,16 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /即使上游挑战标签在 regular \/ compact 路径里因前缀去重而回退成“未知挑战”，隐藏后的轻量 completed challenge badge 在仍有奖励短句时也会继续沿用“完成\+90金 -> 完成 -> 静默隐藏”这组回退链，不额外插入“未知挑战”这类中间短句/,
         'help overlay should document that reward-bearing hidden completed challenge badges stay on the same fallback ladder even when the body label collapses to 未知挑战'
+    );
+    assert.match(
+        source,
+        /若未来异常数据把 completed challenge 的“target”压成 0 或更低，且上游挑战标签在 regular \/ compact 路径里因前缀去重而回退成“未知挑战”，隐藏后的轻量 completed challenge badge 在仍有奖励短句时也会继续沿用“完成\+90金 -> 完成 -> 静默隐藏”这组 completed-state 回退链，不额外插入“未知挑战”这类中间短句/,
+        'help overlay should document the invalid-target hidden completed-badge reward fallback without introducing extra intermediate copy'
+    );
+    assert.match(
+        source,
+        /若未来异常数据把 completed challenge 的“target”压成 0 或更低，且当前 challenge 没有奖励短句，则隐藏后的轻量 completed challenge badge 也会继续沿用“完成 -> 静默隐藏”这组 no-reward 回退链，不补“\+0金”\/“奖励:未知”这类占位/,
+        'help overlay should document the invalid-target hidden completed-badge no-reward fallback without placeholder reward copy'
     );
     assert.match(
         source,

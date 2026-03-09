@@ -3,6 +3,9 @@
 ## Active
 
 ## Completed
+- [x] README / 操作指引同步 hidden completed challenge badge 在 `target<=0` 下继续沿用 completed-state / no-reward 回退链说明（完成：2026-03-09 17:31 SGT）
+- [x] ultra-compact 轻量 completed challenge badge 在 `target<=0` 且无奖励短句时补充回归守卫，确认继续沿用 `完成 -> 静默隐藏` 同一 no-reward 回退链（完成：2026-03-09 17:31 SGT）
+- [x] ultra-compact 轻量 completed challenge badge 在 `target<=0` 且上游标签回退 `未知挑战` 时补充回归守卫，确认继续沿用 `完成+90金 -> 完成 -> 静默隐藏` 同一 completed-state 回退链（完成：2026-03-09 17:31 SGT）
 - [x] heartbeat 审计补记 ultra-compact completed invalid-target unknown-label 分支回退与验证结果（完成：2026-03-09 17:19 +08）
 - [x] README / 操作指引同步 ultra-compact 单行 completed challenge 摘要在上游标签去重后回退 `未知挑战` 且 `target<=0` 时继续沿用 `挑战完成 · +90金 -> 挑战完成 -> 完成` 同一 completed-state 回退链，不额外插入 `未知挑战`（完成：2026-03-09 17:18 +08）
 - [x] ultra-compact 单行 completed challenge 摘要在上游标签去重后回退 `未知挑战` 且 `target<=0` 时补充回归守卫，确认继续沿用 `挑战完成 · +90金 -> 挑战完成 -> 完成` 同一 completed-state 回退链（完成：2026-03-09 17:18 +08）
