@@ -2060,6 +2060,22 @@ function testRunChallengeSidebarLines() {
         '1': 8,
         '2': 8
     }[glyph] || 10), 0);
+    const measureChallengeSummaryWidth = (label) => Array.from(label).reduce((sum, glyph) => sum + ({
+        '挑': 12,
+        '战': 12,
+        '完': 12,
+        '成': 12,
+        '金': 12,
+        '+': 6,
+        '·': 4,
+        '/': 6,
+        ' ': 4,
+        '0': 6,
+        '1': 6,
+        '2': 6,
+        '3': 6,
+        '9': 6
+    }[glyph] || 10), 0);
     assert.deepEqual(
         buildRunChallengeSidebarLines({
             label: '击败 30 个敌人',
@@ -2114,6 +2130,66 @@ function testRunChallengeSidebarLines() {
         }, { viewportTier: 'ultraCompact' }),
         ['挑战完成 · +90金'],
         'ultra-compact challenge sidebar helper should collapse completed challenges into a single completion line'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, {
+            viewportTier: 'ultraCompact',
+            maxLineWidth: 60,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['挑战 12/30'],
+        'ultra-compact visible challenge summaries should drop reward copy before generic ellipsis when the single-line budget tightens'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, {
+            viewportTier: 'ultraCompact',
+            maxLineWidth: 34,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['12/30'],
+        'ultra-compact visible challenge summaries should preserve the progress ratio as the final in-progress fallback before hiding'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 90,
+            completed: true
+        }, {
+            viewportTier: 'ultraCompact',
+            maxLineWidth: 48,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['挑战完成'],
+        'ultra-compact visible completed summaries should drop reward copy before generic ellipsis when the width budget tightens'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 90,
+            completed: true
+        }, {
+            viewportTier: 'ultraCompact',
+            maxLineWidth: 22,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['完成'],
+        'ultra-compact visible completed summaries should preserve a minimal completion label before the challenge block disappears'
     );
     assert.equal(
         buildRunChallengeSidebarBadge({
@@ -2575,8 +2651,8 @@ function testSidebarMeasurementHooks() {
     );
     assert.match(
         source,
-        /buildRunChallengeSidebarLines\(challenge,\s*{\s*viewportTier:\s*this\._getHudSidebarViewportTier\(\)\s*}\)/,
-        'challenge sidebar should build its lines through a shared viewport-tier-aware helper'
+        /buildRunChallengeSidebarLines\(challenge,\s*{\s*viewportTier:\s*this\._getHudSidebarViewportTier\(\),\s*maxLineWidth:\s*this\._getHudSidebarMaxWidth\(\),\s*measureLabelWidth:\s*text => this\._measureHudSidebarTextWidth\(text,\s*'challengeSidebar'\)\s*}\)/,
+        'challenge sidebar should build its lines through the shared viewport-tier-aware helper with the live sidebar width budget and Phaser measurement hook'
     );
     assert.match(
         source,

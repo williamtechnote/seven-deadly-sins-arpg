@@ -548,6 +548,47 @@
             .trim();
     }
 
+    function measureChallengeLabelWidth(text, options) {
+        if (typeof text !== 'string' || !text) return 0;
+        if (options && typeof options.measureLabelWidth === 'function') {
+            const measuredWidth = Number(options.measureLabelWidth(text));
+            if (Number.isFinite(measuredWidth) && measuredWidth > 0) {
+                return measuredWidth;
+            }
+        }
+        if (options && typeof options.measureGlyphWidth === 'function') {
+            return Array.from(text).reduce((sum, glyph) => {
+                const glyphWidth = Number(options.measureGlyphWidth(glyph));
+                return sum + (Number.isFinite(glyphWidth) && glyphWidth > 0 ? glyphWidth : 0);
+            }, 0);
+        }
+        return Array.from(text).reduce((sum, glyph) => {
+            const codePoint = glyph.codePointAt(0);
+            const isAscii = Number.isFinite(codePoint) && codePoint >= 0x20 && codePoint <= 0x7e;
+            return sum + (isAscii ? 8 : 10);
+        }, 0);
+    }
+
+    function pickChallengeLabelVariant(variants, options) {
+        const safeVariants = Array.isArray(variants)
+            ? variants.filter(text => typeof text === 'string' && text)
+            : [];
+        if (safeVariants.length === 0) return '';
+        const maxWidth = Number(options && options.maxWidth);
+        if (!Number.isFinite(maxWidth) || maxWidth <= 0) {
+            return safeVariants[0];
+        }
+        for (const variant of safeVariants) {
+            if (measureChallengeLabelWidth(variant, options) <= maxWidth) {
+                return variant;
+            }
+        }
+        if (options && options.allowEmptyFallback) {
+            return '';
+        }
+        return safeVariants[safeVariants.length - 1];
+    }
+
     function buildRunChallengeSidebarLines(challenge, options) {
         const safeChallenge = challenge && typeof challenge === 'object' ? challenge : {};
         const viewportTier = options && typeof options.viewportTier === 'string'
@@ -564,9 +605,23 @@
 
         if (ultraCompact) {
             if (completed) {
-                return [rewardGold > 0 ? `挑战完成 · +${rewardGold}金` : '挑战完成'];
+                return [pickChallengeLabelVariant(
+                    rewardGold > 0 ? [`挑战完成 · +${rewardGold}金`, '挑战完成', '完成'] : ['挑战完成', '完成'],
+                    {
+                        maxWidth: Number(options && options.maxLineWidth),
+                        measureLabelWidth: options && options.measureLabelWidth,
+                        measureGlyphWidth: options && options.measureGlyphWidth
+                    }
+                )];
             }
-            return [rewardGold > 0 ? `挑战 ${progressLabel} · +${rewardGold}金` : `挑战 ${progressLabel}`];
+            return [pickChallengeLabelVariant(
+                rewardGold > 0 ? [`挑战 ${progressLabel} · +${rewardGold}金`, `挑战 ${progressLabel}`, progressLabel] : [`挑战 ${progressLabel}`, progressLabel],
+                {
+                    maxWidth: Number(options && options.maxLineWidth),
+                    measureLabelWidth: options && options.measureLabelWidth,
+                    measureGlyphWidth: options && options.measureGlyphWidth
+                }
+            )];
         }
 
         if (compact) {
@@ -597,55 +652,25 @@
         const hidden = !!(options && options.hidden);
         const runModifierHidden = !!(options && options.runModifierHidden);
         if (viewportTier !== 'ultraCompact' || !hidden || !runModifierHidden) return '';
-
-        const measureBadgeWidth = (text) => {
-            if (typeof text !== 'string' || !text) return 0;
-            if (options && typeof options.measureLabelWidth === 'function') {
-                const measuredWidth = Number(options.measureLabelWidth(text));
-                if (Number.isFinite(measuredWidth) && measuredWidth > 0) {
-                    return measuredWidth;
-                }
-            }
-            if (options && typeof options.measureGlyphWidth === 'function') {
-                return Array.from(text).reduce((sum, glyph) => {
-                    const glyphWidth = Number(options.measureGlyphWidth(glyph));
-                    return sum + (Number.isFinite(glyphWidth) && glyphWidth > 0 ? glyphWidth : 0);
-                }, 0);
-            }
-            return Array.from(text).reduce((sum, glyph) => {
-                const codePoint = glyph.codePointAt(0);
-                const isAscii = Number.isFinite(codePoint) && codePoint >= 0x20 && codePoint <= 0x7e;
-                return sum + (isAscii ? 8 : 10);
-            }, 0);
-        };
-        const pickBadgeText = (variants, pickerOptions) => {
-            const safeVariants = Array.isArray(variants)
-                ? variants.filter(text => typeof text === 'string' && text)
-                : [];
-            if (safeVariants.length === 0) return '';
-            const maxBadgeWidth = Number(options && options.maxBadgeWidth);
-            if (!Number.isFinite(maxBadgeWidth) || maxBadgeWidth <= 0) {
-                return safeVariants[0];
-            }
-            for (const variant of safeVariants) {
-                if (measureBadgeWidth(variant) <= maxBadgeWidth) {
-                    return variant;
-                }
-            }
-            if (pickerOptions && pickerOptions.allowEmptyFallback) {
-                return '';
-            }
-            return safeVariants[safeVariants.length - 1];
-        };
         const target = clampInt(safeChallenge.target, 0, Number.MAX_SAFE_INTEGER, 0);
         const progress = clampInt(safeChallenge.progress, 0, target || Number.MAX_SAFE_INTEGER, 0);
         if (safeChallenge.completed) {
-            return pickBadgeText(getRunChallengeCompletedBadgeVariants(safeChallenge), { allowEmptyFallback: true });
+            return pickChallengeLabelVariant(getRunChallengeCompletedBadgeVariants(safeChallenge), {
+                maxWidth: Number(options && options.maxBadgeWidth),
+                measureLabelWidth: options && options.measureLabelWidth,
+                measureGlyphWidth: options && options.measureGlyphWidth,
+                allowEmptyFallback: true
+            });
         }
         if (progress <= 0) return '';
         const progressLabel = `${Math.min(progress, target)}/${target || 0}`;
         const compactProgressLabel = `进${target > 0 ? Math.min(progress, target) : progress}`;
-        return pickBadgeText([`进${progressLabel}`, progressLabel, compactProgressLabel], { allowEmptyFallback: true });
+        return pickChallengeLabelVariant([`进${progressLabel}`, progressLabel, compactProgressLabel], {
+            maxWidth: Number(options && options.maxBadgeWidth),
+            measureLabelWidth: options && options.measureLabelWidth,
+            measureGlyphWidth: options && options.measureGlyphWidth,
+            allowEmptyFallback: true
+        });
     }
 
     function getRunChallengeCompletedBadgeVariants(challenge) {
