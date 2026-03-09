@@ -772,7 +772,7 @@
         // Hidden ultra-compact badges intentionally stay label-agnostic so the same
         // progress/completion fallback ladder survives even if the body label collapses to 未知挑战.
         if (safeChallenge.completed) {
-            return pickChallengeLabelVariant(getRunChallengeCompletedBadgeVariants(safeChallenge), {
+            return pickChallengeLabelVariant(getRunChallengeHiddenCompletedBadgeVariants(safeChallenge), {
                 maxWidth: Number(options && options.maxBadgeWidth),
                 measureLabelWidth: options && options.measureLabelWidth,
                 measureGlyphWidth: options && options.measureGlyphWidth,
@@ -802,6 +802,12 @@
         const safeChallenge = challenge && typeof challenge === 'object' ? challenge : {};
         const rewardLabel = formatRunChallengeRewardShortLabel(safeChallenge);
         return rewardLabel ? [`完成${rewardLabel}`, '完成'] : ['完成'];
+    }
+
+    function getRunChallengeHiddenCompletedBadgeVariants(challenge) {
+        // Hidden completed badges stay label-agnostic so unknown-label body fallbacks
+        // do not alter the shared reward-to-complete ladder.
+        return getRunChallengeCompletedBadgeVariants(challenge);
     }
 
     function getRunChallengeSidebarBadgeAppearance(challenge, options) {
@@ -2352,6 +2358,7 @@
         buildRunChallengeSidebarBadge,
         getRunChallengeInProgressBadgeVariants,
         getRunChallengeCompletedBadgeVariants,
+        getRunChallengeHiddenCompletedBadgeVariants,
         getRunChallengeSidebarBadgeAppearance,
         buildQuickSlotItemLabel,
         buildQuickSlotAutoAssignNotice,

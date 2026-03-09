@@ -50,6 +50,7 @@ const {
     formatRunChallengeRewardShortLabel,
     buildRunChallengeCompletedFeedbackText,
     getRunChallengeCompletedBadgeVariants,
+    getRunChallengeHiddenCompletedBadgeVariants,
     getRunChallengeSidebarBadgeAppearance,
     getRunModifierHeadingBadgeLayout,
     buildRunEventRoomWorldLabelRouteLine,
@@ -3026,6 +3027,11 @@ function testRunChallengeSidebarLines() {
         'function',
         'in-progress challenge badge helper should be exported'
     );
+    assert.equal(
+        typeof getRunChallengeHiddenCompletedBadgeVariants,
+        'function',
+        'hidden completed challenge badge variants helper should be exported'
+    );
     assert.deepEqual(
         getRunChallengeInProgressBadgeVariants({
             label: '击败 30 个敌人',
@@ -3245,6 +3251,29 @@ function testRunChallengeSidebarLines() {
         ['完成'],
         'completed challenge badge helper should keep a rewardless completion-only fallback chain without placeholder reward copy'
     );
+    assert.deepEqual(
+        getRunChallengeHiddenCompletedBadgeVariants({
+            label: '本局挑战：挑战：本局',
+            progress: 30,
+            target: 30,
+            rewardGold: 90,
+            completed: true
+        }),
+        ['完成+90金', '完成'],
+        'hidden completed challenge badge variants helper should stay on the same reward-to-complete ladder when the upstream label collapses to 未知挑战'
+    );
+    assert.deepEqual(
+        getRunChallengeHiddenCompletedBadgeVariants({
+            label: '本局挑战：挑战：本局',
+            progress: 30,
+            target: 30,
+            rewardGold: 9999,
+            rewardLabel: '+9999金 +净化',
+            completed: true
+        }),
+        ['完成+9999金 +净化', '完成'],
+        'hidden completed challenge badge variants helper should stay on the same explicit compound-reward ladder when the upstream label collapses to 未知挑战'
+    );
     assert.equal(
         buildRunChallengeSidebarBadge({
             label: '击败 30 个敌人',
@@ -3366,6 +3395,41 @@ function testRunChallengeSidebarLines() {
         }),
         '',
         'display-size-derived ultra-tight badge floors should hide the completed badge once even 完成 no longer fits'
+    );
+    assert.equal(
+        buildRunChallengeSidebarBadge({
+            label: '本局挑战：挑战：本局',
+            progress: 30,
+            target: 30,
+            rewardGold: 90,
+            completed: true
+        }, {
+            viewportTier: 'ultraCompact',
+            hidden: true,
+            runModifierHidden: true,
+            maxBadgeWidth: 72,
+            measureLabelWidth: measureCompletedBadgeWidth
+        }),
+        '完成+90金',
+        'reward-bearing ultra-compact completed challenge badges should keep the same gold-reward fallback chain when the upstream label collapses to 未知挑战'
+    );
+    assert.equal(
+        buildRunChallengeSidebarBadge({
+            label: '本局挑战：挑战：本局',
+            progress: 30,
+            target: 30,
+            rewardGold: 9999,
+            rewardLabel: '+9999金 +净化',
+            completed: true
+        }, {
+            viewportTier: 'ultraCompact',
+            hidden: true,
+            runModifierHidden: true,
+            maxBadgeWidth: 130,
+            measureLabelWidth: measureCompletedBadgeWidth
+        }),
+        '完成+9999金 +净化',
+        'reward-bearing ultra-compact completed challenge badges should keep the same explicit compound-reward ladder when the upstream label collapses to 未知挑战'
     );
     assert.equal(
         buildRunChallengeSidebarBadge({
@@ -4086,6 +4150,16 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /即使上游挑战标签在 regular \/ compact 路径里因前缀去重而回退成 `未知挑战`，隐藏后的轻量 completed challenge badge 在仍有奖励短句时也会继续沿用 `完成\+90金 -> 完成 -> 静默隐藏` 这组回退链，不额外插入 `未知挑战` 这类中间短句/,
+        'README should document that reward-bearing hidden completed challenge badges stay on the same fallback ladder even when the body label collapses to 未知挑战'
+    );
+    assert.match(
+        source,
+        /即使上游挑战标签在 regular \/ compact 路径里因前缀去重而回退成 `未知挑战`，若隐藏后的轻量 completed challenge badge 奖励短句未来扩展到 `\+9999金 \+净化` 这类显式复合形式，也会继续沿用 `完成\+9999金 \+净化 -> 完成 -> 静默隐藏` 同一语义回退链，不额外插入 `未知挑战` 这类中间短句/,
+        'README should document the unknown-label hidden completed-badge compound-reward fallback without introducing extra intermediate copy'
+    );
+    assert.match(
+        source,
         /该轻量徽记会拆成独立弱化色阶，并进一步下调字级与透明度后再与“本局词缀”标题分开贴边；若标题预算继续压窄，则会按更紧预算分档继续下调 badge 宽度占比、最小宽度与固定 gap，优先把更多横向空间留给标题正文/,
         'README should document the quieter typography plus the ultra-tight width-budget tier for the final ultra-compact challenge badge fallback'
     );
@@ -4277,6 +4351,16 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /即使上游挑战标签在 regular \/ compact 路径里因前缀去重而回退成“未知挑战”，隐藏后的轻量挑战徽记也仍会继续沿用“进12\/30 -> 12\/30 -> 进12 -> 静默隐藏”\/“完成 -> 静默隐藏”这组 no-reward 回退链，不额外插入“未知挑战”\/“\+0金”\/“奖励:未知”这类中间占位/,
         'help overlay should document that rewardless hidden challenge badges stay on the same fallback ladder even when the body label collapses to 未知挑战'
+    );
+    assert.match(
+        source,
+        /即使上游挑战标签在 regular \/ compact 路径里因前缀去重而回退成“未知挑战”，隐藏后的轻量 completed challenge badge 在仍有奖励短句时也会继续沿用“完成\+90金 -> 完成 -> 静默隐藏”这组回退链，不额外插入“未知挑战”这类中间短句/,
+        'help overlay should document that reward-bearing hidden completed challenge badges stay on the same fallback ladder even when the body label collapses to 未知挑战'
+    );
+    assert.match(
+        source,
+        /即使上游挑战标签在 regular \/ compact 路径里因前缀去重而回退成“未知挑战”，若隐藏后的轻量 completed challenge badge 奖励短句未来扩展到“\+9999金 \+净化”这类显式复合形式，也会继续沿用“完成\+9999金 \+净化 -> 完成 -> 静默隐藏”同一语义回退链，不额外插入“未知挑战”这类中间短句/,
+        'help overlay should document the unknown-label hidden completed-badge compound-reward fallback without introducing extra intermediate copy'
     );
     assert.match(
         source,

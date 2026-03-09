@@ -3,6 +3,9 @@
 ## Active
 
 ## Completed
+- [x] README / 操作指引同步 ultra-compact 隐藏 completed challenge badge 在 `未知挑战` 且显式复合奖励短句下继续沿用 `完成+奖励 -> 完成 -> 静默隐藏` 同一语义回退链，不额外插入 `未知挑战`（完成：2026-03-09 14:04 SGT）
+- [x] ultra-compact 隐藏 completed challenge badge 在上游标签回退 `未知挑战` 且仍有奖励路径下补充回归守卫，确认继续沿用 `完成+90金 -> 完成 -> 静默隐藏`，不额外插入 `未知挑战`（完成：2026-03-09 14:04 SGT）
+- [x] 为 ultra-compact 隐藏 completed challenge badge 抽出共享 label-agnostic variants helper，显式复用 `完成+奖励 -> 完成 -> 静默隐藏` 回退链（完成：2026-03-09 14:04 SGT）
 - [x] README / 操作指引同步 ultra-compact 单行 challenge 摘要在 `未知挑战` 且显式复合奖励短句下，为完成态继续沿用 `挑战完成 · 奖励 -> 挑战完成 -> 完成` 同一语义回退链，不额外插入 `未知挑战`（完成：2026-03-09 13:57 SGT）
 - [x] README / 操作指引同步 ultra-compact 单行 challenge 摘要在 `未知挑战` 且显式复合奖励短句下，为进行中态继续沿用 `挑战 12/30 · 奖励 -> 挑战 12/30 -> 12/30` 同一语义回退链，不额外插入 `未知挑战`（完成：2026-03-09 13:57 SGT）
 - [x] README / 操作指引同步 compact 双行 challenge 摘要在 `未知挑战` 且仍有奖励短句时，继续保留 `未知挑战 · +90金` 这条 reward-bearing 第二行语义，不插额外中间短句（完成：2026-03-09 13:35 SGT）
