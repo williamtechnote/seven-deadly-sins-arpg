@@ -2130,6 +2130,28 @@ function testRunChallengeSidebarLines() {
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
+            label: '本局挑战：挑战：本局击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, { compact: false }),
+        ['本局挑战', '击败 30 个敌人', '进度:12/30  奖励:+90金'],
+        'full in-progress challenge summaries should keep stripping repeated mixed 本局/挑战 prefixes until the objective label is clean'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '本局挑战：挑战：本局',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, { compact: false }),
+        ['本局挑战', '未知挑战', '进度:12/30  奖励:+90金'],
+        'full in-progress challenge summaries should fall back to 未知挑战 when repeated prefix stripping exhausts the upstream label'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
             label: '击败 30 个敌人',
             progress: 12,
             target: 30,
@@ -2345,6 +2367,28 @@ function testRunChallengeSidebarLines() {
         }, { compact: true }),
         ['本局挑战：已完成', '击败 30 个敌人 · +90金'],
         'compact completed challenge summaries should strip duplicated challenge prefixes from upstream labels before appending reward copy'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '本局挑战：挑战：本局击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 90,
+            completed: true
+        }, { compact: true }),
+        ['本局挑战：已完成', '击败 30 个敌人 · +90金'],
+        'compact completed challenge summaries should keep stripping repeated mixed 本局/挑战 prefixes until the detail label is clean'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '本局挑战：挑战：本局',
+            progress: 30,
+            target: 30,
+            rewardGold: 90,
+            completed: true
+        }, { compact: true }),
+        ['本局挑战：已完成', '未知挑战 · +90金'],
+        'compact completed challenge summaries should fall back to 未知挑战 when repeated prefix stripping exhausts the detail label'
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
@@ -3405,6 +3449,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /若上游标签重复混入 `本局` \/ `挑战：` 这类前缀，也会继续循环去重直到收敛成真正的目标文案；若去重后已无剩余正文，则 regular \/ compact 摘要会统一回退为 `未知挑战`/,
+        'README should document the repeated mixed-prefix cleanup and 未知挑战 fallback for challenge labels'
+    );
+    assert.match(
+        source,
         /当 regular 第三行宽度预算继续吃紧时，进行中与完成态也会先沿用 `进度:12\/30  奖励:\+90金 -> 进度:12\/30 -> 12\/30` \/ `进度:30\/30  奖励:\+90金 -> 进度:30\/30 -> 30\/30` 这条语义回退链，而不是直接退化成通用省略；若未来扩展到 `\+9999金 \+净化` 这类复合奖励短句，regular 第三行也会继续沿用同一条进度优先回退链/,
         'README should document the regular third-line semantic fallback chain for both in-progress and completed challenge summaries'
     );
@@ -3536,6 +3585,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /regular 三行挑战摘要的正文行若遇到上游已带“本局挑战：”\/“挑战：”前缀的标签，也会先去重，避免与标题行重复同一前缀/,
         'help overlay should document that regular three-line challenge summaries dedupe upstream challenge prefixes before rendering the body line'
+    );
+    assert.match(
+        source,
+        /若上游标签重复混入“本局”\/“挑战：”这类前缀，也会继续循环去重直到收敛成真正的目标文案；若去重后已无剩余正文，则 regular \/ compact 摘要会统一回退为“未知挑战”/,
+        'help overlay should document the repeated mixed-prefix cleanup and 未知挑战 fallback for challenge labels'
     );
     assert.match(
         source,

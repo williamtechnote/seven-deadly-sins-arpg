@@ -539,13 +539,22 @@
 
     function normalizeRunChallengeSidebarLabel(label) {
         if (typeof label !== 'string') return '';
-        const safeLabel = label.trim();
-        if (!safeLabel) return '';
-        return safeLabel
-            .replace(/^(?:本局)?挑战[:：]?\s*/u, '')
-            .replace(/^本局/u, '')
-            .replace(/^挑战[:：]?\s*/u, '')
-            .trim();
+        let normalizedLabel = label.trim();
+        if (!normalizedLabel) return '';
+        let previousLabel = null;
+        while (normalizedLabel && normalizedLabel !== previousLabel) {
+            previousLabel = normalizedLabel;
+            normalizedLabel = normalizedLabel
+                .replace(/^(?:本局)?挑战\s*[:：]?\s*/u, '')
+                .replace(/^本局\s*/u, '')
+                .replace(/^挑战\s*[:：]?\s*/u, '')
+                .trim();
+        }
+        return normalizedLabel;
+    }
+
+    function getRunChallengeSafeSidebarLabel(label) {
+        return normalizeRunChallengeSidebarLabel(label) || '未知挑战';
     }
 
     function measureChallengeLabelWidth(text, options) {
@@ -658,7 +667,7 @@
         const rewardGold = clampInt(safeChallenge.rewardGold, 0, Number.MAX_SAFE_INTEGER, 0);
         const rewardLabel = formatRunChallengeRewardShortLabel(safeChallenge);
         const completed = !!safeChallenge.completed;
-        const normalizedLabel = normalizeRunChallengeSidebarLabel(safeChallenge.label) || '未知挑战';
+        const normalizedLabel = getRunChallengeSafeSidebarLabel(safeChallenge.label);
         const progressLabel = `${Math.min(progress, target)}/${target || 0}`;
 
         if (ultraCompact) {
