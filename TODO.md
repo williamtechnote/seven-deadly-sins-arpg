@@ -1,9 +1,11 @@
 # TODO.md — seven-deadly-sins-arpg
 
 ## Active
-- [ ] 为无奖励 challenge 路径补充共享文案回归守卫，确认各分档继续保留进度优先语义短句
+- [ ] ultra-compact 单行 challenge 摘要在无奖励路径下补充共享 variants helper / 回归守卫，确认进行中与完成态继续沿用 `挑战 12/30 -> 12/30` / `挑战完成 -> 完成` 语义短句
 
 ## Completed
+- [x] compact 双行 challenge 摘要在无奖励路径下补充共享 variants helper / 回归守卫，确认进行中与完成态继续沿用 `击败 30 个敌人 -> 击败30个敌人` 标签优先短句（完成：2026-03-09 12:41 SGT）
+- [x] regular 三行 challenge 摘要在无奖励路径下补充共享 variants helper / 回归守卫，确认进行中与完成态继续沿用 `进度:12/30 -> 12/30` / `进度:30/30 -> 30/30` 进度优先短句（完成：2026-03-09 12:41 SGT）
 - [x] 显式 `rewardLabel` 在共享奖励短句 helper 中同步压缩多余空白，避免 regular / compact / ultra-compact / 完成浮字 / badge 因未来复合奖励文案留出异常宽度（完成：2026-03-09 12:28 SGT）
 - [x] challenge 标签在前缀去重后同步压缩正文里的重复空白 / 全角空白，避免 regular / compact 摘要正文保留异常大空隙（完成：2026-03-09 12:28 SGT）
 - [x] README / 操作指引同步 ultra-compact 单行挑战摘要在 `未知挑战` 回退下继续沿用既有 `挑战 进度 · 奖励 -> 挑战 进度 -> 进度` / `挑战完成 · 奖励 -> 挑战完成 -> 完成` 语义回退链，不新增额外中间短句（完成：2026-03-09 12:20 SGT）

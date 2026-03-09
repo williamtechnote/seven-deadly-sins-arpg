@@ -639,13 +639,21 @@
             : getRunChallengeInProgressSummaryVariants(progressLabel, rewardLabel);
     }
 
-    function getRunChallengeRegularProgressDetailVariants(progressLabel, rewardLabel) {
+    function getRunChallengeRegularDetailVariants(progressLabel, rewardLabel) {
         const safeProgressLabel = typeof progressLabel === 'string' ? progressLabel.trim() : '';
         if (!safeProgressLabel) return [];
         if (rewardLabel) {
             return [`进度:${safeProgressLabel}  奖励:${rewardLabel}`, `进度:${safeProgressLabel}`, safeProgressLabel];
         }
         return [`进度:${safeProgressLabel}`, safeProgressLabel];
+    }
+
+    function getRunChallengeRegularInProgressDetailVariants(progressLabel, rewardLabel) {
+        return getRunChallengeRegularDetailVariants(progressLabel, rewardLabel);
+    }
+
+    function getRunChallengeRegularCompletedDetailVariants(progressLabel, rewardLabel) {
+        return getRunChallengeRegularDetailVariants(progressLabel, rewardLabel);
     }
 
     function getRunChallengeCompactDetailVariants(normalizedLabel, rewardLabel) {
@@ -729,7 +737,9 @@
             completed ? '本局挑战：已完成' : '本局挑战',
             normalizedLabel,
             pickChallengeLabelVariant(
-                getRunChallengeRegularProgressDetailVariants(progressLabel, rewardLabel),
+                completed
+                    ? getRunChallengeRegularCompletedDetailVariants(progressLabel, rewardLabel)
+                    : getRunChallengeRegularInProgressDetailVariants(progressLabel, rewardLabel),
                 {
                     maxWidth: Number(options && options.maxLineWidth),
                     measureLabelWidth: options && options.measureLabelWidth,
@@ -2311,6 +2321,10 @@
         formatRunChallengeRewardShortLabel,
         buildRunChallengeCompletedFeedbackText,
         getRunChallengeUltraCompactSummaryVariants,
+        getRunChallengeRegularInProgressDetailVariants,
+        getRunChallengeRegularCompletedDetailVariants,
+        getRunChallengeCompactInProgressDetailVariants,
+        getRunChallengeCompactCompletedDetailVariants,
         buildRunChallengeSidebarLines,
         buildRunChallengeSidebarBadge,
         getRunChallengeCompletedBadgeVariants,

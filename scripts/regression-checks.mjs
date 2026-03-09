@@ -39,6 +39,10 @@ const {
     buildRunChallengeSidebarLines,
     buildRunChallengeSidebarBadge,
     getRunChallengeUltraCompactSummaryVariants,
+    getRunChallengeRegularInProgressDetailVariants,
+    getRunChallengeRegularCompletedDetailVariants,
+    getRunChallengeCompactInProgressDetailVariants,
+    getRunChallengeCompactCompletedDetailVariants,
     formatRunChallengeRewardShortLabel,
     buildRunChallengeCompletedFeedbackText,
     getRunChallengeCompletedBadgeVariants,
@@ -2036,6 +2040,10 @@ function testRunChallengeSidebarLines() {
     assert.equal(typeof buildRunChallengeSidebarLines, 'function', 'run challenge sidebar helper should be exported');
     assert.equal(typeof buildRunChallengeSidebarBadge, 'function', 'run challenge badge helper should be exported');
     assert.equal(typeof getRunChallengeUltraCompactSummaryVariants, 'function', 'ultra-compact visible challenge summary variants helper should be exported');
+    assert.equal(typeof getRunChallengeRegularInProgressDetailVariants, 'function', 'regular in-progress challenge detail variants helper should be exported');
+    assert.equal(typeof getRunChallengeRegularCompletedDetailVariants, 'function', 'regular completed challenge detail variants helper should be exported');
+    assert.equal(typeof getRunChallengeCompactInProgressDetailVariants, 'function', 'compact in-progress challenge detail variants helper should be exported');
+    assert.equal(typeof getRunChallengeCompactCompletedDetailVariants, 'function', 'compact completed challenge detail variants helper should be exported');
     assert.equal(typeof formatRunChallengeRewardShortLabel, 'function', 'run challenge reward short-label helper should be exported');
     assert.equal(typeof getRunChallengeCompletedBadgeVariants, 'function', 'completed run challenge badge variants helper should be exported');
     assert.equal(typeof getRunChallengeSidebarBadgeAppearance, 'function', 'run challenge badge appearance helper should be exported');
@@ -2082,6 +2090,26 @@ function testRunChallengeSidebarLines() {
         '9': 6
     }[glyph] || 10), 0);
     assert.deepEqual(
+        getRunChallengeRegularInProgressDetailVariants('12/30', ''),
+        ['进度:12/30', '12/30'],
+        'regular in-progress detail variants should keep the existing progress-first ladder when no reward label is available'
+    );
+    assert.deepEqual(
+        getRunChallengeRegularCompletedDetailVariants('30/30', ''),
+        ['进度:30/30', '30/30'],
+        'regular completed detail variants should keep the existing progress-first ladder when no reward label is available'
+    );
+    assert.deepEqual(
+        getRunChallengeCompactInProgressDetailVariants('击败 30 个敌人', ''),
+        ['击败 30 个敌人', '击败30个敌人'],
+        'compact in-progress detail variants should keep the existing label-first ladder when no reward label is available'
+    );
+    assert.deepEqual(
+        getRunChallengeCompactCompletedDetailVariants('击败 30 个敌人', ''),
+        ['击败 30 个敌人', '击败30个敌人'],
+        'compact completed detail variants should keep the existing label-first ladder when no reward label is available'
+    );
+    assert.deepEqual(
         getRunChallengeUltraCompactSummaryVariants({
             label: '本局挑战：挑战：本局',
             progress: 12,
@@ -2117,6 +2145,17 @@ function testRunChallengeSidebarLines() {
         }),
         ['挑战 12/30'],
         'ultra-compact visible in-progress challenge summaries should still drop an extra-large reward chunk before truncating semantic progress copy'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 0,
+            completed: false
+        }, { compact: false }),
+        ['本局挑战', '击败 30 个敌人', '进度:12/30'],
+        'full in-progress challenge summaries should keep the semantic progress line when no reward label is available'
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
@@ -2190,6 +2229,21 @@ function testRunChallengeSidebarLines() {
             label: '击败 30 个敌人',
             progress: 12,
             target: 30,
+            rewardGold: 0,
+            completed: false
+        }, {
+            compact: false,
+            maxLineWidth: 26,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['本局挑战', '击败 30 个敌人', '12/30'],
+        'full in-progress challenge summaries should preserve the bare progress ratio as the final fallback even when the challenge has no reward copy'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
             rewardGold: 90,
             completed: false
         }, {
@@ -2236,11 +2290,37 @@ function testRunChallengeSidebarLines() {
             label: '击败 30 个敌人',
             progress: 12,
             target: 30,
+            rewardGold: 0,
+            completed: false
+        }, { compact: true }),
+        ['本局挑战 12/30', '击败 30 个敌人'],
+        'compact in-progress challenge summaries should keep the detail label readable when no reward label is available'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
             rewardGold: 90,
             completed: false
         }, { compact: true }),
         ['本局挑战 12/30', '击败 30 个敌人 · +90金'],
         'compact challenge sidebar helper should collapse active challenges into two lines while surfacing the shared reward short label'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 0,
+            completed: false
+        }, {
+            compact: true,
+            maxLineWidth: 64,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['本局挑战 12/30', '击败30个敌人'],
+        'compact in-progress challenge summaries should still tighten internal whitespace before generic truncation when the challenge has no reward copy'
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
@@ -2351,11 +2431,37 @@ function testRunChallengeSidebarLines() {
             label: '挑战：击败 30 个敌人',
             progress: 30,
             target: 30,
+            rewardGold: 0,
+            completed: true
+        }, { compact: false }),
+        ['本局挑战：已完成', '击败 30 个敌人', '进度:30/30'],
+        'full completed challenge summaries should keep the semantic progress line when no reward label is available'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '挑战：击败 30 个敌人',
+            progress: 30,
+            target: 30,
             rewardGold: 90,
             completed: true
         }, { compact: false }),
         ['本局挑战：已完成', '击败 30 个敌人', '进度:30/30  奖励:+90金'],
         'full completed challenge summaries should strip duplicated challenge prefixes from upstream labels before rendering the regular three-line body copy'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 0,
+            completed: true
+        }, {
+            compact: false,
+            maxLineWidth: 26,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['本局挑战：已完成', '击败 30 个敌人', '30/30'],
+        'full completed challenge summaries should preserve the bare ratio as the final fallback even when the challenge has no reward copy'
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
@@ -2408,6 +2514,17 @@ function testRunChallengeSidebarLines() {
             label: '本局挑战：击败 30 个敌人',
             progress: 30,
             target: 30,
+            rewardGold: 0,
+            completed: true
+        }, { compact: true }),
+        ['本局挑战：已完成', '击败 30 个敌人'],
+        'compact completed challenge summaries should keep the detail label readable when no reward label is available'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '本局挑战：击败 30 个敌人',
+            progress: 30,
+            target: 30,
             rewardGold: 90,
             completed: true
         }, { compact: true }),
@@ -2450,6 +2567,21 @@ function testRunChallengeSidebarLines() {
         }),
         ['本局挑战：已完成', '击败 30 个敌人'],
         'compact completed challenge summaries should drop the reward chunk before generic truncation when the second-line budget tightens'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 0,
+            completed: true
+        }, {
+            compact: true,
+            maxLineWidth: 64,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['本局挑战：已完成', '击败30个敌人'],
+        'compact completed challenge summaries should still tighten internal whitespace before generic truncation when the challenge has no reward copy'
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
@@ -3554,8 +3686,13 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /当 regular 第三行宽度预算继续吃紧时，进行中与完成态也会先沿用 `进度:12\/30  奖励:\+90金 -> 进度:12\/30 -> 12\/30` \/ `进度:30\/30  奖励:\+90金 -> 进度:30\/30 -> 30\/30` 这条语义回退链，而不是直接退化成通用省略；若未来扩展到 `\+9999金 \+净化` 这类复合奖励短句，regular 第三行也会继续沿用同一条进度优先回退链/,
+        /当 regular 第三行宽度预算继续吃紧时，进行中与完成态也会先沿用 `进度:12\/30  奖励:\+90金 -> 进度:12\/30 -> 12\/30` \/ `进度:30\/30  奖励:\+90金 -> 进度:30\/30 -> 30\/30` 这条语义回退链，而不是直接退化成通用省略/,
         'README should document the regular third-line semantic fallback chain for both in-progress and completed challenge summaries'
+    );
+    assert.match(
+        source,
+        /若当前 challenge 没有奖励短句，则 regular 第三行会继续沿用 `进度:12\/30 -> 12\/30` \/ `进度:30\/30 -> 30\/30`，不插入额外奖励占位；若未来扩展到 `\+9999金 \+净化` 这类复合奖励短句，regular 第三行也会继续沿用同一条进度优先回退链/,
+        'README should document the rewardless regular third-line fallback without inserting placeholder reward copy'
     );
     assert.match(
         source,
@@ -3576,6 +3713,11 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /若未来扩展到 `\+9999金 \+净化` 这类复合奖励短句，compact 进行中 \/ 完成态第二行也都会继续沿用同一条回退链/,
         'README should document that compact in-progress and completed compound rewards reuse the same second-line fallback chain'
+    );
+    assert.match(
+        source,
+        /若当前 challenge 没有奖励短句，则 compact 第二行会继续沿用 `击败 30 个敌人 -> 击败30个敌人`，不补额外占位/,
+        'README should document the rewardless compact second-line fallback without inserting placeholder reward copy'
     );
     assert.match(
         source,
@@ -3703,8 +3845,13 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /当 regular 第三行宽度预算继续吃紧时，进行中与完成态也会先沿用“进度:12\/30  奖励:\+90金 -> 进度:12\/30 -> 12\/30”\/“进度:30\/30  奖励:\+90金 -> 进度:30\/30 -> 30\/30”这条语义回退链，而不是直接退化成通用省略；若 regular 第三行的奖励短句未来扩展到“\+9999金 \+净化”这类复合形式，进行中 \/ 完成态也都会继续沿用同一条进度优先回退链/,
+        /当 regular 第三行宽度预算继续吃紧时，进行中与完成态也会先沿用“进度:12\/30  奖励:\+90金 -> 进度:12\/30 -> 12\/30”\/“进度:30\/30  奖励:\+90金 -> 进度:30\/30 -> 30\/30”这条语义回退链，而不是直接退化成通用省略/,
         'help overlay should document the regular third-line semantic fallback chain for both in-progress and completed challenge summaries'
+    );
+    assert.match(
+        source,
+        /若当前 challenge 没有奖励短句，则 regular 第三行会继续沿用“进度:12\/30 -> 12\/30”\/“进度:30\/30 -> 30\/30”，不插入额外奖励占位；若 regular 第三行的奖励短句未来扩展到“\+9999金 \+净化”这类复合形式，进行中 \/ 完成态也都会继续沿用同一条进度优先回退链/,
+        'help overlay should document the rewardless regular third-line fallback without inserting placeholder reward copy'
     );
     assert.match(
         source,
@@ -3725,6 +3872,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若这条 compact 第二行的奖励短句未来扩展到“\+9999金 \+净化”这类复合形式，进行中 \/ 完成态也都会继续沿用同一条回退链/,
         'help overlay should document that compact in-progress and completed compound rewards reuse the same second-line fallback chain'
+    );
+    assert.match(
+        source,
+        /若当前 challenge 没有奖励短句，则 compact 第二行会继续沿用“击败 30 个敌人 -> 击败30个敌人”，不补额外占位/,
+        'help overlay should document the rewardless compact second-line fallback without inserting placeholder reward copy'
     );
     assert.match(
         source,
