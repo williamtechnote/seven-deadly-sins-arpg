@@ -2055,6 +2055,11 @@ function testRunChallengeSidebarLines() {
         '9': 8,
         '0': 8
     }[glyph] || 10), 0);
+    const measureTightProgressBadgeWidth = (label) => Array.from(label).reduce((sum, glyph) => sum + ({
+        '进': 14,
+        '1': 8,
+        '2': 8
+    }[glyph] || 10), 0);
     assert.deepEqual(
         buildRunChallengeSidebarLines({
             label: '击败 30 个敌人',
@@ -2199,6 +2204,23 @@ function testRunChallengeSidebarLines() {
         '进12',
         'ultra-compact challenge badge helper should fall back to a no-ellipsis progress stub once even the ratio badge no longer fits'
     );
+    assert.equal(
+        buildRunChallengeSidebarBadge({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, {
+            viewportTier: 'ultraCompact',
+            hidden: true,
+            runModifierHidden: true,
+            maxBadgeWidth: getHudSidebarHeadingBadgeMetrics(204, 640, 1024, 768).badgeMaxWidth,
+            measureLabelWidth: measureTightProgressBadgeWidth
+        }),
+        '',
+        'display-size-derived ultra-tight badge floors should hide the in-progress badge once even 进N no longer fits'
+    );
     assert.deepEqual(
         getRunChallengeCompletedBadgeVariants({
             label: '击败 30 个敌人',
@@ -2298,6 +2320,27 @@ function testRunChallengeSidebarLines() {
             alpha: 1
         },
         'completed challenge badge appearance helper should clear tint once the final ultra-tight fallback goes silent'
+    );
+    assert.deepEqual(
+        getRunChallengeSidebarBadgeAppearance({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, {
+            viewportTier: 'ultraCompact',
+            hidden: true,
+            runModifierHidden: true,
+            maxBadgeWidth: getHudSidebarHeadingBadgeMetrics(204, 640, 1024, 768).badgeMaxWidth,
+            measureLabelWidth: measureTightProgressBadgeWidth
+        }),
+        {
+            text: '',
+            fill: '',
+            alpha: 1
+        },
+        'in-progress challenge badge appearance helper should clear tint once the final ultra-tight fallback goes silent'
     );
     assert.deepEqual(
         getRunChallengeSidebarBadgeAppearance({
@@ -2756,8 +2799,8 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /若该挑战摘要与本局词缀正文都因溢出被隐藏，则会在挑战起步后把 `进12\/30` \/ `完成` 这类更轻量的进度徽记挂到“本局词缀”标题后；若标题预算进一步吃紧，则进行中态还会继续压成 `12\/30`；若进入 ultra-tight 更紧预算，则会再回退为 `进12` 这类无省略最终短句/,
-        'README should document that the lightweight challenge badge waits until both the challenge block and modifier body disappear, then falls back to a no-ellipsis progress stub under the final ultra-tight width tier'
+        /若该挑战摘要与本局词缀正文都因溢出被隐藏，则会在挑战起步后把 `进12\/30` \/ `完成` 这类更轻量的进度徽记挂到“本局词缀”标题后；若标题预算进一步吃紧，则进行中态还会继续压成 `12\/30`；若进入 ultra-tight 更紧预算，则会再回退为 `进12` 这类无省略最终短句；若连进行中态的 `进12` 都放不下，则也会静默隐藏 badge，把同一行预算完全还给标题/,
+        'README should document the full in-progress challenge badge fallback chain through the final ultra-tight silent-hide state'
     );
     assert.match(
         source,
@@ -2845,8 +2888,8 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /若该挑战摘要与本局词缀正文都因溢出被隐藏，则会在挑战起步后把“进12\/30”\/“完成”压成挂在“本局词缀”标题后的轻量徽记；若标题预算进一步吃紧，则进行中态还会继续压成“12\/30”；若进入 ultra-tight 更紧预算，则会再回退为“进12”这类无省略最终短句/,
-        'help overlay should document that the lightweight challenge badge waits until both the challenge block and modifier body disappear, then falls back to a no-ellipsis progress stub under the final ultra-tight width tier'
+        /若该挑战摘要与本局词缀正文都因溢出被隐藏，则会在挑战起步后把“进12\/30”\/“完成”压成挂在“本局词缀”标题后的轻量徽记；若标题预算进一步吃紧，则进行中态还会继续压成“12\/30”；若进入 ultra-tight 更紧预算，则会再回退为“进12”这类无省略最终短句；若连进行中态的“进12”都放不下，则也会静默隐藏 badge，把同一行预算完全还给标题/,
+        'help overlay should document the full in-progress challenge badge fallback chain through the final ultra-tight silent-hide state'
     );
     assert.match(
         source,

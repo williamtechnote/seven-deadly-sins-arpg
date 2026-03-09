@@ -645,7 +645,7 @@
         if (progress <= 0) return '';
         const progressLabel = `${Math.min(progress, target)}/${target || 0}`;
         const compactProgressLabel = `进${target > 0 ? Math.min(progress, target) : progress}`;
-        return pickBadgeText([`进${progressLabel}`, progressLabel, compactProgressLabel]);
+        return pickBadgeText([`进${progressLabel}`, progressLabel, compactProgressLabel], { allowEmptyFallback: true });
     }
 
     function getRunChallengeCompletedBadgeVariants(challenge) {
