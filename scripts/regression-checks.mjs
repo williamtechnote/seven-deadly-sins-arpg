@@ -2141,6 +2141,17 @@ function testRunChallengeSidebarLines() {
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
+            label: '本局挑战：击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, { compact: true }),
+        ['本局挑战 12/30', '击败 30 个敌人 · +90金'],
+        'compact in-progress challenge summaries should strip duplicated challenge prefixes from upstream labels before appending reward copy'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
             label: '击败 30 个敌人',
             progress: 12,
             target: 30,
@@ -2192,6 +2203,17 @@ function testRunChallengeSidebarLines() {
         }, { compact: true }),
         ['本局挑战：已完成', '击败 30 个敌人 · +9999金 +净化'],
         'compact challenge sidebar helper should reuse the shared reward short label when a future compound reward is provided'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '本局挑战：击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 90,
+            completed: true
+        }, { compact: true }),
+        ['本局挑战：已完成', '击败 30 个敌人 · +90金'],
+        'compact completed challenge summaries should strip duplicated challenge prefixes from upstream labels before appending reward copy'
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
@@ -3177,6 +3199,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /若上游挑战标题仍带 `本局挑战：` \/ `挑战：` 前缀，compact 第二行也会先去重再拼接奖励短句，避免紧凑摘要重复“挑战”标题/,
+        'README should document that compact challenge detail lines dedupe upstream challenge prefixes before appending reward labels'
+    );
+    assert.match(
+        source,
         /当 compact 进行中摘要的第二行宽度预算继续吃紧时，也会先沿用 `击败 30 个敌人 · \+90金 -> 击败 30 个敌人` 这条语义回退链，而不是直接退化成通用省略/,
         'README should document the compact in-progress second-line semantic fallback before generic truncation'
     );
@@ -3293,6 +3320,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若视口进入 compact 档位，则本局词缀与事件房摘要会额外收敛为有限行数，并在最后一行补省略号/,
         'help overlay should document the compact-tier line-cap and ellipsis policy for long sidebar blocks'
+    );
+    assert.match(
+        source,
+        /若上游挑战标题仍带“本局挑战：”\/“挑战：”前缀，compact 第二行也会先去重再拼接奖励短句，避免紧凑摘要重复“挑战”标题/,
+        'help overlay should document that compact challenge detail lines dedupe upstream challenge prefixes before appending reward labels'
     );
     assert.match(
         source,

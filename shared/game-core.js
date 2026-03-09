@@ -543,8 +543,9 @@
         if (!safeLabel) return '';
         if (!compact) return safeLabel;
         return safeLabel
-            .replace(/^挑战[:：]\s*/u, '')
+            .replace(/^(?:本局)?挑战[:：]?\s*/u, '')
             .replace(/^本局/u, '')
+            .replace(/^挑战[:：]?\s*/u, '')
             .trim();
     }
 
