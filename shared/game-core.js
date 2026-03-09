@@ -537,18 +537,21 @@
         };
     }
 
+    function normalizeInlineCopyWhitespace(text) {
+        if (typeof text !== 'string') return '';
+        return text.replace(/[\s\u3000]+/gu, ' ').trim();
+    }
+
     function normalizeRunChallengeSidebarLabel(label) {
-        if (typeof label !== 'string') return '';
-        let normalizedLabel = label.trim();
+        let normalizedLabel = normalizeInlineCopyWhitespace(label);
         if (!normalizedLabel) return '';
         let previousLabel = null;
         while (normalizedLabel && normalizedLabel !== previousLabel) {
             previousLabel = normalizedLabel;
-            normalizedLabel = normalizedLabel
+            normalizedLabel = normalizeInlineCopyWhitespace(normalizedLabel
                 .replace(/^(?:本局)?挑战\s*[:：]?\s*/u, '')
                 .replace(/^本局\s*/u, '')
-                .replace(/^挑战\s*[:：]?\s*/u, '')
-                .trim();
+                .replace(/^挑战\s*[:：]?\s*/u, ''));
         }
         return normalizedLabel;
     }
@@ -600,8 +603,9 @@
 
     function formatRunChallengeRewardShortLabel(challenge) {
         const safeChallenge = challenge && typeof challenge === 'object' ? challenge : {};
-        if (typeof safeChallenge.rewardLabel === 'string' && safeChallenge.rewardLabel.trim()) {
-            return safeChallenge.rewardLabel.trim();
+        const rewardLabel = normalizeInlineCopyWhitespace(safeChallenge.rewardLabel);
+        if (rewardLabel) {
+            return rewardLabel;
         }
         const rewardGold = clampInt(safeChallenge.rewardGold, 0, Number.MAX_SAFE_INTEGER, 0);
         return rewardGold > 0 ? `+${rewardGold}金` : '';

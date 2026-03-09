@@ -2176,6 +2176,17 @@ function testRunChallengeSidebarLines() {
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
+            label: '本局挑战：击败　　30   个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, { compact: false }),
+        ['本局挑战', '击败 30 个敌人', '进度:12/30  奖励:+90金'],
+        'full in-progress challenge summaries should collapse repeated half-width and full-width spaces in the normalized objective label'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
             label: '击败 30 个敌人',
             progress: 12,
             target: 30,
@@ -2253,6 +2264,17 @@ function testRunChallengeSidebarLines() {
         }, { compact: true }),
         ['本局挑战 12/30', '击败 30 个敌人 · +90金'],
         'compact in-progress challenge summaries should strip duplicated challenge prefixes from upstream labels before appending reward copy'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '本局挑战：击败　　30   个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, { compact: true }),
+        ['本局挑战 12/30', '击败 30 个敌人 · +90金'],
+        'compact in-progress challenge summaries should collapse repeated half-width and full-width spaces in the normalized detail label'
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
@@ -2633,6 +2655,14 @@ function testRunChallengeSidebarLines() {
         '+9999金 +净化',
         'reward short-label helper should prefer an explicit future-facing reward short label over the legacy gold-only copy'
     );
+    assert.equal(
+        formatRunChallengeRewardShortLabel({
+            rewardGold: 9999,
+            rewardLabel: '  +9999金　 +净化  '
+        }),
+        '+9999金 +净化',
+        'reward short-label helper should collapse repeated half-width and full-width spaces inside explicit reward labels'
+    );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
             label: '击败 30 个敌人',
@@ -2648,6 +2678,22 @@ function testRunChallengeSidebarLines() {
         }),
         ['挑战 12/30 · +9999金 +净化'],
         'ultra-compact visible in-progress challenge summaries should surface an explicit compound reward short label when width allows'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 9999,
+            rewardLabel: '+9999金　 +净化',
+            completed: false
+        }, {
+            viewportTier: 'ultraCompact',
+            maxLineWidth: 150,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['挑战 12/30 · +9999金 +净化'],
+        'ultra-compact visible in-progress challenge summaries should collapse repeated half-width and full-width spaces in explicit reward labels before composing the line'
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
@@ -2850,6 +2896,24 @@ function testRunChallengeSidebarLines() {
             progress: 30,
             target: 30,
             rewardGold: 9999,
+            rewardLabel: '+9999金　 +净化',
+            completed: true
+        }, {
+            viewportTier: 'ultraCompact',
+            hidden: true,
+            runModifierHidden: true,
+            maxBadgeWidth: 130,
+            measureLabelWidth: measureCompletedBadgeWidth
+        }),
+        '完成+9999金 +净化',
+        'ultra-compact completed challenge badges should collapse repeated half-width and full-width spaces in explicit reward labels before rendering'
+    );
+    assert.equal(
+        buildRunChallengeSidebarBadge({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 9999,
             rewardLabel: '+9999金 +净化',
             completed: true
         }, {
@@ -3032,6 +3096,18 @@ function testRunChallengeRewardFeedback() {
         }),
         '挑战完成 +9999金 +净化',
         'challenge completion feedback should prefer an explicit future reward short label when provided'
+    );
+    assert.equal(
+        buildRunChallengeCompletedFeedbackText({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 9999,
+            rewardLabel: '  +9999金　 +净化  ',
+            completed: true
+        }),
+        '挑战完成 +9999金 +净化',
+        'challenge completion feedback should collapse repeated half-width and full-width spaces inside explicit reward labels before rendering'
     );
     assert.equal(
         buildRunChallengeCompletedFeedbackText({
@@ -3528,6 +3604,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /共享 challenge 标签与显式奖励短句 helper 也会压缩异常半角 \/ 全角空白，避免正文间距或复合奖励文案因脏输入而提前挤爆各分档宽度预算/,
+        'README should document the shared whitespace normalization for challenge labels and explicit reward labels'
+    );
+    assert.match(
+        source,
         /若侧栏总高度仍超出安全范围，则会优先隐藏事件房摘要，其次再隐藏本局词缀正文，最后才隐藏本局挑战摘要/,
         'README should document the final overflow-priority hiding order for the fixed sidebar'
     );
@@ -3664,6 +3745,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /regular \/ compact 分档里凡是仍会显示奖励的路径，也会复用同一奖励短句 helper，避免与 ultra-compact 回退链出现文案漂移/,
         'help overlay should document that regular and compact reward-bearing summaries reuse the same short-label helper'
+    );
+    assert.match(
+        source,
+        /共享 challenge 标签与显式奖励短句 helper 也会压缩异常半角 \/ 全角空白，避免正文间距或复合奖励文案因脏输入而提前挤爆各分档宽度预算/,
+        'help overlay should document the shared whitespace normalization for challenge labels and explicit reward labels'
     );
     assert.match(
         source,
