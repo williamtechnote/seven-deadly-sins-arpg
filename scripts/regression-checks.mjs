@@ -36,6 +36,7 @@ const {
     buildRunEventRoomEffects,
     buildRunEventRoomHudSummary,
     buildRunEventRoomHudLines,
+    getRunChallengeSafeSidebarLabel,
     buildRunChallengeSidebarLines,
     buildRunChallengeSidebarBadge,
     getRunChallengeInProgressBadgeVariants,
@@ -2146,6 +2147,16 @@ function testRunChallengeSidebarLines() {
         ['挑战完成 · +90金', '挑战完成', '完成'],
         'ultra-compact visible completed summary variants should keep the existing completion ladder when the upstream label collapses to 未知挑战'
     );
+    assert.equal(
+        typeof getRunChallengeSafeSidebarLabel,
+        'function',
+        'run challenge safe sidebar-label helper should be exported'
+    );
+    assert.equal(
+        getRunChallengeSafeSidebarLabel('本局挑战：挑战：本局'),
+        '未知挑战',
+        'run challenge safe sidebar-label helper should fall back to 未知挑战 once repeated prefix stripping exhausts the upstream label'
+    );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
             label: '击败 30 个敌人',
@@ -2279,6 +2290,17 @@ function testRunChallengeSidebarLines() {
         }, { compact: false }),
         ['本局挑战', '未知挑战', '进度:12/30  奖励:+90金'],
         'full in-progress challenge summaries should fall back to 未知挑战 when repeated prefix stripping exhausts the upstream label'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '本局挑战：挑战：本局',
+            progress: 12,
+            target: 30,
+            rewardGold: 0,
+            completed: false
+        }, { compact: false }),
+        ['本局挑战', '未知挑战', '进度:12/30'],
+        'full in-progress challenge summaries should keep 未知挑战 plus the progress-only third-line fallback when no reward label is available'
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
@@ -2425,6 +2447,17 @@ function testRunChallengeSidebarLines() {
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
+            label: '本局挑战：挑战：本局',
+            progress: 12,
+            target: 30,
+            rewardGold: 0,
+            completed: false
+        }, { compact: true }),
+        ['本局挑战 12/30', '未知挑战'],
+        'compact in-progress challenge summaries should keep 未知挑战 as the label-only fallback when no reward label is available'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
             label: '击败 30 个敌人',
             progress: 12,
             target: 30,
@@ -2532,6 +2565,17 @@ function testRunChallengeSidebarLines() {
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
+            label: '本局挑战：挑战：本局',
+            progress: 30,
+            target: 30,
+            rewardGold: 0,
+            completed: true
+        }, { compact: false }),
+        ['本局挑战：已完成', '未知挑战', '进度:30/30'],
+        'full completed challenge summaries should keep 未知挑战 plus the progress-only third-line fallback when no reward label is available'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
             label: '击败 30 个敌人',
             progress: 30,
             target: 30,
@@ -2619,6 +2663,17 @@ function testRunChallengeSidebarLines() {
         }, { compact: true }),
         ['本局挑战：已完成', '未知挑战 · +90金'],
         'compact completed challenge summaries should fall back to 未知挑战 when repeated prefix stripping exhausts the detail label'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '本局挑战：挑战：本局',
+            progress: 30,
+            target: 30,
+            rewardGold: 0,
+            completed: true
+        }, { compact: true }),
+        ['本局挑战：已完成', '未知挑战'],
+        'compact completed challenge summaries should keep 未知挑战 as the label-only fallback when no reward label is available'
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
@@ -3824,6 +3879,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /若前缀去重后的正文回退为 `未知挑战` 且当前 challenge 没有奖励短句，则 regular 三行摘要会继续保留 `未知挑战` 正文，并沿用 `进度:12\/30 -> 12\/30` \/ `进度:30\/30 -> 30\/30` 这条 no-reward progress-only 回退链/,
+        'README should document the unknown-label rewardless regular fallback without inserting placeholder reward copy'
+    );
+    assert.match(
+        source,
         /若上游挑战标题仍带 `本局挑战：` \/ `挑战：` 前缀，compact 第二行也会先去重再拼接奖励短句，避免紧凑摘要重复“挑战”标题/,
         'README should document that compact challenge detail lines dedupe upstream challenge prefixes before appending reward labels'
     );
@@ -3846,6 +3906,11 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /若当前 challenge 没有奖励短句，则 compact 第二行会继续沿用 `击败 30 个敌人 -> 击败30个敌人` 这条 label-only 回退梯子，不补 `\+0金` \/ `奖励:未知` 这类占位/,
         'README should document the rewardless compact second-line fallback without inserting placeholder reward copy'
+    );
+    assert.match(
+        source,
+        /若前缀去重后的正文回退为 `未知挑战` 且当前 challenge 没有奖励短句，则 compact 第二行也会继续保留 `未知挑战` 这条 label-only 回退，不补 `\+0金` \/ `奖励:未知` 这类占位/,
+        'README should document the unknown-label rewardless compact fallback without inserting placeholder reward copy'
     );
     assert.match(
         source,
@@ -3993,6 +4058,11 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
+        /若前缀去重后的正文回退为“未知挑战”且当前 challenge 没有奖励短句，则 regular 三行摘要会继续保留“未知挑战”正文，并沿用“进度:12\/30 -> 12\/30”\/“进度:30\/30 -> 30\/30”这条 no-reward progress-only 回退链/,
+        'help overlay should document the unknown-label rewardless regular fallback without inserting placeholder reward copy'
+    );
+    assert.match(
+        source,
         /若上游挑战标题仍带“本局挑战：”\/“挑战：”前缀，compact 第二行也会先去重再拼接奖励短句，避免紧凑摘要重复“挑战”标题/,
         'help overlay should document that compact challenge detail lines dedupe upstream challenge prefixes before appending reward labels'
     );
@@ -4015,6 +4085,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若当前 challenge 没有奖励短句，则 compact 第二行会继续沿用“击败 30 个敌人 -> 击败30个敌人”这条 label-only 回退梯子，不补“\+0金”\/“奖励:未知”这类占位/,
         'help overlay should document the rewardless compact second-line fallback without inserting placeholder reward copy'
+    );
+    assert.match(
+        source,
+        /若前缀去重后的正文回退为“未知挑战”且当前 challenge 没有奖励短句，则 compact 第二行也会继续保留“未知挑战”这条 label-only 回退，不补“\+0金”\/“奖励:未知”这类占位/,
+        'help overlay should document the unknown-label rewardless compact fallback without inserting placeholder reward copy'
     );
     assert.match(
         source,

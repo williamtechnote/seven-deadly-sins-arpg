@@ -2338,6 +2338,7 @@
         buildCombatActionHudSummary,
         formatRunChallengeRewardShortLabel,
         buildRunChallengeCompletedFeedbackText,
+        getRunChallengeSafeSidebarLabel,
         getRunChallengeUltraCompactSummaryVariants,
         getRunChallengeUltraCompactInProgressSummaryVariants,
         getRunChallengeUltraCompactCompletedSummaryVariants,
