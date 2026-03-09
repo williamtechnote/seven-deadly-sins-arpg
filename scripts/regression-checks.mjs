@@ -2112,6 +2112,7 @@ function testRunChallengeSidebarLines() {
         getRunChallengeInProgressInvalidTargetVisibleFallbacks(''),
         {
             compactTitle: '本局挑战：进行中',
+            compactDetailVariants: [],
             regularDetailVariants: ['进行中'],
             ultraCompactSummaryVariants: ['挑战进行中', '进行中']
         },
@@ -2121,10 +2122,31 @@ function testRunChallengeSidebarLines() {
         getRunChallengeCompletedInvalidTargetVisibleFallbacks(''),
         {
             compactTitle: '本局挑战：已完成',
+            compactDetailVariants: [],
             regularDetailVariants: ['已完成'],
             ultraCompactSummaryVariants: ['挑战完成', '完成']
         },
         'completed invalid-target visible fallback helper should expose the shared no-reward state-first ladders for regular, compact, and ultra-compact summaries'
+    );
+    assert.deepEqual(
+        getRunChallengeInProgressInvalidTargetVisibleFallbacks('+90金', '未知挑战'),
+        {
+            compactTitle: '本局挑战：进行中',
+            compactDetailVariants: ['未知挑战 · +90金', '未知挑战'],
+            regularDetailVariants: ['进行中  奖励:+90金', '进行中'],
+            ultraCompactSummaryVariants: ['挑战进行中 · +90金', '挑战进行中', '进行中']
+        },
+        'in-progress invalid-target visible fallback helper should expose the shared reward-bearing ladders for regular, compact, and ultra-compact summaries'
+    );
+    assert.deepEqual(
+        getRunChallengeCompletedInvalidTargetVisibleFallbacks('+90金', '未知挑战'),
+        {
+            compactTitle: '本局挑战：已完成',
+            compactDetailVariants: ['未知挑战 · +90金', '未知挑战'],
+            regularDetailVariants: ['已完成  奖励:+90金', '已完成'],
+            ultraCompactSummaryVariants: ['挑战完成 · +90金', '挑战完成', '完成']
+        },
+        'completed invalid-target visible fallback helper should expose the shared reward-bearing ladders for regular, compact, and ultra-compact summaries'
     );
     assert.deepEqual(
         getRunChallengeRegularInProgressDetailVariants('12/30', ''),
@@ -4309,6 +4331,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /若未来异常数据把 in-progress challenge 的 `target` 压成 0 或更低，且当前 challenge 仍有奖励短句，则 regular \/ compact \/ ultra-compact 这三档可见摘要也会继续显式复用同一组 reward-bearing in-progress helper，统一收敛 `进行中  奖励:\+90金` \/ `击败 30 个敌人 · \+90金` \/ `挑战进行中 · \+90金` 这条状态优先语义，避免未来文案漂移/,
+        'README should document the shared reward-bearing in-progress invalid-target helper across regular, compact, and ultra-compact summaries'
+    );
+    assert.match(
+        source,
         /若未来异常数据把 in-progress challenge 的 `target` 压成 0 或更低，且前缀去重后的正文已回退为 `未知挑战`，compact 第二行也会继续沿用 `未知挑战 · \+90金` \/ `未知挑战` 这组 detail fallback，不补 `0\/0` \/ `进度:0\/0` 这类误导性占位/,
         'README should document the invalid-target compact in-progress unknown-label fallback without reintroducing misleading ratio copy'
     );
@@ -4321,6 +4348,11 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /若未来异常数据把 completed challenge 的 `target` 压成 0 或更低，且当前 challenge 没有奖励短句，则 regular 第三行会继续沿用 `已完成`；compact 标题继续保留 `本局挑战：已完成` 且第二行保留目标正文；ultra-compact 单行摘要也会继续沿用 `挑战完成 -> 完成` 这组 completed-state \/ no-reward 回退链，不误退回 `进行中`，也不补 `奖励:\+0金` \/ `奖励:未知`/,
         'README should document the invalid-target completed no-reward fallback chain across regular, compact, and ultra-compact summaries'
+    );
+    assert.match(
+        source,
+        /若未来异常数据把 completed challenge 的 `target` 压成 0 或更低，且当前 challenge 仍有奖励短句，则 regular \/ compact \/ ultra-compact 这三档可见摘要也会继续显式复用同一组 reward-bearing completed helper，统一收敛 `已完成  奖励:\+90金` \/ `击败 30 个敌人 · \+90金` \/ `挑战完成 · \+90金` 这条 completed-state 语义，避免未来文案漂移/,
+        'README should document the shared reward-bearing completed invalid-target helper across regular, compact, and ultra-compact summaries'
     );
     assert.match(
         source,
@@ -4628,6 +4660,11 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
+        /若未来异常数据把 in-progress challenge 的“target”压成 0 或更低，且当前 challenge 仍有奖励短句，则 regular \/ compact \/ ultra-compact 这三档可见摘要也会继续显式复用同一组 reward-bearing in-progress helper，统一收敛“进行中  奖励:\+90金”\/“击败 30 个敌人 · \+90金”\/“挑战进行中 · \+90金”这条状态优先语义，避免未来文案漂移/,
+        'help overlay should document the shared reward-bearing in-progress invalid-target helper across regular, compact, and ultra-compact summaries'
+    );
+    assert.match(
+        source,
         /若未来异常数据把 in-progress challenge 的“target”压成 0 或更低，且前缀去重后的正文已回退为“未知挑战”，compact 第二行也会继续沿用“未知挑战 · \+90金”\/“未知挑战”这组 detail fallback，不补“0\/0”\/“进度:0\/0”这类误导性占位/,
         'help overlay should document the invalid-target compact in-progress unknown-label fallback without reintroducing misleading ratio copy'
     );
@@ -4640,6 +4677,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若未来异常数据把 completed challenge 的“target”压成 0 或更低，且前缀去重后的正文已回退为“未知挑战”，compact 第二行也会继续沿用“未知挑战 · \+90金”\/“未知挑战”这组 completed detail fallback，不误退回“进行中”/,
         'help overlay should document the invalid-target compact completed unknown-label fallback without regressing to in-progress copy'
+    );
+    assert.match(
+        source,
+        /若未来异常数据把 completed challenge 的“target”压成 0 或更低，且当前 challenge 仍有奖励短句，则 regular \/ compact \/ ultra-compact 这三档可见摘要也会继续显式复用同一组 reward-bearing completed helper，统一收敛“已完成  奖励:\+90金”\/“击败 30 个敌人 · \+90金”\/“挑战完成 · \+90金”这条 completed-state 语义，避免未来文案漂移/,
+        'help overlay should document the shared reward-bearing completed invalid-target helper across regular, compact, and ultra-compact summaries'
     );
     assert.match(
         source,
@@ -5000,18 +5042,23 @@ function testHubPortalTransitionSafetyHooks() {
     const source = loadGameSource();
     assert.match(
         source,
-        /this\.physics\.add\.overlap\(this\.player,\s*this\.portalGroup,\s*\(_player,\s*portal\)\s*=>\s*{[\s\S]*?this\._startPortalTransition\(portal\s*&&\s*portal\.bossKey\);[\s\S]*?}\);/,
-        'HubScene portal overlap should delegate to a dedicated transition helper to avoid in-callback scene-start deadlocks'
+        /this\.physics\.add\.overlap\(this\.player,\s*this\.portalGroup,\s*\(_player,\s*portal\)\s*=>\s*{[\s\S]*?if \(this\._portalTransitioning\) return;[\s\S]*?this\._pendingPortalBossKey = bossKey;[\s\S]*?}\);/,
+        'HubScene portal overlap should only set a pending portal key with a re-entry guard, not start scenes directly inside overlap callback'
     );
     assert.match(
         source,
-        /_startPortalTransition\(bossKey\)\s*{[\s\S]*?if \(this\._portalTransitioning \|\| !bossKey\) return;[\s\S]*?this\._portalTransitioning = true;[\s\S]*?this\.time\.delayedCall\(0,\s*begin\);/,
-        'HubScene should defer portal scene transitions to the next tick with re-entry guards'
+        /_flushPortalTransition\(\)\s*{[\s\S]*?if \(!this\._portalTransitioning \|\| !this\._pendingPortalBossKey\) return false;[\s\S]*?this\._pendingPortalBossKey = null;[\s\S]*?this\.scene\.start\('LevelScene',\s*{\s*bossKey\s*}\);/,
+        'HubScene should flush queued portal transitions from update loop and start the target scene there'
     );
     assert.match(
         source,
-        /catch \(err\)\s*{[\s\S]*?this\._portalTransitioning = false;[\s\S]*?if \(!this\.scene\.isActive\('UIScene'\)\) this\.scene\.launch\('UIScene'\);/,
-        'HubScene portal transition helper should recover from transition errors by clearing lock and relaunching UIScene'
+        /update\(time,\s*delta\)\s*{[\s\S]*?if \(this\._flushPortalTransition\(\)\) return;[\s\S]*?this\.player\.update\(time,\s*delta\);/,
+        'HubScene update should execute queued portal transition before normal movement updates to avoid overlap callback deadlocks'
+    );
+    assert.match(
+        source,
+        /catch \(err\)\s*{[\s\S]*?this\._portalTransitioning = false;[\s\S]*?if \(!this\.scene\.isActive\('UIScene'\)\) this\.scene\.launch\('UIScene'\);[\s\S]*?return false;/,
+        'HubScene portal transition flush should recover from transition errors by clearing lock and relaunching UIScene'
     );
 }
 
