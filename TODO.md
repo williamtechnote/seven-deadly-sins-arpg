@@ -1,9 +1,11 @@
 # TODO.md — seven-deadly-sins-arpg
 
 ## Active
-- [ ] 评估进行中 compact 本局挑战摘要是否也要显式暴露奖励短句，避免未来奖励模型扩展后信息层级再次漂移
+- [ ] 评估 compact 进行中本局挑战双行摘要在更窄宽度预算下是否需要新增额外语义回退，而不是直接依赖现有两行布局
 
 ## Completed
+- [x] 为 compact 进行中本局挑战补充 gold-only / future compound reward 回归守卫，确认继续复用共享奖励短句 helper（完成：2026-03-09 11:00 SGT）
+- [x] compact 进行中本局挑战双行摘要接入共享奖励短句 helper，并同步 README / 操作指引说明 compact 进行中也显式暴露奖励短句（完成：2026-03-09 11:00 SGT）
 - [x] compact 完成态本局挑战摘要接入共享奖励短句 helper，并为 regular / compact 复合奖励短句补充回归守卫（完成：2026-03-09 10:49 SGT）
 - [x] regular 本局挑战多行摘要的奖励行接入共享奖励短句 helper，并同步 README / 操作指引说明各分档奖励短句保持一致（完成：2026-03-09 10:49 SGT）
 - [x] 为 ultra-compact 可见态本局挑战单行摘要抽出可复用奖励短句 helper，让未来复合货币短句继续沿用同一语义回退梯子，并同步 README / 回归说明（完成：2026-03-09 10:01 SGT）

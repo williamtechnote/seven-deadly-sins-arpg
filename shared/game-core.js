@@ -654,7 +654,7 @@
             }
             return [
                 `本局挑战 ${progressLabel}`,
-                normalizedLabel
+                rewardLabel ? `${normalizedLabel} · ${rewardLabel}` : normalizedLabel
             ];
         }
 

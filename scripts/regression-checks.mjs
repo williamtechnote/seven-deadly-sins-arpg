@@ -2124,8 +2124,20 @@ function testRunChallengeSidebarLines() {
             rewardGold: 90,
             completed: false
         }, { compact: true }),
-        ['本局挑战 12/30', '击败 30 个敌人'],
-        'compact challenge sidebar helper should collapse active challenges into two lines'
+        ['本局挑战 12/30', '击败 30 个敌人 · +90金'],
+        'compact challenge sidebar helper should collapse active challenges into two lines while surfacing the shared reward short label'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 9999,
+            rewardLabel: '+9999金 +净化',
+            completed: false
+        }, { compact: true }),
+        ['本局挑战 12/30', '击败 30 个敌人 · +9999金 +净化'],
+        'compact challenge sidebar helper should reuse the shared reward short label when an active challenge receives a future compound reward'
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
