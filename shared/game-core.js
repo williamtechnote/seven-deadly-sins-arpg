@@ -769,6 +769,8 @@
         if (viewportTier !== 'ultraCompact' || !hidden || !runModifierHidden) return '';
         const target = clampInt(safeChallenge.target, 0, Number.MAX_SAFE_INTEGER, 0);
         const progress = clampInt(safeChallenge.progress, 0, target || Number.MAX_SAFE_INTEGER, 0);
+        // Hidden ultra-compact badges intentionally stay label-agnostic so the same
+        // progress/completion fallback ladder survives even if the body label collapses to 未知挑战.
         if (safeChallenge.completed) {
             return pickChallengeLabelVariant(getRunChallengeCompletedBadgeVariants(safeChallenge), {
                 maxWidth: Number(options && options.maxBadgeWidth),
