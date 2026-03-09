@@ -623,6 +623,18 @@
         return rewardLabel ? [`挑战完成 · ${rewardLabel}`, '挑战完成', '完成'] : ['挑战完成', '完成'];
     }
 
+    function getRunChallengeUltraCompactSummaryVariants(challenge) {
+        const safeChallenge = challenge && typeof challenge === 'object' ? challenge : {};
+        const target = clampInt(safeChallenge.target, 0, Number.MAX_SAFE_INTEGER, 0);
+        const progress = clampInt(safeChallenge.progress, 0, target || Number.MAX_SAFE_INTEGER, 0);
+        const rewardLabel = formatRunChallengeRewardShortLabel(safeChallenge);
+        const progressLabel = `${Math.min(progress, target)}/${target || 0}`;
+        // Visible ultra-compact copy stays progress/completion-first even if the body label collapses to 未知挑战.
+        return safeChallenge.completed
+            ? getRunChallengeCompletedSummaryVariants(rewardLabel)
+            : getRunChallengeInProgressSummaryVariants(progressLabel, rewardLabel);
+    }
+
     function getRunChallengeRegularProgressDetailVariants(progressLabel, rewardLabel) {
         const safeProgressLabel = typeof progressLabel === 'string' ? progressLabel.trim() : '';
         if (!safeProgressLabel) return [];
@@ -664,25 +676,14 @@
         const ultraCompact = viewportTier === 'ultraCompact' || !!(options && options.ultraCompact);
         const target = clampInt(safeChallenge.target, 0, Number.MAX_SAFE_INTEGER, 0);
         const progress = clampInt(safeChallenge.progress, 0, target || Number.MAX_SAFE_INTEGER, 0);
-        const rewardGold = clampInt(safeChallenge.rewardGold, 0, Number.MAX_SAFE_INTEGER, 0);
         const rewardLabel = formatRunChallengeRewardShortLabel(safeChallenge);
         const completed = !!safeChallenge.completed;
         const normalizedLabel = getRunChallengeSafeSidebarLabel(safeChallenge.label);
         const progressLabel = `${Math.min(progress, target)}/${target || 0}`;
 
         if (ultraCompact) {
-            if (completed) {
-                return [pickChallengeLabelVariant(
-                    getRunChallengeCompletedSummaryVariants(rewardLabel),
-                    {
-                        maxWidth: Number(options && options.maxLineWidth),
-                        measureLabelWidth: options && options.measureLabelWidth,
-                        measureGlyphWidth: options && options.measureGlyphWidth
-                    }
-                )];
-            }
             return [pickChallengeLabelVariant(
-                getRunChallengeInProgressSummaryVariants(progressLabel, rewardLabel),
+                getRunChallengeUltraCompactSummaryVariants(safeChallenge),
                 {
                     maxWidth: Number(options && options.maxLineWidth),
                     measureLabelWidth: options && options.measureLabelWidth,
@@ -2305,6 +2306,7 @@
         buildCombatActionHudSummary,
         formatRunChallengeRewardShortLabel,
         buildRunChallengeCompletedFeedbackText,
+        getRunChallengeUltraCompactSummaryVariants,
         buildRunChallengeSidebarLines,
         buildRunChallengeSidebarBadge,
         getRunChallengeCompletedBadgeVariants,

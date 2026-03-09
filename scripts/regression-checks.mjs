@@ -38,6 +38,7 @@ const {
     buildRunEventRoomHudLines,
     buildRunChallengeSidebarLines,
     buildRunChallengeSidebarBadge,
+    getRunChallengeUltraCompactSummaryVariants,
     formatRunChallengeRewardShortLabel,
     buildRunChallengeCompletedFeedbackText,
     getRunChallengeCompletedBadgeVariants,
@@ -2034,6 +2035,7 @@ function testHudSidebarViewportPolicy() {
 function testRunChallengeSidebarLines() {
     assert.equal(typeof buildRunChallengeSidebarLines, 'function', 'run challenge sidebar helper should be exported');
     assert.equal(typeof buildRunChallengeSidebarBadge, 'function', 'run challenge badge helper should be exported');
+    assert.equal(typeof getRunChallengeUltraCompactSummaryVariants, 'function', 'ultra-compact visible challenge summary variants helper should be exported');
     assert.equal(typeof formatRunChallengeRewardShortLabel, 'function', 'run challenge reward short-label helper should be exported');
     assert.equal(typeof getRunChallengeCompletedBadgeVariants, 'function', 'completed run challenge badge variants helper should be exported');
     assert.equal(typeof getRunChallengeSidebarBadgeAppearance, 'function', 'run challenge badge appearance helper should be exported');
@@ -2079,6 +2081,28 @@ function testRunChallengeSidebarLines() {
         '3': 6,
         '9': 6
     }[glyph] || 10), 0);
+    assert.deepEqual(
+        getRunChallengeUltraCompactSummaryVariants({
+            label: '本局挑战：挑战：本局',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }),
+        ['挑战 12/30 · +90金', '挑战 12/30', '12/30'],
+        'ultra-compact visible in-progress summary variants should keep the existing progress-first ladder when the upstream label collapses to 未知挑战'
+    );
+    assert.deepEqual(
+        getRunChallengeUltraCompactSummaryVariants({
+            label: '本局挑战：挑战：本局',
+            progress: 30,
+            target: 30,
+            rewardGold: 90,
+            completed: true
+        }),
+        ['挑战完成 · +90金', '挑战完成', '完成'],
+        'ultra-compact visible completed summary variants should keep the existing completion ladder when the upstream label collapses to 未知挑战'
+    );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
             label: '击败 30 个敌人',
@@ -3494,6 +3518,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /即使上游挑战标签在 regular \/ compact 路径里因前缀去重而回退成 `未知挑战`，ultra-compact 这条单行摘要也仍会保持同一组 `挑战 12\/30 · \+90金 -> 挑战 12\/30 -> 12\/30` \/ `挑战完成 · \+90金 -> 挑战完成 -> 完成` 语义短句，不额外插入 `未知挑战` 这类中间短句/,
+        'README should document that ultra-compact challenge summaries stay on the same fallback ladder even when the body label falls back to 未知挑战'
+    );
+    assert.match(
+        source,
         /regular \/ compact 分档里凡是仍会显示奖励的路径，也会复用同一奖励短句 helper，避免与 ultra-compact 回退链出现文案漂移/,
         'README should document that regular and compact reward-bearing summaries reuse the same short-label helper'
     );
@@ -3625,6 +3654,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若这条可见摘要的奖励短句未来扩展到“\+9999金 \+净化”这类复合形式，也会继续沿用同一条可见摘要与完成徽记回退链/,
         'help overlay should document that future compound reward short labels reuse the same fallback ladder'
+    );
+    assert.match(
+        source,
+        /即使上游挑战标签在 regular \/ compact 路径里因前缀去重而回退成“未知挑战”，ultra-compact 这条单行摘要也仍会保持同一组“挑战 12\/30 · \+90金 -> 挑战 12\/30 -> 12\/30”\/“挑战完成 · \+90金 -> 挑战完成 -> 完成”语义短句，不额外插入“未知挑战”这类中间短句/,
+        'help overlay should document that ultra-compact challenge summaries stay on the same fallback ladder even when the body label falls back to 未知挑战'
     );
     assert.match(
         source,

@@ -1,9 +1,10 @@
 # TODO.md — seven-deadly-sins-arpg
 
 ## Active
-- [ ] 评估 ultra-compact 单行挑战摘要在 `未知挑战` 回退下是否需要新增额外中间短句；如无需则补充 README / 回归说明
 
 ## Completed
+- [x] README / 操作指引同步 ultra-compact 单行挑战摘要在 `未知挑战` 回退下继续沿用既有 `挑战 进度 · 奖励 -> 挑战 进度 -> 进度` / `挑战完成 · 奖励 -> 挑战完成 -> 完成` 语义回退链，不新增额外中间短句（完成：2026-03-09 12:20 SGT）
+- [x] 为 ultra-compact 单行挑战摘要补充 `未知挑战` 回退下的进行中 / 完成态共享 variants helper 与回归守卫，锁定不额外插入中间短句（完成：2026-03-09 12:20 SGT）
 - [x] challenge 标签若循环去重后为空时回退 `未知挑战`，避免 regular / compact 摘要正文出现空白行或只剩奖励短句（完成：2026-03-09 12:06 SGT）
 - [x] challenge 标签若遇到重复混合 `本局/挑战` 前缀时循环去重，避免 regular / compact 摘要残留 `本局击败...` 这类半去重正文（完成：2026-03-09 12:06 SGT）
 - [x] 为 regular 本局挑战第三行补充 future compound reward 更窄预算回归守卫，确认进行中 / 完成态继续复用同一进度奖励回退链（完成：2026-03-09 11:55 SGT）
