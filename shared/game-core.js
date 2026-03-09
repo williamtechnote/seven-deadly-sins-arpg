@@ -778,14 +778,22 @@
             });
         }
         if (progress <= 0) return '';
-        const progressLabel = `${Math.min(progress, target)}/${target || 0}`;
-        const compactProgressLabel = `进${target > 0 ? Math.min(progress, target) : progress}`;
-        return pickChallengeLabelVariant([`进${progressLabel}`, progressLabel, compactProgressLabel], {
+        return pickChallengeLabelVariant(getRunChallengeInProgressBadgeVariants(safeChallenge), {
             maxWidth: Number(options && options.maxBadgeWidth),
             measureLabelWidth: options && options.measureLabelWidth,
             measureGlyphWidth: options && options.measureGlyphWidth,
             allowEmptyFallback: true
         });
+    }
+
+    function getRunChallengeInProgressBadgeVariants(challenge) {
+        const safeChallenge = challenge && typeof challenge === 'object' ? challenge : {};
+        const target = clampInt(safeChallenge.target, 0, Number.MAX_SAFE_INTEGER, 0);
+        const progress = clampInt(safeChallenge.progress, 0, target || Number.MAX_SAFE_INTEGER, 0);
+        if (progress <= 0) return [];
+        const progressLabel = `${Math.min(progress, target)}/${target || 0}`;
+        const compactProgressLabel = `进${target > 0 ? Math.min(progress, target) : progress}`;
+        return [`进${progressLabel}`, progressLabel, compactProgressLabel];
     }
 
     function getRunChallengeCompletedBadgeVariants(challenge) {
@@ -2339,6 +2347,7 @@
         getRunChallengeCompactCompletedDetailVariants,
         buildRunChallengeSidebarLines,
         buildRunChallengeSidebarBadge,
+        getRunChallengeInProgressBadgeVariants,
         getRunChallengeCompletedBadgeVariants,
         getRunChallengeSidebarBadgeAppearance,
         buildQuickSlotItemLabel,
