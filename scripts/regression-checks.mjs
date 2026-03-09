@@ -2102,6 +2102,11 @@ function testRunChallengeSidebarLines() {
         'regular in-progress detail variants should keep the existing progress-first ladder when no reward label is available'
     );
     assert.deepEqual(
+        getRunChallengeRegularInProgressDetailVariants('', '+90金'),
+        ['进行中  奖励:+90金', '进行中'],
+        'regular in-progress detail variants should fall back to readable in-progress copy instead of 0/0 when the target is invalid'
+    );
+    assert.deepEqual(
         getRunChallengeRegularCompletedDetailVariants('30/30', ''),
         ['进度:30/30', '30/30'],
         'regular completed detail variants should keep the existing progress-first ladder when no reward label is available'
@@ -2120,6 +2125,11 @@ function testRunChallengeSidebarLines() {
         getRunChallengeUltraCompactInProgressSummaryVariants('12/30', ''),
         ['挑战 12/30', '12/30'],
         'ultra-compact visible in-progress summary variants should keep the existing progress-first ladder when no reward label is available'
+    );
+    assert.deepEqual(
+        getRunChallengeUltraCompactInProgressSummaryVariants('', '+90金'),
+        ['挑战进行中 · +90金', '挑战进行中', '进行中'],
+        'ultra-compact visible in-progress summary variants should fall back to readable in-progress copy instead of 0/0 when the target is invalid'
     );
     assert.deepEqual(
         getRunChallengeUltraCompactCompletedSummaryVariants(''),
@@ -2275,6 +2285,28 @@ function testRunChallengeSidebarLines() {
         buildRunChallengeSidebarLines({
             label: '击败 30 个敌人',
             progress: 12,
+            target: 0,
+            rewardGold: 90,
+            completed: false
+        }, { compact: false }),
+        ['本局挑战', '击败 30 个敌人', '进行中  奖励:+90金'],
+        'full in-progress challenge summaries should keep readable in-progress copy instead of surfacing 0/0 when the target is invalid'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 0,
+            rewardGold: 0,
+            completed: false
+        }, { compact: false }),
+        ['本局挑战', '击败 30 个敌人', '进行中'],
+        'full in-progress challenge summaries should fall back to a readable in-progress state when invalid data removes ratio semantics'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
             target: 30,
             rewardGold: 9999,
             rewardLabel: '+9999金 +净化',
@@ -2420,6 +2452,28 @@ function testRunChallengeSidebarLines() {
         }, { compact: true }),
         ['本局挑战 12/30', '击败 30 个敌人 · +90金'],
         'compact challenge sidebar helper should collapse active challenges into two lines while surfacing the shared reward short label'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 0,
+            rewardGold: 90,
+            completed: false
+        }, { compact: true }),
+        ['本局挑战：进行中', '击败 30 个敌人 · +90金'],
+        'compact in-progress challenge summaries should keep readable in-progress title copy instead of surfacing 0/0 when the target is invalid'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 0,
+            rewardGold: 0,
+            completed: false
+        }, { compact: true }),
+        ['本局挑战：进行中', '击败 30 个敌人'],
+        'compact in-progress challenge summaries should keep a readable in-progress title when invalid data removes ratio semantics'
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
@@ -2776,6 +2830,43 @@ function testRunChallengeSidebarLines() {
     assert.deepEqual(
         buildRunChallengeSidebarLines({
             label: '击败 30 个敌人',
+            progress: 12,
+            target: 0,
+            rewardGold: 90,
+            completed: false
+        }, { viewportTier: 'ultraCompact' }),
+        ['挑战进行中 · +90金'],
+        'ultra-compact challenge sidebar helper should keep readable in-progress summary copy instead of surfacing 0/0 when the target is invalid'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 0,
+            rewardGold: 0,
+            completed: false
+        }, { viewportTier: 'ultraCompact' }),
+        ['挑战进行中'],
+        'ultra-compact challenge sidebar helper should keep a readable in-progress summary when invalid data removes ratio semantics'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 0,
+            rewardGold: 90,
+            completed: false
+        }, {
+            viewportTier: 'ultraCompact',
+            maxLineWidth: 42,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['进行中'],
+        'ultra-compact invalid-target summaries should still preserve a final readable in-progress fallback before disappearing'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
             progress: 30,
             target: 30,
             rewardGold: 90,
@@ -3097,6 +3188,17 @@ function testRunChallengeSidebarLines() {
         }, { viewportTier: 'ultraCompact', hidden: true, runModifierHidden: true }),
         '',
         'ultra-compact challenge badge helper should stay silent until the hidden challenge has meaningful progress'
+    );
+    assert.equal(
+        buildRunChallengeSidebarBadge({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 0,
+            rewardGold: 90,
+            completed: false
+        }, { viewportTier: 'ultraCompact', hidden: true, runModifierHidden: true }),
+        '',
+        'ultra-compact challenge badge helper should stay silent when invalid targets would otherwise produce misleading 0/0 progress copy'
     );
     assert.equal(
         buildRunChallengeSidebarBadge({
@@ -4045,6 +4147,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /若未来异常数据把 in-progress challenge 的 `target` 压成 0 或更低，则 regular 第三行会改为沿用 `进行中  奖励:\+90金 -> 进行中` 这组状态优先回退，不再输出误导性的 `进度:0\/0` \/ `0\/0`；compact 标题也会改为 `本局挑战：进行中`，继续保留第二行目标 \/ 奖励短句/,
+        'README should document the invalid-target regular and compact in-progress fallbacks without misleading 0/0 copy'
+    );
+    assert.match(
+        source,
         /若上游挑战标题仍带 `本局挑战：` \/ `挑战：` 前缀，compact 第二行也会先去重再拼接奖励短句，避免紧凑摘要重复“挑战”标题/,
         'README should document that compact challenge detail lines dedupe upstream challenge prefixes before appending reward labels'
     );
@@ -4097,6 +4204,11 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /若当前 challenge 没有奖励短句，则 ultra-compact 单行摘要也会继续沿用 `挑战 12\/30 -> 12\/30` \/ `挑战完成 -> 完成` 这条 no-reward 回退梯子，不补 `\+0金` \/ `奖励:未知` 这类占位/,
         'README should document the rewardless ultra-compact fallback ladder without inserting placeholder reward copy'
+    );
+    assert.match(
+        source,
+        /若未来异常数据把 in-progress challenge 的 `target` 压成 0 或更低，则 ultra-compact 单行摘要会改为沿用 `挑战进行中 · \+90金 -> 挑战进行中 -> 进行中` 这组状态优先回退；隐藏后的轻量 in-progress badge 则保持静默，不输出 `挑战 0\/0` \/ `进0\/0` \/ `0\/0`。/,
+        'README should document the invalid-target ultra-compact and hidden-badge fallbacks without misleading ratio copy'
     );
     assert.match(
         source,
@@ -4301,6 +4413,16 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若当前 challenge 没有奖励短句，则 ultra-compact 单行摘要也会继续沿用“挑战 12\/30 -> 12\/30”\/“挑战完成 -> 完成”这条 no-reward 回退梯子，不补“\+0金”\/“奖励:未知”这类占位/,
         'help overlay should document the rewardless ultra-compact fallback ladder without inserting placeholder reward copy'
+    );
+    assert.match(
+        source,
+        /若未来异常数据把 in-progress challenge 的“target”压成 0 或更低，则 regular 第三行会改为沿用“进行中  奖励:\+90金 -> 进行中”这组状态优先回退，不再输出误导性的“进度:0\/0”\/“0\/0”；compact 标题也会改为“本局挑战：进行中”，继续保留第二行目标 \/ 奖励短句/,
+        'help overlay should document the invalid-target regular and compact in-progress fallbacks without misleading 0/0 copy'
+    );
+    assert.match(
+        source,
+        /若未来异常数据把 in-progress challenge 的“target”压成 0 或更低，则 ultra-compact 单行摘要会改为沿用“挑战进行中 · \+90金 -> 挑战进行中 -> 进行中”这组状态优先回退；隐藏后的轻量 in-progress badge 则保持静默，不输出“挑战 0\/0”\/“进0\/0”\/“0\/0”/,
+        'help overlay should document the invalid-target ultra-compact and hidden-badge fallbacks without misleading ratio copy'
     );
     assert.match(
         source,

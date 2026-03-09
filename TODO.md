@@ -1,9 +1,13 @@
 # TODO.md — seven-deadly-sins-arpg
 
 ## Active
-- [ ] README / 操作指引同步 ultra-compact 隐藏 completed challenge badge 在 `未知挑战` 且显式复合奖励短句下继续沿用 `完成+奖励 -> 完成 -> 静默隐藏` 同一语义回退链，不额外插入 `未知挑战`
+- [ ] 暂无；下一轮从 run challenge / sidebar 响应式文案相邻区域继续选取具体守卫项
 
 ## Completed
+- [x] README / 操作指引同步 in-progress run challenge 在 `target<=0` 的异常数据下 suppress misleading ratio copy，显式说明可见摘要保留进行中语义、隐藏 badge 保持静默（完成：2026-03-09 14:31 SGT）
+- [x] in-progress run challenge 在 `target<=0` 的异常数据下为 ultra-compact 可见摘要与隐藏 badge 补充回归守卫，确认继续沿用 `挑战进行中 -> 进行中` / `静默隐藏`，不输出 `挑战 0/0` / `进0/0` / `0/0`（完成：2026-03-09 14:31 SGT）
+- [x] in-progress run challenge 在 `target<=0` 的异常数据下为 regular / compact 摘要补充回归守卫，确认不再输出误导性的 `进度:0/0` / `0/0`（完成：2026-03-09 14:31 SGT）
+- [x] README / 操作指引同步 ultra-compact 隐藏 completed challenge badge 在 `未知挑战` 且显式复合奖励短句下继续沿用 `完成+奖励 -> 完成 -> 静默隐藏` 同一语义回退链，不额外插入 `未知挑战`（完成：2026-03-09 14:23 SGT）
 - [x] ultra-compact 隐藏 completed challenge badge 在上游标签回退 `未知挑战` 且仍有奖励路径下补充回归守卫，确认继续沿用 `完成+90金 -> 完成 -> 静默隐藏`，不额外插入 `未知挑战`（完成：2026-03-09 14:04 SGT）
 - [x] 为 ultra-compact 隐藏 completed challenge badge 抽出共享 label-agnostic variants helper，显式复用 `完成+奖励 -> 完成 -> 静默隐藏` 回退链（完成：2026-03-09 14:04 SGT）
 - [x] README / 操作指引同步 ultra-compact 单行 challenge 摘要在 `未知挑战` 且显式复合奖励短句下，为完成态继续沿用 `挑战完成 · 奖励 -> 挑战完成 -> 完成` 同一语义回退链，不额外插入 `未知挑战`（完成：2026-03-09 13:57 SGT）

@@ -617,10 +617,14 @@
     }
 
     function getRunChallengeInProgressSummaryVariants(progressLabel, rewardLabel) {
-        if (rewardLabel) {
-            return [`挑战 ${progressLabel} · ${rewardLabel}`, `挑战 ${progressLabel}`, progressLabel];
+        const safeProgressLabel = typeof progressLabel === 'string' ? progressLabel.trim() : '';
+        if (safeProgressLabel) {
+            if (rewardLabel) {
+                return [`挑战 ${safeProgressLabel} · ${rewardLabel}`, `挑战 ${safeProgressLabel}`, safeProgressLabel];
+            }
+            return [`挑战 ${safeProgressLabel}`, safeProgressLabel];
         }
-        return [`挑战 ${progressLabel}`, progressLabel];
+        return rewardLabel ? [`挑战进行中 · ${rewardLabel}`, '挑战进行中', '进行中'] : ['挑战进行中', '进行中'];
     }
 
     function getRunChallengeCompletedSummaryVariants(rewardLabel) {
@@ -628,9 +632,7 @@
     }
 
     function getRunChallengeUltraCompactInProgressSummaryVariants(progressLabel, rewardLabel) {
-        const safeProgressLabel = typeof progressLabel === 'string' ? progressLabel.trim() : '';
-        if (!safeProgressLabel) return [];
-        return getRunChallengeInProgressSummaryVariants(safeProgressLabel, rewardLabel);
+        return getRunChallengeInProgressSummaryVariants(progressLabel, rewardLabel);
     }
 
     function getRunChallengeUltraCompactCompletedSummaryVariants(rewardLabel) {
@@ -642,7 +644,7 @@
         const target = clampInt(safeChallenge.target, 0, Number.MAX_SAFE_INTEGER, 0);
         const progress = clampInt(safeChallenge.progress, 0, target || Number.MAX_SAFE_INTEGER, 0);
         const rewardLabel = formatRunChallengeRewardShortLabel(safeChallenge);
-        const progressLabel = `${Math.min(progress, target)}/${target || 0}`;
+        const progressLabel = target > 0 ? `${Math.min(progress, target)}/${target}` : '';
         // Visible ultra-compact copy stays progress/completion-first even if the body label collapses to 未知挑战.
         return safeChallenge.completed
             ? getRunChallengeUltraCompactCompletedSummaryVariants(rewardLabel)
@@ -651,7 +653,9 @@
 
     function getRunChallengeRegularDetailVariants(progressLabel, rewardLabel) {
         const safeProgressLabel = typeof progressLabel === 'string' ? progressLabel.trim() : '';
-        if (!safeProgressLabel) return [];
+        if (!safeProgressLabel) {
+            return rewardLabel ? [`进行中  奖励:${rewardLabel}`, '进行中'] : ['进行中'];
+        }
         if (rewardLabel) {
             return [`进度:${safeProgressLabel}  奖励:${rewardLabel}`, `进度:${safeProgressLabel}`, safeProgressLabel];
         }
@@ -701,7 +705,7 @@
         const rewardLabel = formatRunChallengeRewardShortLabel(safeChallenge);
         const completed = !!safeChallenge.completed;
         const normalizedLabel = getRunChallengeSafeSidebarLabel(safeChallenge.label);
-        const progressLabel = `${Math.min(progress, target)}/${target || 0}`;
+        const progressLabel = target > 0 ? `${Math.min(progress, target)}/${target}` : '';
 
         if (ultraCompact) {
             return [pickChallengeLabelVariant(
@@ -738,7 +742,7 @@
                 }
             );
             return [
-                `本局挑战 ${progressLabel}`,
+                progressLabel ? `本局挑战 ${progressLabel}` : '本局挑战：进行中',
                 compactDetailLine
             ];
         }
@@ -779,7 +783,7 @@
                 allowEmptyFallback: true
             });
         }
-        if (progress <= 0) return '';
+        if (target <= 0 || progress <= 0) return '';
         return pickChallengeLabelVariant(getRunChallengeInProgressBadgeVariants(safeChallenge), {
             maxWidth: Number(options && options.maxBadgeWidth),
             measureLabelWidth: options && options.measureLabelWidth,
@@ -792,9 +796,9 @@
         const safeChallenge = challenge && typeof challenge === 'object' ? challenge : {};
         const target = clampInt(safeChallenge.target, 0, Number.MAX_SAFE_INTEGER, 0);
         const progress = clampInt(safeChallenge.progress, 0, target || Number.MAX_SAFE_INTEGER, 0);
-        if (progress <= 0) return [];
-        const progressLabel = `${Math.min(progress, target)}/${target || 0}`;
-        const compactProgressLabel = `进${target > 0 ? Math.min(progress, target) : progress}`;
+        if (target <= 0 || progress <= 0) return [];
+        const progressLabel = `${Math.min(progress, target)}/${target}`;
+        const compactProgressLabel = `进${Math.min(progress, target)}`;
         return [`进${progressLabel}`, progressLabel, compactProgressLabel];
     }
 
