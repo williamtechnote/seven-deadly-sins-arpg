@@ -2281,6 +2281,27 @@ function testRunChallengeSidebarLines() {
     assert.deepEqual(
         getRunChallengeSidebarBadgeAppearance({
             label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 90,
+            completed: true
+        }, {
+            viewportTier: 'ultraCompact',
+            hidden: true,
+            runModifierHidden: true,
+            maxBadgeWidth: 18,
+            measureLabelWidth: measureBadgeWidth
+        }),
+        {
+            text: '',
+            fill: '',
+            alpha: 1
+        },
+        'completed challenge badge appearance helper should clear tint once the final ultra-tight fallback goes silent'
+    );
+    assert.deepEqual(
+        getRunChallengeSidebarBadgeAppearance({
+            label: '击败 30 个敌人',
             progress: 12,
             target: 30,
             rewardGold: 90,
@@ -2551,8 +2572,13 @@ function testSidebarMeasurementHooks() {
     );
     assert.match(
         source,
-        /this\.runModifierBadgeText\.setStyle\(\{\s*fill:\s*badgeAppearance\.fill,\s*alpha:\s*badgeAppearance\.alpha\s*\}\);/,
+        /this\.runModifierBadgeText\.setStyle\(\{\s*fill:\s*safeBadgeAppearance\.fill,\s*alpha:\s*safeBadgeAppearance\.alpha\s*\}\);/,
         'dedicated challenge badge text should apply the shared subdued appearance state instead of inheriting the title tint'
+    );
+    assert.match(
+        source,
+        /if\s*\(!safeBadgeAppearance\.text\)\s*{[\s\S]*?this\.runModifierBadgeText\.setText\(''\);[\s\S]*?this\.runModifierBadgeText\.setStyle\(\{\s*fill:\s*'',\s*alpha:\s*1\s*\}\);[\s\S]*?this\.runModifierBadgeText\.setAlpha\(1\);[\s\S]*?this\.runModifierBadgeText\.setVisible\(false\);[\s\S]*?return;/,
+        'run-modifier heading reset should clear the badge node style and alpha when the lightweight challenge badge goes silent'
     );
     assert.match(
         source,

@@ -5567,6 +5567,8 @@ class UIScene extends Phaser.Scene {
             this.runModifierTitle.setPosition(anchorX, titleY);
             this.runModifierTitle.setText(this._fitHudSidebarTextLine('本局词缀', this._getHudSidebarMaxWidth(), 'sidebarSectionTitle'));
             this.runModifierBadgeText.setText('');
+            this.runModifierBadgeText.setStyle({ fill: '', alpha: 1 });
+            this.runModifierBadgeText.setAlpha(1);
             this.runModifierBadgeText.setVisible(false);
             return;
         }
@@ -5575,8 +5577,8 @@ class UIScene extends Phaser.Scene {
         const badgeMaxWidth = this._getRunModifierBadgeMaxWidth(maxWidth);
         const fittedBadgeText = this._fitHudSidebarTextLine(safeBadgeAppearance.text, badgeMaxWidth, 'sidebarChallengeBadge');
         this.runModifierBadgeText.setText(fittedBadgeText);
-        this.runModifierBadgeText.setStyle({ fill: badgeAppearance.fill, alpha: badgeAppearance.alpha });
-        this.runModifierBadgeText.setAlpha(badgeAppearance.alpha);
+        this.runModifierBadgeText.setStyle({ fill: safeBadgeAppearance.fill, alpha: safeBadgeAppearance.alpha });
+        this.runModifierBadgeText.setAlpha(safeBadgeAppearance.alpha);
         this.runModifierBadgeText.setPosition(anchorX, titleY);
         this.runModifierBadgeText.setVisible(true);
         const badgeWidth = this.runModifierBadgeText.width;

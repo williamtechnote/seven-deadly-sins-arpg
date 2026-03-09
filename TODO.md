@@ -1,9 +1,11 @@
 # TODO.md — seven-deadly-sins-arpg
 
 ## Active
-- [ ] 为完成态轻量挑战徽记补充“静默隐藏后外观同步清空”回归守卫，覆盖 appearance helper 在空 badge 时不保留完成态 tint
+- [ ] 为进行中轻量挑战徽记补充“静默隐藏后外观同步清空”回归守卫，覆盖 appearance helper 在空 badge 时不保留进行中态 tint
 
 ## Completed
+- [x] 为右侧 HUD 词缀标题补充“轻量挑战徽记静默隐藏后同步清空样式并归还标题预算”回归守卫，覆盖 `_updateRunModifierHeading` 的空 badge 重置路径（完成：2026-03-09 09:04 SGT）
+- [x] 为完成态轻量挑战徽记补充“静默隐藏后外观同步清空”回归守卫，覆盖 appearance helper 在空 badge 时不保留完成态 tint（完成：2026-03-09 09:04 SGT）
 - [x] 为完成态轻量挑战徽记补充“实际 badge 预算触发 `完成 -> 静默隐藏`”回归守卫，覆盖最窄 ultra-tight heading badge budget 下的最小可读宽度兜底（完成：2026-03-09 07:57 SGT）
 - [x] 为完成态轻量挑战徽记补充“实际 badge 预算触发 `完成+奖励 -> 完成`”回归守卫，覆盖 display-size 派生 heading badge budget 下的完成态宽度回退（完成：2026-03-09 07:57 SGT）
 - [x] 为右侧 HUD 侧栏补充“完成态最终回退”回归守卫任务拆解，覆盖 completed badge 从奖励短句 -> `完成` -> 静默隐藏的最终链路（完成：2026-03-09 07:52 SGT）
