@@ -42,6 +42,7 @@ const {
     buildRunChallengeSidebarLines,
     buildRunChallengeSidebarBadge,
     getRunChallengeInProgressBadgeVariants,
+    getRunChallengeHiddenInProgressBadgeVariants,
     getRunChallengeUltraCompactSummaryVariants,
     getRunChallengeUltraCompactInProgressSummaryVariants,
     getRunChallengeUltraCompactCompletedSummaryVariants,
@@ -2065,6 +2066,7 @@ function testRunChallengeSidebarLines() {
     assert.equal(typeof getRunChallengeCompactCompletedDetailVariants, 'function', 'compact completed challenge detail variants helper should be exported');
     assert.equal(typeof formatRunChallengeRewardShortLabel, 'function', 'run challenge reward short-label helper should be exported');
     assert.equal(typeof getRunChallengeCompletedBadgeVariants, 'function', 'completed run challenge badge variants helper should be exported');
+    assert.equal(typeof getRunChallengeHiddenInProgressBadgeVariants, 'function', 'hidden in-progress challenge badge variants helper should be exported');
     assert.equal(typeof getRunChallengeSidebarBadgeAppearance, 'function', 'run challenge badge appearance helper should be exported');
     const measureBadgeWidth = (label) => Array.from(label).reduce((sum, glyph) => sum + ({
         '完': 10,
@@ -3274,6 +3276,39 @@ function testRunChallengeSidebarLines() {
         ['进12/30', '12/30', '进12'],
         'in-progress challenge badge helper should keep the progress-only fallback chain when no reward label is available'
     );
+    assert.deepEqual(
+        getRunChallengeHiddenInProgressBadgeVariants({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }),
+        ['进12/30', '12/30', '进12'],
+        'hidden in-progress challenge badge variants helper should expose the same label-agnostic progress ladder even when a reward short label exists'
+    );
+    assert.deepEqual(
+        getRunChallengeHiddenInProgressBadgeVariants({
+            label: '本局挑战：挑战：本局',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }),
+        ['进12/30', '12/30', '进12'],
+        'hidden in-progress challenge badge variants helper should keep the same progress ladder when the upstream body label collapses to 未知挑战'
+    );
+    assert.deepEqual(
+        getRunChallengeHiddenInProgressBadgeVariants({
+            label: '本局挑战：挑战：本局',
+            progress: 12,
+            target: 0,
+            rewardGold: 90,
+            completed: false
+        }),
+        [],
+        'hidden in-progress challenge badge variants helper should stay empty when invalid targets would otherwise surface misleading hidden progress copy'
+    );
     assert.equal(
         buildRunChallengeSidebarBadge({
             label: '击败 30 个敌人',
@@ -3458,6 +3493,40 @@ function testRunChallengeSidebarLines() {
         }),
         '进12',
         'rewardless ultra-compact in-progress challenge badges should keep the same final short stub when the upstream label collapses to 未知挑战'
+    );
+    assert.equal(
+        buildRunChallengeSidebarBadge({
+            label: '本局挑战：挑战：本局',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, {
+            viewportTier: 'ultraCompact',
+            hidden: true,
+            runModifierHidden: true,
+            maxBadgeWidth: 34,
+            measureLabelWidth: measureBadgeWidth
+        }),
+        '12/30',
+        'reward-bearing ultra-compact in-progress challenge badges should keep the same label-agnostic progress ladder when the upstream label collapses to 未知挑战'
+    );
+    assert.equal(
+        buildRunChallengeSidebarBadge({
+            label: '本局挑战：挑战：本局',
+            progress: 12,
+            target: 0,
+            rewardGold: 90,
+            completed: false
+        }, {
+            viewportTier: 'ultraCompact',
+            hidden: true,
+            runModifierHidden: true,
+            maxBadgeWidth: 34,
+            measureLabelWidth: measureBadgeWidth
+        }),
+        '',
+        'reward-bearing ultra-compact in-progress challenge badges should stay silent when invalid targets collapse wider summaries and the upstream label falls back to 未知挑战'
     );
     assert.deepEqual(
         getRunChallengeCompletedBadgeVariants({
@@ -4421,6 +4490,16 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /即使当前 challenge 仍有奖励短句，且上游挑战标签在 regular \/ compact 路径里因前缀去重而回退成 `未知挑战`，隐藏后的轻量 in-progress challenge badge 也仍会继续沿用 `进12\/30 -> 12\/30 -> 进12 -> 静默隐藏` 这组 progress-only 回退链，不额外插入 `未知挑战` \/ `\+90金` \/ `奖励:未知` 这类中间占位/,
+        'README should document that reward-bearing hidden in-progress badges stay on the same label-agnostic progress ladder when the body label collapses to 未知挑战'
+    );
+    assert.match(
+        source,
+        /若未来异常数据把 in-progress challenge 的 `target` 压成 0 或更低，且当前 challenge 仍有奖励短句，隐藏后的轻量 in-progress challenge badge 也会继续保持静默，不输出 `挑战 0\/0` \/ `进0\/0` \/ `0\/0`/,
+        'README should document that reward-bearing hidden in-progress badges stay silent on invalid targets'
+    );
+    assert.match(
+        source,
         /即使上游挑战标签在 regular \/ compact 路径里因前缀去重而回退成 `未知挑战`，ultra-compact 这条单行摘要也仍会保持同一组 `挑战 12\/30 · \+90金 -> 挑战 12\/30 -> 12\/30` \/ `挑战完成 · \+90金 -> 挑战完成 -> 完成` 语义短句，不额外插入 `未知挑战` 这类中间短句/,
         'README should document that ultra-compact challenge summaries stay on the same fallback ladder even when the body label falls back to 未知挑战'
     );
@@ -4672,6 +4751,16 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若未来异常数据把 in-progress challenge 的“target”压成 0 或更低，则 ultra-compact 单行摘要会改为沿用“挑战进行中 · \+90金 -> 挑战进行中 -> 进行中”这组状态优先回退；隐藏后的轻量 in-progress badge 则保持静默，不输出“挑战 0\/0”\/“进0\/0”\/“0\/0”/,
         'help overlay should document the invalid-target ultra-compact and hidden-badge fallbacks without misleading ratio copy'
+    );
+    assert.match(
+        source,
+        /即使当前 challenge 仍有奖励短句，且上游挑战标签在 regular \/ compact 路径里因前缀去重而回退成“未知挑战”，隐藏后的轻量 in-progress challenge badge 也仍会继续沿用“进12\/30 -> 12\/30 -> 进12 -> 静默隐藏”这组 progress-only 回退链，不额外插入“未知挑战”\/“\+90金”\/“奖励:未知”这类中间占位/,
+        'help overlay should document that reward-bearing hidden in-progress badges stay on the same label-agnostic progress ladder when the body label collapses to 未知挑战'
+    );
+    assert.match(
+        source,
+        /若未来异常数据把 in-progress challenge 的“target”压成 0 或更低，且当前 challenge 仍有奖励短句，隐藏后的轻量 in-progress challenge badge 也会继续保持静默，不输出“挑战 0\/0”\/“进0\/0”\/“0\/0”/,
+        'help overlay should document that reward-bearing hidden in-progress badges stay silent on invalid targets'
     );
     assert.match(
         source,

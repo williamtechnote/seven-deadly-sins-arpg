@@ -824,7 +824,7 @@
             });
         }
         if (target <= 0 || progress <= 0) return '';
-        return pickChallengeLabelVariant(getRunChallengeInProgressBadgeVariants(safeChallenge), {
+        return pickChallengeLabelVariant(getRunChallengeHiddenInProgressBadgeVariants(safeChallenge), {
             maxWidth: Number(options && options.maxBadgeWidth),
             measureLabelWidth: options && options.measureLabelWidth,
             measureGlyphWidth: options && options.measureGlyphWidth,
@@ -840,6 +840,12 @@
         const progressLabel = `${Math.min(progress, target)}/${target}`;
         const compactProgressLabel = `进${Math.min(progress, target)}`;
         return [`进${progressLabel}`, progressLabel, compactProgressLabel];
+    }
+
+    function getRunChallengeHiddenInProgressBadgeVariants(challenge) {
+        // Hidden in-progress badges stay label- and reward-agnostic so the same
+        // progress ladder survives unknown-label fallbacks without surfacing reward copy.
+        return getRunChallengeInProgressBadgeVariants(challenge);
     }
 
     function getRunChallengeCompletedBadgeVariants(challenge) {
@@ -2403,6 +2409,7 @@
         buildRunChallengeSidebarLines,
         buildRunChallengeSidebarBadge,
         getRunChallengeInProgressBadgeVariants,
+        getRunChallengeHiddenInProgressBadgeVariants,
         getRunChallengeCompletedBadgeVariants,
         getRunChallengeHiddenCompletedBadgeVariants,
         getRunChallengeSidebarBadgeAppearance,

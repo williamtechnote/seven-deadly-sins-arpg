@@ -1,8 +1,11 @@
 # TODO.md — seven-deadly-sins-arpg
 
 ## Active
+- [ ] ultra-compact 隐藏 in-progress challenge badge 的静默路径补充 appearance 回归守卫，确认 invalid-target + `未知挑战` + reward-bearing 组合下空 badge 不残留进行中 tint
 
 ## Completed
+- [x] README / 操作指引同步 hidden in-progress challenge badge 在 `未知挑战` + reward-bearing / invalid-target 路径下继续沿用 `进12/30 -> 12/30 -> 进12 -> 静默隐藏` / `静默隐藏` 这组 progress-only 回退链（完成：2026-03-09 21:30 +08）
+- [x] 为 ultra-compact 隐藏 in-progress challenge badge 抽出共享 label-agnostic variants helper，并补齐 `未知挑战` + reward-bearing / invalid-target 回归守卫，显式复用 `进12/30 -> 12/30 -> 进12 -> 静默隐藏` 回退链（完成：2026-03-09 21:30 +08）
 - [x] visible invalid-target challenge reward-bearing in-progress 路径继续复用同组共享状态 helper，补齐 regular / compact / ultra-compact 回归守卫，避免文案未来漂移（完成：2026-03-09 21:19 +08）
 - [x] visible invalid-target challenge reward-bearing completed 路径继续复用同组共享状态 helper，补齐 regular / compact / ultra-compact 回归守卫，避免文案未来漂移（完成：2026-03-09 21:19 +08）
 - [x] visible invalid-target challenge completed 且 no-reward 路径补充共享状态 helper / 回归守卫，显式统一 regular / compact / ultra-compact 的 `已完成` 回退链（完成：2026-03-09 18:05 +08）

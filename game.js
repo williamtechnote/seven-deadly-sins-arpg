@@ -6056,7 +6056,9 @@ class HelpScene extends Phaser.Scene {
                     0,
                     '若未来异常数据把 in-progress challenge 的“target”压成 0 或更低，且当前 challenge 没有奖励短句，则 regular 第三行会继续沿用“进行中”；compact 标题继续保留“本局挑战：进行中”且第二行保留目标正文；ultra-compact 单行摘要也会继续沿用“挑战进行中 -> 进行中”这组 no-reward 状态回退，不补“0/0”/“奖励:+0金”/“奖励:未知”这类占位；这三档可见摘要现在会显式复用同一组 in-progress 状态 helper，避免未来文案漂移',
                     '若未来异常数据把 in-progress challenge 的“target”压成 0 或更低，且当前 challenge 仍有奖励短句，则 regular / compact / ultra-compact 这三档可见摘要也会继续显式复用同一组 reward-bearing in-progress helper，统一收敛“进行中  奖励:+90金”/“击败 30 个敌人 · +90金”/“挑战进行中 · +90金”这条状态优先语义，避免未来文案漂移',
-                    '若未来异常数据把 in-progress challenge 的“target”压成 0 或更低，且前缀去重后的正文已回退为“未知挑战”，compact 第二行也会继续沿用“未知挑战 · +90金”/“未知挑战”这组 detail fallback，不补“0/0”/“进度:0/0”这类误导性占位'
+                    '若未来异常数据把 in-progress challenge 的“target”压成 0 或更低，且前缀去重后的正文已回退为“未知挑战”，compact 第二行也会继续沿用“未知挑战 · +90金”/“未知挑战”这组 detail fallback，不补“0/0”/“进度:0/0”这类误导性占位',
+                    '即使当前 challenge 仍有奖励短句，且上游挑战标签在 regular / compact 路径里因前缀去重而回退成“未知挑战”，隐藏后的轻量 in-progress challenge badge 也仍会继续沿用“进12/30 -> 12/30 -> 进12 -> 静默隐藏”这组 progress-only 回退链，不额外插入“未知挑战”/“+90金”/“奖励:未知”这类中间占位',
+                    '若未来异常数据把 in-progress challenge 的“target”压成 0 或更低，且当前 challenge 仍有奖励短句，隐藏后的轻量 in-progress challenge badge 也会继续保持静默，不输出“挑战 0/0”/“进0/0”/“0/0”'
                 );
             }
             const completedInvalidTargetIndex = interfaceSection.items.indexOf('若未来异常数据把 completed challenge 的“target”压成 0 或更低，则 regular 第三行会改为沿用“已完成  奖励:+90金 -> 已完成”这组 completed-state 回退，不再误退回“进行中”；即使正文已因前缀去重回退成“未知挑战”，第三行也会继续保留 completed-state 语义');
