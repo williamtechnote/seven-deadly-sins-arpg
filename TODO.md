@@ -1,9 +1,11 @@
 # TODO.md — seven-deadly-sins-arpg
 
 ## Active
-
+- [ ] run challenge 标签清洗兼容 angle-bracket decorator 前缀（如 `<挑战>击败 30 个敌人` / `＜本局挑战＞挑战：击败 30 个敌人`），继续复用 bracketed decorator 剥离与 `未知挑战` 回退链
 
 ## Completed
+- [x] 显式 `rewardLabel` 规范化兼容 full-width plus 脏输入（如 `＋9999金 ＋净化` / `＋ 9999金　＋ 净化`），visible summary / hidden badge / 完成浮字继续统一复用 `+9999金 +净化` 短句（完成：2026-03-10 06:10 +08）
+- [x] run challenge 标签清洗兼容 quoted decorator 前缀（如 `「挑战」击败 30 个敌人` / `『本局挑战』挑战：击败 30 个敌人`），继续复用既有 plain-text 前缀去重与 `未知挑战` 回退链（完成：2026-03-10 06:10 +08）
 - [x] README / 操作指引同步 bracketed decorator challenge 前缀（如 `【本局挑战】` / `[挑战]`）会先剥离再继续做 `本局` / `挑战` 去重，避免 sidebar summary 标题/正文重复（完成：2026-03-10 04:52 +08）
 - [x] run challenge 标签清洗兼容 bracketed decorator 与重复 plain-text 前缀混排（如 `【本局挑战】挑战：本局：...` / `【本局挑战】[挑战]本局：挑战：本局`），正文耗尽时继续回退 `未知挑战`（完成：2026-03-10 04:52 +08）
 - [x] 显式 `rewardLabel` 规范化兼容 `+ 9999金` / `+ 净化` 这类 additive token 空白脏输入，visible summary / hidden badge / 完成浮字继续统一复用 `+9999金 +净化` 短句（完成：2026-03-10 02:35 +08）

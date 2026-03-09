@@ -2298,6 +2298,16 @@ function testRunChallengeSidebarLines() {
         'run challenge safe sidebar-label helper should keep stripping repeated plain-text prefixes after removing a bracketed challenge decorator'
     );
     assert.equal(
+        getRunChallengeSafeSidebarLabel('「挑战」击败 30 个敌人'),
+        '击败 30 个敌人',
+        'run challenge safe sidebar-label helper should strip quoted challenge decorators before rendering the body label'
+    );
+    assert.equal(
+        getRunChallengeSafeSidebarLabel('『本局挑战』挑战：本局'),
+        '未知挑战',
+        'run challenge safe sidebar-label helper should still fall back to 未知挑战 when quoted decorators plus repeated plain-text prefixes exhaust the upstream label'
+    );
+    assert.equal(
         getRunChallengeSafeSidebarLabel('【本局挑战】[挑战]本局：挑战：本局'),
         '未知挑战',
         'run challenge safe sidebar-label helper should still fall back to 未知挑战 when mixed bracketed and plain-text prefixes exhaust the upstream label'
@@ -3338,6 +3348,14 @@ function testRunChallengeSidebarLines() {
         '+9999金 +净化',
         'reward short-label helper should collapse additive token spacing inside explicit reward labels before reusing the shared short form'
     );
+    assert.equal(
+        formatRunChallengeRewardShortLabel({
+            rewardGold: 9999,
+            rewardLabel: ' ＋ 9999金　＋ 净化 '
+        }),
+        '+9999金 +净化',
+        'reward short-label helper should normalize full-width plus tokens inside explicit reward labels before reusing the shared short form'
+    );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
             label: '击败 30 个敌人',
@@ -3385,6 +3403,22 @@ function testRunChallengeSidebarLines() {
         }),
         ['挑战 12/30 · +9999金 +净化'],
         'ultra-compact visible in-progress challenge summaries should collapse additive token spacing in explicit reward labels before composing the line'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 9999,
+            rewardLabel: ' ＋ 9999金　＋ 净化 ',
+            completed: false
+        }, {
+            viewportTier: 'ultraCompact',
+            maxLineWidth: 150,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['挑战 12/30 · +9999金 +净化'],
+        'ultra-compact visible in-progress challenge summaries should normalize full-width plus tokens before composing the shared reward-bearing line'
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
@@ -4681,8 +4715,13 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /若上游标签重复混入 `本局` \/ `挑战：` 这类前缀，也会继续循环去重直到收敛成真正的目标文案；若上游标签额外套了 `【本局挑战】` \/ `\[挑战\]` 这类 bracketed decorator 前缀，也会先剥离再继续做同一轮 `本局` \/ `挑战` 去重；若 standalone `本局：` \/ `本局 :` 这类脏前缀先留下冒号，也会继续一并吃掉，避免卡住后续 `挑战` 去重；若前缀去重后正文前面还残留 standalone `：` \/ `-` 这类 orphan separators，也会继续清掉，避免 regular \/ compact 正文留下脏分隔符；若去重后已无剩余正文，则 regular \/ compact 摘要会统一回退为 `未知挑战`/,
+        /若上游标签重复混入 `本局` \/ `挑战：` 这类前缀，也会继续循环去重直到收敛成真正的目标文案；若上游标签额外套了 `【本局挑战】` \/ `\[挑战\]` 这类 bracketed decorator 前缀，也会先剥离再继续做同一轮 `本局` \/ `挑战` 去重；(?:若上游标签额外套了 `「挑战」` \/ `『本局挑战』` 这类 quoted decorator 前缀，也会先剥离再继续做同一轮 `本局` \/ `挑战` 去重；)?若 standalone `本局：` \/ `本局 :` 这类脏前缀先留下冒号，也会继续一并吃掉，避免卡住后续 `挑战` 去重；若前缀去重后正文前面还残留 standalone `：` \/ `-` 这类 orphan separators，也会继续清掉，避免 regular \/ compact 正文留下脏分隔符；若去重后已无剩余正文，则 regular \/ compact 摘要会统一回退为 `未知挑战`/,
         'README should document the repeated mixed-prefix cleanup and 未知挑战 fallback for challenge labels'
+    );
+    assert.match(
+        source,
+        /若上游标签额外套了 `「挑战」` \/ `『本局挑战』` 这类 quoted decorator 前缀，也会先剥离再继续做同一轮 `本局` \/ `挑战` 去重/,
+        'README should document the quoted decorator cleanup path for challenge labels'
     );
     assert.match(
         source,
@@ -4693,6 +4732,11 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /若当前 challenge 没有奖励短句，则 regular 第三行会继续沿用 `进度:12\/30 -> 12\/30` \/ `进度:30\/30 -> 30\/30` 这条 progress-only 回退梯子，不会伪造 `奖励:\+0金` \/ `奖励:未知` 这类占位奖励；若未来扩展到 `\+9999金 \+净化` 这类复合奖励短句，regular 第三行也会继续沿用同一条进度优先回退链/,
         'README should document the rewardless regular third-line fallback without inserting placeholder reward copy'
+    );
+    assert.match(
+        source,
+        /共享 challenge 标签与显式奖励短句 helper 也会压缩异常半角 \/ 全角空白，并把 `\+ 9999金` \/ `\+ 净化` 与 `＋ 9999金` \/ `＋ 净化` 这类 additive token 空白 \/ full-width plus 规整成 `\+9999金 \+净化`/,
+        'README should document full-width plus normalization inside explicit reward short labels'
     );
     assert.match(
         source,
@@ -4846,7 +4890,7 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /共享 challenge 标签与显式奖励短句 helper 也会压缩异常半角 \/ 全角空白，并把 `\+ 9999金` \/ `\+ 净化` 这类 additive token 空白规整成 `\+9999金 \+净化`，避免正文间距或复合奖励文案因脏输入而提前挤爆各分档宽度预算/,
+        /共享 challenge 标签与显式奖励短句 helper 也会压缩异常半角 \/ 全角空白，并把 `\+ 9999金` \/ `\+ 净化` 与 `＋ 9999金` \/ `＋ 净化` 这类 additive token 空白 \/ full-width plus 规整成 `\+9999金 \+净化`，避免正文间距或复合奖励文案因脏输入而提前挤爆各分档宽度预算/,
         'README should document the shared whitespace normalization for challenge labels and explicit reward labels'
     );
     assert.match(
@@ -4970,8 +5014,13 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /若上游标签重复混入“本局”\/“挑战：”这类前缀，也会继续循环去重直到收敛成真正的目标文案；若上游标签额外套了“【本局挑战】”\/“\[挑战\]”这类 bracketed decorator 前缀，也会先剥离再继续做同一轮“本局”\/“挑战”去重；若 standalone “本局：”\/“本局 :”这类脏前缀先留下冒号，也会继续一并吃掉，避免卡住后续“挑战”去重；若前缀去重后正文前面还残留 standalone “：”\/“-”这类 orphan separators，也会继续清掉，避免 regular \/ compact 正文留下脏分隔符；若去重后已无剩余正文，则 regular \/ compact 摘要会统一回退为“未知挑战”/,
+        /若上游标签重复混入“本局”\/“挑战：”这类前缀，也会继续循环去重直到收敛成真正的目标文案；若上游标签额外套了“【本局挑战】”\/“\[挑战\]”这类 bracketed decorator 前缀，也会先剥离再继续做同一轮“本局”\/“挑战”去重；(?:若上游标签额外套了“「挑战」”\/“『本局挑战』”这类 quoted decorator 前缀，也会先剥离再继续做同一轮“本局”\/“挑战”去重；)?若 standalone “本局：”\/“本局 :”这类脏前缀先留下冒号，也会继续一并吃掉，避免卡住后续“挑战”去重；若前缀去重后正文前面还残留 standalone “：”\/“-”这类 orphan separators，也会继续清掉，避免 regular \/ compact 正文留下脏分隔符；若去重后已无剩余正文，则 regular \/ compact 摘要会统一回退为“未知挑战”/,
         'help overlay should document the repeated mixed-prefix cleanup and 未知挑战 fallback for challenge labels'
+    );
+    assert.match(
+        source,
+        /若上游标签额外套了“「挑战」”\/“『本局挑战』”这类 quoted decorator 前缀，也会先剥离再继续做同一轮“本局”\/“挑战”去重/,
+        'help overlay should document the quoted decorator cleanup path for challenge labels'
     );
     assert.match(
         source,
@@ -4982,6 +5031,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若当前 challenge 没有奖励短句，则 regular 第三行会继续沿用“进度:12\/30 -> 12\/30”\/“进度:30\/30 -> 30\/30”这条 progress-only 回退梯子，不会伪造“奖励:\+0金”\/“奖励:未知”这类占位奖励；若 regular 第三行的奖励短句未来扩展到“\+9999金 \+净化”这类复合形式，进行中 \/ 完成态也都会继续沿用同一条进度优先回退链/,
         'help overlay should document the rewardless regular third-line fallback without inserting placeholder reward copy'
+    );
+    assert.match(
+        source,
+        /共享 challenge 标签与显式奖励短句 helper 也会压缩异常半角 \/ 全角空白，并把“\+ 9999金”\/“\+ 净化”与“＋ 9999金”\/“＋ 净化”这类 additive token 空白 \/ full-width plus 规整成“\+9999金 \+净化”/,
+        'help overlay should document full-width plus normalization inside explicit reward short labels'
     );
     assert.match(
         source,
@@ -5130,7 +5184,7 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /共享 challenge 标签与显式奖励短句 helper 也会压缩异常半角 \/ 全角空白，并把“\+ 9999金”\/“\+ 净化”这类 additive token 空白规整成“\+9999金 \+净化”，避免正文间距或复合奖励文案因脏输入而提前挤爆各分档宽度预算/,
+        /共享 challenge 标签与显式奖励短句 helper 也会压缩异常半角 \/ 全角空白，并把“\+ 9999金”\/“\+ 净化”与“＋ 9999金”\/“＋ 净化”这类 additive token 空白 \/ full-width plus 规整成“\+9999金 \+净化”，避免正文间距或复合奖励文案因脏输入而提前挤爆各分档宽度预算/,
         'help overlay should document the shared whitespace normalization for challenge labels and explicit reward labels'
     );
     assert.match(

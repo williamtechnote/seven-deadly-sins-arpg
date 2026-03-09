@@ -606,7 +606,7 @@
         while (strippedLabel && strippedLabel !== previousLabel) {
             previousLabel = strippedLabel;
             strippedLabel = strippedLabel.replace(
-                /^[\[［【(（]\s*([^\]］】)）]+?)\s*[\]］】)）]\s*/u,
+                /^[\[［【(（「『]\s*([^\]］】)）」』]+?)\s*[\]］】)）」』]\s*/u,
                 (match, innerText) => (isRunChallengePrefixToken(innerText) ? '' : match)
             );
             strippedLabel = normalizeInlineCopyWhitespace(
@@ -689,7 +689,9 @@
 
     function formatRunChallengeRewardShortLabel(challenge) {
         const safeChallenge = challenge && typeof challenge === 'object' ? challenge : {};
-        const rewardLabel = normalizeInlineCopyWhitespace(safeChallenge.rewardLabel).replace(/\+\s+/gu, '+');
+        const rewardLabel = normalizeInlineCopyWhitespace(safeChallenge.rewardLabel)
+            .replace(/＋/gu, '+')
+            .replace(/\+\s+/gu, '+');
         if (rewardLabel) {
             return rewardLabel;
         }
