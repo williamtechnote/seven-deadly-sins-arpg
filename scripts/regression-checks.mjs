@@ -2954,6 +2954,17 @@ function testRunChallengeSidebarLines() {
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
+            label: '本局挑战：挑战：',
+            progress: 30,
+            target: 0,
+            rewardGold: 90,
+            completed: true
+        }, { viewportTier: 'ultraCompact' }),
+        ['挑战完成 · +90金'],
+        'ultra-compact completed invalid-target summaries should stay on the same completion-first ladder even when wider tiers would collapse the label to 未知挑战'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
             label: '击败 30 个敌人',
             progress: 12,
             target: 30,
@@ -4309,6 +4320,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /若未来异常数据把 completed challenge 的 `target` 压成 0 或更低，且上游挑战标签在 regular \/ compact 路径里因前缀去重而回退成 `未知挑战`，ultra-compact 这条单行摘要也仍会继续沿用 `挑战完成 · \+90金 -> 挑战完成 -> 完成` 这组 completed-state 回退链，不额外插入 `未知挑战`/,
+        'README should document the invalid-target completed ultra-compact unknown-label fallback without introducing extra intermediate copy'
+    );
+    assert.match(
+        source,
         /即使上游挑战标签在 regular \/ compact 路径里因前缀去重而回退成 `未知挑战`，若奖励短句未来扩展到 `\+9999金 \+净化` 这类显式复合形式，ultra-compact 这条单行摘要也仍会继续沿用同一组 `挑战 12\/30 · \+9999金 \+净化 -> 挑战 12\/30 -> 12\/30` \/ `挑战完成 · \+9999金 \+净化 -> 挑战完成 -> 完成` 语义短句，不额外插入 `未知挑战` 这类中间短句/,
         'README should document the unknown-label ultra-compact compound-reward fallback without introducing extra intermediate copy'
     );
@@ -4535,6 +4551,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /即使上游挑战标签在 regular \/ compact 路径里因前缀去重而回退成“未知挑战”，ultra-compact 这条单行摘要也仍会保持同一组“挑战 12\/30 · \+90金 -> 挑战 12\/30 -> 12\/30”\/“挑战完成 · \+90金 -> 挑战完成 -> 完成”语义短句，不额外插入“未知挑战”这类中间短句/,
         'help overlay should document that ultra-compact challenge summaries stay on the same fallback ladder even when the body label falls back to 未知挑战'
+    );
+    assert.match(
+        source,
+        /若未来异常数据把 completed challenge 的“target”压成 0 或更低，且上游挑战标签在 regular \/ compact 路径里因前缀去重而回退成“未知挑战”，ultra-compact 这条单行摘要也仍会继续沿用“挑战完成 · \+90金 -> 挑战完成 -> 完成”这组 completed-state 回退链，不额外插入“未知挑战”/,
+        'help overlay should document the invalid-target completed ultra-compact unknown-label fallback without introducing extra intermediate copy'
     );
     assert.match(
         source,
