@@ -602,7 +602,7 @@
             previousLabel = normalizedLabel;
             normalizedLabel = normalizeInlineCopyWhitespace(normalizedLabel
                 .replace(/^(?:本局)?挑战\s*[:：]?\s*/u, '')
-                .replace(/^本局\s*/u, '')
+                .replace(/^本局\s*[:：]?\s*/u, '')
                 .replace(/^挑战\s*[:：]?\s*/u, ''));
         }
         return normalizedLabel;

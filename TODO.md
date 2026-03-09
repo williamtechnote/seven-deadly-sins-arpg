@@ -4,6 +4,9 @@
 
 
 ## Completed
+- [x] README / 操作指引同步 challenge 标签对 standalone `本局：` 前缀的清洗与 `未知挑战` 回退规则（完成：2026-03-10 01:17 +08）
+- [x] run challenge 标签在 `本局：挑战：本局` 这类带冒号的重复前缀被清洗殆尽后，regular / compact 摘要继续统一回退 `未知挑战` 并保留既有进度/奖励回退链（完成：2026-03-10 01:17 +08）
+- [x] run challenge 标签清洗兼容 standalone `本局：` / `本局 :` 这类带冒号前缀，避免冒号残留阻断后续 `挑战` 去重并污染 regular / compact 摘要正文（完成：2026-03-10 01:17 +08）
 - [x] README / 操作指引同步 hidden challenge badge 在 fit 后空 badge 路径下也会被视为静默，继续回收标题宽度并清空残留样式（完成：2026-03-10 00:03 +08）
 - [x] UIScene `_updateRunModifierHeading` 为 fit 后空 badge 路径补充 source/layout 回归守卫，确认标题锚点与隐藏 badge 样式不会残留旧 gap / 弱化色（完成：2026-03-10 00:03 +08）
 - [x] run-modifier heading shared helper 在 badge 输入存在但 `fitBadge` 结果为空时回退为真正静默态，释放完整标题宽度并清空残留 badge fill / alpha / gap（完成：2026-03-10 00:03 +08）
