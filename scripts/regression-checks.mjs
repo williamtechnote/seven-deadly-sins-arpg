@@ -2135,6 +2135,52 @@ function testRunChallengeSidebarLines() {
             target: 30,
             rewardGold: 90,
             completed: false
+        }, {
+            compact: false,
+            maxLineWidth: 60,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['本局挑战', '击败 30 个敌人', '进度:12/30'],
+        'full in-progress challenge summaries should drop the reward chunk before generic truncation when the regular third-line budget tightens'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, {
+            compact: false,
+            maxLineWidth: 26,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['本局挑战', '击败 30 个敌人', '12/30'],
+        'full in-progress challenge summaries should preserve the bare progress ratio as the final semantic fallback before generic truncation'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 9999,
+            rewardLabel: '+9999金 +净化',
+            completed: false
+        }, {
+            compact: false,
+            maxLineWidth: 60,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['本局挑战', '击败 30 个敌人', '进度:12/30'],
+        'full in-progress challenge summaries should keep the same progress-first fallback when a future compound reward grows too wide'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
         }, { compact: true }),
         ['本局挑战 12/30', '击败 30 个敌人 · +90金'],
         'compact challenge sidebar helper should collapse active challenges into two lines while surfacing the shared reward short label'
@@ -2242,6 +2288,52 @@ function testRunChallengeSidebarLines() {
         }, { compact: false }),
         ['本局挑战：已完成', '击败 30 个敌人', '进度:30/30  奖励:+90金'],
         'full completed challenge summaries should strip duplicated challenge prefixes from upstream labels before rendering the regular three-line body copy'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 90,
+            completed: true
+        }, {
+            compact: false,
+            maxLineWidth: 60,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['本局挑战：已完成', '击败 30 个敌人', '进度:30/30'],
+        'full completed challenge summaries should drop the reward chunk before generic truncation when the regular third-line budget tightens'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 90,
+            completed: true
+        }, {
+            compact: false,
+            maxLineWidth: 26,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['本局挑战：已完成', '击败 30 个敌人', '30/30'],
+        'full completed challenge summaries should preserve the bare ratio as the final semantic fallback before generic truncation'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 9999,
+            rewardLabel: '+9999金 +净化',
+            completed: true
+        }, {
+            compact: false,
+            maxLineWidth: 60,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['本局挑战：已完成', '击败 30 个敌人', '进度:30/30'],
+        'full completed challenge summaries should keep the same progress-first fallback when a future compound reward grows too wide'
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
@@ -3313,6 +3405,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /当 regular 第三行宽度预算继续吃紧时，进行中与完成态也会先沿用 `进度:12\/30  奖励:\+90金 -> 进度:12\/30 -> 12\/30` \/ `进度:30\/30  奖励:\+90金 -> 进度:30\/30 -> 30\/30` 这条语义回退链，而不是直接退化成通用省略；若未来扩展到 `\+9999金 \+净化` 这类复合奖励短句，regular 第三行也会继续沿用同一条进度优先回退链/,
+        'README should document the regular third-line semantic fallback chain for both in-progress and completed challenge summaries'
+    );
+    assert.match(
+        source,
         /若上游挑战标题仍带 `本局挑战：` \/ `挑战：` 前缀，compact 第二行也会先去重再拼接奖励短句，避免紧凑摘要重复“挑战”标题/,
         'README should document that compact challenge detail lines dedupe upstream challenge prefixes before appending reward labels'
     );
@@ -3439,6 +3536,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /regular 三行挑战摘要的正文行若遇到上游已带“本局挑战：”\/“挑战：”前缀的标签，也会先去重，避免与标题行重复同一前缀/,
         'help overlay should document that regular three-line challenge summaries dedupe upstream challenge prefixes before rendering the body line'
+    );
+    assert.match(
+        source,
+        /当 regular 第三行宽度预算继续吃紧时，进行中与完成态也会先沿用“进度:12\/30  奖励:\+90金 -> 进度:12\/30 -> 12\/30”\/“进度:30\/30  奖励:\+90金 -> 进度:30\/30 -> 30\/30”这条语义回退链，而不是直接退化成通用省略；若 regular 第三行的奖励短句未来扩展到“\+9999金 \+净化”这类复合形式，进行中 \/ 完成态也都会继续沿用同一条进度优先回退链/,
+        'help overlay should document the regular third-line semantic fallback chain for both in-progress and completed challenge summaries'
     );
     assert.match(
         source,

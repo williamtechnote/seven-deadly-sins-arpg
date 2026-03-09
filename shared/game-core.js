@@ -614,6 +614,15 @@
         return rewardLabel ? [`挑战完成 · ${rewardLabel}`, '挑战完成', '完成'] : ['挑战完成', '完成'];
     }
 
+    function getRunChallengeRegularProgressDetailVariants(progressLabel, rewardLabel) {
+        const safeProgressLabel = typeof progressLabel === 'string' ? progressLabel.trim() : '';
+        if (!safeProgressLabel) return [];
+        if (rewardLabel) {
+            return [`进度:${safeProgressLabel}  奖励:${rewardLabel}`, `进度:${safeProgressLabel}`, safeProgressLabel];
+        }
+        return [`进度:${safeProgressLabel}`, safeProgressLabel];
+    }
+
     function getRunChallengeCompactDetailVariants(normalizedLabel, rewardLabel) {
         const safeLabel = typeof normalizedLabel === 'string' ? normalizedLabel.trim() : '';
         if (!safeLabel) return [];
@@ -705,7 +714,14 @@
         return [
             completed ? '本局挑战：已完成' : '本局挑战',
             normalizedLabel,
-            rewardLabel ? `进度:${progressLabel}  奖励:${rewardLabel}` : `进度:${progressLabel}`
+            pickChallengeLabelVariant(
+                getRunChallengeRegularProgressDetailVariants(progressLabel, rewardLabel),
+                {
+                    maxWidth: Number(options && options.maxLineWidth),
+                    measureLabelWidth: options && options.measureLabelWidth,
+                    measureGlyphWidth: options && options.measureGlyphWidth
+                }
+            )
         ];
     }
 
