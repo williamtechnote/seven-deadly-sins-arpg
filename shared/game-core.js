@@ -594,16 +594,26 @@
         return text.replace(/[\s\u3000]+/gu, ' ').trim();
     }
 
+    function stripRunChallengeLeadingSeparators(label) {
+        if (typeof label !== 'string' || !label) return '';
+        return label.replace(/^(?:(?:[:：\-—–·•|/])+[\s]*)+/u, '');
+    }
+
     function normalizeRunChallengeSidebarLabel(label) {
         let normalizedLabel = normalizeInlineCopyWhitespace(label);
         if (!normalizedLabel) return '';
         let previousLabel = null;
         while (normalizedLabel && normalizedLabel !== previousLabel) {
             previousLabel = normalizedLabel;
-            normalizedLabel = normalizeInlineCopyWhitespace(normalizedLabel
+            const strippedLabel = normalizedLabel
                 .replace(/^(?:本局)?挑战\s*[:：]?\s*/u, '')
                 .replace(/^本局\s*[:：]?\s*/u, '')
-                .replace(/^挑战\s*[:：]?\s*/u, ''));
+                .replace(/^挑战\s*[:：]?\s*/u, '');
+            normalizedLabel = normalizeInlineCopyWhitespace(
+                strippedLabel !== normalizedLabel
+                    ? stripRunChallengeLeadingSeparators(strippedLabel)
+                    : strippedLabel
+            );
         }
         return normalizedLabel;
     }
@@ -655,7 +665,7 @@
 
     function formatRunChallengeRewardShortLabel(challenge) {
         const safeChallenge = challenge && typeof challenge === 'object' ? challenge : {};
-        const rewardLabel = normalizeInlineCopyWhitespace(safeChallenge.rewardLabel);
+        const rewardLabel = normalizeInlineCopyWhitespace(safeChallenge.rewardLabel).replace(/\+\s+/gu, '+');
         if (rewardLabel) {
             return rewardLabel;
         }
