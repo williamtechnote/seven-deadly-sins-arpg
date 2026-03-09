@@ -3691,7 +3691,7 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /若当前 challenge 没有奖励短句，则 regular 第三行会继续沿用 `进度:12\/30 -> 12\/30` \/ `进度:30\/30 -> 30\/30`，不插入额外奖励占位；若未来扩展到 `\+9999金 \+净化` 这类复合奖励短句，regular 第三行也会继续沿用同一条进度优先回退链/,
+        /若当前 challenge 没有奖励短句，则 regular 第三行会继续沿用 `进度:12\/30 -> 12\/30` \/ `进度:30\/30 -> 30\/30` 这条 progress-only 回退梯子，不会伪造 `奖励:\+0金` \/ `奖励:未知` 这类占位奖励；若未来扩展到 `\+9999金 \+净化` 这类复合奖励短句，regular 第三行也会继续沿用同一条进度优先回退链/,
         'README should document the rewardless regular third-line fallback without inserting placeholder reward copy'
     );
     assert.match(
@@ -3716,7 +3716,7 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /若当前 challenge 没有奖励短句，则 compact 第二行会继续沿用 `击败 30 个敌人 -> 击败30个敌人`，不补额外占位/,
+        /若当前 challenge 没有奖励短句，则 compact 第二行会继续沿用 `击败 30 个敌人 -> 击败30个敌人` 这条 label-only 回退梯子，不补 `\+0金` \/ `奖励:未知` 这类占位/,
         'README should document the rewardless compact second-line fallback without inserting placeholder reward copy'
     );
     assert.match(
@@ -3850,7 +3850,7 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /若当前 challenge 没有奖励短句，则 regular 第三行会继续沿用“进度:12\/30 -> 12\/30”\/“进度:30\/30 -> 30\/30”，不插入额外奖励占位；若 regular 第三行的奖励短句未来扩展到“\+9999金 \+净化”这类复合形式，进行中 \/ 完成态也都会继续沿用同一条进度优先回退链/,
+        /若当前 challenge 没有奖励短句，则 regular 第三行会继续沿用“进度:12\/30 -> 12\/30”\/“进度:30\/30 -> 30\/30”这条 progress-only 回退梯子，不会伪造“奖励:\+0金”\/“奖励:未知”这类占位奖励；若 regular 第三行的奖励短句未来扩展到“\+9999金 \+净化”这类复合形式，进行中 \/ 完成态也都会继续沿用同一条进度优先回退链/,
         'help overlay should document the rewardless regular third-line fallback without inserting placeholder reward copy'
     );
     assert.match(
@@ -3875,7 +3875,7 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /若当前 challenge 没有奖励短句，则 compact 第二行会继续沿用“击败 30 个敌人 -> 击败30个敌人”，不补额外占位/,
+        /若当前 challenge 没有奖励短句，则 compact 第二行会继续沿用“击败 30 个敌人 -> 击败30个敌人”这条 label-only 回退梯子，不补“\+0金”\/“奖励:未知”这类占位/,
         'help overlay should document the rewardless compact second-line fallback without inserting placeholder reward copy'
     );
     assert.match(
