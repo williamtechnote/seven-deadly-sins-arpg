@@ -616,6 +616,13 @@
         return [normalizedLabel];
     }
 
+    function getRunChallengeCompactCompletedDetailVariants(normalizedLabel, rewardLabel) {
+        if (rewardLabel) {
+            return [`${normalizedLabel} · ${rewardLabel}`, normalizedLabel];
+        }
+        return [normalizedLabel];
+    }
+
     function buildRunChallengeSidebarLines(challenge, options) {
         const safeChallenge = challenge && typeof challenge === 'object' ? challenge : {};
         const viewportTier = options && typeof options.viewportTier === 'string'
@@ -654,9 +661,17 @@
 
         if (compact) {
             if (completed) {
+                const compactDetailLine = pickChallengeLabelVariant(
+                    getRunChallengeCompactCompletedDetailVariants(normalizedLabel, rewardLabel),
+                    {
+                        maxWidth: Number(options && options.maxLineWidth),
+                        measureLabelWidth: options && options.measureLabelWidth,
+                        measureGlyphWidth: options && options.measureGlyphWidth
+                    }
+                );
                 return [
                     '本局挑战：已完成',
-                    rewardLabel ? `${normalizedLabel} · ${rewardLabel}` : normalizedLabel
+                    compactDetailLine
                 ];
             }
             const compactDetailLine = pickChallengeLabelVariant(

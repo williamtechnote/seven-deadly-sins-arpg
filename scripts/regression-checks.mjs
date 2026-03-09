@@ -2196,6 +2196,37 @@ function testRunChallengeSidebarLines() {
     assert.deepEqual(
         buildRunChallengeSidebarLines({
             label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 90,
+            completed: true
+        }, {
+            compact: true,
+            maxLineWidth: 72,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['本局挑战：已完成', '击败 30 个敌人'],
+        'compact completed challenge summaries should drop the reward chunk before generic truncation when the second-line budget tightens'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 9999,
+            rewardLabel: '+9999金 +净化',
+            completed: true
+        }, {
+            compact: true,
+            maxLineWidth: 72,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['本局挑战：已完成', '击败 30 个敌人'],
+        'compact completed challenge summaries should keep the same label-first fallback when a future compound reward grows too wide'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
             progress: 12,
             target: 30,
             rewardGold: 90,
@@ -3151,8 +3182,13 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /若未来扩展到 `\+9999金 \+净化` 这类复合奖励短句，也会继续沿用同一条 compact 第二行回退链/,
-        'README should document that compact in-progress compound rewards reuse the same second-line fallback chain'
+        /完成态的第二行宽度预算继续吃紧时，也会沿用同一条 `击败 30 个敌人 · \+90金 -> 击败 30 个敌人` 语义回退链/,
+        'README should document the compact completed second-line semantic fallback before generic truncation'
+    );
+    assert.match(
+        source,
+        /若未来扩展到 `\+9999金 \+净化` 这类复合奖励短句，compact 进行中 \/ 完成态第二行也都会继续沿用同一条回退链/,
+        'README should document that compact in-progress and completed compound rewards reuse the same second-line fallback chain'
     );
     assert.match(
         source,
@@ -3265,8 +3301,13 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /若这条 compact 第二行的奖励短句未来扩展到“\+9999金 \+净化”这类复合形式，也会继续沿用同一条回退链/,
-        'help overlay should document that compact in-progress compound rewards reuse the same second-line fallback chain'
+        /完成态的第二行宽度预算继续吃紧时，也会沿用同一条“击败 30 个敌人 · \+90金 -> 击败 30 个敌人”语义回退链/,
+        'help overlay should document the compact completed second-line semantic fallback before generic truncation'
+    );
+    assert.match(
+        source,
+        /若这条 compact 第二行的奖励短句未来扩展到“\+9999金 \+净化”这类复合形式，进行中 \/ 完成态也都会继续沿用同一条回退链/,
+        'help overlay should document that compact in-progress and completed compound rewards reuse the same second-line fallback chain'
     );
     assert.match(
         source,
