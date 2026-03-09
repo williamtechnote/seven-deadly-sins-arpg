@@ -540,20 +540,21 @@
         const fitBadge = options && typeof options.fitBadge === 'function'
             ? options.fitBadge
             : (text => text);
-        if (!safeBadgeAppearance.text) {
-            return {
-                titleText: fitTitle(safeTitle, safeMaxWidth),
-                titleMaxWidth: safeMaxWidth,
-                badgeText: '',
-                badgeVisible: false,
-                badgeFill: '',
-                badgeAlpha: 1,
-                badgeWidth: 0,
-                badgeGap: badgeLayout.gap
-            };
-        }
+        const silentPresentation = {
+            titleText: fitTitle(safeTitle, safeMaxWidth),
+            titleMaxWidth: safeMaxWidth,
+            badgeText: '',
+            badgeVisible: false,
+            badgeFill: '',
+            badgeAlpha: 1,
+            badgeWidth: 0,
+            badgeGap: badgeLayout.gap
+        };
+        const normalizedBadgeText = normalizeInlineCopyWhitespace(safeBadgeAppearance.text);
+        if (!normalizedBadgeText) return silentPresentation;
 
-        const badgeText = fitBadge(safeBadgeAppearance.text, badgeLayout.maxWidth);
+        const badgeText = normalizeInlineCopyWhitespace(fitBadge(normalizedBadgeText, badgeLayout.maxWidth));
+        if (!badgeText) return silentPresentation;
         const badgeWidth = badgeText
             ? measureChallengeLabelWidth(badgeText, {
                 measureLabelWidth: options && options.measureBadgeWidth,

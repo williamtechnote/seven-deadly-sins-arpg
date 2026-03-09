@@ -4061,6 +4061,52 @@ function testRunModifierHeadingBadgeLayout() {
     );
     assert.deepEqual(
         getRunModifierHeadingPresentation(108, {
+            text: '完成+90金',
+            fill: '#8fb39a',
+            alpha: 0.78
+        }, {
+            viewportTier: 'ultraCompact',
+            fitTitle: text => text,
+            fitBadge: () => '',
+            measureBadgeWidth: text => text.length * 10
+        }),
+        {
+            titleText: '本局词缀',
+            titleMaxWidth: 108,
+            badgeText: '',
+            badgeVisible: false,
+            badgeFill: '',
+            badgeAlpha: 1,
+            badgeWidth: 0,
+            badgeGap: 3
+        },
+        'run-modifier heading presentation helper should treat a badge that collapses to empty after fitting as fully silent'
+    );
+    assert.deepEqual(
+        getRunModifierHeadingPresentation(108, {
+            text: ' 　 ',
+            fill: '#8fb39a',
+            alpha: 0.78
+        }, {
+            viewportTier: 'ultraCompact',
+            fitTitle: text => text,
+            fitBadge: text => text,
+            measureBadgeWidth: text => text.length * 10
+        }),
+        {
+            titleText: '本局词缀',
+            titleMaxWidth: 108,
+            badgeText: '',
+            badgeVisible: false,
+            badgeFill: '',
+            badgeAlpha: 1,
+            badgeWidth: 0,
+            badgeGap: 3
+        },
+        'run-modifier heading presentation helper should normalize whitespace-only badge text into the same silent state'
+    );
+    assert.deepEqual(
+        getRunModifierHeadingPresentation(108, {
             text: '12/30',
             fill: '#a8b3c7',
             alpha: 0.72
@@ -4270,8 +4316,8 @@ function testSidebarMeasurementHooks() {
     );
     assert.match(
         source,
-        /if\s*\(!safeBadgeAppearance\.text\)\s*{[\s\S]*?this\.runModifierBadgeText\.setText\(''\);[\s\S]*?this\.runModifierBadgeText\.setStyle\(\{\s*fill:\s*'',\s*alpha:\s*1\s*\}\);[\s\S]*?this\.runModifierBadgeText\.setAlpha\(1\);[\s\S]*?this\.runModifierBadgeText\.setVisible\(false\);[\s\S]*?return;/,
-        'run-modifier heading reset should clear the badge node style and alpha when the lightweight challenge badge goes silent'
+        /if\s*\(!headingPresentation\.badgeVisible\)\s*{[\s\S]*?this\.runModifierTitle\.setPosition\(anchorX,\s*titleY\);[\s\S]*?this\.runModifierBadgeText\.setText\(''\);[\s\S]*?this\.runModifierBadgeText\.setStyle\(\{\s*fill:\s*'',\s*alpha:\s*1\s*\}\);[\s\S]*?this\.runModifierBadgeText\.setAlpha\(1\);[\s\S]*?this\.runModifierBadgeText\.setVisible\(false\);[\s\S]*?return;/,
+        'run-modifier heading reset should clear the badge node style and alpha whenever the shared presentation collapses the lightweight badge to silence'
     );
     assert.match(
         source,
@@ -4579,8 +4625,8 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /run-modifier heading 在 hidden challenge badge 静默路径下也会同步回收标题宽度预算/,
-        'README should document that the run-modifier heading reclaims the full title width once the hidden challenge badge goes silent'
+        /run-modifier heading 在 hidden challenge badge 静默路径下也会同步回收标题宽度预算；即使 badge 输入在最终拟合后被压成空文案或只剩空白，也会清空残留样式/,
+        'README should document that the run-modifier heading also clears stale badge styling when fitting collapses the hidden badge to silence'
     );
     assert.match(
         source,
@@ -4853,8 +4899,8 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /run-modifier heading 在 hidden challenge badge 静默路径下也会同步回收标题宽度预算/,
-        'help overlay should document that the run-modifier heading reclaims the full title width once the hidden challenge badge goes silent'
+        /run-modifier heading 在 hidden challenge badge 静默路径下也会同步回收标题宽度预算；即使 badge 输入在最终拟合后被压成空文案或只剩空白，也会清空残留样式/,
+        'help overlay should document that the run-modifier heading also clears stale badge styling when fitting collapses the hidden badge to silence'
     );
     assert.match(
         source,

@@ -5618,7 +5618,7 @@ class UIScene extends Phaser.Scene {
             fitBadge: (text, badgeWidth) => this._fitHudSidebarTextLine(text, badgeWidth, 'sidebarChallengeBadge'),
             measureBadgeWidth: text => this._measureHudSidebarTextWidth(text, 'sidebarChallengeBadge')
         });
-        if (!safeBadgeAppearance.text) {
+        if (!headingPresentation.badgeVisible) {
             this.runModifierTitle.setPosition(anchorX, titleY);
             this.runModifierTitle.setText(headingPresentation.titleText);
             this.runModifierBadgeText.setText('');
@@ -6062,7 +6062,7 @@ class HelpScene extends Phaser.Scene {
                     '即使当前 challenge 仍有奖励短句，且上游挑战标签在 regular / compact 路径里因前缀去重而回退成“未知挑战”，隐藏后的轻量 in-progress challenge badge 也仍会继续沿用“进12/30 -> 12/30 -> 进12 -> 静默隐藏”这组 progress-only 回退链，不额外插入“未知挑战”/“+90金”/“奖励:未知”这类中间占位',
                     '若未来异常数据把 in-progress challenge 的“target”压成 0 或更低，且当前 challenge 仍有奖励短句，隐藏后的轻量 in-progress challenge badge 也会继续保持静默，不输出“挑战 0/0”/“进0/0”/“0/0”',
                     '对应的轻量 badge appearance 也会回退为空文案并清空弱化 tint/alpha，避免标题行残留旧着色',
-                    'run-modifier heading 在 hidden challenge badge 静默路径下也会同步回收标题宽度预算，避免 badge 消失后“本局词缀”标题继续沿用旧缩窄布局'
+                    'run-modifier heading 在 hidden challenge badge 静默路径下也会同步回收标题宽度预算；即使 badge 输入在最终拟合后被压成空文案或只剩空白，也会清空残留样式，避免“本局词缀”标题继续沿用旧缩窄布局'
                 );
             }
             const completedInvalidTargetIndex = interfaceSection.items.indexOf('若未来异常数据把 completed challenge 的“target”压成 0 或更低，则 regular 第三行会改为沿用“已完成  奖励:+90金 -> 已完成”这组 completed-state 回退，不再误退回“进行中”；即使正文已因前缀去重回退成“未知挑战”，第三行也会继续保留 completed-state 语义');
