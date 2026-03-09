@@ -1,8 +1,11 @@
 # TODO.md — seven-deadly-sins-arpg
 
 ## Active
+- [ ] run challenge 标签清洗兼容 shell/lenticular decorator 前缀（如 `〔挑战〕击败 30 个敌人` / `〖本局挑战〗挑战：击败 30 个敌人`），继续复用既有 decorator 剥离与 plain-text 前缀去重链
 
 ## Completed
+- [x] run challenge 标签清洗兼容 book-title decorator 前缀（如 `《挑战》击败 30 个敌人` / `〈本局挑战〉挑战：本局`），继续复用既有 decorator 剥离、leading separator 清洗与 `未知挑战` 回退链（完成：2026-03-10 06:39 +08）
+- [x] run challenge 标签清洗兼容 curly-brace decorator 前缀（如 `{挑战}击败 30 个敌人` / `｛本局挑战｝挑战：击败 30 个敌人`），继续复用既有 decorator 剥离、plain-text 前缀去重与 `未知挑战` 回退链（完成：2026-03-10 06:39 +08）
 - [x] run challenge 标签清洗兼容 angle-bracket decorator 前缀（如 `<挑战>击败 30 个敌人` / `＜本局挑战＞挑战：击败 30 个敌人`），继续复用 bracketed decorator 剥离与 `未知挑战` 回退链（完成：2026-03-10 06:21 +08）
 - [x] README / 操作指引同步 angle-bracket decorator challenge 前缀（如 `<挑战>` / `＜本局挑战＞`）会先剥离再继续做 `本局` / `挑战` 去重，避免 sidebar summary 标题/正文重复（完成：2026-03-10 06:21 +08）
 - [x] 回归检查覆盖 angle-bracket decorator challenge 前缀与 plain-text 前缀混排耗尽时继续回退 `未知挑战`（完成：2026-03-10 06:21 +08）
