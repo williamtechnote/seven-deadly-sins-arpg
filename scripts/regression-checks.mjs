@@ -38,6 +38,7 @@ const {
     buildRunEventRoomHudLines,
     buildRunChallengeSidebarLines,
     buildRunChallengeSidebarBadge,
+    formatRunChallengeRewardShortLabel,
     getRunChallengeCompletedBadgeVariants,
     getRunChallengeSidebarBadgeAppearance,
     getRunModifierHeadingBadgeLayout,
@@ -2032,6 +2033,7 @@ function testHudSidebarViewportPolicy() {
 function testRunChallengeSidebarLines() {
     assert.equal(typeof buildRunChallengeSidebarLines, 'function', 'run challenge sidebar helper should be exported');
     assert.equal(typeof buildRunChallengeSidebarBadge, 'function', 'run challenge badge helper should be exported');
+    assert.equal(typeof formatRunChallengeRewardShortLabel, 'function', 'run challenge reward short-label helper should be exported');
     assert.equal(typeof getRunChallengeCompletedBadgeVariants, 'function', 'completed run challenge badge variants helper should be exported');
     assert.equal(typeof getRunChallengeSidebarBadgeAppearance, 'function', 'run challenge badge appearance helper should be exported');
     const measureBadgeWidth = (label) => Array.from(label).reduce((sum, glyph) => sum + ({
@@ -2076,6 +2078,21 @@ function testRunChallengeSidebarLines() {
         '3': 6,
         '9': 6
     }[glyph] || 10), 0);
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 9999,
+            completed: false
+        }, {
+            viewportTier: 'ultraCompact',
+            maxLineWidth: 100,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['挑战 12/30'],
+        'ultra-compact visible in-progress challenge summaries should still drop an extra-large reward chunk before truncating semantic progress copy'
+    );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
             label: '击败 30 个敌人',
@@ -2241,6 +2258,21 @@ function testRunChallengeSidebarLines() {
             label: '击败 30 个敌人',
             progress: 30,
             target: 30,
+            rewardGold: 9999,
+            completed: true
+        }, {
+            viewportTier: 'ultraCompact',
+            maxLineWidth: 90,
+            measureLabelWidth: measureChallengeSummaryWidth
+        })[0],
+        '挑战完成',
+        'ultra-compact visible completed summaries should still drop an extra-large reward chunk before truncating semantic completion copy'
+    );
+    assert.equal(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
             rewardGold: 999,
             completed: true
         }, {
@@ -2250,6 +2282,85 @@ function testRunChallengeSidebarLines() {
         })[0],
         '完成',
         'ultra-compact visible completed summaries should keep the same final completion fallback even when large rewards expand the first variant'
+    );
+    assert.equal(
+        formatRunChallengeRewardShortLabel({
+            rewardGold: 9999
+        }),
+        '+9999金',
+        'reward short-label helper should keep the legacy gold-only short form when no explicit reward label is provided'
+    );
+    assert.equal(
+        formatRunChallengeRewardShortLabel({
+            rewardGold: 9999,
+            rewardLabel: '+9999金 +净化'
+        }),
+        '+9999金 +净化',
+        'reward short-label helper should prefer an explicit future-facing reward short label over the legacy gold-only copy'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 9999,
+            rewardLabel: '+9999金 +净化',
+            completed: false
+        }, {
+            viewportTier: 'ultraCompact',
+            maxLineWidth: 150,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['挑战 12/30 · +9999金 +净化'],
+        'ultra-compact visible in-progress challenge summaries should surface an explicit compound reward short label when width allows'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 9999,
+            rewardLabel: '+9999金 +净化',
+            completed: false
+        }, {
+            viewportTier: 'ultraCompact',
+            maxLineWidth: 70,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['挑战 12/30'],
+        'ultra-compact visible in-progress challenge summaries should keep the same semantic fallback chain when an explicit compound reward short label grows too wide'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 9999,
+            rewardLabel: '+9999金 +净化',
+            completed: true
+        }, {
+            viewportTier: 'ultraCompact',
+            maxLineWidth: 140,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['挑战完成 · +9999金 +净化'],
+        'ultra-compact visible completed summaries should surface an explicit compound reward short label when width allows'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 9999,
+            rewardLabel: '+9999金 +净化',
+            completed: true
+        }, {
+            viewportTier: 'ultraCompact',
+            maxLineWidth: 60,
+            measureLabelWidth: measureChallengeSummaryWidth
+        }),
+        ['挑战完成'],
+        'ultra-compact visible completed summaries should keep the same semantic fallback chain when an explicit compound reward short label grows too wide'
     );
     assert.equal(
         buildRunChallengeSidebarBadge({
@@ -2367,6 +2478,54 @@ function testRunChallengeSidebarLines() {
         }),
         ['完成+90金', '完成'],
         'completed challenge badge helper should expose the final reward-to-complete fallback chain explicitly'
+    );
+    assert.deepEqual(
+        getRunChallengeCompletedBadgeVariants({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 9999,
+            rewardLabel: '+9999金 +净化',
+            completed: true
+        }),
+        ['完成+9999金 +净化', '完成'],
+        'completed challenge badge helper should reuse the explicit reward short label before falling back to 完成'
+    );
+    assert.equal(
+        buildRunChallengeSidebarBadge({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 9999,
+            rewardLabel: '+9999金 +净化',
+            completed: true
+        }, {
+            viewportTier: 'ultraCompact',
+            hidden: true,
+            runModifierHidden: true,
+            maxBadgeWidth: 130,
+            measureLabelWidth: measureCompletedBadgeWidth
+        }),
+        '完成+9999金 +净化',
+        'ultra-compact completed challenge badges should surface an explicit compound reward short label when width allows'
+    );
+    assert.equal(
+        buildRunChallengeSidebarBadge({
+            label: '击败 30 个敌人',
+            progress: 30,
+            target: 30,
+            rewardGold: 9999,
+            rewardLabel: '+9999金 +净化',
+            completed: true
+        }, {
+            viewportTier: 'ultraCompact',
+            hidden: true,
+            runModifierHidden: true,
+            maxBadgeWidth: 40,
+            measureLabelWidth: measureCompletedBadgeWidth
+        }),
+        '完成',
+        'ultra-compact completed challenge badges should keep the same reward-to-complete fallback chain when an explicit compound reward short label grows too wide'
     );
     assert.equal(
         buildRunChallengeSidebarBadge({
@@ -2925,8 +3084,13 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /即使奖励数值扩大到 `\+999金` 这类长度，进行中态也会继续沿用 `挑战 12\/30 · \+90金 -> 挑战 12\/30 -> 12\/30` 这条语义回退链，完成态则继续沿用 `挑战完成 · \+90金 -> 挑战完成 -> 完成`，而不会额外插入新的中间短句/,
+        /即使奖励数值扩大到 `\+9999金` 这类长度，进行中态也会继续沿用 `挑战 12\/30 · \+90金 -> 挑战 12\/30 -> 12\/30` 这条语义回退链，完成态则继续沿用 `挑战完成 · \+90金 -> 挑战完成 -> 完成`，而不会额外插入新的中间短句/,
         'README should document that large reward values still use the existing visible challenge summary fallback ladders'
+    );
+    assert.match(
+        source,
+        /若未来扩展到 `\+9999金 \+净化` 这类复合奖励短句，也会继续沿用同一条可见摘要与完成徽记回退链/,
+        'README should document that future compound reward short labels reuse the same fallback ladder'
     );
     assert.match(
         source,
@@ -3016,6 +3180,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若视口进一步进入 ultra-compact 档位，则会先进一步收紧各区块间距与底边缓冲，本局词缀会压到 1 行、事件房摘要压到 2 行、本局挑战压到单行进度摘要/,
         'help overlay should document the ultra-compact spacing reduction before the tightest sidebar caps'
+    );
+    assert.match(
+        source,
+        /若这条可见摘要的奖励短句未来扩展到“\+9999金 \+净化”这类复合形式，也会继续沿用同一条可见摘要与完成徽记回退链/,
+        'help overlay should document that future compound reward short labels reuse the same fallback ladder'
     );
     assert.match(
         source,

@@ -589,15 +589,24 @@
         return safeVariants[safeVariants.length - 1];
     }
 
-    function getRunChallengeInProgressSummaryVariants(progressLabel, rewardGold) {
-        if (rewardGold > 0) {
-            return [`挑战 ${progressLabel} · +${rewardGold}金`, `挑战 ${progressLabel}`, progressLabel];
+    function formatRunChallengeRewardShortLabel(challenge) {
+        const safeChallenge = challenge && typeof challenge === 'object' ? challenge : {};
+        if (typeof safeChallenge.rewardLabel === 'string' && safeChallenge.rewardLabel.trim()) {
+            return safeChallenge.rewardLabel.trim();
+        }
+        const rewardGold = clampInt(safeChallenge.rewardGold, 0, Number.MAX_SAFE_INTEGER, 0);
+        return rewardGold > 0 ? `+${rewardGold}金` : '';
+    }
+
+    function getRunChallengeInProgressSummaryVariants(progressLabel, rewardLabel) {
+        if (rewardLabel) {
+            return [`挑战 ${progressLabel} · ${rewardLabel}`, `挑战 ${progressLabel}`, progressLabel];
         }
         return [`挑战 ${progressLabel}`, progressLabel];
     }
 
-    function getRunChallengeCompletedSummaryVariants(rewardGold) {
-        return rewardGold > 0 ? [`挑战完成 · +${rewardGold}金`, '挑战完成', '完成'] : ['挑战完成', '完成'];
+    function getRunChallengeCompletedSummaryVariants(rewardLabel) {
+        return rewardLabel ? [`挑战完成 · ${rewardLabel}`, '挑战完成', '完成'] : ['挑战完成', '完成'];
     }
 
     function buildRunChallengeSidebarLines(challenge, options) {
@@ -610,6 +619,7 @@
         const target = clampInt(safeChallenge.target, 0, Number.MAX_SAFE_INTEGER, 0);
         const progress = clampInt(safeChallenge.progress, 0, target || Number.MAX_SAFE_INTEGER, 0);
         const rewardGold = clampInt(safeChallenge.rewardGold, 0, Number.MAX_SAFE_INTEGER, 0);
+        const rewardLabel = formatRunChallengeRewardShortLabel(safeChallenge);
         const completed = !!safeChallenge.completed;
         const normalizedLabel = normalizeRunChallengeSidebarLabel(safeChallenge.label, compact) || '未知挑战';
         const progressLabel = `${Math.min(progress, target)}/${target || 0}`;
@@ -617,7 +627,7 @@
         if (ultraCompact) {
             if (completed) {
                 return [pickChallengeLabelVariant(
-                    getRunChallengeCompletedSummaryVariants(rewardGold),
+                    getRunChallengeCompletedSummaryVariants(rewardLabel),
                     {
                         maxWidth: Number(options && options.maxLineWidth),
                         measureLabelWidth: options && options.measureLabelWidth,
@@ -626,7 +636,7 @@
                 )];
             }
             return [pickChallengeLabelVariant(
-                getRunChallengeInProgressSummaryVariants(progressLabel, rewardGold),
+                getRunChallengeInProgressSummaryVariants(progressLabel, rewardLabel),
                 {
                     maxWidth: Number(options && options.maxLineWidth),
                     measureLabelWidth: options && options.measureLabelWidth,
@@ -686,8 +696,8 @@
 
     function getRunChallengeCompletedBadgeVariants(challenge) {
         const safeChallenge = challenge && typeof challenge === 'object' ? challenge : {};
-        const rewardGold = clampInt(safeChallenge.rewardGold, 0, Number.MAX_SAFE_INTEGER, 0);
-        return rewardGold > 0 ? [`完成+${rewardGold}金`, '完成'] : ['完成'];
+        const rewardLabel = formatRunChallengeRewardShortLabel(safeChallenge);
+        return rewardLabel ? [`完成${rewardLabel}`, '完成'] : ['完成'];
     }
 
     function getRunChallengeSidebarBadgeAppearance(challenge, options) {
@@ -2224,6 +2234,7 @@
         resolveKeyboardAimState,
         formatAimDirectionLabel,
         buildCombatActionHudSummary,
+        formatRunChallengeRewardShortLabel,
         buildRunChallengeSidebarLines,
         buildRunChallengeSidebarBadge,
         getRunChallengeCompletedBadgeVariants,
