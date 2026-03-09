@@ -2537,6 +2537,28 @@ function testRunChallengeSidebarLines() {
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
+            label: '本局挑战：挑战：本局',
+            progress: 12,
+            target: 0,
+            rewardGold: 90,
+            completed: false
+        }, { compact: true }),
+        ['本局挑战：进行中', '未知挑战 · +90金'],
+        'compact in-progress invalid-target summaries should keep 未知挑战 plus the reward-bearing detail fallback when repeated prefix stripping exhausts the label'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '本局挑战：挑战：本局',
+            progress: 12,
+            target: 0,
+            rewardGold: 0,
+            completed: false
+        }, { compact: true }),
+        ['本局挑战：进行中', '未知挑战'],
+        'compact in-progress invalid-target summaries should keep 未知挑战 plus the label-only detail fallback when repeated prefix stripping exhausts the label'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
             label: '击败 30 个敌人',
             progress: 12,
             target: 30,
@@ -2786,6 +2808,28 @@ function testRunChallengeSidebarLines() {
         }, { compact: true }),
         ['本局挑战：已完成', '未知挑战'],
         'compact completed challenge summaries should keep 未知挑战 as the label-only fallback when no reward label is available'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '本局挑战：挑战：本局',
+            progress: 30,
+            target: 0,
+            rewardGold: 90,
+            completed: true
+        }, { compact: true }),
+        ['本局挑战：已完成', '未知挑战 · +90金'],
+        'compact completed invalid-target summaries should keep 未知挑战 plus the reward-bearing detail fallback when repeated prefix stripping exhausts the label'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '本局挑战：挑战：本局',
+            progress: 30,
+            target: 0,
+            rewardGold: 0,
+            completed: true
+        }, { compact: true }),
+        ['本局挑战：已完成', '未知挑战'],
+        'compact completed invalid-target summaries should keep 未知挑战 plus the label-only detail fallback when repeated prefix stripping exhausts the label'
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
@@ -4185,8 +4229,18 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /若未来异常数据把 in-progress challenge 的 `target` 压成 0 或更低，且前缀去重后的正文已回退为 `未知挑战`，compact 第二行也会继续沿用 `未知挑战 · \+90金` \/ `未知挑战` 这组 detail fallback，不补 `0\/0` \/ `进度:0\/0` 这类误导性占位/,
+        'README should document the invalid-target compact in-progress unknown-label fallback without reintroducing misleading ratio copy'
+    );
+    assert.match(
+        source,
         /若未来异常数据把 completed challenge 的 `target` 压成 0 或更低，则 regular 第三行会改为沿用 `已完成  奖励:\+90金 -> 已完成` 这组 completed-state 回退，不再误退回 `进行中`；即使正文已因前缀去重回退成 `未知挑战`，第三行也会继续保留 completed-state 语义/,
         'README should document the invalid-target regular completed fallback without regressing to in-progress copy'
+    );
+    assert.match(
+        source,
+        /若未来异常数据把 completed challenge 的 `target` 压成 0 或更低，且前缀去重后的正文已回退为 `未知挑战`，compact 第二行也会继续沿用 `未知挑战 · \+90金` \/ `未知挑战` 这组 completed detail fallback，不误退回 `进行中`/,
+        'README should document the invalid-target compact completed unknown-label fallback without regressing to in-progress copy'
     );
     assert.match(
         source,
@@ -4464,8 +4518,18 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
+        /若未来异常数据把 in-progress challenge 的“target”压成 0 或更低，且前缀去重后的正文已回退为“未知挑战”，compact 第二行也会继续沿用“未知挑战 · \+90金”\/“未知挑战”这组 detail fallback，不补“0\/0”\/“进度:0\/0”这类误导性占位/,
+        'help overlay should document the invalid-target compact in-progress unknown-label fallback without reintroducing misleading ratio copy'
+    );
+    assert.match(
+        source,
         /若未来异常数据把 in-progress challenge 的“target”压成 0 或更低，则 ultra-compact 单行摘要会改为沿用“挑战进行中 · \+90金 -> 挑战进行中 -> 进行中”这组状态优先回退；隐藏后的轻量 in-progress badge 则保持静默，不输出“挑战 0\/0”\/“进0\/0”\/“0\/0”/,
         'help overlay should document the invalid-target ultra-compact and hidden-badge fallbacks without misleading ratio copy'
+    );
+    assert.match(
+        source,
+        /若未来异常数据把 completed challenge 的“target”压成 0 或更低，且前缀去重后的正文已回退为“未知挑战”，compact 第二行也会继续沿用“未知挑战 · \+90金”\/“未知挑战”这组 completed detail fallback，不误退回“进行中”/,
+        'help overlay should document the invalid-target compact completed unknown-label fallback without regressing to in-progress copy'
     );
     assert.match(
         source,

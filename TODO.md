@@ -1,9 +1,13 @@
 # TODO.md — seven-deadly-sins-arpg
 
 ## Active
-- [ ] 暂无；下一轮从 run challenge / sidebar 响应式文案相邻区域继续选取具体守卫项
+- [ ] ultra-compact 单行 completed challenge 摘要在上游标签去重后回退 `未知挑战` 且 `target<=0` 时补充回归守卫与文档说明，确认继续沿用 `挑战完成 · +90金 -> 挑战完成 -> 完成` 同一 completed-state 回退链
 
 ## Completed
+- [x] README / 操作指引同步 compact 双行 challenge 摘要在上游标签去重后回退 `未知挑战` 且 completed 数据 `target<=0` 时继续沿用 `未知挑战 · +90金` / `未知挑战` 这组 completed detail fallback，不误退回 `进行中`（完成：2026-03-09 16:09 +08）
+- [x] compact 双行 challenge 摘要在上游标签去重后回退 `未知挑战` 且 completed 数据 `target<=0` 时补充回归守卫，确认继续沿用 `本局挑战：已完成` / `未知挑战 · +90金` / `未知挑战`，不误退回 `进行中`（完成：2026-03-09 16:09 +08）
+- [x] README / 操作指引同步 compact 双行 challenge 摘要在上游标签去重后回退 `未知挑战` 且 in-progress 数据 `target<=0` 时继续沿用 `未知挑战 · +90金` / `未知挑战` 这组 detail fallback，不回填 `0/0` / `进度:0/0`（完成：2026-03-09 16:09 +08）
+- [x] compact 双行 challenge 摘要在上游标签去重后回退 `未知挑战` 且 in-progress 数据 `target<=0` 时补充回归守卫，确认继续沿用 `本局挑战：进行中` / `未知挑战 · +90金` / `未知挑战`，不回填 `0/0`（完成：2026-03-09 16:09 +08）
 - [x] README / 操作指引同步 completed run challenge 在 `target<=0` 的异常数据下 regular 第三行改走 completed-state 回退，不再出现 `进行中`（完成：2026-03-09 15:31 SGT）
 - [x] regular 三行 completed challenge 摘要在 `target<=0` 且上游标签回退 `未知挑战` 时补充回归守卫，确认正文继续保留 `未知挑战`，不误退回 `进行中`（完成：2026-03-09 15:31 SGT）
 - [x] regular 三行 completed challenge 摘要在 `target<=0` 的异常数据下 suppress misleading in-progress copy，第三行改为沿用 `已完成  奖励:+90金 -> 已完成` / `已完成` 这组 completed-state 回退（完成：2026-03-09 15:31 SGT）
