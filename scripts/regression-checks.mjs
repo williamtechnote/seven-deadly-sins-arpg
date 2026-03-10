@@ -2708,6 +2708,16 @@ function testRunChallengeSidebarLines() {
         'run challenge safe sidebar-label helper should strip nested full-width square and ASCII square mixed decorators before rendering the body label'
     );
     assert.equal(
+        getRunChallengeSafeSidebarLabel('［｛挑战｝］击败 30 个敌人'),
+        '击败 30 个敌人',
+        'run challenge safe sidebar-label helper should strip nested full-width square and full-width curly mixed decorators before rendering the body label'
+    );
+    assert.equal(
+        getRunChallengeSafeSidebarLabel('［（挑战）］击败 30 个敌人'),
+        '击败 30 个敌人',
+        'run challenge safe sidebar-label helper should strip nested full-width square and parenthesis mixed decorators before rendering the body label'
+    );
+    assert.equal(
         getRunChallengeSafeSidebarLabel('［＜挑战＞］击败 30 个敌人'),
         '击败 30 个敌人',
         'run challenge safe sidebar-label helper should strip nested full-width square and angle mixed decorators before rendering the body label'
@@ -6316,6 +6326,16 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /`［｛挑战｝］` \/ `｛［本局挑战］｝`/,
+        'README should explicitly document nested full-width square and full-width curly mixed challenge decorators alongside the existing nested mixed examples'
+    );
+    assert.match(
+        source,
+        /`［（挑战）］` \/ `（［本局挑战］）`/,
+        'README should explicitly document nested full-width square and parenthesis mixed challenge decorators alongside the existing nested mixed examples'
+    );
+    assert.match(
+        source,
         /`［＜挑战＞］` \/ `＜［本局挑战］＞`/,
         'README should explicitly document nested full-width square and angle mixed challenge decorators alongside the existing nested mixed examples'
     );
@@ -6847,6 +6867,16 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /“［\[挑战\]］”\/“\[［本局挑战］\]”/,
         'help overlay should explicitly document nested full-width square and ASCII square mixed challenge decorators alongside the existing nested mixed examples'
+    );
+    assert.match(
+        source,
+        /“［｛挑战｝］”\/“｛［本局挑战］｝”/,
+        'help overlay should explicitly document nested full-width square and full-width curly mixed challenge decorators alongside the existing nested mixed examples'
+    );
+    assert.match(
+        source,
+        /“［（挑战）］”\/“（［本局挑战］）”/,
+        'help overlay should explicitly document nested full-width square and parenthesis mixed challenge decorators alongside the existing nested mixed examples'
     );
     assert.match(
         source,
