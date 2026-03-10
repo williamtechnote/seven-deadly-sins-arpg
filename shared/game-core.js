@@ -613,8 +613,8 @@
         ['“', '”'],
         ['‘', '’']
     ];
-    const RUN_CHALLENGE_LEADING_SEPARATOR_RE = /^(?:(?:[:：\-—–·•|/｜／])+[\s]*)+/u;
-    const RUN_CHALLENGE_TRAILING_SEPARATOR_RE = /[：:\-—–·•|/｜／]+$/gu;
+    const RUN_CHALLENGE_LEADING_SEPARATOR_RE = /^(?:(?:[:：;,；，、\-—–·•|/｜／])+[\s]*)+/u;
+    const RUN_CHALLENGE_TRAILING_SEPARATOR_RE = /[：:;,；,，、\-—–·•|/｜／]+$/gu;
 
     function stripRunChallengeSingleDecoratorPrefix(label) {
         if (typeof label !== 'string' || !label) return '';

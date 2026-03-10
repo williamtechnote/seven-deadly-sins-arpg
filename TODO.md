@@ -3,6 +3,9 @@
 ## Active
 
 ## Completed
+- [x] README / 操作指引 / 回归检查同步 wrapper 内部 comma / semicolon separators（如 `、` / `，` / `;` / `；`）也会参与 challenge decorator payload 清洗，避免文档与回归样例落后于 shared helper（完成：2026-03-10 13:14 +08）
+- [x] run challenge decorator payload 清洗兼容 wrapper 内部 leading/trailing semicolon separators（如 `【；挑战】击败 30 个敌人` / `《本局挑战;》挑战：本局`），继续复用 token 规范化与 `未知挑战` 回退链，避免 semicolon separator 阻断 decorator 剥离（完成：2026-03-10 13:14 +08）
+- [x] run challenge decorator payload 清洗兼容 wrapper 内部 leading/trailing comma separators（如 `【、挑战】击败 30 个敌人` / `《本局挑战，》挑战：本局`），继续复用 token 规范化与 `未知挑战` 回退链，避免 comma separator 阻断 decorator 剥离（完成：2026-03-10 13:14 +08）
 - [x] README / 操作指引 / 回归检查同步 wrapper 内部 full-width separator（如 `｜` / `／`）也会参与 challenge decorator payload 清洗，避免文档与回归样例继续只覆盖半角 separator（完成：2026-03-10 12:01 +08）
 - [x] run challenge decorator payload 清洗兼容 wrapper 内部 full-width trailing separators（如 `【挑战｜】击败 30 个敌人` / `《本局挑战／》挑战：本局`），继续复用同一 token 规范化与 `未知挑战` 回退链，避免 wrapper payload 尾部脏分隔符阻断 decorator 剥离（完成：2026-03-10 12:01 +08）
 - [x] run challenge decorator payload 清洗兼容 wrapper 内部 full-width leading separators（如 `【｜：挑战】击败 30 个敌人` / `《／本局挑战》挑战：本局`），继续复用同一 token 规范化与 `未知挑战` 回退链，避免 full-width separator 再次漏过 decorator token 判断（完成：2026-03-10 12:01 +08）
