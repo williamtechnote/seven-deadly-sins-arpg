@@ -2851,6 +2851,50 @@ function testRunChallengeSidebarLines() {
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
+            label: '【~挑战】击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, { compact: false }),
+        ['本局挑战', '击败 30 个敌人', '进度:12/30  奖励:+90金'],
+        'full in-progress challenge summaries should strip tilde separators inside decorator payloads before rendering the regular body label'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '《本局挑战～》挑战：本局',
+            progress: 12,
+            target: 0,
+            rewardGold: 90,
+            completed: false
+        }, { compact: true }),
+        ['本局挑战：进行中', '未知挑战 · +90金'],
+        'compact in-progress invalid-target summaries should still fall back to 未知挑战 when tilde separators exhaust the decorator payload label'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '【…挑战】击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, { compact: false }),
+        ['本局挑战', '击败 30 个敌人', '进度:12/30  奖励:+90金'],
+        'full in-progress challenge summaries should strip ellipsis separators inside decorator payloads before rendering the regular body label'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '《本局挑战⋯》挑战：本局',
+            progress: 12,
+            target: 0,
+            rewardGold: 90,
+            completed: false
+        }, { compact: true }),
+        ['本局挑战：进行中', '未知挑战 · +90金'],
+        'compact in-progress invalid-target summaries should still fall back to 未知挑战 when ellipsis separators exhaust the decorator payload label'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
             label: '本局挑战：击败　　30   个敌人',
             progress: 12,
             target: 30,
