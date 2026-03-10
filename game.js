@@ -1716,13 +1716,14 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
         if (this.attackCooldown > 0) this.attackCooldown -= delta;
         const moveScale = this._updateStatusEffects(time);
 
+        if (this.state === 'dead') return;
+
         const dist = playerSprite
             ? Phaser.Math.Distance.Between(this.x, this.y, playerSprite.x, playerSprite.y)
             : Infinity;
 
         const cooldownReady = this.attackCooldown <= 0;
 
-        // State transitions
         if (dist < this.attackRange && cooldownReady) {
             this.state = 'attack';
         } else if (dist < this.detectionRange) {
@@ -1750,23 +1751,24 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
             this.attackCooldown = this.attackCooldownMs;
         }
 
-        // Update HP bar position and fill
         this.hpBarBg.setPosition(this.x, this.y);
         this.hpBarFill.setPosition(this.x, this.y);
         const hpRatio = Math.max(0, Math.min(1, this.hp / this.maxHp));
         this.hpBarFill.clear();
         this.hpBarFill.fillStyle(0xE74C3C, 1);
         this.hpBarFill.fillRect(-15, -28, 30 * hpRatio, 4);
-        this.statusAura.setPosition(this.x, this.y);
+        if (this.statusAura) this.statusAura.setPosition(this.x, this.y);
 
         return this.state === 'attack';
     }
 
     _updateStatusEffects(now) {
         let moveMult = 1;
+        if (!this.statusAura) return moveMult;
         this.statusAura.clear();
         let ringIndex = 0;
         Object.entries(this.activeStatusEffects).forEach(([statusKey, state]) => {
+            if (!this.isAlive) return;
             if (!state || now >= state.expiresAt) {
                 delete this.activeStatusEffects[statusKey];
                 return;
@@ -1782,13 +1784,16 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
                     const drops = this.takeDamage(tickDamage, { silent: true, noFlash: true });
                     if (drops) this._statusDrops = drops;
                 }
+                if (!this.isAlive) return;
                 state.nextTickAt = now + def.tickMs;
             }
             if (def.speedMultiplier && def.speedMultiplier > 0) {
                 moveMult = Math.min(moveMult, def.speedMultiplier);
             }
-            this.statusAura.lineStyle(2, getStatusColor(statusKey), 0.7);
-            this.statusAura.strokeCircle(0, -6, 18 + ringIndex * 4);
+            if (this.statusAura) {
+                this.statusAura.lineStyle(2, getStatusColor(statusKey), 0.7);
+                this.statusAura.strokeCircle(0, -6, 18 + ringIndex * 4);
+            }
             ringIndex++;
         });
         return Math.max(0.45, moveMult);
@@ -1839,6 +1844,11 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
             this.setVisible(false);
             this.hpBarBg.destroy();
             this.hpBarFill.destroy();
+            if (this.statusAura) {
+                this.statusAura.clear();
+                this.statusAura.destroy();
+                this.statusAura = null;
+            }
             this.isAlive = false;
 
             const drops = { gold: 0, items: [] };
@@ -2214,6 +2224,7 @@ class HubScene extends Phaser.Scene {
             }
             return true;
         } catch (err) {
+            console.error('[HubScene] Portal transition failed:', err);
             this._portalTransitioning = false;
             if (!this.scene.isActive('UIScene')) this.scene.launch('UIScene');
             return false;
@@ -2618,6 +2629,10 @@ class LevelScene extends Phaser.Scene {
     _getLevelTextMeasureNode(styleKey) {
         if (!this._levelTextMeasureNodes) {
             this._levelTextMeasureNodes = {};
+        }
+        const cached = this._levelTextMeasureNodes[styleKey];
+        if (cached && !cached.active) {
+            this._levelTextMeasureNodes[styleKey] = null;
         }
         if (!this._levelTextMeasureNodes[styleKey]) {
             let style = { fontSize: '14px', fill: '#ffffff' };
@@ -3937,6 +3952,9 @@ class BossScene extends Phaser.Scene {
     }
 
     create(data) {
+        this._bossHudMeasureNodes = {};
+        this._bossHudTextWidthCache = new Map();
+
         const bossKey = data.bossKey || 'wrath';
         const bossConfig = BOSSES[bossKey];
         if (!bossConfig) throw new Error('Unknown boss: ' + bossKey);
@@ -4083,6 +4101,10 @@ class BossScene extends Phaser.Scene {
     _getBossHudMeasureNode(styleKey) {
         if (!this._bossHudMeasureNodes) {
             this._bossHudMeasureNodes = {};
+        }
+        const cached = this._bossHudMeasureNodes[styleKey];
+        if (cached && !cached.active) {
+            this._bossHudMeasureNodes[styleKey] = null;
         }
         if (!this._bossHudMeasureNodes[styleKey]) {
             let style = { fontSize: '11px', fill: '#fff6da' };
@@ -5274,6 +5296,9 @@ class UIScene extends Phaser.Scene {
     }
 
     create() {
+        this._hudSidebarMeasureNodes = {};
+        this._hudSidebarTextWidthCache = new Map();
+
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
         this._hudWidth = width;
@@ -5458,6 +5483,10 @@ class UIScene extends Phaser.Scene {
     _getHudSidebarMeasureNode(styleKey) {
         if (!this._hudSidebarMeasureNodes) {
             this._hudSidebarMeasureNodes = {};
+        }
+        const cached = this._hudSidebarMeasureNodes[styleKey];
+        if (cached && !cached.active) {
+            this._hudSidebarMeasureNodes[styleKey] = null;
         }
         if (!this._hudSidebarMeasureNodes[styleKey]) {
             let style = {
