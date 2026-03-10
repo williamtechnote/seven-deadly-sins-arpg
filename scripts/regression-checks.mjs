@@ -5070,78 +5070,13 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /若上游标签重复混入 `本局` \/ `挑战：` 这类前缀，也会继续循环去重直到收敛成真正的目标文案；若上游标签额外套了 `【本局挑战】` \/ `\[挑战\]` 这类 bracketed decorator 前缀，也会先剥离再继续做同一轮 `本局` \/ `挑战` 去重；若上游标签额外套了 `\{挑战\}` \/ `｛本局挑战｝` 这类 curly-brace decorator 前缀，也会先剥离再继续做同一轮 `本局` \/ `挑战` 去重；若上游标签额外套了 `<挑战>` \/ `＜本局挑战＞` 这类 angle-bracket decorator 前缀，也会先剥离再继续做同一轮 `本局` \/ `挑战` 去重；若上游标签额外套了 `《挑战》` \/ `〈本局挑战〉` 这类 book-title decorator 前缀，也会先剥离再继续做同一轮 `本局` \/ `挑战` 去重；(?:若上游标签额外套了 `「挑战」` \/ `『本局挑战』` 这类 quoted decorator 前缀，也会先剥离再继续做同一轮 `本局` \/ `挑战` 去重；)?(?:若上游标签额外套了 `“挑战”` \/ `‘本局挑战’` 这类 western smart-quote decorator 前缀，也会先剥离再继续做同一轮 `本局` \/ `挑战` 去重；)?(?:若上游标签额外套了 `〔挑战〕` \/ `〖本局挑战〗` 这类 shell\/lenticular decorator 前缀，也会先剥离再继续做同一轮 `本局` \/ `挑战` 去重；)?(?:若上游标签额外套了 `【「挑战」】` \/ `《〔本局挑战〕》` 这类 nested mixed decorator wrappers，也会继续逐层剥离再做同一轮 `本局` \/ `挑战` 去重；)?(?:若 wrapper 内部 token 前面还混入 `：挑战` \/ `-本局挑战` 这类 leading separator 脏输入，也会先清掉 wrapper 内部前导分隔符，再继续做同一轮 `本局` \/ `挑战` 去重；)?(?:若 wrapper 内部 token 首尾或连缀里混入 `｜挑战` \/ `／本局挑战` \/ `挑战｜` \/ `本局挑战／` 这类 full-width separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮 `本局` \/ `挑战` 去重；)?(?:若 wrapper 内部 token 首尾或连缀里混入 `、挑战` \/ `，本局挑战` \/ `挑战；` \/ `本局挑战;` 这类 comma \/ semicolon separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮 `本局` \/ `挑战` 去重；)?(?:若 wrapper 内部 token 首尾或连缀里混入 `。挑战` \/ `!本局挑战` \/ `挑战？` \/ `本局挑战！` 这类 sentence punctuation separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮 `本局` \/ `挑战` 去重；)?若 standalone `本局：` \/ `本局 :` 这类脏前缀先留下冒号，也会继续一并吃掉，避免卡住后续 `挑战` 去重；若前缀去重后正文前面还残留 standalone `：` \/ `-` 这类 orphan separators，也会继续清掉，避免 regular \/ compact 正文留下脏分隔符；若去重后已无剩余正文，则 regular \/ compact 摘要会统一回退为 `未知挑战`/,
-        'README should document the repeated mixed-prefix cleanup and 未知挑战 fallback for challenge labels'
+        /若上游标签重复混入 `本局` \/ `挑战：` 这类 plain-text 前缀，会继续循环去重直到收敛成真正目标；各类 decorator wrapper（如 `【本局挑战】` \/ `\[挑战\]`、`\{挑战\}` \/ `｛本局挑战｝`、`<挑战>` \/ `＜本局挑战＞`、`《挑战》` \/ `〈本局挑战〉`、`「挑战」` \/ `『本局挑战』`、`“挑战”` \/ `‘本局挑战’`、`〔挑战〕` \/ `〖本局挑战〗`，以及 `【「挑战」】` \/ `《〔本局挑战〕》` 这类 nested mixed）也会先逐层剥离，再继续做同一轮 `本局` \/ `挑战` 去重/,
+        'README should document grouped challenge decorator cleanup families before repeated plain-text prefix dedupe'
     );
     assert.match(
         source,
-        /若上游标签额外套了 `\{挑战\}` \/ `｛本局挑战｝` 这类 curly-brace decorator 前缀，也会先剥离再继续做同一轮 `本局` \/ `挑战` 去重/,
-        'README should document the curly-brace decorator cleanup path for challenge labels'
-    );
-    assert.match(
-        source,
-        /若上游标签额外套了 `<挑战>` \/ `＜本局挑战＞` 这类 angle-bracket decorator 前缀，也会先剥离再继续做同一轮 `本局` \/ `挑战` 去重/,
-        'README should document the angle-bracket decorator cleanup path for challenge labels'
-    );
-    assert.match(
-        source,
-        /若上游标签额外套了 `《挑战》` \/ `〈本局挑战〉` 这类 book-title decorator 前缀，也会先剥离再继续做同一轮 `本局` \/ `挑战` 去重/,
-        'README should document the book-title decorator cleanup path for challenge labels'
-    );
-    assert.match(
-        source,
-        /若上游标签额外套了 `〔挑战〕` \/ `〖本局挑战〗` 这类 shell\/lenticular decorator 前缀，也会先剥离再继续做同一轮 `本局` \/ `挑战` 去重/,
-        'README should document the shell/lenticular decorator cleanup path for challenge labels'
-    );
-    assert.match(
-        source,
-        /若上游标签额外套了 `“挑战”` \/ `‘本局挑战’` 这类 western smart-quote decorator 前缀，也会先剥离再继续做同一轮 `本局` \/ `挑战` 去重/,
-        'README should document the western smart-quote decorator cleanup path for challenge labels'
-    );
-    assert.match(
-        source,
-        /若上游标签额外套了 `「挑战」` \/ `『本局挑战』` 这类 quoted decorator 前缀，也会先剥离再继续做同一轮 `本局` \/ `挑战` 去重/,
-        'README should document the quoted decorator cleanup path for challenge labels'
-    );
-    assert.match(
-        source,
-        /若上游标签额外套了 `【「挑战」】` \/ `《〔本局挑战〕》` 这类 nested mixed decorator wrappers，也会继续逐层剥离再做同一轮 `本局` \/ `挑战` 去重/,
-        'README should document the nested mixed decorator cleanup path for challenge labels'
-    );
-    assert.match(
-        source,
-        /若 wrapper 内部 token 前面还混入 `：挑战` \/ `-本局挑战` 这类 leading separator 脏输入，也会先清掉 wrapper 内部前导分隔符，再继续做同一轮 `本局` \/ `挑战` 去重/,
-        'README should document wrapper-internal leading separator cleanup for challenge decorator payloads'
-    );
-    assert.match(
-        source,
-        /若 wrapper 内部 token 首尾或连缀里混入 `｜挑战` \/ `／本局挑战` \/ `挑战｜` \/ `本局挑战／` 这类 full-width separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮 `本局` \/ `挑战` 去重/,
-        'README should document wrapper-internal full-width separator cleanup for challenge decorator payloads'
-    );
-    assert.match(
-        source,
-        /若 wrapper 内部 token 首尾或连缀里混入 `、挑战` \/ `，本局挑战` \/ `挑战；` \/ `本局挑战;` 这类 comma \/ semicolon separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮 `本局` \/ `挑战` 去重；若 wrapper 内部 token 首尾或连缀里混入 `。挑战` \/ `!本局挑战` \/ `挑战？` \/ `本局挑战！` 这类 sentence punctuation separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮 `本局` \/ `挑战` 去重/,
-        'README should document wrapper-internal comma and semicolon separator cleanup for challenge decorator payloads'
-    );
-    assert.match(
-        source,
-        /若 wrapper 内部 token 首尾或连缀里混入 `\\\\挑战` \/ `本局挑战\\\\` 这类 backslash separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮 `本局` \/ `挑战` 去重/,
-        'README should document wrapper-internal backslash separator cleanup for challenge decorator payloads'
-    );
-    assert.match(
-        source,
-        /若 wrapper 内部 token 首尾或连缀里混入 `·挑战` \/ `•本局挑战` \/ `挑战·` \/ `本局挑战•` 这类 middle-dot \/ bullet separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮 `本局` \/ `挑战` 去重/,
-        'README should document wrapper-internal middle-dot and bullet separator cleanup for challenge decorator payloads'
-    );
-    assert.match(
-        source,
-        /若 wrapper 内部 token 首尾或连缀里混入 `\|挑战` \/ `\/本局挑战` \/ `挑战\|` \/ `本局挑战\/` 这类 ASCII pipe \/ slash separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮 `本局` \/ `挑战` 去重/,
-        'README should document wrapper-internal ASCII pipe and slash separator cleanup for challenge decorator payloads'
-    );
-    assert.match(
-        source,
-        /若 wrapper 内部 token 首尾或连缀里混入 `—挑战` \/ `–本局挑战` \/ `挑战—` \/ `本局挑战–` 这类 em dash \/ en dash separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮 `本局` \/ `挑战` 去重/,
-        'README should document wrapper-internal em dash and en dash separator cleanup for challenge decorator payloads'
+        /wrapper 内部的 separator 家族现在按分组统一做 token 规范化：leading \/ orphan separators（如 `：挑战` \/ `-本局挑战` \/ standalone `：` \/ `-`）、full-width pipe \/ slash（`｜` \/ `／`）、ASCII pipe \/ slash \/ backslash（`\|` \/ `\/` \/ `\\\\`）、middle-dot \/ bullet（`·` \/ `•`）、comma \/ semicolon \/ sentence punctuation（`、` \/ `，` \/ `；` \/ `。` \/ `!` \/ `\?` \/ `！` \/ `？`）、tilde \/ ellipsis（`~` \/ `～` \/ `…` \/ `⋯`）、dash（`—` \/ `–`）；这些脏分隔符都会先被清掉，再继续做同一轮 `本局` \/ `挑战` 去重；若去重后已无剩余正文，则 regular \/ compact 摘要统一回退为 `未知挑战`/,
+        'README should document grouped wrapper-internal separator cleanup families and the shared 未知挑战 fallback'
     );
     assert.match(
         source,
@@ -5434,68 +5369,13 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /若上游标签重复混入“本局”\/“挑战：”这类前缀，也会继续循环去重直到收敛成真正的目标文案；若上游标签额外套了“【本局挑战】”\/“\[挑战\]”这类 bracketed decorator 前缀，也会先剥离再继续做同一轮“本局”\/“挑战”去重；若上游标签额外套了“\{挑战\}”\/“｛本局挑战｝”这类 curly-brace decorator 前缀，也会先剥离再继续做同一轮“本局”\/“挑战”去重；若上游标签额外套了“<挑战>”\/“＜本局挑战＞”这类 angle-bracket decorator 前缀，也会先剥离再继续做同一轮“本局”\/“挑战”去重；若上游标签额外套了“《挑战》”\/“〈本局挑战〉”这类 book-title decorator 前缀，也会先剥离再继续做同一轮“本局”\/“挑战”去重；(?:若上游标签额外套了“「挑战」”\/“『本局挑战』”这类 quoted decorator 前缀，也会先剥离再继续做同一轮“本局”\/“挑战”去重；)?(?:若上游标签额外套了“〔挑战〕”\/“〖本局挑战〗”这类 shell\/lenticular decorator 前缀，也会先剥离再继续做同一轮“本局”\/“挑战”去重；)?(?:若 wrapper 内部 token 前面还混入“：挑战”\/“-本局挑战”这类 leading separator 脏输入，也会先清掉 wrapper 内部前导分隔符，再继续做同一轮“本局”\/“挑战”去重；)?(?:若 wrapper 内部 token 首尾或连缀里混入“｜挑战”\/“／本局挑战”\/“挑战｜”\/“本局挑战／”这类 full-width separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮“本局”\/“挑战”去重；)?(?:若 wrapper 内部 token 首尾或连缀里混入“、挑战”\/“，本局挑战”\/“挑战；”\/“本局挑战;”这类 comma \/ semicolon separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮“本局”\/“挑战”去重；)?(?:若 wrapper 内部 token 首尾或连缀里混入“。挑战”\/“!本局挑战”\/“挑战？”\/“本局挑战！”这类 sentence punctuation separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮“本局”\/“挑战”去重；)?若 standalone “本局：”\/“本局 :”这类脏前缀先留下冒号，也会继续一并吃掉，避免卡住后续“挑战”去重；若前缀去重后正文前面还残留 standalone “：”\/“-”这类 orphan separators，也会继续清掉，避免 regular \/ compact 正文留下脏分隔符；若去重后已无剩余正文，则 regular \/ compact 摘要会统一回退为“未知挑战”/,
-        'help overlay should document the repeated mixed-prefix cleanup and 未知挑战 fallback for challenge labels'
+        /若上游标签重复混入“本局”\/“挑战：”这类 plain-text 前缀，会继续循环去重直到收敛成真正目标；各类 decorator wrapper（如“【本局挑战】”\/“\[挑战\]”、“\{挑战\}”\/“｛本局挑战｝”、“<挑战>”\/“＜本局挑战＞”、“《挑战》”\/“〈本局挑战〉”、“「挑战」”\/“『本局挑战』”、““挑战””\/“‘本局挑战’”、“〔挑战〕”\/“〖本局挑战〗”，以及“【「挑战」】”\/“《〔本局挑战〕》”这类 nested mixed）也会先逐层剥离，再继续做同一轮“本局”\/“挑战”去重/,
+        'help overlay should document grouped challenge decorator cleanup families before repeated plain-text prefix dedupe'
     );
     assert.match(
         source,
-        /若上游标签额外套了“\{挑战\}”\/“｛本局挑战｝”这类 curly-brace decorator 前缀，也会先剥离再继续做同一轮“本局”\/“挑战”去重/,
-        'help overlay should document the curly-brace decorator cleanup path for challenge labels'
-    );
-    assert.match(
-        source,
-        /若上游标签额外套了“<挑战>”\/“＜本局挑战＞”这类 angle-bracket decorator 前缀，也会先剥离再继续做同一轮“本局”\/“挑战”去重/,
-        'help overlay should document the angle-bracket decorator cleanup path for challenge labels'
-    );
-    assert.match(
-        source,
-        /若上游标签额外套了“《挑战》”\/“〈本局挑战〉”这类 book-title decorator 前缀，也会先剥离再继续做同一轮“本局”\/“挑战”去重/,
-        'help overlay should document the book-title decorator cleanup path for challenge labels'
-    );
-    assert.match(
-        source,
-        /若上游标签额外套了“〔挑战〕”\/“〖本局挑战〗”这类 shell\/lenticular decorator 前缀，也会先剥离再继续做同一轮“本局”\/“挑战”去重/,
-        'help overlay should document the shell/lenticular decorator cleanup path for challenge labels'
-    );
-    assert.match(
-        source,
-        /若 wrapper 内部 token 前面还混入“：挑战”\/“-本局挑战”这类 leading separator 脏输入，也会先清掉 wrapper 内部前导分隔符，再继续做同一轮“本局”\/“挑战”去重/,
-        'help overlay should document wrapper-internal leading separator cleanup for challenge decorator payloads'
-    );
-    assert.match(
-        source,
-        /若 wrapper 内部 token 首尾或连缀里混入“｜挑战”\/“／本局挑战”\/“挑战｜”\/“本局挑战／”这类 full-width separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮“本局”\/“挑战”去重/,
-        'help overlay should document wrapper-internal full-width separator cleanup for challenge decorator payloads'
-    );
-    assert.match(
-        source,
-        /若 wrapper 内部 token 首尾或连缀里混入“、挑战”\/“，本局挑战”\/“挑战；”\/“本局挑战;”这类 comma \/ semicolon separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮“本局”\/“挑战”去重；若 wrapper 内部 token 首尾或连缀里混入“。挑战”\/“!本局挑战”\/“挑战？”\/“本局挑战！”这类 sentence punctuation separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮“本局”\/“挑战”去重/,
-        'help overlay should document wrapper-internal comma and semicolon separator cleanup for challenge decorator payloads'
-    );
-    assert.match(
-        source,
-        /若 wrapper 内部 token 首尾或连缀里混入“\\\\挑战”\/“本局挑战\\\\”这类 backslash separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮“本局”\/“挑战”去重/,
-        'help overlay should document wrapper-internal backslash separator cleanup for challenge decorator payloads'
-    );
-    assert.match(
-        source,
-        /若 wrapper 内部 token 首尾或连缀里混入“·挑战”\/“•本局挑战”\/“挑战·”\/“本局挑战•”这类 middle-dot \/ bullet separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮“本局”\/“挑战”去重/,
-        'help overlay should document wrapper-internal middle-dot and bullet separator cleanup for challenge decorator payloads'
-    );
-    assert.match(
-        source,
-        /若 wrapper 内部 token 首尾或连缀里混入“\|挑战”\/“\/本局挑战”\/“挑战\|”\/“本局挑战\/”这类 ASCII pipe \/ slash separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮“本局”\/“挑战”去重/,
-        'help overlay should document wrapper-internal ASCII pipe and slash separator cleanup for challenge decorator payloads'
-    );
-    assert.match(
-        source,
-        /若 wrapper 内部 token 首尾或连缀里混入“—挑战”\/“–本局挑战”\/“挑战—”\/“本局挑战–”这类 em dash \/ en dash separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮“本局”\/“挑战”去重/,
-        'help overlay should document wrapper-internal em dash and en dash separator cleanup for challenge decorator payloads'
-    );
-    assert.match(
-        source,
-        /若上游标签额外套了“「挑战」”\/“『本局挑战』”这类 quoted decorator 前缀，也会先剥离再继续做同一轮“本局”\/“挑战”去重/,
-        'help overlay should document the quoted decorator cleanup path for challenge labels'
+        /wrapper 内部的 separator 家族现在按分组统一做 token 规范化：leading \/ orphan separators（如“：挑战”\/“-本局挑战”\/standalone “：”\/“-”）、full-width pipe \/ slash（“｜”\/“／”）、ASCII pipe \/ slash \/ backslash（“\|”\/“\/”\/“\\\\\\\\”）、middle-dot \/ bullet（“·”\/“•”）、comma \/ semicolon \/ sentence punctuation（“、”\/“，”\/“；”\/“。”\/“!”\/“\?”\/“！”\/“？”）、tilde \/ ellipsis（“~”\/“～”\/“…”\/“⋯”）、dash（“—”\/“–”）；这些脏分隔符都会先被清掉，再继续做同一轮“本局”\/“挑战”去重；若去重后已无剩余正文，则 regular \/ compact 摘要统一回退为“未知挑战”/,
+        'help overlay should document grouped wrapper-internal separator cleanup families and the shared 未知挑战 fallback'
     );
     assert.match(
         source,

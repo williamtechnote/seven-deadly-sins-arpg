@@ -1,9 +1,10 @@
 # TODO.md — seven-deadly-sins-arpg
 
 ## Active
-- [ ] 收束 challenge separator 家族在 README / 操作指引里的长串说明，整理成更易维护的分组表述并保留现有回归断言覆盖
 
 ## Completed
+- [x] README 收束 challenge separator 家族的长串说明为更易维护的分组表述，并保留回归断言覆盖（完成：2026-03-10 19:36 +08）
+- [x] 操作指引同步 challenge separator 家族的分组表述，并让 README / 操作指引回归断言改为校验分组文案而非逐家族长串逐句硬编码（完成：2026-03-10 19:36 +08）
 - [x] 回归检查覆盖 wrapper 内部 em dash / en dash separators（如 `【—挑战】击败 30 个敌人` / `《本局挑战–》挑战：本局`）仍会沿用同一条 decorator payload 清洗与 `未知挑战` 回退链（完成：2026-03-10 19:17 +08）
 - [x] README / 操作指引同步 wrapper 内部 em dash / en dash separators（如 `—挑战` / `–本局挑战` / `挑战—` / `本局挑战–`）也会参与 challenge decorator payload 清洗，补齐剩余 dash-style separator 说明（完成：2026-03-10 19:17 +08）
 - [x] README / 操作指引 / 回归检查同步 wrapper 内部 ASCII pipe / slash separators（如 `|挑战` / `/本局挑战` / `挑战|` / `本局挑战/`）也会参与 challenge decorator payload 清洗，避免文档与回归样例继续落后于 shared helper（完成：2026-03-10 18:04 +08）
