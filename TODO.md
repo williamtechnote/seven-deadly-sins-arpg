@@ -1,8 +1,11 @@
 # TODO.md — seven-deadly-sins-arpg
 
 ## Active
+- [ ] README / 操作指引 / 回归检查同步 wrapper 内部 em dash / en dash separators（如 `—挑战` / `–本局挑战` / `挑战—` / `本局挑战–`）也会参与 challenge decorator payload 清洗，补齐剩余 dash-style separator 文档与回归覆盖
 
 ## Completed
+- [x] README / 操作指引 / 回归检查同步 wrapper 内部 ASCII pipe / slash separators（如 `|挑战` / `/本局挑战` / `挑战|` / `本局挑战/`）也会参与 challenge decorator payload 清洗，避免文档与回归样例继续落后于 shared helper（完成：2026-03-10 18:04 +08）
+- [x] README / 操作指引 / 回归检查同步 wrapper 内部 middle-dot / bullet separators（如 `·挑战` / `•本局挑战` / `挑战·` / `本局挑战•`）也会参与 challenge decorator payload 清洗，避免 dot-style 分隔符路径继续缺少显式守卫（完成：2026-03-10 18:04 +08）
 - [x] README / 操作指引 / 回归检查同步 wrapper 内部 backslash separators（如 `\\挑战` / `本局挑战\\`）也会参与 challenge decorator payload 清洗，避免文档与回归样例落后于 shared helper（完成：2026-03-10 16:48 +08）
 - [x] run challenge decorator payload 清洗兼容 wrapper 内部 leading/trailing backslash separators（如 `【\\挑战】击败 30 个敌人` / `《本局挑战\\》挑战：本局`），继续复用 token 规范化与 `未知挑战` 回退链，避免转义斜杠型脏分隔符阻断 decorator 剥离（完成：2026-03-10 16:48 +08）
 - [x] README 同步 challenge decorator payload 新增兼容 wrapper 内部 tilde / ellipsis separators（如 `【~挑战】击败 30 个敌人` / `《本局挑战⋯》挑战：本局`），补充同一条 decorator 剥离、前缀去重与 `未知挑战` 回退链说明（完成：2026-03-10 16:06 +08）
