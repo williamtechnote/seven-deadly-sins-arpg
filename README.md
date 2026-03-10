@@ -37,6 +37,7 @@ npx serve .
 > 若 wrapper 内部 token 首尾或连缀里混入 `\\挑战` / `本局挑战\\` 这类 backslash separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮 `本局` / `挑战` 去重。
 > 若 wrapper 内部 token 首尾或连缀里混入 `·挑战` / `•本局挑战` / `挑战·` / `本局挑战•` 这类 middle-dot / bullet separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮 `本局` / `挑战` 去重。
 > 若 wrapper 内部 token 首尾或连缀里混入 `|挑战` / `/本局挑战` / `挑战|` / `本局挑战/` 这类 ASCII pipe / slash separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮 `本局` / `挑战` 去重。
+> 若 wrapper 内部 token 首尾或连缀里混入 `—挑战` / `–本局挑战` / `挑战—` / `本局挑战–` 这类 em dash / en dash separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮 `本局` / `挑战` 去重。
 > Challenge 标签清洗新增兼容 wrapper payload 内的 tilde / ellipsis separators，例如 `【~挑战】击败 30 个敌人`、`《本局挑战～》挑战：本局`、`【…挑战】击败 30 个敌人` 与 `《本局挑战⋯》挑战：本局`，都会继续复用同一条 decorator 剥离、前缀去重与 `未知挑战` 回退链。
 > visible invalid-target 且 no-reward 的可见 challenge 摘要现在会显式复用同一组 in-progress 状态 helper，统一 regular / compact / ultra-compact 三档里的 `进行中` 回退链。
 > visible invalid-target 且 no-reward 的可见 challenge 摘要现在也会显式复用同一组 completed-state helper，统一 regular / compact / ultra-compact 三档里的 `已完成` / `挑战完成 -> 完成` 回退链。
