@@ -606,7 +606,7 @@
         while (strippedLabel && strippedLabel !== previousLabel) {
             previousLabel = strippedLabel;
             strippedLabel = strippedLabel.replace(
-                /^[<＜\[［【(（{｛「『《〈]\s*([^>＞\]］】)）}｝」』》〉]+?)\s*[>＞\]］】)）}｝」』》〉]\s*/u,
+                /^[<＜\[［【(（{｛「『《〈〔〖]\s*([^>＞\]］】)）}｝」』》〉〕〗]+?)\s*[>＞\]］】)）}｝」』》〉〕〗]\s*/u,
                 (match, innerText) => (isRunChallengePrefixToken(innerText) ? '' : match)
             );
             strippedLabel = normalizeInlineCopyWhitespace(
