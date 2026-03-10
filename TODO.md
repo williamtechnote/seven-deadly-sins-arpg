@@ -1,9 +1,11 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] run challenge 标签清洗兼容 nested square/parenthesis mixed decorator wrappers（如 `【（挑战）】击败 30 个敌人` / `（［本局挑战］）挑战：本局`），继续复用逐层 decorator 剥离、前缀去重与 `未知挑战` 回退链
+- [ ] run challenge 标签清洗兼容 nested square/angle mixed decorator wrappers（如 `【＜挑战＞】击败 30 个敌人` / `＜［本局挑战］＞挑战：本局`），继续复用逐层 decorator 剥离、前缀去重与 `未知挑战` 回退链
 
 ## Completed
+- [x] run challenge 标签清洗兼容 nested square/parenthesis mixed decorator wrappers（如 `【（挑战）】击败 30 个敌人` / `（［本局挑战］）挑战：本局`），继续复用逐层 decorator 剥离、前缀去重与 `未知挑战` 回退链（完成：2026-03-11 04:32 +08）
+- [x] run challenge 标签清洗兼容 nested square/curly mixed decorator wrappers（如 `【｛挑战｝】击败 30 个敌人` / `｛［本局挑战］｝挑战：本局`），继续复用逐层 decorator 剥离、前缀去重与 `未知挑战` 回退链（完成：2026-03-11 04:32 +08）
 - [x] run challenge 标签清洗兼容 round-parenthesis decorator 前缀（如 `(挑战)击败 30 个敌人` / `（本局挑战）挑战：本局`），继续复用同一条 decorator 剥离、前缀去重与 `未知挑战` 回退链（完成：2026-03-11 03:24 +08）
 - [x] run challenge 标签清洗兼容 full-width square-bracket decorator 前缀（如 `［挑战］击败 30 个敌人` / `［本局挑战］挑战：本局`），继续复用同一条 decorator 剥离、前缀去重与 `未知挑战` 回退链（完成：2026-03-11 03:24 +08）
 - [x] run challenge 标签清洗兼容 white square bracket decorator 前缀（如 `〚挑战〛击败 30 个敌人` / `〚本局挑战〛挑战：本局`），继续复用同一条 decorator 剥离、前缀去重与 `未知挑战` 回退链（完成：2026-03-11 02:17 +08）
