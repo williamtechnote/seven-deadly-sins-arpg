@@ -3,6 +3,9 @@
 ## Active
 
 ## Completed
+- [x] README / 操作指引 / 回归检查同步 wrapper 内部 sentence punctuation separators（如 `。` / `!` / `?` / `！` / `？`）也会参与 challenge decorator payload 清洗，避免文档与回归样例落后于 shared helper（完成：2026-03-10 14:31 +08）
+- [x] run challenge decorator payload 清洗兼容 wrapper 内部 leading/trailing exclamation / question separators（如 `【!挑战】击败 30 个敌人` / `《本局挑战？》挑战：本局`），继续复用 token 规范化与 `未知挑战` 回退链，避免感叹号 / 问号型脏标点阻断 decorator 剥离（完成：2026-03-10 14:31 +08）
+- [x] run challenge decorator payload 清洗兼容 wrapper 内部 leading/trailing period separators（如 `【。挑战】击败 30 个敌人` / `《本局挑战。》挑战：本局`），继续复用 token 规范化与 `未知挑战` 回退链，避免句号型脏标点阻断 decorator 剥离（完成：2026-03-10 14:31 +08）
 - [x] README / 操作指引 / 回归检查同步 wrapper 内部 comma / semicolon separators（如 `、` / `，` / `;` / `；`）也会参与 challenge decorator payload 清洗，避免文档与回归样例落后于 shared helper（完成：2026-03-10 13:14 +08）
 - [x] run challenge decorator payload 清洗兼容 wrapper 内部 leading/trailing semicolon separators（如 `【；挑战】击败 30 个敌人` / `《本局挑战;》挑战：本局`），继续复用 token 规范化与 `未知挑战` 回退链，避免 semicolon separator 阻断 decorator 剥离（完成：2026-03-10 13:14 +08）
 - [x] run challenge decorator payload 清洗兼容 wrapper 内部 leading/trailing comma separators（如 `【、挑战】击败 30 个敌人` / `《本局挑战，》挑战：本局`），继续复用 token 规范化与 `未知挑战` 回退链，避免 comma separator 阻断 decorator 剥离（完成：2026-03-10 13:14 +08）
