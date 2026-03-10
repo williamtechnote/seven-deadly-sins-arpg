@@ -594,9 +594,52 @@
         return text.replace(/[\s\u3000]+/gu, ' ').trim();
     }
 
+    const RUN_CHALLENGE_DECORATOR_PAIRS = [
+        ['<', '>'],
+        ['＜', '＞'],
+        ['[', ']'],
+        ['［', '］'],
+        ['【', '】'],
+        ['(', ')'],
+        ['（', '）'],
+        ['{', '}'],
+        ['｛', '｝'],
+        ['「', '」'],
+        ['『', '』'],
+        ['《', '》'],
+        ['〈', '〉'],
+        ['〔', '〕'],
+        ['〖', '〗'],
+        ['“', '”'],
+        ['‘', '’']
+    ];
+
+    function stripRunChallengeSingleDecoratorPrefix(label) {
+        if (typeof label !== 'string' || !label) return '';
+        for (const [open, close] of RUN_CHALLENGE_DECORATOR_PAIRS) {
+            if (!label.startsWith(open)) continue;
+            const closeIndex = label.indexOf(close, open.length);
+            if (closeIndex <= open.length) {
+                return label;
+            }
+            const innerText = label.slice(open.length, closeIndex);
+            return isRunChallengePrefixToken(innerText)
+                ? label.slice(closeIndex + close.length)
+                : label;
+        }
+        return label;
+    }
+
     function isRunChallengePrefixToken(text) {
         const normalizedToken = normalizeInlineCopyWhitespace(text).replace(/[：:\-—–·•|/]+$/gu, '');
-        return /^(?:本局\s*)?挑战$/u.test(normalizedToken) || /^本局$/u.test(normalizedToken);
+        if (/^(?:本局\s*)?挑战$/u.test(normalizedToken) || /^本局$/u.test(normalizedToken)) {
+            return true;
+        }
+        const strippedDecoratorToken = normalizeInlineCopyWhitespace(
+            stripRunChallengeSingleDecoratorPrefix(normalizedToken)
+        );
+        return strippedDecoratorToken !== normalizedToken
+            && (!strippedDecoratorToken || isRunChallengePrefixToken(strippedDecoratorToken));
     }
 
     function stripRunChallengeBracketedDecoratorPrefix(label) {
@@ -605,10 +648,7 @@
         let previousLabel = null;
         while (strippedLabel && strippedLabel !== previousLabel) {
             previousLabel = strippedLabel;
-            strippedLabel = strippedLabel.replace(
-                /^[<＜\[［【(（{｛「『《〈〔〖]\s*([^>＞\]］】)）}｝」』》〉〕〗]+?)\s*[>＞\]］】)）}｝」』》〉〕〗]\s*/u,
-                (match, innerText) => (isRunChallengePrefixToken(innerText) ? '' : match)
-            );
+            strippedLabel = stripRunChallengeSingleDecoratorPrefix(strippedLabel);
             strippedLabel = normalizeInlineCopyWhitespace(
                 strippedLabel !== previousLabel
                     ? stripRunChallengeLeadingSeparators(strippedLabel)

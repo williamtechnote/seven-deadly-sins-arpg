@@ -1,9 +1,11 @@
 # TODO.md — seven-deadly-sins-arpg
 
 ## Active
-- [ ] None currently. Next cycle should pick the next concrete challenge/sidebar cleanup regression gap.
+- [ ] run challenge decorator payload 清洗兼容 wrapper 内部 leading separator 脏输入（如 `【：挑战】击败 30 个敌人` / `〔-本局挑战〕挑战：本局`），避免 decorator token 误保留污染 summary
 
 ## Completed
+- [x] run challenge 标签清洗兼容 western smart-quote decorator 前缀（如 `“挑战”击败 30 个敌人` / `‘本局挑战’挑战：本局`），继续复用既有 plain-text 前缀去重与 `未知挑战` 回退链（完成：2026-03-10 09:27 +08）
+- [x] run challenge 标签清洗兼容 nested mixed decorator wrappers（如 `【「挑战」】击败 30 个敌人` / `《〔本局挑战〕》挑战：本局`），继续复用既有 decorator 剥离与 `未知挑战` 回退链（完成：2026-03-10 09:27 +08）
 - [x] run challenge 标签清洗兼容 shell decorator 前缀（如 `〔挑战〕击败 30 个敌人` / `〔本局挑战〕挑战：本局：击败 30 个敌人`），继续复用既有 decorator 剥离、leading separator 清洗与 plain-text 前缀去重链（完成：2026-03-10 08:01 +08）
 - [x] run challenge 标签清洗兼容 lenticular decorator 前缀（如 `〖挑战〗击败 30 个敌人` / `〖本局挑战〗挑战：本局`），继续复用既有 decorator 剥离、leading separator 清洗与 plain-text 前缀去重链（完成：2026-03-10 08:01 +08）
 - [x] run challenge 标签清洗兼容 book-title decorator 前缀（如 `《挑战》击败 30 个敌人` / `〈本局挑战〉挑战：本局`），继续复用既有 decorator 剥离、leading separator 清洗与 `未知挑战` 回退链（完成：2026-03-10 06:39 +08）
