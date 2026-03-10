@@ -613,6 +613,8 @@
         ['“', '”'],
         ['‘', '’']
     ];
+    const RUN_CHALLENGE_LEADING_SEPARATOR_RE = /^(?:(?:[:：\-—–·•|/｜／])+[\s]*)+/u;
+    const RUN_CHALLENGE_TRAILING_SEPARATOR_RE = /[：:\-—–·•|/｜／]+$/gu;
 
     function stripRunChallengeSingleDecoratorPrefix(label) {
         if (typeof label !== 'string' || !label) return '';
@@ -633,7 +635,7 @@
     function isRunChallengePrefixToken(text) {
         const normalizedToken = stripRunChallengeLeadingSeparators(
             normalizeInlineCopyWhitespace(text)
-        ).replace(/[：:\-—–·•|/]+$/gu, '');
+        ).replace(RUN_CHALLENGE_TRAILING_SEPARATOR_RE, '');
         if (/^(?:本局\s*)?挑战$/u.test(normalizedToken) || /^本局$/u.test(normalizedToken)) {
             return true;
         }
@@ -662,7 +664,7 @@
 
     function stripRunChallengeLeadingSeparators(label) {
         if (typeof label !== 'string' || !label) return '';
-        return label.replace(/^(?:(?:[:：\-—–·•|/])+[\s]*)+/u, '');
+        return label.replace(RUN_CHALLENGE_LEADING_SEPARATOR_RE, '');
     }
 
     function normalizeRunChallengeSidebarLabel(label) {

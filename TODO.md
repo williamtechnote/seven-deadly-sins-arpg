@@ -1,9 +1,11 @@
 # TODO.md — seven-deadly-sins-arpg
 
 ## Active
-- [ ] run challenge decorator payload 清洗兼容 wrapper 内部 mixed separator 连缀脏输入（如 `【：-挑战】击败 30 个敌人` / `《—：本局挑战》挑战：本局`），继续复用同一 token 规范化与 `未知挑战` 回退链，避免未来 mixed wrappers 再次泄漏 decorator token
 
 ## Completed
+- [x] README / 操作指引 / 回归检查同步 wrapper 内部 full-width separator（如 `｜` / `／`）也会参与 challenge decorator payload 清洗，避免文档与回归样例继续只覆盖半角 separator（完成：2026-03-10 12:01 +08）
+- [x] run challenge decorator payload 清洗兼容 wrapper 内部 full-width trailing separators（如 `【挑战｜】击败 30 个敌人` / `《本局挑战／》挑战：本局`），继续复用同一 token 规范化与 `未知挑战` 回退链，避免 wrapper payload 尾部脏分隔符阻断 decorator 剥离（完成：2026-03-10 12:01 +08）
+- [x] run challenge decorator payload 清洗兼容 wrapper 内部 full-width leading separators（如 `【｜：挑战】击败 30 个敌人` / `《／本局挑战》挑战：本局`），继续复用同一 token 规范化与 `未知挑战` 回退链，避免 full-width separator 再次漏过 decorator token 判断（完成：2026-03-10 12:01 +08）
 - [x] run challenge decorator payload 清洗兼容 wrapper 内部 leading colon separator 脏输入（如 `【：挑战】击败 30 个敌人` / `《：本局挑战》挑战：本局`），继续复用 decorator 剥离与 plain-text 前缀去重链，避免 decorator token 误保留污染 summary（完成：2026-03-10 10:49 +08）
 - [x] run challenge decorator payload 清洗兼容 wrapper 内部 leading dash separator 脏输入（如 `〔-本局挑战〕挑战：本局` / `〖—挑战〗击败 30 个敌人`），继续复用 decorator 剥离与 leading separator 清洗链，避免 decorator token 误保留污染 summary（完成：2026-03-10 10:49 +08）
 - [x] run challenge 标签清洗兼容 western smart-quote decorator 前缀（如 `“挑战”击败 30 个敌人` / `‘本局挑战’挑战：本局`），继续复用既有 plain-text 前缀去重与 `未知挑战` 回退链（完成：2026-03-10 09:27 +08）
