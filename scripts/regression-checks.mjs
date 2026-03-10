@@ -2348,9 +2348,19 @@ function testRunChallengeSidebarLines() {
         'run challenge safe sidebar-label helper should strip western smart-quote decorators before rendering the body label'
     );
     assert.equal(
+        getRunChallengeSafeSidebarLabel('｢挑战｣击败 30 个敌人'),
+        '击败 30 个敌人',
+        'run challenge safe sidebar-label helper should strip half-width corner-quote decorators before rendering the body label'
+    );
+    assert.equal(
         getRunChallengeSafeSidebarLabel('『本局挑战』挑战：本局'),
         '未知挑战',
         'run challenge safe sidebar-label helper should still fall back to 未知挑战 when quoted decorators plus repeated plain-text prefixes exhaust the upstream label'
+    );
+    assert.equal(
+        getRunChallengeSafeSidebarLabel('｢本局挑战｣挑战：本局'),
+        '未知挑战',
+        'run challenge safe sidebar-label helper should still fall back to 未知挑战 when half-width corner-quote decorators plus repeated plain-text prefixes exhaust the upstream label'
     );
     assert.equal(
         getRunChallengeSafeSidebarLabel('‘本局挑战’挑战：本局'),
@@ -2376,6 +2386,16 @@ function testRunChallengeSidebarLines() {
         getRunChallengeSafeSidebarLabel('〈本局挑战〉挑战：本局'),
         '未知挑战',
         'run challenge safe sidebar-label helper should still fall back to 未知挑战 when book-title decorators plus repeated plain-text prefixes exhaust the upstream label'
+    );
+    assert.equal(
+        getRunChallengeSafeSidebarLabel('﹁挑战﹂击败 30 个敌人'),
+        '击败 30 个敌人',
+        'run challenge safe sidebar-label helper should strip presentation-form quote decorators before rendering the body label'
+    );
+    assert.equal(
+        getRunChallengeSafeSidebarLabel('﹃本局挑战﹄挑战：本局'),
+        '未知挑战',
+        'run challenge safe sidebar-label helper should still fall back to 未知挑战 when presentation-form quote decorators plus repeated plain-text prefixes exhaust the upstream label'
     );
     assert.equal(
         getRunChallengeSafeSidebarLabel('〔挑战〕击败 30 个敌人'),
@@ -3072,6 +3092,28 @@ function testRunChallengeSidebarLines() {
         }, { compact: false }),
         ['本局挑战', '击败 30 个敌人', '进度:12/30  奖励:+90金'],
         'full in-progress challenge summaries should strip western smart-quote decorators before rendering the regular body label'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '｢挑战｣击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, { compact: false }),
+        ['本局挑战', '击败 30 个敌人', '进度:12/30  奖励:+90金'],
+        'full in-progress challenge summaries should strip half-width corner-quote decorators before rendering the regular body label'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '﹃本局挑战﹄挑战：本局',
+            progress: 12,
+            target: 0,
+            rewardGold: 90,
+            completed: false
+        }, { compact: true }),
+        ['本局挑战：进行中', '未知挑战 · +90金'],
+        'compact in-progress invalid-target summaries should still fall back to 未知挑战 when presentation-form quote decorators exhaust the label'
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
@@ -5100,7 +5142,7 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /若上游标签重复混入 `本局` \/ `挑战：` 这类 plain-text 前缀，会继续循环去重直到收敛成真正目标；各类 decorator wrapper（如 `【本局挑战】` \/ `\[挑战\]`、`\{挑战\}` \/ `｛本局挑战｝`、`<挑战>` \/ `＜本局挑战＞`、`《挑战》` \/ `〈本局挑战〉`、`「挑战」` \/ `『本局挑战』`、`“挑战”` \/ `‘本局挑战’`(?:、`"挑战"` \/ `'本局挑战'`)?、`〔挑战〕` \/ `〖本局挑战〗`，以及 `【「挑战」】` \/ `《〔本局挑战〕》` 这类 nested mixed）也会先逐层剥离，再继续做同一轮 `本局` \/ `挑战` 去重/,
+        /若上游标签重复混入 `本局` \/ `挑战：` 这类 plain-text 前缀，会继续循环去重直到收敛成真正目标；各类 decorator wrapper（如 `【本局挑战】` \/ `\[挑战\]`、`\{挑战\}` \/ `｛本局挑战｝`、`<挑战>` \/ `＜本局挑战＞`、`《挑战》` \/ `〈本局挑战〉`、`「挑战」` \/ `『本局挑战』`、`｢挑战｣` \/ `｢本局挑战｣`、`﹁挑战﹂` \/ `﹃本局挑战﹄`、`“挑战”` \/ `‘本局挑战’`(?:、`"挑战"` \/ `'本局挑战'`)?、`〔挑战〕` \/ `〖本局挑战〗`，以及 `【「挑战」】` \/ `《〔本局挑战〕》` 这类 nested mixed）也会先逐层剥离，再继续做同一轮 `本局` \/ `挑战` 去重/,
         'README should document grouped challenge decorator cleanup families before repeated plain-text prefix dedupe'
     );
     assert.match(
@@ -5112,6 +5154,16 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /`"挑战"` \/ `'本局挑战'`/,
         'README should document ASCII straight-quote challenge decorators alongside the existing wrapper families'
+    );
+    assert.match(
+        source,
+        /`｢挑战｣` \/ `｢本局挑战｣`/,
+        'README should document half-width corner-quote challenge decorators alongside the existing wrapper families'
+    );
+    assert.match(
+        source,
+        /`﹁挑战﹂` \/ `﹃本局挑战﹄`/,
+        'README should document presentation-form quote challenge decorators alongside the existing wrapper families'
     );
     assert.match(
         source,
@@ -5414,7 +5466,7 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /若上游标签重复混入“本局”\/“挑战：”这类 plain-text 前缀，会继续循环去重直到收敛成真正目标；各类 decorator wrapper（如“【本局挑战】”\/“\[挑战\]”、“\{挑战\}”\/“｛本局挑战｝”、“<挑战>”\/“＜本局挑战＞”、“《挑战》”\/“〈本局挑战〉”、“「挑战」”\/“『本局挑战』”、““挑战””\/“‘本局挑战’”(?:、“"挑战"”\/“\\'本局挑战\\'”)?、“〔挑战〕”\/“〖本局挑战〗”，以及“【「挑战」】”\/“《〔本局挑战〕》”这类 nested mixed）也会先逐层剥离，再继续做同一轮“本局”\/“挑战”去重/,
+        /若上游标签重复混入“本局”\/“挑战：”这类 plain-text 前缀，会继续循环去重直到收敛成真正目标；各类 decorator wrapper（如“【本局挑战】”\/“\[挑战\]”、“\{挑战\}”\/“｛本局挑战｝”、“<挑战>”\/“＜本局挑战＞”、“《挑战》”\/“〈本局挑战〉”、“「挑战」”\/“『本局挑战』”、“｢挑战｣”\/“｢本局挑战｣”、“﹁挑战﹂”\/“﹃本局挑战﹄”、““挑战””\/“‘本局挑战’”(?:、“"挑战"”\/“\\'本局挑战\\'”)?、“〔挑战〕”\/“〖本局挑战〗”，以及“【「挑战」】”\/“《〔本局挑战〕》”这类 nested mixed）也会先逐层剥离，再继续做同一轮“本局”\/“挑战”去重/,
         'help overlay should document grouped challenge decorator cleanup families before repeated plain-text prefix dedupe'
     );
     assert.match(
@@ -5426,6 +5478,16 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /“"挑战"”\/“\\'本局挑战\\'”/,
         'help overlay should document ASCII straight-quote challenge decorators alongside the existing wrapper families'
+    );
+    assert.match(
+        source,
+        /“｢挑战｣”\/“｢本局挑战｣”/,
+        'help overlay should document half-width corner-quote challenge decorators alongside the existing wrapper families'
+    );
+    assert.match(
+        source,
+        /“﹁挑战﹂”\/“﹃本局挑战﹄”/,
+        'help overlay should document presentation-form quote decorators alongside the existing wrapper families'
     );
     assert.match(
         source,
