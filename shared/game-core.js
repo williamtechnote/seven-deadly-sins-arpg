@@ -613,6 +613,8 @@
         ['〈', '〉'],
         ['﹁', '﹂'],
         ['﹃', '﹄'],
+        ['〝', '〞'],
+        ['〝', '〟'],
         ['〔', '〕'],
         ['〖', '〗'],
         ['“', '”'],
@@ -627,7 +629,7 @@
             if (!label.startsWith(open)) continue;
             const closeIndex = label.indexOf(close, open.length);
             if (closeIndex <= open.length) {
-                return label;
+                continue;
             }
             const innerText = label.slice(open.length, closeIndex);
             return isRunChallengePrefixToken(innerText)

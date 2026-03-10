@@ -1,9 +1,11 @@
 # TODO.md — seven-deadly-sins-arpg
 
 ## Active
-- [ ] run challenge 标签清洗兼容 ornamental double-prime decorator 前缀（如 `〝挑战〞击败 30 个敌人` / `〝本局挑战〞挑战：本局`），继续复用同一条 decorator 剥离、前缀去重与 `未知挑战` 回退链
+- [ ] run challenge 标签清洗兼容 white lenticular bracket decorator 前缀（如 `〘挑战〙击败 30 个敌人` / `〘本局挑战〙挑战：本局`），继续复用同一条 decorator 剥离、前缀去重与 `未知挑战` 回退链
 
 ## Completed
+- [x] run challenge 标签清洗兼容 ornamental low double-prime decorator 前缀（如 `〝挑战〟击败 30 个敌人` / `〝本局挑战〟挑战：本局`），继续复用同一条 decorator 剥离、前缀去重与 `未知挑战` 回退链（完成：2026-03-11 01:06 +08）
+- [x] run challenge 标签清洗兼容 ornamental double-prime decorator 前缀（如 `〝挑战〞击败 30 个敌人` / `〝本局挑战〞挑战：本局`），继续复用同一条 decorator 剥离、前缀去重与 `未知挑战` 回退链（完成：2026-03-11 01:06 +08）
 - [x] run challenge 标签清洗兼容 presentation-form quote decorator 前缀（如 `﹁挑战﹂击败 30 个敌人` / `﹃本局挑战﹄挑战：本局`），继续复用同一条 decorator 剥离、前缀去重与 `未知挑战` 回退链（完成：2026-03-10 23:58 +08）
 - [x] run challenge 标签清洗兼容 half-width corner-quote decorator 前缀（如 `｢挑战｣击败 30 个敌人` / `｢本局挑战｣挑战：本局`），继续复用既有 decorator 剥离、前缀去重与 `未知挑战` 回退链（完成：2026-03-10 23:58 +08）
 - [x] README / 操作指引显式覆盖 nested ASCII straight-quote mixed decorator wrappers（如 `【"挑战"】击败 30 个敌人` / `《'本局挑战'》挑战：本局`），同步 shared helper 已继承到的 mixed-wrapper 契约文案（完成：2026-03-10 22:49 +08）
