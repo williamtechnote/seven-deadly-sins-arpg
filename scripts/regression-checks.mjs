@@ -2798,6 +2798,16 @@ function testRunChallengeSidebarLines() {
         'run challenge safe sidebar-label helper should strip nested full-width square and ASCII single-quote mixed decorators before rendering the body label'
     );
     assert.equal(
+        getRunChallengeSafeSidebarLabel('［〈挑战〉］击败 30 个敌人'),
+        '击败 30 个敌人',
+        'run challenge safe sidebar-label helper should strip nested full-width square and corner-angle mixed decorators before rendering the body label'
+    );
+    assert.equal(
+        getRunChallengeSafeSidebarLabel('〈［挑战］〉击败 30 个敌人'),
+        '击败 30 个敌人',
+        'run challenge safe sidebar-label helper should strip nested corner-angle and full-width square mixed decorators before rendering the body label'
+    );
+    assert.equal(
         getRunChallengeSafeSidebarLabel('《〔本局挑战〕》挑战：本局'),
         '未知挑战',
         'run challenge safe sidebar-label helper should still fall back to 未知挑战 when nested mixed decorators plus repeated plain-text prefixes exhaust the upstream label'
@@ -2815,7 +2825,12 @@ function testRunChallengeSidebarLines() {
     assert.equal(
         getRunChallengeSafeSidebarLabel('〈［本局挑战］〉挑战：本局'),
         '未知挑战',
-        'run challenge safe sidebar-label helper should still fall back to 未知挑战 when nested square and book-title mixed decorators plus repeated plain-text prefixes exhaust the upstream label'
+        'run challenge safe sidebar-label helper should still fall back to 未知挑战 when nested full-width square and corner-angle mixed decorators plus repeated plain-text prefixes exhaust the upstream label'
+    );
+    assert.equal(
+        getRunChallengeSafeSidebarLabel('［〈本局挑战〉］挑战：本局'),
+        '未知挑战',
+        'run challenge safe sidebar-label helper should still fall back to 未知挑战 when nested corner-angle and full-width square mixed decorators plus repeated plain-text prefixes exhaust the upstream label'
     );
     assert.equal(
         getRunChallengeSafeSidebarLabel('『［本局挑战］』挑战：本局'),
@@ -6246,6 +6261,16 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /`［〈挑战〉］` \/ `〈［本局挑战］〉`/,
+        'README should explicitly document nested full-width square and corner-angle mixed challenge decorators alongside the existing nested mixed examples'
+    );
+    assert.match(
+        source,
+        /`〈［挑战］〉` \/ `［〈本局挑战〉］`/,
+        'README should explicitly document nested corner-angle and full-width square mixed challenge decorators alongside the existing nested mixed examples'
+    );
+    assert.match(
+        source,
         /`【『挑战』】` \/ `『［本局挑战］』`/,
         'README should explicitly document nested square and corner-quote mixed challenge decorators alongside the existing nested mixed examples'
     );
@@ -6787,6 +6812,16 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /“【《挑战》】”\/“〈［本局挑战］〉”/,
         'help overlay should explicitly document nested square and book-title mixed challenge decorators alongside the existing nested mixed examples'
+    );
+    assert.match(
+        source,
+        /“［〈挑战〉］”\/“〈［本局挑战］〉”/,
+        'help overlay should explicitly document nested full-width square and corner-angle mixed challenge decorators alongside the existing nested mixed examples'
+    );
+    assert.match(
+        source,
+        /“〈［挑战］〉”\/“［〈本局挑战〉］”/,
+        'help overlay should explicitly document nested corner-angle and full-width square mixed challenge decorators alongside the existing nested mixed examples'
     );
     assert.match(
         source,
