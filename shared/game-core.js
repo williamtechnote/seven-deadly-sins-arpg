@@ -631,7 +631,9 @@
     }
 
     function isRunChallengePrefixToken(text) {
-        const normalizedToken = normalizeInlineCopyWhitespace(text).replace(/[：:\-—–·•|/]+$/gu, '');
+        const normalizedToken = stripRunChallengeLeadingSeparators(
+            normalizeInlineCopyWhitespace(text)
+        ).replace(/[：:\-—–·•|/]+$/gu, '');
         if (/^(?:本局\s*)?挑战$/u.test(normalizedToken) || /^本局$/u.test(normalizedToken)) {
             return true;
         }
