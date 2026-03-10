@@ -1,9 +1,10 @@
 # TODO.md — seven-deadly-sins-arpg
 
 ## Active
-- [ ] README / 操作指引 / 回归检查显式覆盖 nested ASCII straight-quote mixed decorator wrappers（如 `【"挑战"】击败 30 个敌人` / `《'本局挑战'》挑战：本局`），把当前 shared helper 已继承到的 mixed-wrapper 路径锁成明文契约
 
 ## Completed
+- [x] README / 操作指引显式覆盖 nested ASCII straight-quote mixed decorator wrappers（如 `【"挑战"】击败 30 个敌人` / `《'本局挑战'》挑战：本局`），同步 shared helper 已继承到的 mixed-wrapper 契约文案（完成：2026-03-10 22:49 +08）
+- [x] 回归检查显式覆盖 nested ASCII straight-quote mixed decorator wrappers（如 `【"挑战"】击败 30 个敌人` / `《'本局挑战'》挑战：本局`），把当前 shared helper 已继承到的 mixed-wrapper 路径锁成明文契约（完成：2026-03-10 22:49 +08）
 - [x] run challenge decorator payload 清洗兼容 wrapper 内部 standalone separator token（如 `【：】击败 30 个敌人` / `《-》挑战：本局`），继续复用 decorator 剥离、前缀去重与 `未知挑战` 回退链，避免只剩孤立分隔符的 wrapper payload 卡住正文清洗（完成：2026-03-10 21:42 +08）
 - [x] run challenge 标签清洗兼容 ASCII straight-quote decorator 前缀（如 `"挑战"击败 30 个敌人` / `'本局挑战'挑战：本局`），继续复用既有 plain-text 前缀去重与 `未知挑战` 回退链（完成：2026-03-10 21:42 +08）
 - [x] README 收束 challenge separator 家族的长串说明为更易维护的分组表述，并保留回归断言覆盖（完成：2026-03-10 19:36 +08）
