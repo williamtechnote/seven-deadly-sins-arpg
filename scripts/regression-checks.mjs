@@ -2438,6 +2438,16 @@ function testRunChallengeSidebarLines() {
         'run challenge safe sidebar-label helper should still fall back to 未知挑战 when full-width exclamation-suffixed decorator payloads plus repeated plain-text prefixes exhaust the upstream label'
     );
     assert.equal(
+        getRunChallengeSafeSidebarLabel('【\\挑战】击败 30 个敌人'),
+        '击败 30 个敌人',
+        'run challenge safe sidebar-label helper should treat backslash-prefixed decorator payloads as removable challenge wrappers before rendering the body label'
+    );
+    assert.equal(
+        getRunChallengeSafeSidebarLabel('《本局挑战\\》挑战：本局'),
+        '未知挑战',
+        'run challenge safe sidebar-label helper should still fall back to 未知挑战 when backslash-suffixed decorator payloads plus repeated plain-text prefixes exhaust the upstream label'
+    );
+    assert.equal(
         getRunChallengeSafeSidebarLabel('【?挑战】击败 30 个敌人'),
         '击败 30 个敌人',
         'run challenge safe sidebar-label helper should treat question-prefixed decorator payloads as removable challenge wrappers before rendering the body label'
@@ -5041,6 +5051,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /若 wrapper 内部 token 首尾或连缀里混入 `\\\\挑战` \/ `本局挑战\\\\` 这类 backslash separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮 `本局` \/ `挑战` 去重/,
+        'README should document wrapper-internal backslash separator cleanup for challenge decorator payloads'
+    );
+    assert.match(
+        source,
         /当 regular 第三行宽度预算继续吃紧时，进行中与完成态也会先沿用 `进度:12\/30  奖励:\+90金 -> 进度:12\/30 -> 12\/30` \/ `进度:30\/30  奖励:\+90金 -> 进度:30\/30 -> 30\/30` 这条语义回退链，而不是直接退化成通用省略/,
         'README should document the regular third-line semantic fallback chain for both in-progress and completed challenge summaries'
     );
@@ -5367,6 +5382,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若 wrapper 内部 token 首尾或连缀里混入“、挑战”\/“，本局挑战”\/“挑战；”\/“本局挑战;”这类 comma \/ semicolon separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮“本局”\/“挑战”去重；若 wrapper 内部 token 首尾或连缀里混入“。挑战”\/“!本局挑战”\/“挑战？”\/“本局挑战！”这类 sentence punctuation separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮“本局”\/“挑战”去重/,
         'help overlay should document wrapper-internal comma and semicolon separator cleanup for challenge decorator payloads'
+    );
+    assert.match(
+        source,
+        /若 wrapper 内部 token 首尾或连缀里混入“\\\\挑战”\/“本局挑战\\\\”这类 backslash separator 脏输入，也会参与同一轮 token 规范化，再继续做同一轮“本局”\/“挑战”去重/,
+        'help overlay should document wrapper-internal backslash separator cleanup for challenge decorator payloads'
     );
     assert.match(
         source,
