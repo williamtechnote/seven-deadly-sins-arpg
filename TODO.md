@@ -1,9 +1,10 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] run challenge 标签清洗兼容 white lenticular bracket decorator 前缀（如 `〘挑战〙击败 30 个敌人` / `〘本局挑战〙挑战：本局`），继续复用同一条 decorator 剥离、前缀去重与 `未知挑战` 回退链
 
 ## Completed
+- [x] run challenge 标签清洗兼容 white square bracket decorator 前缀（如 `〚挑战〛击败 30 个敌人` / `〚本局挑战〛挑战：本局`），继续复用同一条 decorator 剥离、前缀去重与 `未知挑战` 回退链（完成：2026-03-11 02:17 +08）
+- [x] run challenge 标签清洗兼容 white tortoise-shell bracket decorator 前缀（如 `〘挑战〙击败 30 个敌人` / `〘本局挑战〙挑战：本局`），继续复用同一条 decorator 剥离、前缀去重与 `未知挑战` 回退链（完成：2026-03-11 02:17 +08）
 - [x] run challenge 标签清洗兼容 ornamental low double-prime decorator 前缀（如 `〝挑战〟击败 30 个敌人` / `〝本局挑战〟挑战：本局`），继续复用同一条 decorator 剥离、前缀去重与 `未知挑战` 回退链（完成：2026-03-11 01:06 +08）
 - [x] run challenge 标签清洗兼容 ornamental double-prime decorator 前缀（如 `〝挑战〞击败 30 个敌人` / `〝本局挑战〞挑战：本局`），继续复用同一条 decorator 剥离、前缀去重与 `未知挑战` 回退链（完成：2026-03-11 01:06 +08）
 - [x] run challenge 标签清洗兼容 presentation-form quote decorator 前缀（如 `﹁挑战﹂击败 30 个敌人` / `﹃本局挑战﹄挑战：本局`），继续复用同一条 decorator 剥离、前缀去重与 `未知挑战` 回退链（完成：2026-03-10 23:58 +08）
