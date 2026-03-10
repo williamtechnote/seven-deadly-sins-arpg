@@ -595,6 +595,8 @@
     }
 
     const RUN_CHALLENGE_DECORATOR_PAIRS = [
+        ['"', '"'],
+        ['\'', '\''],
         ['<', '>'],
         ['＜', '＞'],
         ['[', ']'],
@@ -633,9 +635,13 @@
     }
 
     function isRunChallengePrefixToken(text) {
+        const rawToken = normalizeInlineCopyWhitespace(text);
         const normalizedToken = stripRunChallengeLeadingSeparators(
-            normalizeInlineCopyWhitespace(text)
+            rawToken
         ).replace(RUN_CHALLENGE_TRAILING_SEPARATOR_RE, '');
+        if (!normalizedToken) {
+            return !!rawToken;
+        }
         if (/^(?:本局\s*)?挑战$/u.test(normalizedToken) || /^本局$/u.test(normalizedToken)) {
             return true;
         }
