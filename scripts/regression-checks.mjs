@@ -1597,6 +1597,36 @@ function testLustMirageDanceExecutorHooks() {
     );
     assert.match(
         source,
+        /this\.attackData\.beatDelays\s*=\s*\[\s*240,\s*340,\s*460\s*\]/,
+        'mirageDance should define an explicit beat-delay ladder for phase-3 cadence tuning'
+    );
+    assert.match(
+        source,
+        /this\.attackData\.finisherDelayMs\s*=\s*220/,
+        'mirageDance should define a short settle delay before the finisher starts'
+    );
+    assert.match(
+        source,
+        /this\.attackData\.finisherLockX\s*=\s*player\.x/,
+        'mirageDance finisher should snapshot the player X position when the reverse wave starts'
+    );
+    assert.match(
+        source,
+        /this\.attackData\.finisherLockY\s*=\s*player\.y/,
+        'mirageDance finisher should snapshot the player Y position when the reverse wave starts'
+    );
+    assert.match(
+        source,
+        /sx \+ \(this\.attackData\.finisherLockX - sx\) \* t/,
+        'mirageDance reverse-wave collapse should aim at the locked X position'
+    );
+    assert.match(
+        source,
+        /sy \+ \(this\.attackData\.finisherLockY - sy\) \* t/,
+        'mirageDance reverse-wave collapse should aim at the locked Y position'
+    );
+    assert.match(
+        source,
         /player\.applyReverseControl\(1800\)/,
         'mirageDance finisher should apply a short reverse-control punish on hit'
     );

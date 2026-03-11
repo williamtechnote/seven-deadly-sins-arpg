@@ -3692,10 +3692,13 @@ class Boss {
                 this.sprite.body.setVelocity(0, 0);
                 this.sprite.setAlpha(0.82);
                 this.attackData.beatCount = 3;
+                this.attackData.beatDelays = [240, 340, 460];
                 this.attackData.completedBeats = 0;
-                this.attackData.nextBeatAt = time + 180;
+                this.attackData.nextBeatAt = time + this.attackData.beatDelays[0];
                 this.attackData.lastHitBeat = -1;
                 this.attackData.finisherStartedAt = 0;
+                this.attackData.finisherDelayMs = 220;
+                this.attackData.finisherQueuedAt = 0;
                 this.attackData.projectiles = [];
                 this.attackData.illusions = [];
                 const tex = this.sprite.texture.key;
@@ -3723,7 +3726,8 @@ class Boss {
             while (this.attackData.completedBeats < this.attackData.beatCount && time >= this.attackData.nextBeatAt) {
                 const beatIndex = this.attackData.completedBeats;
                 this.attackData.completedBeats++;
-                this.attackData.nextBeatAt += 260;
+                const nextBeatDelay = this.attackData.beatDelays[this.attackData.completedBeats] || 0;
+                this.attackData.nextBeatAt += nextBeatDelay;
                 const anchorAngle = -Math.PI / 2 + beatIndex * 0.95;
                 const anchorRadius = 140 - beatIndex * 18;
                 const targetX = Phaser.Math.Clamp(player.x + Math.cos(anchorAngle) * anchorRadius, wb.x + 36, wb.right - 36);
@@ -3736,17 +3740,22 @@ class Boss {
                     this._dealDamageToPlayer(player, this.damage * 0.45, atk);
                 }
                 if (beatIndex === this.attackData.beatCount - 1) {
-                    this.attackData.finisherStartedAt = time;
-                    const count = 6;
-                    for (let i = 0; i < count; i++) {
-                        const angle = (Math.PI * 2 / count) * i;
-                        const g = this.scene.add.graphics();
-                        g.fillStyle(this.config.color, 0.72);
-                        g.fillCircle(0, 0, 8);
-                        g.setDepth(9);
-                        g.setPosition(targetX, targetY);
-                        this.attackData.projectiles.push({ g, angle, hit: false });
-                    }
+                    this.attackData.finisherQueuedAt = time + this.attackData.finisherDelayMs;
+                }
+            }
+            if (!this.attackData.finisherStartedAt && this.attackData.finisherQueuedAt && time >= this.attackData.finisherQueuedAt) {
+                this.attackData.finisherStartedAt = time;
+                this.attackData.finisherLockX = player.x;
+                this.attackData.finisherLockY = player.y;
+                const count = 6;
+                for (let i = 0; i < count; i++) {
+                    const angle = (Math.PI * 2 / count) * i;
+                    const g = this.scene.add.graphics();
+                    g.fillStyle(this.config.color, 0.72);
+                    g.fillCircle(0, 0, 8);
+                    g.setDepth(9);
+                    g.setPosition(this.sprite.x, this.sprite.y);
+                    this.attackData.projectiles.push({ g, angle, hit: false });
                 }
             }
             if (this.attackData.finisherStartedAt) {
@@ -3766,8 +3775,8 @@ class Boss {
                         const sx = this.sprite.x + Math.cos(p.angle) * 118;
                         const sy = this.sprite.y + Math.sin(p.angle) * 118;
                         p.g.setPosition(
-                            sx + (player.x - sx) * t,
-                            sy + (player.y - sy) * t
+                            sx + (this.attackData.finisherLockX - sx) * t,
+                            sy + (this.attackData.finisherLockY - sy) * t
                         );
                         const d = Phaser.Math.Distance.Between(p.g.x, p.g.y, player.x, player.y);
                         if (d < 32 && !player.isInvincible && !p.hit) {
