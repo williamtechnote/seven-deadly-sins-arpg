@@ -3733,7 +3733,9 @@ class Boss {
                 this.attackData.lastHitBeat = -1;
                 this.attackData.finisherStartedAt = 0;
                 this.attackData.finisherDelayMs = 320;
+                this.attackData.finisherRecoveryMs = 260;
                 this.attackData.finisherQueuedAt = 0;
+                this.attackData.finisherCleanupDone = false;
                 this.attackData.projectiles = [];
                 this.attackData.illusions = [];
                 const tex = this.sprite.texture.key;
@@ -3797,6 +3799,7 @@ class Boss {
                 const finisherElapsed = time - this.attackData.finisherStartedAt;
                 const expandMs = 180;
                 const collapseMs = 760;
+                const totalFinisherMs = expandMs + collapseMs + this.attackData.finisherRecoveryMs;
                 for (const p of this.attackData.projectiles) {
                     if (!p.g.active) continue;
                     if (finisherElapsed < expandMs) {
@@ -3820,10 +3823,13 @@ class Boss {
                         }
                     }
                 }
-                if (finisherElapsed >= expandMs + collapseMs) {
+                if (finisherElapsed >= expandMs + collapseMs && !this.attackData.finisherCleanupDone) {
+                    this.attackData.finisherCleanupDone = true;
                     this.sprite.setAlpha(1);
                     for (const p of this.attackData.projectiles) if (p.g.active) p.g.destroy();
                     for (const ill of this.attackData.illusions) if (ill.active) ill.destroy();
+                }
+                if (finisherElapsed >= totalFinisherMs) {
                     this._finishAttack(time);
                 }
             }

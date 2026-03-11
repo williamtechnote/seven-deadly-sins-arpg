@@ -1557,8 +1557,8 @@ function testLustPhase3AttackOrder() {
 
     assert.deepEqual(
         Array.from(BOSSES.lust.phases[2].attacks),
-        ['charmBolt', 'reverseControl', 'dash', 'illusion', 'charmBolt', 'mirageDance', 'dash'],
-        'lust phase 3 should interleave reverseControl, illusion, and mirageDance with breather attacks'
+        ['charmBolt', 'reverseControl', 'dash', 'charmBolt', 'illusion', 'dash', 'mirageDance', 'charmBolt', 'dash'],
+        'lust phase 3 should bias the final phase further toward breather attacks between major specials'
     );
 }
 
@@ -1739,8 +1739,18 @@ function testLustMirageDanceExecutorHooks() {
     );
     assert.match(
         source,
+        /this\.attackData\.finisherRecoveryMs\s*=\s*260/,
+        'mirageDance should define an explicit recovery window after the reverse-wave collapse'
+    );
+    assert.match(
+        source,
         /const collapseMs = 760/,
         'mirageDance should define a longer reverse-wave collapse duration'
+    );
+    assert.match(
+        source,
+        /const totalFinisherMs = expandMs \+ collapseMs \+ this\.attackData\.finisherRecoveryMs;/,
+        'mirageDance should keep the boss in the attack state through the post-collapse recovery window'
     );
     assert.match(
         source,
@@ -1786,6 +1796,16 @@ function testReadmeLustPostMirageSpacing() {
         source,
         /逆转波也会用更长的收束时长回卷/,
         'README should document the longer mirageDance reverse-wave collapse'
+    );
+    assert.match(
+        source,
+        /phase 3 攻击池里的 `charmBolt` \/ `dash` 权重再往上抬/,
+        'README should document the extra phase-3 breather weighting'
+    );
+    assert.match(
+        source,
+        /逆转波收尾后也会多留一小段 recovery 空档/,
+        'README should document the explicit post-mirage recovery window'
     );
 }
 

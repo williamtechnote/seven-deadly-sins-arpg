@@ -1,9 +1,11 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 机制多样性：`魅惑女妖` phase 3 后续观察三-三：若延长逆转波收束与继续拉高 phase-local 冷却后 live pacing 仍偏密，再评估是否还要继续细调权重或额外收招空档
+- [ ] Boss 机制多样性：`魅惑女妖` phase 3 后续观察四-三：若权重细调与 `mirageDance` recovery 窗口落地后 live pacing 仍偏密，再评估是否还要给 `reverseControl` / `illusion` 追加同类收招空档或 breather guard
 
 ## Completed
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 收招空档四-二：`mirageDance` 逆转波收尾后补显式 recovery 窗口，让玩家在大招结束后稳定读到反打空档（完成：2026-03-11 11:03 +08）
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 权重细调四-一：继续提高 `charmBolt` / `dash` 在末阶段攻击池里的占比，并把它们插在 `reverseControl` / `illusion` / `mirageDance` 之间，进一步拉开第二轮 major special 密度（完成：2026-03-11 11:03 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 后续观察三-二：继续拉高 `reverseControl` / `illusion` / `mirageDance` 的 phase-local 冷却，让第二轮完整循环后的 special 间隔更稳（完成：2026-03-11 10:56 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 后续观察三-一：延长 `mirageDance` 逆转波收束时长，避免第三拍 settle 后马上以过快回卷收尾（完成：2026-03-11 10:56 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 后续观察二：延长 `mirageDance` 第三拍后的 settle 窗口，让收尾逆转波前的读招空档更明确（完成：2026-03-11 10:48 +08）
