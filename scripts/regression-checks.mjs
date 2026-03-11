@@ -1554,10 +1554,24 @@ function testBossMechanicDiversityHooks() {
 
 function testLustPhase3AttackOrder() {
     const { BOSSES } = loadDataConstants();
+    const attacks = Array.from(BOSSES.lust.phases[2].attacks);
+    const reverseControlIndex = attacks.indexOf('reverseControl');
+    const illusionIndex = attacks.indexOf('illusion');
+    const mirageDanceIndex = attacks.indexOf('mirageDance');
 
     assert.deepEqual(
-        Array.from(BOSSES.lust.phases[2].attacks),
-        ['charmBolt', 'dash', 'reverseControl', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'illusion', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'mirageDance', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt'],
+        attacks.slice(reverseControlIndex + 1, illusionIndex),
+        ['dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash'],
+        'lust phase 3 should keep reverseControl and illusion separated by a longer directed light-pressure bridge'
+    );
+    assert.deepEqual(
+        attacks.slice(illusionIndex + 1, mirageDanceIndex),
+        ['dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash'],
+        'lust phase 3 should keep illusion and mirageDance separated by a longer directed light-pressure bridge'
+    );
+    assert.deepEqual(
+        attacks.slice(mirageDanceIndex + 1),
+        ['dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt'],
         'lust phase 3 should keep the loopback after mirageDance on a longer directed light-pressure bridge'
     );
 }
@@ -2031,13 +2045,13 @@ function testReadmeLustSharedMajorRecovery() {
     );
     assert.match(
         source,
-        /在 `reverseControl` 与 `illusion` 之间会再补一整段 `charmBolt` \/ `dash` 定向轻压过桥/,
-        'README should document the longer directed bridge between reverseControl and illusion'
+        /在 `reverseControl` 与 `illusion` 之间会继续再补一整段 `charmBolt` \/ `dash` 定向轻压过桥/,
+        'README should document the newly extended directed bridge between reverseControl and illusion'
     );
     assert.match(
         source,
-        /在 `illusion` 与 `mirageDance` 之间也会再补一整段 `charmBolt` \/ `dash` 定向轻压过桥/,
-        'README should document the longer directed bridge between illusion and mirageDance'
+        /在 `illusion` 与 `mirageDance` 之间也会继续再补一整段 `charmBolt` \/ `dash` 定向轻压过桥/,
+        'README should document the newly extended directed bridge between illusion and mirageDance'
     );
     assert.match(
         source,
