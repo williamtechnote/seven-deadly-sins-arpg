@@ -140,6 +140,9 @@ const BOSSES = {
                     reverseControl: 12000,
                     illusion: 13500,
                     mirageDance: 14500
+                },
+                postAttackBreatherGuards: {
+                    mirageDance: ['reverseControl', 'illusion', 'mirageDance']
                 }
             }
         ],

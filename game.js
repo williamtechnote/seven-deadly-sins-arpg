@@ -3164,6 +3164,7 @@ class Boss {
         if (!Array.isArray(attacks) || attacks.length === 0) return null;
         const phase = this.getPhase();
         const phaseLocalCooldownMs = phase && phase.phaseLocalCooldownMs ? phase.phaseLocalCooldownMs : {};
+        const postAttackBreatherGuards = phase && phase.postAttackBreatherGuards ? phase.postAttackBreatherGuards : {};
         const now = this.scene.time.now;
         let selectedAttack = attacks[this.attackIndex % attacks.length];
         let selectedRawIndex = this.attackIndex;
@@ -3172,6 +3173,10 @@ class Boss {
             const candidate = attacks[rawIndex % attacks.length];
             const candidateCooldownExpiresAt = phaseLocalCooldownMs[candidate] > 0 ? (this.phaseAttackCooldownExpires[candidate] || 0) : 0;
             if (candidateCooldownExpiresAt > now && attacks.some(attack => attack !== candidate)) {
+                continue;
+            }
+            const blockedAfterLastAttack = Array.isArray(postAttackBreatherGuards[this.lastCompletedAttack]) ? postAttackBreatherGuards[this.lastCompletedAttack] : null;
+            if (blockedAfterLastAttack && blockedAfterLastAttack.includes(candidate) && attacks.some(attack => !blockedAfterLastAttack.includes(attack))) {
                 continue;
             }
             const lastAttackWasMajor = MAJOR_BOSS_PHASE_ATTACKS.has(this.lastCompletedAttack);
@@ -3727,7 +3732,7 @@ class Boss {
                 this.attackData.nextBeatAt = time + this.attackData.beatDelays[0];
                 this.attackData.lastHitBeat = -1;
                 this.attackData.finisherStartedAt = 0;
-                this.attackData.finisherDelayMs = 220;
+                this.attackData.finisherDelayMs = 320;
                 this.attackData.finisherQueuedAt = 0;
                 this.attackData.projectiles = [];
                 this.attackData.illusions = [];

@@ -1678,6 +1678,32 @@ function testLustPhaseLocalCooldownHooks() {
     );
 }
 
+function testLustPostMirageBreatherHooks() {
+    const { BOSSES } = loadDataConstants();
+    const source = loadGameSource();
+
+    assert.deepEqual(
+        Array.from(BOSSES.lust.phases[2].postAttackBreatherGuards.mirageDance),
+        ['reverseControl', 'illusion', 'mirageDance'],
+        'lust phase 3 should block immediate major-special follow-ups after mirageDance when a breather exists'
+    );
+    assert.match(
+        source,
+        /const postAttackBreatherGuards = phase && phase\.postAttackBreatherGuards \? phase\.postAttackBreatherGuards : \{\};/,
+        'Boss selector should read optional post-attack breather guard metadata from the current phase'
+    );
+    assert.match(
+        source,
+        /const blockedAfterLastAttack = Array\.isArray\(postAttackBreatherGuards\[this\.lastCompletedAttack\]\) \? postAttackBreatherGuards\[this\.lastCompletedAttack\] : null;/,
+        'Boss selector should resolve the guard list for the last completed attack'
+    );
+    assert.match(
+        source,
+        /if \(blockedAfterLastAttack && blockedAfterLastAttack\.includes\(candidate\) && attacks\.some\(attack => !blockedAfterLastAttack\.includes\(attack\)\)\) \{\s*continue;\s*\}/,
+        'Boss selector should skip guarded follow-ups when an unguarded breather remains in the phase pool'
+    );
+}
+
 function testReadmeLustPhaseLocalCooldowns() {
     const source = loadReadmeSource();
 
@@ -1708,8 +1734,8 @@ function testLustMirageDanceExecutorHooks() {
     );
     assert.match(
         source,
-        /this\.attackData\.finisherDelayMs\s*=\s*220/,
-        'mirageDance should define a short settle delay before the finisher starts'
+        /this\.attackData\.finisherDelayMs\s*=\s*320/,
+        'mirageDance should define a longer settle delay before the finisher starts'
     );
     assert.match(
         source,
@@ -1735,6 +1761,21 @@ function testLustMirageDanceExecutorHooks() {
         source,
         /player\.applyReverseControl\(1800\)/,
         'mirageDance finisher should apply a short reverse-control punish on hit'
+    );
+}
+
+function testReadmeLustPostMirageSpacing() {
+    const source = loadReadmeSource();
+
+    assert.match(
+        source,
+        /`魅惑女妖` 末阶段在 `mirageDance` 收尾后若仍有 `charmBolt` \/ `dash` 可选，会先插入额外呼吸段/,
+        'README should document the guaranteed post-mirage breather when lighter attacks are available'
+    );
+    assert.match(
+        source,
+        /`魅影连舞` 第三拍后也会保留更长的 settle 窗口/,
+        'README should document the longer mirageDance settle window'
     );
 }
 
@@ -8505,6 +8546,7 @@ function main() {
     runTest('lust mirage dance hooks', testLustMirageDanceHooks);
     runTest('boss major attack breather hooks', testBossMajorAttackBreatherHooks);
     runTest('lust phase-local cooldown hooks', testLustPhaseLocalCooldownHooks);
+    runTest('lust post-mirage breather hooks', testLustPostMirageBreatherHooks);
     runTest('lust mirage dance executor hooks', testLustMirageDanceExecutorHooks);
     runTest('keyboard aim state helper', testKeyboardAimState);
     runTest('aim direction label helper', testAimDirectionLabel);
@@ -8522,6 +8564,7 @@ function main() {
     runTest('run-event world-label measurement hooks', testRunEventWorldLabelMeasurementHooks);
     runTest('fixed sidebar measurement hooks', testSidebarMeasurementHooks);
     runTest('README lust phase-local cooldowns', testReadmeLustPhaseLocalCooldowns);
+    runTest('README lust post-mirage spacing', testReadmeLustPostMirageSpacing);
     runTest('combat action HUD summary helper', testCombatActionHudSummary);
     runTest('quick-slot item label helper', testQuickSlotItemLabel);
     runTest('keyboard HUD QoL hooks', testKeyboardHudQolHooks);

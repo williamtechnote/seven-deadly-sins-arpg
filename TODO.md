@@ -1,9 +1,11 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 机制多样性：`魅惑女妖` phase 3 后续观察：若三连 special 第二轮仍偏密，再补 `mirageDance` 之后的额外呼吸段守卫或更长 settle 窗口
+- [ ] Boss 机制多样性：`魅惑女妖` phase 3 后续观察三：若 `mirageDance` 后额外呼吸段守卫与更长 settle 窗口落地后第二轮压力仍偏密，再考虑延长逆转波收束时长或继续拉高 phase-local 冷却
 
 ## Completed
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 后续观察二：延长 `mirageDance` 第三拍后的 settle 窗口，让收尾逆转波前的读招空档更明确（完成：2026-03-11 10:48 +08）
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 后续观察一：为 `mirageDance` 收尾后的下一轮选招补额外呼吸段守卫，避免第二轮 special 再次立刻贴连（完成：2026-03-11 10:48 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 局部冷却四：README / regression checks 锁定 `reverseControl` / `illusion` / `mirageDance` 三连段的完整 phase-local 冷却契约，避免后续数据漂移回退（完成：2026-03-11 10:40 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 局部冷却三：为 `mirageDance` 补 phase-local 冷却，避免完整循环后又立刻回到连段压迫（完成：2026-03-11 10:40 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 局部冷却二：为 `illusion` 补 phase-local 冷却并接入选招守卫，让完整循环后的第二轮继续留出读本体呼吸段（完成：2026-03-11 10:31 +08）
