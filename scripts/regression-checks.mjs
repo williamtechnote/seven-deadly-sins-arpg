@@ -2428,6 +2428,26 @@ function testRunChallengeSidebarLines() {
         'run challenge safe sidebar-label helper should still fall back to 未知挑战 when book-title decorators plus repeated plain-text prefixes exhaust the upstream label'
     );
     assert.equal(
+        getRunChallengeSafeSidebarLabel('〈〈挑战〉〉击败 30 个敌人'),
+        '击败 30 个敌人',
+        'run challenge safe sidebar-label helper should strip repeated corner-angle decorators before rendering the body label'
+    );
+    assert.equal(
+        getRunChallengeSafeSidebarLabel('［［本局挑战］］挑战：本局'),
+        '未知挑战',
+        'run challenge safe sidebar-label helper should still fall back to 未知挑战 when repeated full-width square decorators plus repeated plain-text prefixes exhaust the upstream label'
+    );
+    assert.equal(
+        getRunChallengeSafeSidebarLabel('""挑战""击败 30 个敌人'),
+        '击败 30 个敌人',
+        'run challenge safe sidebar-label helper should strip repeated ASCII double-quote decorators before rendering the body label'
+    );
+    assert.equal(
+        getRunChallengeSafeSidebarLabel("''本局挑战''挑战：本局"),
+        '未知挑战',
+        'run challenge safe sidebar-label helper should still fall back to 未知挑战 when repeated ASCII single-quote decorators plus repeated plain-text prefixes exhaust the upstream label'
+    );
+    assert.equal(
         getRunChallengeSafeSidebarLabel('〈"挑战"〉击败 30 个敌人'),
         '击败 30 个敌人',
         'run challenge safe sidebar-label helper should strip nested corner-angle and ASCII straight-quote mixed decorators before rendering the body label'
@@ -4087,6 +4107,28 @@ function testRunChallengeSidebarLines() {
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
+            label: '〈〈挑战〉〉击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, { compact: false }),
+        ['本局挑战', '击败 30 个敌人', '进度:12/30  奖励:+90金'],
+        'full in-progress challenge summaries should strip repeated corner-angle decorators before rendering the regular body label'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '""挑战""击败 30 个敌人',
+            progress: 12,
+            target: 30,
+            rewardGold: 90,
+            completed: false
+        }, { compact: false }),
+        ['本局挑战', '击败 30 个敌人', '进度:12/30  奖励:+90金'],
+        'full in-progress challenge summaries should strip repeated ASCII double-quote decorators before rendering the regular body label'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
             label: '〈[挑战]〉击败 30 个敌人',
             progress: 12,
             target: 30,
@@ -4227,6 +4269,28 @@ function testRunChallengeSidebarLines() {
         }, { compact: false }),
         ['本局挑战', '击败 30 个敌人', '进度:12/30  奖励:+90金'],
         'full in-progress challenge summaries should strip nested ASCII square and corner-angle mixed decorators before rendering the regular body label'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: '［［本局挑战］］挑战：本局',
+            progress: 12,
+            target: 0,
+            rewardGold: 90,
+            completed: false
+        }, { compact: true }),
+        ['本局挑战：进行中', '未知挑战 · +90金'],
+        'compact in-progress invalid-target summaries should still fall back to 未知挑战 when repeated full-width square decorators exhaust the label'
+    );
+    assert.deepEqual(
+        buildRunChallengeSidebarLines({
+            label: "''本局挑战''挑战：本局",
+            progress: 12,
+            target: 0,
+            rewardGold: 90,
+            completed: false
+        }, { compact: true }),
+        ['本局挑战：进行中', '未知挑战 · +90金'],
+        'compact in-progress invalid-target summaries should still fall back to 未知挑战 when repeated ASCII single-quote decorators exhaust the label'
     );
     assert.deepEqual(
         buildRunChallengeSidebarLines({
@@ -6733,6 +6797,16 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /`〈〈挑战〉〉` \/ `［［本局挑战］］`/,
+        'README should explicitly document repeated same-family bracket stacks alongside the existing nested mixed examples'
+    );
+    assert.match(
+        source,
+        /`""挑战""` \/ `''本局挑战''`/,
+        'README should explicitly document repeated same-family symmetric quote stacks alongside the existing nested mixed examples'
+    );
+    assert.match(
+        source,
         /`\[〈挑战〉\]` \/ `〈\[本局挑战\]〉`/,
         'README should explicitly document nested ASCII square and corner-angle mixed challenge decorators alongside the existing nested mixed examples'
     );
@@ -7359,6 +7433,16 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /“〈〝挑战〟〉”\/“〝〈本局挑战〉〟”/,
         'help overlay should explicitly document nested corner-angle and ornamental low double-prime mixed challenge decorators alongside the existing nested mixed examples'
+    );
+    assert.match(
+        source,
+        /“〈〈挑战〉〉”\/“［［本局挑战］］”/,
+        'help overlay should explicitly document repeated same-family bracket stacks alongside the existing nested mixed examples'
+    );
+    assert.match(
+        source,
+        /“""挑战""”\/“''本局挑战''”/,
+        'help overlay should explicitly document repeated same-family symmetric quote stacks alongside the existing nested mixed examples'
     );
     assert.match(
         source,

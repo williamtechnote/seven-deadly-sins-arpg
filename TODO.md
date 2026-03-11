@@ -1,9 +1,11 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] 暂无；下一轮 heartbeat 需补充新的 Active TODO
+- [ ] run challenge 标签清洗兼容同开口 ornamental quote stack（如 `〝〝挑战〞〟击败 30 个敌人` / `〝〝本局挑战〟〟挑战：本局`），补齐共享开口 glyph 下的闭口匹配策略
 
 ## Completed
+- [x] run challenge 标签清洗兼容同类双层对称引号 decorator stack（如 `""挑战""击败 30 个敌人` / `''本局挑战''挑战：本局`），避免重复引号包裹阻断共享前缀清洗（完成：2026-03-11 08:43 +08）
+- [x] run challenge 标签清洗兼容同类双层异形括号 decorator stack（如 `〈〈挑战〉〉击败 30 个敌人` / `［［本局挑战］］挑战：本局`），需要继续逐层剥离并复用既有 plain-text 前缀去重与 `未知挑战` 回退链（完成：2026-03-11 08:43 +08）
 - [x] run challenge 标签清洗兼容 nested corner-angle/ornamental low double-prime mixed decorator wrappers（如 `〈〝挑战〟〉击败 30 个敌人` / `〝〈本局挑战〉〟挑战：本局`），继续复用逐层 decorator 剥离、前缀去重与 `未知挑战` 回退链（完成：2026-03-11 08:32 +08）
 - [x] run challenge 标签清洗兼容 nested corner-angle/ornamental double-prime mixed decorator wrappers（如 `〈〝挑战〞〉击败 30 个敌人` / `〝〈本局挑战〉〞挑战：本局`），继续复用逐层 decorator 剥离、前缀去重与 `未知挑战` 回退链（完成：2026-03-11 08:32 +08）
 - [x] run challenge 标签清洗兼容 nested corner-angle/presentation-form mixed decorator wrappers（如 `〈﹁挑战﹂〉击败 30 个敌人` / `﹃〈本局挑战〉﹄挑战：本局`），继续复用逐层 decorator 剥离、前缀去重与 `未知挑战` 回退链（完成：2026-03-11 08:27 +08）

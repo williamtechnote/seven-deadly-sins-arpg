@@ -625,11 +625,56 @@
     const RUN_CHALLENGE_LEADING_SEPARATOR_RE = /^(?:(?:[:：;,；，、.。!?！？~～…⋯\-—–·•|/\\｜／])+[\s]*)+/u;
     const RUN_CHALLENGE_TRAILING_SEPARATOR_RE = /[：:;,；,，、.。!?！？~～…⋯\-—–·•|/\\｜／]+$/gu;
 
+    function findRunChallengeDecoratorCloseIndex(label, open, close) {
+        if (typeof label !== 'string' || !label || typeof open !== 'string' || typeof close !== 'string') {
+            return -1;
+        }
+        if (open === close) {
+            return label.indexOf(close, open.length);
+        }
+        let depth = 1;
+        for (let index = open.length; index < label.length;) {
+            if (label.startsWith(open, index)) {
+                depth += 1;
+                index += open.length;
+                continue;
+            }
+            if (label.startsWith(close, index)) {
+                depth -= 1;
+                if (depth === 0) {
+                    return index;
+                }
+                index += close.length;
+                continue;
+            }
+            index += 1;
+        }
+        return -1;
+    }
+
     function stripRunChallengeSingleDecoratorPrefix(label) {
         if (typeof label !== 'string' || !label) return '';
         for (const [open, close] of RUN_CHALLENGE_DECORATOR_PAIRS) {
             if (!label.startsWith(open)) continue;
-            const closeIndex = label.indexOf(close, open.length);
+            if (open === close) {
+                let repeatedOpenCount = 1;
+                while (label.startsWith(open, repeatedOpenCount * open.length)) {
+                    repeatedOpenCount += 1;
+                }
+                if (repeatedOpenCount > 1) {
+                    const leadingWidth = repeatedOpenCount * open.length;
+                    const closingToken = close.repeat(repeatedOpenCount);
+                    let closeIndex = label.indexOf(closingToken, leadingWidth);
+                    while (closeIndex >= leadingWidth) {
+                        const innerText = label.slice(leadingWidth, closeIndex);
+                        if (isRunChallengePrefixToken(innerText)) {
+                            return label.slice(closeIndex + closingToken.length);
+                        }
+                        closeIndex = label.indexOf(closingToken, closeIndex + close.length);
+                    }
+                }
+            }
+            const closeIndex = findRunChallengeDecoratorCloseIndex(label, open, close);
             if (closeIndex <= open.length) {
                 continue;
             }
