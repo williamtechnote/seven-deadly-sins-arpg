@@ -1,9 +1,12 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 机制多样性：`魅惑女妖` phase 3 后续观察十八-三：若五轻压守卫与进一步提高轻压权重落地后 live pacing 仍偏密，再评估是否继续拉长共享 recovery 或给定向后桥再补一段轻压
+- [ ] Boss 机制多样性：`魅惑女妖` phase 3 后续观察十九-三：若共享 recovery 再次拉长且 `mirageDance` -> `reverseControl` 定向后桥继续加长后 live pacing 仍偏密，再评估是否继续延长单招 recovery 或再补一段 phase 3 轻压过桥
 
 ## Completed
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 定向后桥十九-二：在 `mirageDance` 与下一轮 `reverseControl` 之间再补一段 `charmBolt` / `dash` 定向轻压过桥，让循环回卷在五轻压守卫后继续先由轻压接棒（完成：2026-03-11 13:53 +08）
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 共享 recovery 十九-一：继续拉长 `reverseControl` / `illusion` / `mirageDance` 的共享 recovery guard，让五轻压守卫与更多 loopback 轻压收尾后的下一段 major special 再晚半拍（完成：2026-03-11 13:53 +08）
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 后续观察十八-三：若五轻压守卫与进一步提高轻压权重落地后 live pacing 仍偏密，再评估是否继续拉长共享 recovery 或给定向后桥再补一段轻压（完成：2026-03-11 13:51 +08，已拆分为十九-一 / 十九-二 / 十九-三）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 轻压权重十八-二：继续提高 `dash` / `charmBolt` 在末阶段攻击池里的占比，让五轻压守卫与共享 recovery 之外也更常由轻压接棒（完成：2026-03-11 13:46 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 五轻压守卫十八-一：任一 major special 收尾后若仍有 `charmBolt` / `dash` 可选，则至少串入五段轻压后才允许回到 `reverseControl` / `illusion` / `mirageDance`（完成：2026-03-11 13:46 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 后续观察十七-三：若 `illusion` recovery 与共享 recovery 再次拉长后 live pacing 仍偏密，再评估是否把四轻压守卫扩成五段或继续抬高 `charmBolt` / `dash` 轻压占比（完成：2026-03-11 13:40 +08，已拆分为十八-一 / 十八-二 / 十八-三）

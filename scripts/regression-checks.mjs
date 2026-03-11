@@ -1557,8 +1557,8 @@ function testLustPhase3AttackOrder() {
 
     assert.deepEqual(
         Array.from(BOSSES.lust.phases[2].attacks),
-        ['charmBolt', 'dash', 'reverseControl', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'illusion', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'mirageDance', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash'],
-        'lust phase 3 should bias the attack order even further toward light-pressure bridges around each major special'
+        ['charmBolt', 'dash', 'reverseControl', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'illusion', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'mirageDance', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt'],
+        'lust phase 3 should keep the loopback after mirageDance on a longer directed light-pressure bridge'
     );
 }
 
@@ -1720,8 +1720,8 @@ function testLustSharedMajorRecoveryHooks() {
 
     assert.equal(
         BOSSES.lust.phases[2].sharedAttackRecoveryMs.majorSpecial,
-        3050,
-        'lust phase 3 should stretch the shared recovery window for major specials yet again'
+        3300,
+        'lust phase 3 should stretch the shared recovery window for major specials one more step'
     );
     assert.deepEqual(
         Array.from(BOSSES.lust.phases[2].sharedAttackRecoveryGroups.majorSpecial),
@@ -2016,8 +2016,8 @@ function testReadmeLustSharedMajorRecovery() {
     );
     assert.match(
         source,
-        /共享 recovery guard 也会继续再拉长一档，让 `illusion` recovery 再次拉长后，定向后桥与五轻压守卫收尾后的下一段 major special 继续再晚半拍/,
-        'README should document the newest shared major-special recovery extension'
+        /共享 recovery guard 也会继续再拉长一档，让五轻压守卫与更多 loopback 轻压收尾后的下一段 major special 继续再晚半拍/,
+        'README should document the newest shared major-special recovery extension around the longer loopback'
     );
     assert.match(
         source,
@@ -2041,8 +2041,8 @@ function testReadmeLustSharedMajorRecovery() {
     );
     assert.match(
         source,
-        /在 `mirageDance` 与下一轮 `reverseControl` 之间也会再补一段 `charmBolt` \/ `dash` 定向轻压过桥/,
-        'README should document the targeted bridge between mirageDance and the next reverseControl loop'
+        /在 `mirageDance` 与下一轮 `reverseControl` 之间也会再补更长的一整段 `charmBolt` \/ `dash` 定向轻压过桥/,
+        'README should document the longer targeted bridge between mirageDance and the next reverseControl loop'
     );
 }
 
