@@ -135,7 +135,7 @@ npx serve .
 ├── shared/
 │   └── game-core.js    # 纯逻辑共享模块（浏览器 + CLI）
 ├── scripts/
-│   └── regression-checks.mjs  # 轻量回归检查脚本（51 项）
+│   └── regression-checks.mjs  # 轻量回归检查脚本（56 项）
 ├── assets/
 │   ├── sprites/        # 角色、敌人、NPC、武器、道具精灵图
 │   ├── portraits/      # NPC / Boss 对话立绘
