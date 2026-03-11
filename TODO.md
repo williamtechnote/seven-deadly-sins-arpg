@@ -1,9 +1,12 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 机制多样性：`魅惑女妖` phase 3 后续观察十二-三：若进一步抬高轻压权重与追加 `illusion` 后桥后 live pacing 仍偏密，再评估是否继续拉长共享 recovery 或再细调 `illusion` recovery
+- [ ] Boss 机制多样性：`魅惑女妖` phase 3 后续观察十三-三：若共享 recovery 与 `illusion` recovery 再次拉长后 live pacing 仍偏密，再评估是否继续提高 `dash` / `charmBolt` 过桥占比或再补一拍轻压
 
 ## Completed
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 幻身收招十三-二：继续拉长 `illusion` 幻身散场后的 recovery 空档，让后桥轻压结束后也不会立刻切回下一段追压（完成：2026-03-11 13:07 +08）
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 共享 recovery 十三-一：继续拉长 `reverseControl` / `illusion` / `mirageDance` 的共享 recovery guard，让 triple-breather 结束后的下一段 major special 再晚一拍（完成：2026-03-11 13:07 +08）
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 后续观察十二-三：若进一步抬高轻压权重与追加 `illusion` 后桥后 live pacing 仍偏密，再评估是否继续拉长共享 recovery 或再细调 `illusion` recovery（完成：2026-03-11 13:05 +08，已拆分为十三-一 / 十三-二 / 十三-三）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 幻身后桥十二-二：在 `illusion` 与下一段 major special 之间再补一段 `charmBolt` / `dash` 轻压过桥，让幻身散场后的回切再晚一拍（完成：2026-03-11 13:13 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 轻压权重十二-一：继续提高 `charmBolt` / `dash` 在末阶段攻击池里的占比，让更长共享 recovery 与三轻压守卫之外也更常以轻压过桥（完成：2026-03-11 13:13 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 后续观察十一-三：若更长共享 recovery 与三轻压守卫落地后 live pacing 仍偏密，再评估是否继续抬高 `charmBolt` / `dash` 权重或给 `illusion` 后桥再补额外轻压（完成：2026-03-11 13:07 +08，已拆分为十二-一 / 十二-二 / 十二-三）

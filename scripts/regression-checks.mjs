@@ -1720,8 +1720,8 @@ function testLustSharedMajorRecoveryHooks() {
 
     assert.equal(
         BOSSES.lust.phases[2].sharedAttackRecoveryMs.majorSpecial,
-        2300,
-        'lust phase 3 should stretch the shared recovery window for major specials again'
+        2550,
+        'lust phase 3 should stretch the shared recovery window for major specials yet again'
     );
     assert.deepEqual(
         Array.from(BOSSES.lust.phases[2].sharedAttackRecoveryGroups.majorSpecial),
@@ -1926,8 +1926,8 @@ function testLustSpecialRecoveryHooks() {
     );
     assert.match(
         source,
-        /} else if \(atk === 'illusion'\) \{[\s\S]*?const recoveryMs = 420;/,
-        'illusion should lengthen its explicit post-despawn recovery window again'
+        /} else if \(atk === 'illusion'\) \{[\s\S]*?const recoveryMs = 520;/,
+        'illusion should lengthen its explicit post-despawn recovery window yet again'
     );
     assert.match(
         source,
@@ -1996,8 +1996,8 @@ function testReadmeLustSpecialRecovery() {
     );
     assert.match(
         source,
-        /`illusion` 的 recovery 空档也会再拉长一档/,
-        'README should document the longer illusion recovery tuning pass'
+        /`illusion` 的 recovery 空档也会继续再拉长一档，让后桥轻压结束后也不会立刻切回下一段追压/,
+        'README should document the latest illusion recovery tuning pass'
     );
     assert.match(
         source,
@@ -2016,8 +2016,8 @@ function testReadmeLustSharedMajorRecovery() {
     );
     assert.match(
         source,
-        /共享 recovery guard 也会继续再拉长一档/,
-        'README should document the further lengthened shared major-special recovery'
+        /共享 recovery guard 也会继续再拉长一档，让三轻压守卫收尾后的下一段 major special 再晚一拍/,
+        'README should document the latest shared major-special recovery extension'
     );
     assert.match(
         source,
