@@ -138,7 +138,8 @@ const BOSSES = {
                 attacks: ['charmBolt', 'reverseControl', 'dash', 'illusion', 'charmBolt', 'mirageDance', 'dash'],
                 phaseLocalCooldownMs: {
                     reverseControl: 12000,
-                    illusion: 13500
+                    illusion: 13500,
+                    mirageDance: 14500
                 }
             }
         ],

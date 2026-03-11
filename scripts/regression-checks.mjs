@@ -1641,6 +1641,11 @@ function testLustPhaseLocalCooldownHooks() {
         13500,
         'lust phase 3 should configure a local cooldown for illusion'
     );
+    assert.equal(
+        BOSSES.lust.phases[2].phaseLocalCooldownMs.mirageDance,
+        14500,
+        'lust phase 3 should configure a local cooldown for mirageDance'
+    );
     assert.match(
         source,
         /this\.phaseAttackCooldownExpires\s*=\s*\{\}/,
@@ -1678,8 +1683,8 @@ function testReadmeLustPhaseLocalCooldowns() {
 
     assert.match(
         source,
-        /`魅惑女妖` 末阶段还会给 `reverseControl` 与 `illusion` 补 phase-local 冷却/,
-        'README should document the new lust phase-local cooldown guard for reverseControl and illusion'
+        /`魅惑女妖` 末阶段还会给 `reverseControl`、`illusion` 与 `mirageDance` 补 phase-local 冷却/,
+        'README should document the completed lust phase-local cooldown trio'
     );
 }
 
