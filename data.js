@@ -135,7 +135,7 @@ const BOSSES = {
             { hpPercent: 0.6, attacks: ['charmBolt', 'dash', 'reverseControl'] },
             {
                 hpPercent: 0.3,
-                attacks: ['charmBolt', 'reverseControl', 'dash', 'charmBolt', 'dash', 'charmBolt', 'illusion', 'dash', 'charmBolt', 'dash', 'charmBolt', 'mirageDance', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash'],
+                attacks: ['charmBolt', 'reverseControl', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'illusion', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'mirageDance', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash'],
                 phaseLocalCooldownMs: {
                     reverseControl: 14000,
                     illusion: 15500,
@@ -150,7 +150,7 @@ const BOSSES = {
                 postMajorBreatherChain: {
                     triggerAttacks: ['reverseControl', 'illusion', 'mirageDance'],
                     breatherAttacks: ['charmBolt', 'dash'],
-                    requiredCount: 3
+                    requiredCount: 4
                 },
                 postAttackBreatherGuards: {
                     reverseControl: ['reverseControl', 'illusion', 'mirageDance'],

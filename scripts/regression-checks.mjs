@@ -1557,8 +1557,8 @@ function testLustPhase3AttackOrder() {
 
     assert.deepEqual(
         Array.from(BOSSES.lust.phases[2].attacks),
-        ['charmBolt', 'reverseControl', 'dash', 'charmBolt', 'dash', 'charmBolt', 'illusion', 'dash', 'charmBolt', 'dash', 'charmBolt', 'mirageDance', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash'],
-        'lust phase 3 should add another light-pressure insert after reverseControl and illusion'
+        ['charmBolt', 'reverseControl', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'illusion', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'mirageDance', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash'],
+        'lust phase 3 should raise light-pressure weighting again around each major special'
     );
 }
 
@@ -1770,7 +1770,7 @@ function testLustSharedMajorRecoveryHooks() {
     );
 }
 
-function testLustDoubleBreatherChainHooks() {
+function testLustQuadBreatherChainHooks() {
     const { BOSSES } = loadDataConstants();
     const source = loadGameSource();
 
@@ -1786,8 +1786,8 @@ function testLustDoubleBreatherChainHooks() {
     );
     assert.equal(
         BOSSES.lust.phases[2].postMajorBreatherChain.requiredCount,
-        3,
-        'lust phase 3 should require three lighter attacks before the next major special'
+        4,
+        'lust phase 3 should require four lighter attacks before the next major special'
     );
     assert.match(
         source,
@@ -1966,7 +1966,7 @@ function testReadmeLustPostMirageSpacing() {
     );
     assert.match(
         source,
-        /共享 recovery 与三轻压守卫之外也会继续提高 `charmBolt` \/ `dash` 的占比/,
+        /共享 recovery 与四轻压守卫之外也会继续提高 `charmBolt` \/ `dash` 的占比/,
         'README should document the additional phase-3 light-pressure weighting pass'
     );
     assert.match(
@@ -2016,18 +2016,18 @@ function testReadmeLustSharedMajorRecovery() {
     );
     assert.match(
         source,
-        /共享 recovery guard 也会继续再拉长一档，让三轻压守卫收尾后的下一段 major special 再晚一拍/,
+        /共享 recovery guard 也会继续再拉长一档，让四轻压守卫收尾后的下一段 major special 再晚一拍/,
         'README should document the latest shared major-special recovery extension'
     );
     assert.match(
         source,
-        /`charmBolt` \/ `dash` 的占比也会再往上抬一档/,
-        'README should document the stronger phase-3 light-pressure weighting'
+        /`charmBolt` \/ `dash` 的占比也会继续再往上抬一档/,
+        'README should document the latest phase-3 light-pressure weighting pass'
     );
     assert.match(
         source,
-        /至少串入三段轻压后才允许回到 `reverseControl` \/ `illusion` \/ `mirageDance`/,
-        'README should document the phase-3 triple-breather chain after major specials'
+        /至少串入四段轻压后才允许回到 `reverseControl` \/ `illusion` \/ `mirageDance`/,
+        'README should document the phase-3 quad-breather chain after major specials'
     );
     assert.match(
         source,
@@ -8810,7 +8810,7 @@ function main() {
     runTest('lust phase-local cooldown hooks', testLustPhaseLocalCooldownHooks);
     runTest('lust post-mirage breather hooks', testLustPostMirageBreatherHooks);
     runTest('lust shared major recovery hooks', testLustSharedMajorRecoveryHooks);
-    runTest('lust triple breather chain hooks', testLustDoubleBreatherChainHooks);
+    runTest('lust quad breather chain hooks', testLustQuadBreatherChainHooks);
     runTest('lust mirage dance executor hooks', testLustMirageDanceExecutorHooks);
     runTest('lust special recovery hooks', testLustSpecialRecoveryHooks);
     runTest('keyboard aim state helper', testKeyboardAimState);
