@@ -135,7 +135,7 @@ const BOSSES = {
             { hpPercent: 0.6, attacks: ['charmBolt', 'dash', 'reverseControl'] },
             {
                 hpPercent: 0.3,
-                attacks: ['charmBolt', 'reverseControl', 'dash', 'charmBolt', 'illusion', 'dash', 'charmBolt', 'mirageDance', 'dash', 'charmBolt', 'dash'],
+                attacks: ['charmBolt', 'reverseControl', 'dash', 'charmBolt', 'dash', 'illusion', 'dash', 'charmBolt', 'mirageDance', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash'],
                 phaseLocalCooldownMs: {
                     reverseControl: 14000,
                     illusion: 15500,

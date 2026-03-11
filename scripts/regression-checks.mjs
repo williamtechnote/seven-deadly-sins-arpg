@@ -1557,8 +1557,8 @@ function testLustPhase3AttackOrder() {
 
     assert.deepEqual(
         Array.from(BOSSES.lust.phases[2].attacks),
-        ['charmBolt', 'reverseControl', 'dash', 'charmBolt', 'illusion', 'dash', 'charmBolt', 'mirageDance', 'dash', 'charmBolt', 'dash'],
-        'lust phase 3 should bias the final phase even further toward breather attacks between major specials'
+        ['charmBolt', 'reverseControl', 'dash', 'charmBolt', 'dash', 'illusion', 'dash', 'charmBolt', 'mirageDance', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash'],
+        'lust phase 3 should add another light-pressure weighting pass between major specials'
     );
 }
 
@@ -1911,8 +1911,8 @@ function testLustSpecialRecoveryHooks() {
 
     assert.match(
         source,
-        /} else if \(atk === 'reverseControl'\) \{[\s\S]*?const recoveryMs = 240;/,
-        'reverseControl should define an explicit post-collapse recovery window'
+        /} else if \(atk === 'reverseControl'\) \{[\s\S]*?const recoveryMs = 320;/,
+        'reverseControl should lengthen its explicit post-collapse recovery window again'
     );
     assert.match(
         source,
@@ -1966,6 +1966,11 @@ function testReadmeLustPostMirageSpacing() {
     );
     assert.match(
         source,
+        /共享 recovery 与双轻压守卫之外也会继续提高 `charmBolt` \/ `dash` 的占比/,
+        'README should document the additional phase-3 light-pressure weighting pass'
+    );
+    assert.match(
+        source,
         /逆转波收尾后也会多留一小段 recovery 空档/,
         'README should document the explicit post-mirage recovery window'
     );
@@ -1978,6 +1983,11 @@ function testReadmeLustSpecialRecovery() {
         source,
         /`reverseControl` 回卷收束后也会多留一小段 recovery 空档/,
         'README should document the reverseControl recovery window'
+    );
+    assert.match(
+        source,
+        /`reverseControl` 的 recovery 空档也会再拉长一档/,
+        'README should document the longer reverseControl recovery tuning pass'
     );
     assert.match(
         source,
