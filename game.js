@@ -7,6 +7,33 @@ if (!Core) {
     throw new Error('GameCore is required. Ensure shared/game-core.js is loaded before game.js');
 }
 
+const TestHarness = typeof globalThis !== 'undefined' && globalThis.__SDS_TEST_INTERNALS__
+    ? globalThis.__SDS_TEST_INTERNALS__
+    : null;
+
+function isTestModeEnabled() {
+    return !!(TestHarness && TestHarness.enabled);
+}
+
+function getTestFlags() {
+    return TestHarness && typeof TestHarness.getFlags === 'function'
+        ? TestHarness.getFlags()
+        : null;
+}
+
+function getTestFlagValue(key, fallbackValue) {
+    const flags = getTestFlags();
+    if (!flags || !Object.prototype.hasOwnProperty.call(flags, key)) return fallbackValue;
+    const value = Number(flags[key]);
+    return Number.isFinite(value) && value > 0 ? value : fallbackValue;
+}
+
+function recordTestEvent(type, payload) {
+    if (TestHarness && typeof TestHarness.recordEvent === 'function') {
+        TestHarness.recordEvent(type, payload || null);
+    }
+}
+
 const {
     WEAPON_SCALING,
     DEFAULT_WEAPON_LEVELS,
@@ -596,9 +623,15 @@ const GameState = {
     onEnemyDefeated() {
         if (!this.runChallenge || this.runChallenge.completed) return false;
         this.runChallenge.progress += 1;
+        recordTestEvent('challenge:progress', {
+            progress: this.runChallenge.progress,
+            target: this.runChallenge.target,
+            label: this.runChallenge.label
+        });
         if (this.runChallenge.progress >= this.runChallenge.target) {
             this.runChallenge.completed = true;
             this.addGold(this.runChallenge.rewardGold || 0);
+            recordTestEvent('challenge:completed', this.getRunChallengeSummary());
             return true;
         }
         return false;
@@ -618,7 +651,8 @@ const GameState = {
     refreshRunEffects() {
         const modifierEffects = buildRunModifierEffects(this.runModifiers, RUN_MODIFIER_POOL);
         const eventRoomEffects = buildRunEventRoomEffects(this.runEventRoom, RUN_EVENT_ROOM_POOL);
-        this.runEffects = combineRunEffects(modifierEffects, eventRoomEffects);
+        const testOverrides = getTestRunEffectOverrides();
+        this.runEffects = combineRunEffects(modifierEffects, eventRoomEffects, testOverrides);
     },
     reset() {
         const base = cloneDefaultSaveData();
@@ -633,6 +667,12 @@ const GameState = {
         this.rollRunEventRoom();
         this.rollRunChallenge();
         this.quickSlots = [null, null, null, null];
+        recordTestEvent('gamestate:reset', {
+            gold: this.gold,
+            runModifiers: this.runModifiers,
+            runEventRoom: this.getRunEventRoomSummary ? this.getRunEventRoomSummary() : null,
+            runChallenge: this.getRunChallengeSummary ? this.getRunChallengeSummary() : null
+        });
     },
     ensureSelectedWeapon() {
         const unlocked = Array.isArray(this.unlockedWeapons) && this.unlockedWeapons.length > 0
@@ -677,6 +717,11 @@ const GameState = {
             this.quickSlots = data.quickSlots || [null, null, null, null];
             this.ensureSelectedWeapon();
             if (!this.runChallenge) this.rollRunChallenge();
+            recordTestEvent('gamestate:load', {
+                gold: this.gold,
+                defeatedBosses: this.defeatedBosses,
+                sinSeals: this.sinSeals
+            });
             return true;
         } catch (e) {
             return false;
@@ -719,6 +764,20 @@ function combineRunEffects(...effectGroups) {
         });
     });
     return combined;
+}
+
+function getTestRunEffectOverrides() {
+    if (!isTestModeEnabled()) return null;
+    return {
+        enemySpeedMultiplier: getTestFlagValue('enemySpeedMultiplier', 1),
+        enemyHpMultiplier: getTestFlagValue('enemyHpMultiplier', 1),
+        playerDamageMultiplier: getTestFlagValue('playerDamageMultiplier', 1),
+        playerDamageTakenMultiplier: getTestFlagValue('playerDamageTakenMultiplier', 1),
+        goldDropMultiplier: getTestFlagValue('goldDropMultiplier', 1),
+        extraDropRateMultiplier: getTestFlagValue('extraDropRateMultiplier', 1),
+        playerStaminaRegenMultiplier: getTestFlagValue('playerStaminaRegenMultiplier', 1),
+        playerSpecialCooldownMultiplier: getTestFlagValue('playerSpecialCooldownMultiplier', 1)
+    };
 }
 
 const UI_DEBUG_FLAGS = {
@@ -3701,7 +3760,7 @@ class Boss {
                     }
                 }
             }
-            const recoveryMs = 700;
+            const recoveryMs = 820;
             if (elapsed >= 1400 && !this.attackData.recoveryStarted) {
                 this.attackData.recoveryStarted = true;
                 for (const p of this.attackData.projectiles) if (p.g.active) p.g.destroy();
@@ -3738,7 +3797,7 @@ class Boss {
                     if (ill.y < 150 || ill.y > 650) ill.vy *= -1;
                 }
             }
-            const recoveryMs = 920;
+            const recoveryMs = 1040;
             if (elapsed >= 3000 && !this.attackData.recoveryStarted) {
                 this.attackData.recoveryStarted = true;
                 this.sprite.setAlpha(1);
@@ -6568,3 +6627,10 @@ const config = {
 };
 
 const game = new Phaser.Game(config);
+
+if (typeof globalThis !== 'undefined') {
+    globalThis.__SDS_GAME__ = game;
+    if (isTestModeEnabled()) {
+        globalThis.GameState = GameState;
+    }
+}

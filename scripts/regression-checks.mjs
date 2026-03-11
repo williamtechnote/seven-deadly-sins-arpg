@@ -5,8 +5,38 @@ import vm from 'node:vm';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
-const require = createRequire(import.meta.url);
-const core = require('../shared/game-core.js');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const repoRoot = path.resolve(__dirname, '..');
+
+function loadCoreApi() {
+    const coreSourcePath = path.join(repoRoot, 'shared/game-core.js');
+    let requiredCore = null;
+    try {
+        requiredCore = createRequire(import.meta.url)(coreSourcePath);
+    } catch (error) {
+        requiredCore = null;
+    }
+    if (requiredCore && typeof requiredCore.getScaledWeaponStats === 'function') {
+        return requiredCore;
+    }
+
+    const coreSource = fs.readFileSync(coreSourcePath, 'utf8');
+    const previousGameCore = globalThis.GameCore;
+    let fallbackCore = null;
+    try {
+        globalThis.GameCore = undefined;
+        fallbackCore = Function(`${coreSource}\nreturn globalThis.GameCore;`)();
+    } finally {
+        globalThis.GameCore = previousGameCore;
+    }
+    if (!fallbackCore || typeof fallbackCore.getScaledWeaponStats !== 'function') {
+        throw new Error('Failed to load GameCore API for regression checks');
+    }
+    return fallbackCore;
+}
+
+const core = loadCoreApi();
 
 const {
     WEAPON_SCALING,
@@ -91,10 +121,6 @@ const {
     deserializeSaveData,
     DEFAULT_SAVE_DATA
 } = core;
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const repoRoot = path.resolve(__dirname, '..');
 
 function loadDataConstants() {
     const dataSource = fs.readFileSync(path.join(repoRoot, 'data.js'), 'utf8');
@@ -1734,7 +1760,7 @@ function testLustSharedMajorRecoveryHooks() {
 
     assert.equal(
         BOSSES.lust.phases[2].sharedAttackRecoveryMs.majorSpecial,
-        3300,
+        3900,
         'lust phase 3 should stretch the shared recovery window for major specials one more step'
     );
     assert.deepEqual(
@@ -1925,7 +1951,7 @@ function testLustSpecialRecoveryHooks() {
 
     assert.match(
         source,
-        /} else if \(atk === 'reverseControl'\) \{[\s\S]*?const recoveryMs = 700;/,
+        /} else if \(atk === 'reverseControl'\) \{[\s\S]*?const recoveryMs = 820;/,
         'reverseControl should lengthen its explicit post-collapse recovery window again'
     );
     assert.match(
@@ -1940,7 +1966,7 @@ function testLustSpecialRecoveryHooks() {
     );
     assert.match(
         source,
-        /} else if \(atk === 'illusion'\) \{[\s\S]*?const recoveryMs = 920;/,
+        /} else if \(atk === 'illusion'\) \{[\s\S]*?const recoveryMs = 1040;/,
         'illusion should lengthen its explicit post-despawn recovery window once more'
     );
     assert.match(
@@ -2005,7 +2031,7 @@ function testReadmeLustSpecialRecovery() {
     );
     assert.match(
         source,
-        /`reverseControl` 的 recovery 空档这轮会再次再拉长一档，让共享 recovery 与更长的 `mirageDance` loopback 过桥都落地后，下一段追压继续再晚半拍回切/,
+        /`reverseControl` 的 recovery 空档这轮会再次再拉长一档，让共享 recovery 再次回调后，下一段追压继续再晚半拍回切/,
         'README should document the latest reverseControl recovery tuning pass'
     );
     assert.match(
@@ -2015,7 +2041,7 @@ function testReadmeLustSpecialRecovery() {
     );
     assert.match(
         source,
-        /`illusion` 的 recovery 空档这轮也会再次再拉长一档，让 `reverseControl` recovery 再次回调后，幻身散场后的下一段 major special 仍继续再晚半拍回切/,
+        /`illusion` 的 recovery 空档这轮会优先再次再拉长一档，让幻身散场后的下一段 major special 先继续再晚半拍回切/,
         'README should document the newest illusion recovery tuning pass'
     );
     assert.match(
@@ -2035,7 +2061,7 @@ function testReadmeLustSharedMajorRecovery() {
     );
     assert.match(
         source,
-        /共享 recovery guard 也会继续再拉长一档，让六轻压守卫与更多 loopback 轻压收尾后的下一段 major special 继续再晚半拍/,
+        /共享 recovery guard 也会随后再次再拉长一档，让 `illusion` recovery 再次回调后，下一段 major special 继续再晚半拍/,
         'README should document the newest shared major-special recovery extension around the longer loopback'
     );
     assert.match(
