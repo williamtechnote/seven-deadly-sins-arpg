@@ -1,9 +1,11 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 机制多样性：`魅惑女妖` phase 3 后续观察六-三：若 `reverseControl` / `illusion` breather guard 落地后 live pacing 仍偏密，再评估是否还要给 phase 3 major special 追加更长共享 recovery 或进一步拉高轻压权重
+- [ ] Boss 机制多样性：`魅惑女妖` phase 3 后续观察七-三：若共享 recovery guard 与额外轻压权重落地后 live pacing 仍偏密，再评估是否继续拉长共享 recovery 或进一步增加轻压插段
 
 ## Completed
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 轻压权重七-二：继续提高 `charmBolt` / `dash` 在末阶段攻击池里的占比，让共享 recovery guard 结束后也更常穿插轻压 breather（完成：2026-03-11 12:24 +08）
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 共享收招空档七-一：为 `reverseControl` / `illusion` / `mirageDance` 追加共享 major-special recovery guard，让其中任一收招后若仍有 `charmBolt` / `dash` 可选，则短时间内先让轻压接棒，避免立刻回到下一段 major special（完成：2026-03-11 12:24 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 呼吸守卫六-二：为 `illusion` 落地 post-attack breather guard，若仍有 `charmBolt` / `dash` 可选则不立刻回到 `reverseControl` / `illusion` / `mirageDance`（完成：2026-03-11 12:17 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 呼吸守卫六-一：为 `reverseControl` 落地 post-attack breather guard，若仍有 `charmBolt` / `dash` 可选则不立刻回到 `reverseControl` / `illusion` / `mirageDance`（完成：2026-03-11 12:17 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 收招空档五-二：为 `illusion` 幻身散场后补显式 recovery 窗口，让本体现身后不立刻续压（完成：2026-03-11 11:27 +08）

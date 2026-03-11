@@ -1557,8 +1557,8 @@ function testLustPhase3AttackOrder() {
 
     assert.deepEqual(
         Array.from(BOSSES.lust.phases[2].attacks),
-        ['charmBolt', 'reverseControl', 'dash', 'charmBolt', 'illusion', 'dash', 'mirageDance', 'charmBolt', 'dash'],
-        'lust phase 3 should bias the final phase further toward breather attacks between major specials'
+        ['charmBolt', 'reverseControl', 'dash', 'charmBolt', 'illusion', 'dash', 'charmBolt', 'mirageDance', 'dash', 'charmBolt', 'dash'],
+        'lust phase 3 should bias the final phase even further toward breather attacks between major specials'
     );
 }
 
@@ -1711,6 +1711,62 @@ function testLustPostMirageBreatherHooks() {
         source,
         /if \(blockedAfterLastAttack && blockedAfterLastAttack\.includes\(candidate\) && attacks\.some\(attack => !blockedAfterLastAttack\.includes\(attack\)\)\) \{\s*continue;\s*\}/,
         'Boss selector should skip guarded follow-ups when an unguarded breather remains in the phase pool'
+    );
+}
+
+function testLustSharedMajorRecoveryHooks() {
+    const { BOSSES } = loadDataConstants();
+    const source = loadGameSource();
+
+    assert.equal(
+        BOSSES.lust.phases[2].sharedAttackRecoveryMs.majorSpecial,
+        1600,
+        'lust phase 3 should configure a shared recovery window for major specials'
+    );
+    assert.deepEqual(
+        Array.from(BOSSES.lust.phases[2].sharedAttackRecoveryGroups.majorSpecial),
+        ['reverseControl', 'illusion', 'mirageDance'],
+        'lust phase 3 should group reverseControl, illusion, and mirageDance under the shared recovery guard'
+    );
+    assert.match(
+        source,
+        /this\.phaseAttackGroupRecoveryExpires\s*=\s*\{\}/,
+        'Boss should initialize phase-level shared recovery expiry state'
+    );
+    assert.match(
+        source,
+        /const sharedAttackRecoveryMs = phase && phase\.sharedAttackRecoveryMs \? phase\.sharedAttackRecoveryMs : \{\};/,
+        'Boss selector should read optional shared attack recovery metadata from the current phase'
+    );
+    assert.match(
+        source,
+        /const sharedAttackRecoveryGroups = phase && phase\.sharedAttackRecoveryGroups \? phase\.sharedAttackRecoveryGroups : \{\};/,
+        'Boss selector should read optional shared attack recovery groups from the current phase'
+    );
+    assert.match(
+        source,
+        /const candidateSharedGroupKey = Object\.keys\(sharedAttackRecoveryGroups\)\.find\(groupKey => Array\.isArray\(sharedAttackRecoveryGroups\[groupKey\]\) && sharedAttackRecoveryGroups\[groupKey\]\.includes\(candidate\)\);/,
+        'Boss selector should resolve whether a candidate belongs to a shared recovery group'
+    );
+    assert.match(
+        source,
+        /const sharedRecoveryExpiresAt = candidateSharedGroupKey \? \(this\.phaseAttackGroupRecoveryExpires\[candidateSharedGroupKey\] \|\| 0\) : 0;/,
+        'Boss selector should look up the active shared recovery expiry for the candidate group'
+    );
+    assert.match(
+        source,
+        /if \(sharedRecoveryExpiresAt > now && attacks\.some\(attack => !sharedAttackRecoveryGroups\[candidateSharedGroupKey\]\.includes\(attack\)\)\) \{\s*continue;\s*\}/,
+        'Boss selector should skip shared-recovery major specials when a lighter attack still exists'
+    );
+    assert.match(
+        source,
+        /const sharedAttackRecoveryMs = phase && phase\.sharedAttackRecoveryMs \? phase\.sharedAttackRecoveryMs : \{\};[\s\S]*?const sharedAttackRecoveryGroups = phase && phase\.sharedAttackRecoveryGroups \? phase\.sharedAttackRecoveryGroups : \{\};/,
+        'Boss finish hook should load shared recovery metadata for the finished phase'
+    );
+    assert.match(
+        source,
+        /Object\.entries\(sharedAttackRecoveryGroups\)\.forEach\(\(\[groupKey,\s*groupAttacks\]\) => \{[\s\S]*?if \(!Array\.isArray\(groupAttacks\) \|\| !groupAttacks\.includes\(this\.currentAttack\)\) return;[\s\S]*?const sharedRecoveryMs = sharedAttackRecoveryMs\[groupKey\] \|\| 0;[\s\S]*?this\.phaseAttackGroupRecoveryExpires\[groupKey\] = time \+ sharedRecoveryMs;/,
+        'Boss finish hook should stamp shared recovery expiry when a guarded major special completes'
     );
 }
 
@@ -1871,6 +1927,21 @@ function testReadmeLustSpecialRecovery() {
         source,
         /`reverseControl` \/ `illusion` 结束后若仍有 `charmBolt` \/ `dash` 可选，也会先插入额外呼吸段/,
         'README should document the new reverseControl and illusion breather guards'
+    );
+}
+
+function testReadmeLustSharedMajorRecovery() {
+    const source = loadReadmeSource();
+
+    assert.match(
+        source,
+        /phase 3 的 `reverseControl` \/ `illusion` \/ `mirageDance` 之间还会追加一段共享 recovery guard/,
+        'README should document the shared major-special recovery guard'
+    );
+    assert.match(
+        source,
+        /`charmBolt` \/ `dash` 的占比也会再往上抬一档/,
+        'README should document the stronger phase-3 light-pressure weighting'
     );
 }
 
@@ -8642,6 +8713,7 @@ function main() {
     runTest('boss major attack breather hooks', testBossMajorAttackBreatherHooks);
     runTest('lust phase-local cooldown hooks', testLustPhaseLocalCooldownHooks);
     runTest('lust post-mirage breather hooks', testLustPostMirageBreatherHooks);
+    runTest('lust shared major recovery hooks', testLustSharedMajorRecoveryHooks);
     runTest('lust mirage dance executor hooks', testLustMirageDanceExecutorHooks);
     runTest('lust special recovery hooks', testLustSpecialRecoveryHooks);
     runTest('keyboard aim state helper', testKeyboardAimState);
@@ -8662,6 +8734,7 @@ function main() {
     runTest('README lust phase-local cooldowns', testReadmeLustPhaseLocalCooldowns);
     runTest('README lust post-mirage spacing', testReadmeLustPostMirageSpacing);
     runTest('README lust special recovery', testReadmeLustSpecialRecovery);
+    runTest('README lust shared major recovery', testReadmeLustSharedMajorRecovery);
     runTest('combat action HUD summary helper', testCombatActionHudSummary);
     runTest('quick-slot item label helper', testQuickSlotItemLabel);
     runTest('keyboard HUD QoL hooks', testKeyboardHudQolHooks);

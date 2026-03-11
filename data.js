@@ -135,11 +135,17 @@ const BOSSES = {
             { hpPercent: 0.6, attacks: ['charmBolt', 'dash', 'reverseControl'] },
             {
                 hpPercent: 0.3,
-                attacks: ['charmBolt', 'reverseControl', 'dash', 'charmBolt', 'illusion', 'dash', 'mirageDance', 'charmBolt', 'dash'],
+                attacks: ['charmBolt', 'reverseControl', 'dash', 'charmBolt', 'illusion', 'dash', 'charmBolt', 'mirageDance', 'dash', 'charmBolt', 'dash'],
                 phaseLocalCooldownMs: {
                     reverseControl: 14000,
                     illusion: 15500,
                     mirageDance: 16500
+                },
+                sharedAttackRecoveryMs: {
+                    majorSpecial: 1600
+                },
+                sharedAttackRecoveryGroups: {
+                    majorSpecial: ['reverseControl', 'illusion', 'mirageDance']
                 },
                 postAttackBreatherGuards: {
                     reverseControl: ['reverseControl', 'illusion', 'mirageDance'],
