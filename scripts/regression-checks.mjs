@@ -1557,8 +1557,8 @@ function testLustPhase3AttackOrder() {
 
     assert.deepEqual(
         Array.from(BOSSES.lust.phases[2].attacks),
-        ['charmBolt', 'reverseControl', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'illusion', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'mirageDance', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash'],
-        'lust phase 3 should raise light-pressure weighting again around each major special'
+        ['charmBolt', 'dash', 'reverseControl', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'illusion', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'mirageDance', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash'],
+        'lust phase 3 should add a targeted light-pressure bridge before looping from mirageDance back into reverseControl'
     );
 }
 
@@ -1720,8 +1720,8 @@ function testLustSharedMajorRecoveryHooks() {
 
     assert.equal(
         BOSSES.lust.phases[2].sharedAttackRecoveryMs.majorSpecial,
-        2550,
-        'lust phase 3 should stretch the shared recovery window for major specials yet again'
+        2800,
+        'lust phase 3 should stretch the shared recovery window for major specials once more'
     );
     assert.deepEqual(
         Array.from(BOSSES.lust.phases[2].sharedAttackRecoveryGroups.majorSpecial),
@@ -2016,7 +2016,7 @@ function testReadmeLustSharedMajorRecovery() {
     );
     assert.match(
         source,
-        /共享 recovery guard 也会继续再拉长一档，让四轻压守卫收尾后的下一段 major special 再晚一拍/,
+        /共享 recovery guard 也会继续再拉长一档，让四轻压守卫与定向后桥收尾后的下一段 major special 再晚一拍/,
         'README should document the latest shared major-special recovery extension'
     );
     assert.match(
@@ -2038,6 +2038,11 @@ function testReadmeLustSharedMajorRecovery() {
         source,
         /在 `illusion` 与下一段 major special 之间也会再补一段 `charmBolt` \/ `dash` 轻压过桥/,
         'README should document the extra post-illusion light-pressure bridge'
+    );
+    assert.match(
+        source,
+        /在 `mirageDance` 与下一轮 `reverseControl` 之间也会再补一段 `charmBolt` \/ `dash` 定向轻压过桥/,
+        'README should document the targeted bridge between mirageDance and the next reverseControl loop'
     );
 }
 
