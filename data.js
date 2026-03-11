@@ -142,7 +142,7 @@ const BOSSES = {
                     mirageDance: 16500
                 },
                 sharedAttackRecoveryMs: {
-                    majorSpecial: 1900
+                    majorSpecial: 2300
                 },
                 sharedAttackRecoveryGroups: {
                     majorSpecial: ['reverseControl', 'illusion', 'mirageDance']
@@ -150,7 +150,7 @@ const BOSSES = {
                 postMajorBreatherChain: {
                     triggerAttacks: ['reverseControl', 'illusion', 'mirageDance'],
                     breatherAttacks: ['charmBolt', 'dash'],
-                    requiredCount: 2
+                    requiredCount: 3
                 },
                 postAttackBreatherGuards: {
                     reverseControl: ['reverseControl', 'illusion', 'mirageDance'],

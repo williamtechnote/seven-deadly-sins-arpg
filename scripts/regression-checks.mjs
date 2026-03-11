@@ -1720,8 +1720,8 @@ function testLustSharedMajorRecoveryHooks() {
 
     assert.equal(
         BOSSES.lust.phases[2].sharedAttackRecoveryMs.majorSpecial,
-        1900,
-        'lust phase 3 should configure a longer shared recovery window for major specials'
+        2300,
+        'lust phase 3 should stretch the shared recovery window for major specials again'
     );
     assert.deepEqual(
         Array.from(BOSSES.lust.phases[2].sharedAttackRecoveryGroups.majorSpecial),
@@ -1786,8 +1786,8 @@ function testLustDoubleBreatherChainHooks() {
     );
     assert.equal(
         BOSSES.lust.phases[2].postMajorBreatherChain.requiredCount,
-        2,
-        'lust phase 3 should require two lighter attacks before the next major special'
+        3,
+        'lust phase 3 should require three lighter attacks before the next major special'
     );
     assert.match(
         source,
@@ -2016,8 +2016,8 @@ function testReadmeLustSharedMajorRecovery() {
     );
     assert.match(
         source,
-        /共享 recovery guard 也会再拉长一档/,
-        'README should document the longer shared major-special recovery'
+        /共享 recovery guard 也会继续再拉长一档/,
+        'README should document the further lengthened shared major-special recovery'
     );
     assert.match(
         source,
@@ -2026,8 +2026,8 @@ function testReadmeLustSharedMajorRecovery() {
     );
     assert.match(
         source,
-        /至少串入两段轻压后才允许回到 `reverseControl` \/ `illusion` \/ `mirageDance`/,
-        'README should document the phase-3 double-breather chain after major specials'
+        /至少串入三段轻压后才允许回到 `reverseControl` \/ `illusion` \/ `mirageDance`/,
+        'README should document the phase-3 triple-breather chain after major specials'
     );
     assert.match(
         source,
@@ -8805,7 +8805,7 @@ function main() {
     runTest('lust phase-local cooldown hooks', testLustPhaseLocalCooldownHooks);
     runTest('lust post-mirage breather hooks', testLustPostMirageBreatherHooks);
     runTest('lust shared major recovery hooks', testLustSharedMajorRecoveryHooks);
-    runTest('lust double breather chain hooks', testLustDoubleBreatherChainHooks);
+    runTest('lust triple breather chain hooks', testLustDoubleBreatherChainHooks);
     runTest('lust mirage dance executor hooks', testLustMirageDanceExecutorHooks);
     runTest('lust special recovery hooks', testLustSpecialRecoveryHooks);
     runTest('keyboard aim state helper', testKeyboardAimState);
