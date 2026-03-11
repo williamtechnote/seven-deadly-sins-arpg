@@ -1571,8 +1571,8 @@ function testLustPhase3AttackOrder() {
     );
     assert.deepEqual(
         attacks.slice(mirageDanceIndex + 1),
-        ['dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt'],
-        'lust phase 3 should keep the loopback after mirageDance on a longer directed light-pressure bridge'
+        ['dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt'],
+        'lust phase 3 should keep the loopback after mirageDance on an even longer directed light-pressure bridge'
     );
 }
 
@@ -1880,8 +1880,8 @@ function testLustMirageDanceExecutorHooks() {
     );
     assert.match(
         source,
-        /this\.attackData\.finisherRecoveryMs\s*=\s*260/,
-        'mirageDance should define an explicit recovery window after the reverse-wave collapse'
+        /this\.attackData\.finisherRecoveryMs\s*=\s*360/,
+        'mirageDance should define a longer explicit recovery window after the reverse-wave collapse'
     );
     assert.match(
         source,
@@ -1988,6 +1988,11 @@ function testReadmeLustPostMirageSpacing() {
         /逆转波收尾后也会多留一小段 recovery 空档/,
         'README should document the explicit post-mirage recovery window'
     );
+    assert.match(
+        source,
+        /逆转波收尾后的 recovery 空档也会继续再拉长一档，让 loopback 过桥继续加长后下一轮 `reverseControl` 仍再晚半拍回切/,
+        'README should document the newest mirageDance recovery tuning pass'
+    );
 }
 
 function testReadmeLustSpecialRecovery() {
@@ -2055,8 +2060,8 @@ function testReadmeLustSharedMajorRecovery() {
     );
     assert.match(
         source,
-        /在 `mirageDance` 与下一轮 `reverseControl` 之间也会再补更长的一整段 `charmBolt` \/ `dash` 定向轻压过桥/,
-        'README should document the longer targeted bridge between mirageDance and the next reverseControl loop'
+        /在 `mirageDance` 与下一轮 `reverseControl` 之间也会继续再补更长的一整段 `charmBolt` \/ `dash` 定向轻压过桥/,
+        'README should document the newly re-extended targeted bridge between mirageDance and the next reverseControl loop'
     );
 }
 
