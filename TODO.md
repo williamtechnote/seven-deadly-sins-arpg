@@ -1,9 +1,12 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] run challenge 标签清洗兼容同开口 ornamental quote stack（如 `〝〝挑战〞〟击败 30 个敌人` / `〝〝本局挑战〟〟挑战：本局`），补齐共享开口 glyph 下的闭口匹配策略
+- [ ] 更多 Boss 机制多样性（新招式、新阶段行为）
 
 ## Completed
+- [x] README / 操作指引 / 回归检查同步同开口 ornamental quote mixed-closing stack 契约，覆盖 shared opener `〝` 的两组 closing-order 样例（完成：2026-03-11 08:53 +08）
+- [x] run challenge 标签清洗兼容同开口 ornamental quote inverse mixed-closing stack（如 `〝〝挑战〟〞击败 30 个敌人` / `〝〝本局挑战〟〞挑战：本局`），补齐共享开口 glyph 下的 inverse close-order 匹配策略（完成：2026-03-11 08:53 +08）
+- [x] run challenge 标签清洗兼容同开口 ornamental quote mixed-closing stack（如 `〝〝挑战〞〟击败 30 个敌人` / `〝〝本局挑战〟〟挑战：本局`），补齐共享开口 glyph 下的 mixed close-order 匹配策略（完成：2026-03-11 08:53 +08）
 - [x] run challenge 标签清洗兼容同类双层对称引号 decorator stack（如 `""挑战""击败 30 个敌人` / `''本局挑战''挑战：本局`），避免重复引号包裹阻断共享前缀清洗（完成：2026-03-11 08:43 +08）
 - [x] run challenge 标签清洗兼容同类双层异形括号 decorator stack（如 `〈〈挑战〉〉击败 30 个敌人` / `［［本局挑战］］挑战：本局`），需要继续逐层剥离并复用既有 plain-text 前缀去重与 `未知挑战` 回退链（完成：2026-03-11 08:43 +08）
 - [x] run challenge 标签清洗兼容 nested corner-angle/ornamental low double-prime mixed decorator wrappers（如 `〈〝挑战〟〉击败 30 个敌人` / `〝〈本局挑战〉〟挑战：本局`），继续复用逐层 decorator 剥离、前缀去重与 `未知挑战` 回退链（完成：2026-03-11 08:32 +08）

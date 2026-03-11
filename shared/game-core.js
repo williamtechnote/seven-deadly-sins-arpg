@@ -652,26 +652,64 @@
         return -1;
     }
 
+    function getRunChallengeDecoratorCloseVariants(open) {
+        const closeVariants = [];
+        for (const [candidateOpen, close] of RUN_CHALLENGE_DECORATOR_PAIRS) {
+            if (candidateOpen === open && !closeVariants.includes(close)) {
+                closeVariants.push(close);
+            }
+        }
+        return closeVariants.sort((left, right) => right.length - left.length);
+    }
+
+    function findRepeatedRunChallengeDecoratorStackEnd(label, open) {
+        if (typeof label !== 'string' || !label || typeof open !== 'string' || !open || !label.startsWith(open)) {
+            return -1;
+        }
+        let repeatedOpenCount = 1;
+        while (label.startsWith(open, repeatedOpenCount * open.length)) {
+            repeatedOpenCount += 1;
+        }
+        if (repeatedOpenCount <= 1) {
+            return -1;
+        }
+        const closeVariants = getRunChallengeDecoratorCloseVariants(open);
+        if (closeVariants.length === 0) {
+            return -1;
+        }
+        const leadingWidth = repeatedOpenCount * open.length;
+        for (let closeIndex = leadingWidth; closeIndex < label.length; closeIndex += 1) {
+            let cursor = closeIndex;
+            let matchedCloseCount = 0;
+            while (matchedCloseCount < repeatedOpenCount) {
+                const matchedClose = closeVariants.find(close => label.startsWith(close, cursor));
+                if (!matchedClose) {
+                    break;
+                }
+                cursor += matchedClose.length;
+                matchedCloseCount += 1;
+            }
+            if (matchedCloseCount !== repeatedOpenCount) {
+                continue;
+            }
+            const innerText = label.slice(leadingWidth, closeIndex);
+            if (isRunChallengePrefixToken(innerText)) {
+                return cursor;
+            }
+        }
+        return -1;
+    }
+
     function stripRunChallengeSingleDecoratorPrefix(label) {
         if (typeof label !== 'string' || !label) return '';
+        const attemptedRepeatedStackOpens = new Set();
         for (const [open, close] of RUN_CHALLENGE_DECORATOR_PAIRS) {
             if (!label.startsWith(open)) continue;
-            if (open === close) {
-                let repeatedOpenCount = 1;
-                while (label.startsWith(open, repeatedOpenCount * open.length)) {
-                    repeatedOpenCount += 1;
-                }
-                if (repeatedOpenCount > 1) {
-                    const leadingWidth = repeatedOpenCount * open.length;
-                    const closingToken = close.repeat(repeatedOpenCount);
-                    let closeIndex = label.indexOf(closingToken, leadingWidth);
-                    while (closeIndex >= leadingWidth) {
-                        const innerText = label.slice(leadingWidth, closeIndex);
-                        if (isRunChallengePrefixToken(innerText)) {
-                            return label.slice(closeIndex + closingToken.length);
-                        }
-                        closeIndex = label.indexOf(closingToken, closeIndex + close.length);
-                    }
+            if (!attemptedRepeatedStackOpens.has(open)) {
+                attemptedRepeatedStackOpens.add(open);
+                const repeatedStackEnd = findRepeatedRunChallengeDecoratorStackEnd(label, open);
+                if (repeatedStackEnd > 0) {
+                    return label.slice(repeatedStackEnd);
                 }
             }
             const closeIndex = findRunChallengeDecoratorCloseIndex(label, open, close);

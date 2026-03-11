@@ -2448,6 +2448,26 @@ function testRunChallengeSidebarLines() {
         'run challenge safe sidebar-label helper should still fall back to 未知挑战 when repeated ASCII single-quote decorators plus repeated plain-text prefixes exhaust the upstream label'
     );
     assert.equal(
+        getRunChallengeSafeSidebarLabel('〝〝挑战〞〟击败 30 个敌人'),
+        '击败 30 个敌人',
+        'run challenge safe sidebar-label helper should strip same-open ornamental quote stacks that close in double-prime then low-double-prime order before rendering the body label'
+    );
+    assert.equal(
+        getRunChallengeSafeSidebarLabel('〝〝本局挑战〞〟挑战：本局'),
+        '未知挑战',
+        'run challenge safe sidebar-label helper should still fall back to 未知挑战 when same-open ornamental quote stacks close in double-prime then low-double-prime order and repeated plain-text prefixes exhaust the upstream label'
+    );
+    assert.equal(
+        getRunChallengeSafeSidebarLabel('〝〝挑战〟〞击败 30 个敌人'),
+        '击败 30 个敌人',
+        'run challenge safe sidebar-label helper should strip same-open ornamental quote stacks that close in low-double-prime then double-prime order before rendering the body label'
+    );
+    assert.equal(
+        getRunChallengeSafeSidebarLabel('〝〝本局挑战〟〞挑战：本局'),
+        '未知挑战',
+        'run challenge safe sidebar-label helper should still fall back to 未知挑战 when same-open ornamental quote stacks close in low-double-prime then double-prime order and repeated plain-text prefixes exhaust the upstream label'
+    );
+    assert.equal(
         getRunChallengeSafeSidebarLabel('〈"挑战"〉击败 30 个敌人'),
         '击败 30 个敌人',
         'run challenge safe sidebar-label helper should strip nested corner-angle and ASCII straight-quote mixed decorators before rendering the body label'
@@ -6807,6 +6827,16 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /`〝〝挑战〞〟` \/ `〝〝本局挑战〟〟`/,
+        'README should explicitly document same-open ornamental quote stacks that close in double-prime then low-double-prime order alongside the existing repeated stack examples'
+    );
+    assert.match(
+        source,
+        /`〝〝挑战〟〞` \/ `〝〝本局挑战〟〞`/,
+        'README should explicitly document same-open ornamental quote stacks that close in low-double-prime then double-prime order alongside the existing repeated stack examples'
+    );
+    assert.match(
+        source,
         /`\[〈挑战〉\]` \/ `〈\[本局挑战\]〉`/,
         'README should explicitly document nested ASCII square and corner-angle mixed challenge decorators alongside the existing nested mixed examples'
     );
@@ -7443,6 +7473,16 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /“""挑战""”\/“''本局挑战''”/,
         'help overlay should explicitly document repeated same-family symmetric quote stacks alongside the existing nested mixed examples'
+    );
+    assert.match(
+        source,
+        /“〝〝挑战〞〟”\/“〝〝本局挑战〟〟”/,
+        'help overlay should explicitly document same-open ornamental quote stacks that close in double-prime then low-double-prime order alongside the existing repeated stack examples'
+    );
+    assert.match(
+        source,
+        /“〝〝挑战〟〞”\/“〝〝本局挑战〟〞”/,
+        'help overlay should explicitly document same-open ornamental quote stacks that close in low-double-prime then double-prime order alongside the existing repeated stack examples'
     );
     assert.match(
         source,
