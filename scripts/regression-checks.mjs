@@ -1557,8 +1557,8 @@ function testLustPhase3AttackOrder() {
 
     assert.deepEqual(
         Array.from(BOSSES.lust.phases[2].attacks),
-        ['charmBolt', 'reverseControl', 'dash', 'charmBolt', 'dash', 'illusion', 'dash', 'charmBolt', 'mirageDance', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash'],
-        'lust phase 3 should add another light-pressure weighting pass between major specials'
+        ['charmBolt', 'reverseControl', 'dash', 'charmBolt', 'dash', 'illusion', 'dash', 'charmBolt', 'dash', 'mirageDance', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash'],
+        'lust phase 3 should add another light-pressure insert between illusion and the next major special'
     );
 }
 
@@ -1926,8 +1926,8 @@ function testLustSpecialRecoveryHooks() {
     );
     assert.match(
         source,
-        /} else if \(atk === 'illusion'\) \{[\s\S]*?const recoveryMs = 320;/,
-        'illusion should define an explicit post-despawn recovery window'
+        /} else if \(atk === 'illusion'\) \{[\s\S]*?const recoveryMs = 420;/,
+        'illusion should lengthen its explicit post-despawn recovery window again'
     );
     assert.match(
         source,
@@ -1996,6 +1996,11 @@ function testReadmeLustSpecialRecovery() {
     );
     assert.match(
         source,
+        /`illusion` 的 recovery 空档也会再拉长一档/,
+        'README should document the longer illusion recovery tuning pass'
+    );
+    assert.match(
+        source,
         /`reverseControl` \/ `illusion` 结束后若仍有 `charmBolt` \/ `dash` 可选，也会先插入额外呼吸段/,
         'README should document the new reverseControl and illusion breather guards'
     );
@@ -2023,6 +2028,11 @@ function testReadmeLustSharedMajorRecovery() {
         source,
         /至少串入两段轻压后才允许回到 `reverseControl` \/ `illusion` \/ `mirageDance`/,
         'README should document the phase-3 double-breather chain after major specials'
+    );
+    assert.match(
+        source,
+        /在 `illusion` 与下一段 major special 之间再补一段 `charmBolt` \/ `dash` 轻压插段/,
+        'README should document the extra post-illusion light-pressure insert'
     );
 }
 
