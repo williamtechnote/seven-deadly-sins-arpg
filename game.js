@@ -3138,6 +3138,7 @@ class Boss {
         this.berserkApplied = false;
 
         this.attackIndex = 0;
+        this.lastCompletedAttack = null;
         this.windUpStart = 0;
         this.attackStart = 0;
         this.cooldownStart = 0;
@@ -3156,6 +3157,27 @@ class Boss {
 
     getPhase() {
         return this.config.phases[this.currentPhase] || this.config.phases[0];
+    }
+
+    _pickPhaseAttack(attacks) {
+        if (!Array.isArray(attacks) || attacks.length === 0) return null;
+        let selectedAttack = attacks[this.attackIndex % attacks.length];
+        let selectedRawIndex = this.attackIndex;
+        for (let offset = 0; offset < attacks.length; offset++) {
+            const rawIndex = this.attackIndex + offset;
+            const candidate = attacks[rawIndex % attacks.length];
+            const lastAttackWasMajor = MAJOR_BOSS_PHASE_ATTACKS.has(this.lastCompletedAttack);
+            const candidateIsMajor = MAJOR_BOSS_PHASE_ATTACKS.has(candidate);
+            if (lastAttackWasMajor && candidateIsMajor) {
+                const hasBreatherAttack = attacks.some(attack => !MAJOR_BOSS_PHASE_ATTACKS.has(attack));
+                if (hasBreatherAttack) continue;
+            }
+            selectedAttack = candidate;
+            selectedRawIndex = rawIndex;
+            break;
+        }
+        this.attackIndex = selectedRawIndex + 1;
+        return selectedAttack;
     }
 
     getTelegraphHudSummary(now) {
@@ -3213,8 +3235,7 @@ class Boss {
 
         if (this.attackState === 'idle') {
             if (attacks.length > 0) {
-                this.currentAttack = attacks[this.attackIndex % attacks.length];
-                this.attackIndex++;
+                this.currentAttack = this._pickPhaseAttack(attacks);
                 this.attackState = 'winding';
                 this.windUpStart = time;
                 const attackName = ATTACK_DISPLAY_NAMES[this.currentAttack] || this.currentAttack;
@@ -4088,6 +4109,7 @@ class Boss {
     }
 
     _finishAttack(time) {
+        this.lastCompletedAttack = this.currentAttack;
         this.attackState = 'cooldown';
         this.cooldownStart = time;
     }

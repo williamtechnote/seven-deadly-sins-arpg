@@ -133,7 +133,7 @@ const BOSSES = {
         phases: [
             { hpPercent: 1.0, attacks: ['charmBolt', 'dash'] },
             { hpPercent: 0.6, attacks: ['charmBolt', 'dash', 'reverseControl'] },
-            { hpPercent: 0.3, attacks: ['charmBolt', 'dash', 'reverseControl', 'illusion', 'mirageDance'] }
+            { hpPercent: 0.3, attacks: ['charmBolt', 'reverseControl', 'dash', 'illusion', 'charmBolt', 'mirageDance', 'dash'] }
         ],
         defeatDialog: [
             { speaker: '魅惑女妖', text: '你……竟不为所动？' },

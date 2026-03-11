@@ -1552,6 +1552,16 @@ function testBossMechanicDiversityHooks() {
     );
 }
 
+function testLustPhase3AttackOrder() {
+    const { BOSSES } = loadDataConstants();
+
+    assert.deepEqual(
+        Array.from(BOSSES.lust.phases[2].attacks),
+        ['charmBolt', 'reverseControl', 'dash', 'illusion', 'charmBolt', 'mirageDance', 'dash'],
+        'lust phase 3 should interleave reverseControl, illusion, and mirageDance with breather attacks'
+    );
+}
+
 function testLustMirageDanceHooks() {
     const { BOSSES } = loadDataConstants();
     const source = loadGameSource();
@@ -1579,6 +1589,41 @@ function testLustMirageDanceHooks() {
         source,
         /SPECIAL:\s*\[[^\]]*'mirageDance'[^\]]*\]/,
         'mirageDance should be classified as a SPECIAL boss attack'
+    );
+}
+
+function testBossMajorAttackBreatherHooks() {
+    const source = loadGameSource();
+
+    assert.match(
+        source,
+        /this\.lastCompletedAttack\s*=\s*null/,
+        'Boss should track the last completed attack for pacing guards'
+    );
+    assert.match(
+        source,
+        /this\.currentAttack\s*=\s*this\._pickPhaseAttack\(attacks\);/,
+        'Boss idle selector should route phase picks through a dedicated pacing helper'
+    );
+    assert.match(
+        source,
+        /_pickPhaseAttack\(attacks\)\s*{/,
+        'Boss should expose a phase-attack picker helper'
+    );
+    assert.match(
+        source,
+        /const lastAttackWasMajor = MAJOR_BOSS_PHASE_ATTACKS\.has\(this\.lastCompletedAttack\);/,
+        'Boss pacing helper should detect when the last completed attack was a major special'
+    );
+    assert.match(
+        source,
+        /const hasBreatherAttack = attacks\.some\(attack => !MAJOR_BOSS_PHASE_ATTACKS\.has\(attack\)\);/,
+        'Boss pacing helper should only delay major specials when a non-major breather exists'
+    );
+    assert.match(
+        source,
+        /this\.lastCompletedAttack\s*=\s*this\.currentAttack;/,
+        'Boss should persist the completed attack after finishing an attack'
     );
 }
 
@@ -8395,7 +8440,9 @@ function main() {
     runTest('status HUD summary', testStatusHudSummary);
     runTest('boss HUD readability helpers', testBossHudReadability);
     runTest('boss mechanic diversity hooks', testBossMechanicDiversityHooks);
+    runTest('lust phase 3 attack order', testLustPhase3AttackOrder);
     runTest('lust mirage dance hooks', testLustMirageDanceHooks);
+    runTest('boss major attack breather hooks', testBossMajorAttackBreatherHooks);
     runTest('lust mirage dance executor hooks', testLustMirageDanceExecutorHooks);
     runTest('keyboard aim state helper', testKeyboardAimState);
     runTest('aim direction label helper', testAimDirectionLabel);
