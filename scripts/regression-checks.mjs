@@ -1683,6 +1683,16 @@ function testLustPostMirageBreatherHooks() {
     const source = loadGameSource();
 
     assert.deepEqual(
+        Array.from(BOSSES.lust.phases[2].postAttackBreatherGuards.reverseControl),
+        ['reverseControl', 'illusion', 'mirageDance'],
+        'lust phase 3 should block immediate major-special follow-ups after reverseControl when a breather exists'
+    );
+    assert.deepEqual(
+        Array.from(BOSSES.lust.phases[2].postAttackBreatherGuards.illusion),
+        ['reverseControl', 'illusion', 'mirageDance'],
+        'lust phase 3 should block immediate major-special follow-ups after illusion when a breather exists'
+    );
+    assert.deepEqual(
         Array.from(BOSSES.lust.phases[2].postAttackBreatherGuards.mirageDance),
         ['reverseControl', 'illusion', 'mirageDance'],
         'lust phase 3 should block immediate major-special follow-ups after mirageDance when a breather exists'
@@ -1856,6 +1866,11 @@ function testReadmeLustSpecialRecovery() {
         source,
         /`illusion` 幻身散场后也会多留一小段 recovery 空档/,
         'README should document the illusion recovery window'
+    );
+    assert.match(
+        source,
+        /`reverseControl` \/ `illusion` 结束后若仍有 `charmBolt` \/ `dash` 可选，也会先插入额外呼吸段/,
+        'README should document the new reverseControl and illusion breather guards'
     );
 }
 
