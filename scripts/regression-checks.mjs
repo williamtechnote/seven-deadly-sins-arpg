@@ -1557,8 +1557,8 @@ function testLustPhase3AttackOrder() {
 
     assert.deepEqual(
         Array.from(BOSSES.lust.phases[2].attacks),
-        ['charmBolt', 'reverseControl', 'dash', 'charmBolt', 'dash', 'illusion', 'dash', 'charmBolt', 'dash', 'mirageDance', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash'],
-        'lust phase 3 should add another light-pressure insert between illusion and the next major special'
+        ['charmBolt', 'reverseControl', 'dash', 'charmBolt', 'dash', 'charmBolt', 'illusion', 'dash', 'charmBolt', 'dash', 'charmBolt', 'mirageDance', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash'],
+        'lust phase 3 should add another light-pressure insert after reverseControl and illusion'
     );
 }
 
@@ -1966,7 +1966,7 @@ function testReadmeLustPostMirageSpacing() {
     );
     assert.match(
         source,
-        /共享 recovery 与双轻压守卫之外也会继续提高 `charmBolt` \/ `dash` 的占比/,
+        /共享 recovery 与三轻压守卫之外也会继续提高 `charmBolt` \/ `dash` 的占比/,
         'README should document the additional phase-3 light-pressure weighting pass'
     );
     assert.match(
@@ -2031,8 +2031,13 @@ function testReadmeLustSharedMajorRecovery() {
     );
     assert.match(
         source,
-        /在 `illusion` 与下一段 major special 之间再补一段 `charmBolt` \/ `dash` 轻压插段/,
-        'README should document the extra post-illusion light-pressure insert'
+        /在 `reverseControl` 与 `illusion` 之间也会再补一段 `charmBolt` \/ `dash` 轻压过桥/,
+        'README should document the extra light-pressure bridge between reverseControl and illusion'
+    );
+    assert.match(
+        source,
+        /在 `illusion` 与下一段 major special 之间也会再补一段 `charmBolt` \/ `dash` 轻压过桥/,
+        'README should document the extra post-illusion light-pressure bridge'
     );
 }
 
