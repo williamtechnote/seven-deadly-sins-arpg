@@ -1557,8 +1557,8 @@ function testLustPhase3AttackOrder() {
 
     assert.deepEqual(
         Array.from(BOSSES.lust.phases[2].attacks),
-        ['charmBolt', 'dash', 'reverseControl', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'illusion', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'mirageDance', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash'],
-        'lust phase 3 should add a targeted light-pressure bridge before looping from mirageDance back into reverseControl'
+        ['charmBolt', 'dash', 'reverseControl', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'illusion', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'mirageDance', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash'],
+        'lust phase 3 should lengthen the directed light-pressure bridges before illusion, mirageDance, and the reverseControl loopback'
     );
 }
 
@@ -1911,7 +1911,7 @@ function testLustSpecialRecoveryHooks() {
 
     assert.match(
         source,
-        /} else if \(atk === 'reverseControl'\) \{[\s\S]*?const recoveryMs = 320;/,
+        /} else if \(atk === 'reverseControl'\) \{[\s\S]*?const recoveryMs = 420;/,
         'reverseControl should lengthen its explicit post-collapse recovery window again'
     );
     assert.match(
@@ -1986,8 +1986,8 @@ function testReadmeLustSpecialRecovery() {
     );
     assert.match(
         source,
-        /`reverseControl` 的 recovery 空档也会再拉长一档/,
-        'README should document the longer reverseControl recovery tuning pass'
+        /`reverseControl` 的 recovery 空档也会继续再拉长一档，让共享 recovery 与定向后桥落地后仍更晚回到下一段追压/,
+        'README should document the latest reverseControl recovery tuning pass'
     );
     assert.match(
         source,
@@ -2031,13 +2031,13 @@ function testReadmeLustSharedMajorRecovery() {
     );
     assert.match(
         source,
-        /在 `reverseControl` 与 `illusion` 之间也会再补一段 `charmBolt` \/ `dash` 轻压过桥/,
-        'README should document the extra light-pressure bridge between reverseControl and illusion'
+        /在 `reverseControl` 与 `illusion` 之间会再补一整段 `charmBolt` \/ `dash` 定向轻压过桥/,
+        'README should document the longer directed bridge between reverseControl and illusion'
     );
     assert.match(
         source,
-        /在 `illusion` 与下一段 major special 之间也会再补一段 `charmBolt` \/ `dash` 轻压过桥/,
-        'README should document the extra post-illusion light-pressure bridge'
+        /在 `illusion` 与 `mirageDance` 之间也会再补一整段 `charmBolt` \/ `dash` 定向轻压过桥/,
+        'README should document the longer directed bridge between illusion and mirageDance'
     );
     assert.match(
         source,

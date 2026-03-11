@@ -1,9 +1,11 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 机制多样性：`魅惑女妖` phase 3 后续观察十五-三：若共享 recovery 再次拉长且 `mirageDance` -> `reverseControl` 定向后桥落地后 live pacing 仍偏密，再评估是否继续延长单招 recovery 或把定向后桥扩到更多 major-special 回卷点
+- [ ] Boss 机制多样性：`魅惑女妖` phase 3 后续观察十六-三：若 `reverseControl` recovery 与更多定向后桥落地后 live pacing 仍偏密，再评估是否继续延长 `illusion` recovery 或继续拉长共享 recovery
 
 ## Completed
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 定向后桥十六-二：把 `reverseControl` -> `illusion` 与 `illusion` -> `mirageDance` 的 major-special 回卷点再各补一段 `charmBolt` / `dash` 定向轻压过桥，让第二轮 special stack 更晚回切（完成：2026-03-11 13:30 +08）
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 收招细调十六-一：继续拉长 `reverseControl` 回卷收束后的 recovery 空档，让共享 recovery 与定向后桥都落地后仍再晚半拍回到下一段追压（完成：2026-03-11 13:30 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 定向后桥十五-二：在 `mirageDance` 与下一轮 `reverseControl` 之间再补一段 `charmBolt` / `dash` 定向轻压过桥，让循环回卷时继续先由轻压接棒（完成：2026-03-11 13:22 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 共享 recovery 十五-一：继续拉长 `reverseControl` / `illusion` / `mirageDance` 的共享 recovery guard，让四轻压守卫与定向后桥收尾后的下一段 major special 再晚一拍（完成：2026-03-11 13:22 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 后续观察十四-三：若进一步抬高轻压权重与四轻压守卫落地后 live pacing 仍偏密，再评估是否继续拉长共享 recovery 或再补定向轻压过桥（完成：2026-03-11 13:26 +08，已拆分为十五-一 / 十五-二 / 十五-三）
