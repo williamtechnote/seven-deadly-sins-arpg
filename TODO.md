@@ -1,9 +1,12 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 机制多样性：`魅惑女妖` phase 3 后续观察二十七-三：若 `illusion` recovery 与共享 `majorSpecial` recovery 再次回调后 live pacing 仍偏密，再评估是否继续拉长 `reverseControl` 单招 recovery
+- [ ] Boss 机制多样性：`魅惑女妖` phase 3 后续观察二十八-三：若 `illusion` recovery 与共享 `majorSpecial` recovery 继续再回调后 live pacing 仍偏密，再评估是否继续拉长 `reverseControl` 单招 recovery
 
 ## Completed
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 共享 recovery 二十八-二：在 `illusion` recovery 再次回调后，继续再拉长 `reverseControl` / `illusion` / `mirageDance` 的共享 `majorSpecial` recovery guard，让下一段 major special 再继续晚半拍（完成：2026-03-11 19:22 +08）
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 幻身收招二十八-一：继续拉长 `illusion` 幻身散场后的 recovery 空档，让幻身散场后的下一段 major special 再继续晚半拍回切（完成：2026-03-11 19:22 +08）
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 后续观察二十七-三：若 `illusion` recovery 与共享 `majorSpecial` recovery 再次回调后 live pacing 仍偏密，再评估是否继续拉长 `reverseControl` 单招 recovery（完成：2026-03-11 19:22 +08，已拆分为二十八-一 / 二十八-二 / 二十八-三）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 共享 recovery 二十七-二：在 `illusion` recovery 再次回调后，继续再拉长 `reverseControl` / `illusion` / `mirageDance` 的共享 `majorSpecial` recovery guard，让下一段 major special 继续再晚半拍（完成：2026-03-11 19:16 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 幻身收招二十七-一：继续拉长 `illusion` 幻身散场后的 recovery 空档，让幻身散场后的下一段 major special 先继续再晚半拍回切（完成：2026-03-11 19:16 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 后续观察二十六-三：若共享 recovery 与 `reverseControl` recovery 再次回调后 live pacing 仍偏密，再评估是否继续拉长 `illusion` 单招 recovery（完成：2026-03-11 19:16 +08，已拆分为二十七-一 / 二十七-二 / 二十七-三）
