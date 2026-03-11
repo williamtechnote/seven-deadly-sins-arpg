@@ -1911,7 +1911,7 @@ function testLustSpecialRecoveryHooks() {
 
     assert.match(
         source,
-        /} else if \(atk === 'reverseControl'\) \{[\s\S]*?const recoveryMs = 420;/,
+        /} else if \(atk === 'reverseControl'\) \{[\s\S]*?const recoveryMs = 500;/,
         'reverseControl should lengthen its explicit post-collapse recovery window again'
     );
     assert.match(
@@ -1926,7 +1926,7 @@ function testLustSpecialRecoveryHooks() {
     );
     assert.match(
         source,
-        /} else if \(atk === 'illusion'\) \{[\s\S]*?const recoveryMs = 620;/,
+        /} else if \(atk === 'illusion'\) \{[\s\S]*?const recoveryMs = 720;/,
         'illusion should lengthen its explicit post-despawn recovery window once more'
     );
     assert.match(
@@ -1986,7 +1986,7 @@ function testReadmeLustSpecialRecovery() {
     );
     assert.match(
         source,
-        /`reverseControl` 的 recovery 空档也会继续再拉长一档，让共享 recovery 与定向后桥落地后仍更晚回到下一段追压/,
+        /`reverseControl` 的 recovery 空档会继续再拉长一档，让共享 recovery 与更长的 `mirageDance` loopback 过桥都落地后仍更晚回到下一段追压/,
         'README should document the latest reverseControl recovery tuning pass'
     );
     assert.match(
@@ -1996,7 +1996,7 @@ function testReadmeLustSpecialRecovery() {
     );
     assert.match(
         source,
-        /`illusion` 的 recovery 空档也会继续再拉长一档，让 `reverseControl` recovery 与更多定向后桥都落地后，幻身散场后的下一段 major special 仍再晚半拍回切/,
+        /`illusion` 的 recovery 空档也会继续再拉长一档，让 `reverseControl` recovery 再次拉长后，幻身散场后的下一段 major special 仍继续再晚半拍回切/,
         'README should document the newest illusion recovery tuning pass'
     );
     assert.match(

@@ -3701,7 +3701,7 @@ class Boss {
                     }
                 }
             }
-            const recoveryMs = 420;
+            const recoveryMs = 500;
             if (elapsed >= 1400 && !this.attackData.recoveryStarted) {
                 this.attackData.recoveryStarted = true;
                 for (const p of this.attackData.projectiles) if (p.g.active) p.g.destroy();
@@ -3738,7 +3738,7 @@ class Boss {
                     if (ill.y < 150 || ill.y > 650) ill.vy *= -1;
                 }
             }
-            const recoveryMs = 620;
+            const recoveryMs = 720;
             if (elapsed >= 3000 && !this.attackData.recoveryStarted) {
                 this.attackData.recoveryStarted = true;
                 this.sprite.setAlpha(1);
