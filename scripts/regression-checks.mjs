@@ -1911,7 +1911,7 @@ function testLustSpecialRecoveryHooks() {
 
     assert.match(
         source,
-        /} else if \(atk === 'reverseControl'\) \{[\s\S]*?const recoveryMs = 500;/,
+        /} else if \(atk === 'reverseControl'\) \{[\s\S]*?const recoveryMs = 580;/,
         'reverseControl should lengthen its explicit post-collapse recovery window again'
     );
     assert.match(
@@ -1926,7 +1926,7 @@ function testLustSpecialRecoveryHooks() {
     );
     assert.match(
         source,
-        /} else if \(atk === 'illusion'\) \{[\s\S]*?const recoveryMs = 720;/,
+        /} else if \(atk === 'illusion'\) \{[\s\S]*?const recoveryMs = 800;/,
         'illusion should lengthen its explicit post-despawn recovery window once more'
     );
     assert.match(
