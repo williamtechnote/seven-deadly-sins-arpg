@@ -1,9 +1,11 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] 更多 Boss 机制多样性（新招式、新阶段行为）
+- [ ] Boss 机制多样性：`魅惑女妖` 后续补 `魅影连舞` phase 行为，围绕现有 `illusion` / `reverseControl` 做更具节奏感的连段位移
 
 ## Completed
+- [x] Boss 机制多样性：`堕天骑士` phase 3 新增 `圣剑环阵`（`bladeOrbit`）环绕飞剑后分批外射，强化 Pride 的控场与走位压力（完成：2026-03-11 09:00 +08）
+- [x] Boss 机制多样性：`炎魔将军` phase 2/3 新增 `熔火围城`（`magmaRing`）收缩火环机制，要求有 telegraph / 反制提示，并在擦环时附带灼烧（完成：2026-03-11 09:00 +08）
 - [x] README / 操作指引 / 回归检查同步同开口 ornamental quote mixed-closing stack 契约，覆盖 shared opener `〝` 的两组 closing-order 样例（完成：2026-03-11 08:53 +08）
 - [x] run challenge 标签清洗兼容同开口 ornamental quote inverse mixed-closing stack（如 `〝〝挑战〟〞击败 30 个敌人` / `〝〝本局挑战〟〞挑战：本局`），补齐共享开口 glyph 下的 inverse close-order 匹配策略（完成：2026-03-11 08:53 +08）
 - [x] run challenge 标签清洗兼容同开口 ornamental quote mixed-closing stack（如 `〝〝挑战〞〟击败 30 个敌人` / `〝〝本局挑战〟〟挑战：本局`），补齐共享开口 glyph 下的 mixed close-order 匹配策略（完成：2026-03-11 08:53 +08）

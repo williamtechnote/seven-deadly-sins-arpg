@@ -1487,6 +1487,71 @@ function testBossHudReadability() {
     assert.equal(emptyStatusSummary.segments.length, 0, 'non-control statuses should not produce boss HUD overlay segments');
 }
 
+function testBossMechanicDiversityHooks() {
+    const { BOSSES } = loadDataConstants();
+    const source = loadGameSource();
+
+    assert.ok(
+        BOSSES.wrath.phases.some(phase => Array.isArray(phase.attacks) && phase.attacks.includes('magmaRing')),
+        'wrath should add magmaRing into its later-phase attack pool'
+    );
+    assert.ok(
+        BOSSES.pride.phases.some(phase => Array.isArray(phase.attacks) && phase.attacks.includes('bladeOrbit')),
+        'pride should add bladeOrbit into its later-phase attack pool'
+    );
+
+    assert.match(
+        source,
+        /magmaRing:\s*'熔火围城'/,
+        'attack display names should expose the localized magmaRing label'
+    );
+    assert.match(
+        source,
+        /bladeOrbit:\s*'圣剑环阵'/,
+        'attack display names should expose the localized bladeOrbit label'
+    );
+    assert.match(
+        source,
+        /magmaRing:\s*'反制: 保持在火环安全带内，等收束后再贴近'/,
+        'magmaRing should advertise a dedicated counter hint'
+    );
+    assert.match(
+        source,
+        /bladeOrbit:\s*'反制: 先绕 Boss 小步走位，再穿过飞剑空档'/,
+        'bladeOrbit should advertise a dedicated counter hint'
+    );
+    assert.match(
+        source,
+        /magmaRing:\s*1600/,
+        'magmaRing should define a counter window for the telegraph HUD'
+    );
+    assert.match(
+        source,
+        /bladeOrbit:\s*1500/,
+        'bladeOrbit should define a counter window for the telegraph HUD'
+    );
+    assert.match(
+        source,
+        /SPECIAL:\s*\[[^\]]*'bladeOrbit'[^\]]*\]/,
+        'bladeOrbit should be classified as a SPECIAL boss attack'
+    );
+    assert.match(
+        source,
+        /HAZARD:\s*\[[^\]]*'magmaRing'[^\]]*\]/,
+        'magmaRing should be classified as a HAZARD boss attack'
+    );
+    assert.match(
+        source,
+        /else if \(atk === 'bladeOrbit'\)/,
+        'Boss special attack executor should expose a bladeOrbit branch'
+    );
+    assert.match(
+        source,
+        /else if \(atk === 'magmaRing'\)/,
+        'Boss hazard executor should expose a magmaRing branch'
+    );
+}
+
 function testKeyboardAimState() {
     const aimRight = resolveKeyboardAimState({
         up: false,
@@ -8249,6 +8314,7 @@ function main() {
     runTest('consumable use resolution', testConsumableUseResolution);
     runTest('status HUD summary', testStatusHudSummary);
     runTest('boss HUD readability helpers', testBossHudReadability);
+    runTest('boss mechanic diversity hooks', testBossMechanicDiversityHooks);
     runTest('keyboard aim state helper', testKeyboardAimState);
     runTest('aim direction label helper', testAimDirectionLabel);
     runTest('keyboard aim source hooks', testKeyboardAimSourceHooks);

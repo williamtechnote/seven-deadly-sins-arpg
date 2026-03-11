@@ -144,7 +144,9 @@ const ATTACK_DISPLAY_NAMES = {
     firePunch: '烈焰冲拳',
     groundSlam: '震地冲击',
     flameBreath: '烈焰吐息',
+    magmaRing: '熔火围城',
     divineStrike: '神罚坠击',
+    bladeOrbit: '圣剑环阵',
     mirror: '镜像突袭',
     shapeShift: '形态裂变',
     reverseControl: '混乱逆转',
@@ -160,7 +162,9 @@ const ATTACK_DISPLAY_NAMES = {
 
 const ATTACK_COUNTER_HINTS = {
     flameBreath: '反制: 侧向移动，别贪刀',
+    magmaRing: '反制: 保持在火环安全带内，等收束后再贴近',
     divineStrike: '反制: 看到预警圈后立刻翻滚',
+    bladeOrbit: '反制: 先绕 Boss 小步走位，再穿过飞剑空档',
     mirror: '反制: 先清镜像再贴身输出',
     shapeShift: '反制: 保持中距离，观察变身后出手',
     reverseControl: '反制: 停止冲刺，短步修正方向',
@@ -176,7 +180,9 @@ const ATTACK_COUNTER_HINTS = {
 
 const ATTACK_COUNTER_WINDOW_MS = {
     flameBreath: 1800,
+    magmaRing: 1600,
     divineStrike: 1200,
+    bladeOrbit: 1500,
     mirror: 1400,
     shapeShift: 1200,
     reverseControl: 1500,
@@ -213,7 +219,8 @@ const BOSS_ATTACK_STATUS_ON_HIT = {
     goldBreath: { key: 'burn', durationMs: 2200 },
     bite: { key: 'bleed', durationMs: 2400 },
     firePunch: { key: 'burn', durationMs: 1600 },
-    sleepFog: { key: 'slow', durationMs: 2200 }
+    sleepFog: { key: 'slow', durationMs: 2200 },
+    magmaRing: { key: 'burn', durationMs: 2400 }
 };
 
 const UI_WARNING_THRESHOLDS = {
@@ -227,7 +234,9 @@ const BOSS_PHASE_ALERT_DURATION_MS = 1800;
 
 const MAJOR_BOSS_PHASE_ATTACKS = new Set([
     'flameBreath',
+    'magmaRing',
     'divineStrike',
+    'bladeOrbit',
     'mirror',
     'shapeShift',
     'illusion',
@@ -3075,9 +3084,9 @@ const BOSS_ATTACK_TYPES = {
     DASH: ['firePunch', 'slash', 'poisonSpit', 'bite', 'charmBolt', 'webShot', 'tailSwipe', 'devour'],
     AOE: ['groundSlam', 'vomit', 'goldBreath'],
     CONE: ['flameBreath', 'charge', 'lunge', 'dash'],
-    SPECIAL: ['mirror', 'copyWeapon', 'shapeShift', 'reverseControl', 'illusion'],
+    SPECIAL: ['mirror', 'copyWeapon', 'shapeShift', 'reverseControl', 'illusion', 'bladeOrbit'],
     BUFF: ['berserk', 'nightmare', 'treasureStorm', 'consume', 'divineStrike'],
-    HAZARD: ['summonSpider', 'coinTrap', 'sleepFog']
+    HAZARD: ['summonSpider', 'coinTrap', 'sleepFog', 'magmaRing']
 };
 
 function getAttackType(attackName) {
@@ -3709,6 +3718,63 @@ class Boss {
                 for (const p of this.attackData.projectiles) if (p.g.active) p.g.destroy();
                 this._finishAttack(time);
             }
+        } else if (atk === 'bladeOrbit') {
+            if (!this.attackData.started) {
+                this.attackData.started = true;
+                this.sprite.body.setVelocity(0, 0);
+                this.attackData.blades = [];
+                this.attackData.spinRadius = 96;
+                const bladeCount = 5;
+                for (let i = 0; i < bladeCount; i++) {
+                    const angle = (Math.PI * 2 / bladeCount) * i;
+                    const g = this.scene.add.graphics();
+                    g.setDepth(9);
+                    this.attackData.blades.push({
+                        g,
+                        angle,
+                        launched: false,
+                        hit: false,
+                        launchAt: 700 + i * 120,
+                        vx: 0,
+                        vy: 0
+                    });
+                }
+            }
+            for (const blade of this.attackData.blades) {
+                if (!blade.g.active) continue;
+                blade.g.clear();
+                blade.g.fillStyle(0xFFF0B8, blade.launched ? 0.9 : 0.78);
+                if (!blade.launched) {
+                    blade.angle += (delta / 1000) * 2.4;
+                    blade.x = this.sprite.x + Math.cos(blade.angle) * this.attackData.spinRadius;
+                    blade.y = this.sprite.y + Math.sin(blade.angle) * this.attackData.spinRadius;
+                    if (elapsed >= blade.launchAt) {
+                        blade.launched = true;
+                        blade.vx = Math.cos(blade.angle) * 320;
+                        blade.vy = Math.sin(blade.angle) * 320;
+                    }
+                } else {
+                    blade.x += blade.vx * delta / 1000;
+                    blade.y += blade.vy * delta / 1000;
+                }
+                blade.g.fillTriangle(
+                    blade.x,
+                    blade.y - 12,
+                    blade.x - 6,
+                    blade.y + 10,
+                    blade.x + 6,
+                    blade.y + 10
+                );
+                const d = Phaser.Math.Distance.Between(blade.x, blade.y, player.x, player.y);
+                if (d < 24 && !player.isInvincible && !blade.hit) {
+                    blade.hit = true;
+                    this._dealDamageToPlayer(player, this.damage * 0.35, atk);
+                }
+            }
+            if (elapsed >= 1900) {
+                for (const blade of this.attackData.blades) if (blade.g.active) blade.g.destroy();
+                this._finishAttack(time);
+            }
         } else {
             // Fallback: simple teleport + dash
             if (!this.attackData.started) {
@@ -3847,6 +3913,38 @@ class Boss {
                 for (const f of this.attackData.fogs) if (f.g.active) f.g.destroy();
                 this._finishAttack(time);
             }
+        } else if (atk === 'magmaRing') {
+            if (!this.attackData.started) {
+                this.attackData.started = true;
+                this.sprite.body.setVelocity(0, 0);
+                this.attackData.ring = this.scene.add.graphics();
+                this.attackData.ring.setDepth(8);
+                this.attackData.outerRadius = 230;
+                this.attackData.innerRadius = 90;
+                this.attackData.thickness = 34;
+                this.attackData.lastHit = 0;
+            }
+            const ratio = Math.min(1, elapsed / 1800);
+            const ringRadius = Phaser.Math.Linear(this.attackData.outerRadius, this.attackData.innerRadius, ratio);
+            this.attackData.ring.clear();
+            this.attackData.ring.lineStyle(this.attackData.thickness, this.config.color, 0.55);
+            this.attackData.ring.strokeCircle(this.sprite.x, this.sprite.y, ringRadius);
+            this.attackData.ring.lineStyle(2, 0xFFD27A, 0.9);
+            this.attackData.ring.strokeCircle(this.sprite.x, this.sprite.y, Math.max(12, ringRadius - this.attackData.thickness / 2));
+            const d = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, player.x, player.y);
+            const dangerBand = this.attackData.thickness / 2 + 8;
+            if (
+                Math.abs(d - ringRadius) <= dangerBand
+                && !player.isInvincible
+                && time - this.attackData.lastHit >= 450
+            ) {
+                this.attackData.lastHit = time;
+                this._dealDamageToPlayer(player, this.damage * 0.32, atk);
+            }
+            if (elapsed >= 1900) {
+                if (this.attackData.ring && this.attackData.ring.active) this.attackData.ring.destroy();
+                this._finishAttack(time);
+            }
         } else {
             // Default: static hazard zones
             if (!this.attackData.zones) {
@@ -3929,10 +4027,12 @@ class Boss {
         destroyIfActive(this.attackData.cone);
         destroyIfActive(this.attackData.shadows);
         destroyIfActive(this.attackData.projectiles);
+        destroyIfActive(this.attackData.blades);
         destroyIfActive(this.attackData.illusions);
         destroyIfActive(this.attackData.minions);
         destroyIfActive(this.attackData.coins);
         destroyIfActive(this.attackData.fogs);
+        destroyIfActive(this.attackData.ring);
         destroyIfActive(this.attackData.zones);
         this.attackData = {};
     }

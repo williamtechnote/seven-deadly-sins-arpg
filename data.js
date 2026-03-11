@@ -49,7 +49,7 @@ const BOSSES = {
         phases: [
             { hpPercent: 1.0, attacks: ['slash', 'charge'] },
             { hpPercent: 0.6, attacks: ['slash', 'charge', 'mirror'] },
-            { hpPercent: 0.3, attacks: ['slash', 'charge', 'mirror', 'divineStrike'] }
+            { hpPercent: 0.3, attacks: ['slash', 'charge', 'mirror', 'divineStrike', 'bladeOrbit'] }
         ],
         defeatDialog: [
             { speaker: '堕天骑士', text: '我曾是最耀眼的光……傲慢蒙蔽了我的双眼。' },
@@ -76,8 +76,8 @@ const BOSSES = {
         area: '熔岩锻炉', color: 0xFF4136,
         phases: [
             { hpPercent: 1.0, attacks: ['firePunch', 'groundSlam'] },
-            { hpPercent: 0.6, attacks: ['firePunch', 'groundSlam', 'flameBreath'] },
-            { hpPercent: 0.3, attacks: ['firePunch', 'groundSlam', 'flameBreath', 'berserk'] }
+            { hpPercent: 0.6, attacks: ['firePunch', 'groundSlam', 'flameBreath', 'magmaRing'] },
+            { hpPercent: 0.3, attacks: ['firePunch', 'groundSlam', 'flameBreath', 'magmaRing', 'berserk'] }
         ],
         defeatDialog: [
             { speaker: '炎魔将军', text: '怒火……终于平息了。' },
