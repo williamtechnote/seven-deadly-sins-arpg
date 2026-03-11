@@ -137,9 +137,9 @@ const BOSSES = {
                 hpPercent: 0.3,
                 attacks: ['charmBolt', 'reverseControl', 'dash', 'illusion', 'charmBolt', 'mirageDance', 'dash'],
                 phaseLocalCooldownMs: {
-                    reverseControl: 12000,
-                    illusion: 13500,
-                    mirageDance: 14500
+                    reverseControl: 14000,
+                    illusion: 15500,
+                    mirageDance: 16500
                 },
                 postAttackBreatherGuards: {
                     mirageDance: ['reverseControl', 'illusion', 'mirageDance']

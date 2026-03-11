@@ -1633,17 +1633,17 @@ function testLustPhaseLocalCooldownHooks() {
 
     assert.equal(
         BOSSES.lust.phases[2].phaseLocalCooldownMs.reverseControl,
-        12000,
+        14000,
         'lust phase 3 should configure a local cooldown for reverseControl'
     );
     assert.equal(
         BOSSES.lust.phases[2].phaseLocalCooldownMs.illusion,
-        13500,
+        15500,
         'lust phase 3 should configure a local cooldown for illusion'
     );
     assert.equal(
         BOSSES.lust.phases[2].phaseLocalCooldownMs.mirageDance,
-        14500,
+        16500,
         'lust phase 3 should configure a local cooldown for mirageDance'
     );
     assert.match(
@@ -1709,7 +1709,7 @@ function testReadmeLustPhaseLocalCooldowns() {
 
     assert.match(
         source,
-        /`魅惑女妖` 末阶段还会给 `reverseControl`、`illusion` 与 `mirageDance` 补 phase-local 冷却/,
+        /`魅惑女妖` 末阶段还会继续拉高 `reverseControl`、`illusion` 与 `mirageDance` 的 phase-local 冷却/,
         'README should document the completed lust phase-local cooldown trio'
     );
 }
@@ -1736,6 +1736,11 @@ function testLustMirageDanceExecutorHooks() {
         source,
         /this\.attackData\.finisherDelayMs\s*=\s*320/,
         'mirageDance should define a longer settle delay before the finisher starts'
+    );
+    assert.match(
+        source,
+        /const collapseMs = 760/,
+        'mirageDance should define a longer reverse-wave collapse duration'
     );
     assert.match(
         source,
@@ -1776,6 +1781,11 @@ function testReadmeLustPostMirageSpacing() {
         source,
         /`魅影连舞` 第三拍后也会保留更长的 settle 窗口/,
         'README should document the longer mirageDance settle window'
+    );
+    assert.match(
+        source,
+        /逆转波也会用更长的收束时长回卷/,
+        'README should document the longer mirageDance reverse-wave collapse'
     );
 }
 

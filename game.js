@@ -3796,7 +3796,7 @@ class Boss {
             if (this.attackData.finisherStartedAt) {
                 const finisherElapsed = time - this.attackData.finisherStartedAt;
                 const expandMs = 180;
-                const collapseMs = 620;
+                const collapseMs = 760;
                 for (const p of this.attackData.projectiles) {
                     if (!p.g.active) continue;
                     if (finisherElapsed < expandMs) {
