@@ -1627,6 +1627,62 @@ function testBossMajorAttackBreatherHooks() {
     );
 }
 
+function testLustPhaseLocalCooldownHooks() {
+    const { BOSSES } = loadDataConstants();
+    const source = loadGameSource();
+
+    assert.equal(
+        BOSSES.lust.phases[2].phaseLocalCooldownMs.reverseControl,
+        12000,
+        'lust phase 3 should configure a local cooldown for reverseControl'
+    );
+    assert.equal(
+        BOSSES.lust.phases[2].phaseLocalCooldownMs.illusion,
+        13500,
+        'lust phase 3 should configure a local cooldown for illusion'
+    );
+    assert.match(
+        source,
+        /this\.phaseAttackCooldownExpires\s*=\s*\{\}/,
+        'Boss should initialize phase-local cooldown expiry state'
+    );
+    assert.match(
+        source,
+        /const phaseLocalCooldownMs = phase && phase\.phaseLocalCooldownMs \? phase\.phaseLocalCooldownMs : \{\};/,
+        'Boss selector should read optional phase-local cooldown metadata from the current phase'
+    );
+    assert.match(
+        source,
+        /const candidateCooldownExpiresAt = phaseLocalCooldownMs\[candidate\] > 0 \? \(this\.phaseAttackCooldownExpires\[candidate\] \|\| 0\) : 0;/,
+        'Boss selector should look up expiry for candidate-specific phase-local cooldowns'
+    );
+    assert.match(
+        source,
+        /if \(candidateCooldownExpiresAt > now && attacks\.some\(attack => attack !== candidate\)\) \{/,
+        'Boss selector should skip cooled-down attacks when another phase option exists'
+    );
+    assert.match(
+        source,
+        /const finishedAttackCooldownMs = phaseLocalCooldownMs\[this\.currentAttack\] \|\| 0;/,
+        'Boss finish hook should resolve the configured cooldown for the completed attack'
+    );
+    assert.match(
+        source,
+        /this\.phaseAttackCooldownExpires\[this\.currentAttack\] = time \+ finishedAttackCooldownMs;/,
+        'Boss finish hook should stamp cooldown expiry for completed attacks'
+    );
+}
+
+function testReadmeLustPhaseLocalCooldowns() {
+    const source = loadReadmeSource();
+
+    assert.match(
+        source,
+        /`魅惑女妖` 末阶段还会给 `reverseControl` 与 `illusion` 补 phase-local 冷却/,
+        'README should document the new lust phase-local cooldown guard for reverseControl and illusion'
+    );
+}
+
 function testLustMirageDanceExecutorHooks() {
     const source = loadGameSource();
 
@@ -8443,6 +8499,7 @@ function main() {
     runTest('lust phase 3 attack order', testLustPhase3AttackOrder);
     runTest('lust mirage dance hooks', testLustMirageDanceHooks);
     runTest('boss major attack breather hooks', testBossMajorAttackBreatherHooks);
+    runTest('lust phase-local cooldown hooks', testLustPhaseLocalCooldownHooks);
     runTest('lust mirage dance executor hooks', testLustMirageDanceExecutorHooks);
     runTest('keyboard aim state helper', testKeyboardAimState);
     runTest('aim direction label helper', testAimDirectionLabel);
@@ -8459,6 +8516,7 @@ function main() {
     runTest('run-event prompt measurement hooks', testRunEventPromptMeasurementHooks);
     runTest('run-event world-label measurement hooks', testRunEventWorldLabelMeasurementHooks);
     runTest('fixed sidebar measurement hooks', testSidebarMeasurementHooks);
+    runTest('README lust phase-local cooldowns', testReadmeLustPhaseLocalCooldowns);
     runTest('combat action HUD summary helper', testCombatActionHudSummary);
     runTest('quick-slot item label helper', testQuickSlotItemLabel);
     runTest('keyboard HUD QoL hooks', testKeyboardHudQolHooks);

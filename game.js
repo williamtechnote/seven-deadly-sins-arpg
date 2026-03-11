@@ -3145,6 +3145,7 @@ class Boss {
         this.attackData = {};
         this.attackWindupDelay = 0;
         this.phaseMajorAttackQueue = new Set();
+        this.phaseAttackCooldownExpires = {};
         this.activeStatusEffects = {};
         this._statusSpeedMultiplier = 1;
         this.phaseAlertUntil = 0;
@@ -3161,11 +3162,18 @@ class Boss {
 
     _pickPhaseAttack(attacks) {
         if (!Array.isArray(attacks) || attacks.length === 0) return null;
+        const phase = this.getPhase();
+        const phaseLocalCooldownMs = phase && phase.phaseLocalCooldownMs ? phase.phaseLocalCooldownMs : {};
+        const now = this.scene.time.now;
         let selectedAttack = attacks[this.attackIndex % attacks.length];
         let selectedRawIndex = this.attackIndex;
         for (let offset = 0; offset < attacks.length; offset++) {
             const rawIndex = this.attackIndex + offset;
             const candidate = attacks[rawIndex % attacks.length];
+            const candidateCooldownExpiresAt = phaseLocalCooldownMs[candidate] > 0 ? (this.phaseAttackCooldownExpires[candidate] || 0) : 0;
+            if (candidateCooldownExpiresAt > now && attacks.some(attack => attack !== candidate)) {
+                continue;
+            }
             const lastAttackWasMajor = MAJOR_BOSS_PHASE_ATTACKS.has(this.lastCompletedAttack);
             const candidateIsMajor = MAJOR_BOSS_PHASE_ATTACKS.has(candidate);
             if (lastAttackWasMajor && candidateIsMajor) {
@@ -3296,6 +3304,7 @@ class Boss {
         this.scene.cameras.main.flash(200, 255, 255, 255);
         this.invincibleUntil = time + 1000;
         this.speed *= 1.2;
+        this.phaseAttackCooldownExpires = {};
         const phase = this.config.phases[phaseIndex];
         const prevAttacks = phaseIndex > 0
             ? (this.config.phases[phaseIndex - 1].attacks || [])
@@ -4109,6 +4118,12 @@ class Boss {
     }
 
     _finishAttack(time) {
+        const phase = this.getPhase();
+        const phaseLocalCooldownMs = phase && phase.phaseLocalCooldownMs ? phase.phaseLocalCooldownMs : {};
+        const finishedAttackCooldownMs = phaseLocalCooldownMs[this.currentAttack] || 0;
+        if (finishedAttackCooldownMs > 0) {
+            this.phaseAttackCooldownExpires[this.currentAttack] = time + finishedAttackCooldownMs;
+        }
         this.lastCompletedAttack = this.currentAttack;
         this.attackState = 'cooldown';
         this.cooldownStart = time;
