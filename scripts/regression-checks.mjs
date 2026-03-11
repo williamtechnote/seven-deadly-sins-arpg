@@ -1720,8 +1720,8 @@ function testLustSharedMajorRecoveryHooks() {
 
     assert.equal(
         BOSSES.lust.phases[2].sharedAttackRecoveryMs.majorSpecial,
-        1600,
-        'lust phase 3 should configure a shared recovery window for major specials'
+        1900,
+        'lust phase 3 should configure a longer shared recovery window for major specials'
     );
     assert.deepEqual(
         Array.from(BOSSES.lust.phases[2].sharedAttackRecoveryGroups.majorSpecial),
@@ -1767,6 +1767,67 @@ function testLustSharedMajorRecoveryHooks() {
         source,
         /Object\.entries\(sharedAttackRecoveryGroups\)\.forEach\(\(\[groupKey,\s*groupAttacks\]\) => \{[\s\S]*?if \(!Array\.isArray\(groupAttacks\) \|\| !groupAttacks\.includes\(this\.currentAttack\)\) return;[\s\S]*?const sharedRecoveryMs = sharedAttackRecoveryMs\[groupKey\] \|\| 0;[\s\S]*?this\.phaseAttackGroupRecoveryExpires\[groupKey\] = time \+ sharedRecoveryMs;/,
         'Boss finish hook should stamp shared recovery expiry when a guarded major special completes'
+    );
+}
+
+function testLustDoubleBreatherChainHooks() {
+    const { BOSSES } = loadDataConstants();
+    const source = loadGameSource();
+
+    assert.deepEqual(
+        Array.from(BOSSES.lust.phases[2].postMajorBreatherChain.triggerAttacks),
+        ['reverseControl', 'illusion', 'mirageDance'],
+        'lust phase 3 should define which major specials start the breather chain'
+    );
+    assert.deepEqual(
+        Array.from(BOSSES.lust.phases[2].postMajorBreatherChain.breatherAttacks),
+        ['charmBolt', 'dash'],
+        'lust phase 3 should define the lighter attacks that can satisfy the breather chain'
+    );
+    assert.equal(
+        BOSSES.lust.phases[2].postMajorBreatherChain.requiredCount,
+        2,
+        'lust phase 3 should require two lighter attacks before the next major special'
+    );
+    assert.match(
+        source,
+        /this\.phaseBreatherChainRemaining\s*=\s*0/,
+        'Boss should initialize the phase breather-chain counter'
+    );
+    assert.match(
+        source,
+        /const postMajorBreatherChain = phase && phase\.postMajorBreatherChain \? phase\.postMajorBreatherChain : null;/,
+        'Boss selector should read optional post-major breather-chain metadata from the current phase'
+    );
+    assert.match(
+        source,
+        /const triggerAttacks = postMajorBreatherChain && Array\.isArray\(postMajorBreatherChain\.triggerAttacks\) \? postMajorBreatherChain\.triggerAttacks : \[\];/,
+        'Boss selector should resolve the trigger attacks for a pending breather chain'
+    );
+    assert.match(
+        source,
+        /const breatherAttacks = postMajorBreatherChain && Array\.isArray\(postMajorBreatherChain\.breatherAttacks\) \? postMajorBreatherChain\.breatherAttacks : \[\];/,
+        'Boss selector should resolve the lighter attacks that satisfy the breather chain'
+    );
+    assert.match(
+        source,
+        /const requiredBreatherCount = postMajorBreatherChain && postMajorBreatherChain\.requiredCount > 0 \? postMajorBreatherChain\.requiredCount : 0;/,
+        'Boss selector should resolve the required breather count from phase metadata'
+    );
+    assert.match(
+        source,
+        /if \(this\.phaseBreatherChainRemaining > 0 && triggerAttacks\.includes\(candidate\) && breatherAttacks\.length > 0 && attacks\.some\(attack => breatherAttacks\.includes\(attack\)\)\) \{\s*continue;\s*\}/,
+        'Boss selector should block major-special follow-ups while lighter breather picks are still owed'
+    );
+    assert.match(
+        source,
+        /if \(requiredBreatherCount > 0 && triggerAttacks\.includes\(this\.currentAttack\)\) \{\s*this\.phaseBreatherChainRemaining = requiredBreatherCount;\s*\} else if \(this\.phaseBreatherChainRemaining > 0 && breatherAttacks\.includes\(this\.currentAttack\)\) \{\s*this\.phaseBreatherChainRemaining = Math\.max\(0, this\.phaseBreatherChainRemaining - 1\);\s*\}/,
+        'Boss finish hook should start and consume the breather chain around major specials and lighter follow-ups'
+    );
+    assert.match(
+        source,
+        /this\.phaseBreatherChainRemaining\s*=\s*0;\s*\n\s*const phase = this\.config\.phases\[phaseIndex\];/,
+        'Boss should reset the pending breather chain when entering a new phase'
     );
 }
 
@@ -1940,8 +2001,18 @@ function testReadmeLustSharedMajorRecovery() {
     );
     assert.match(
         source,
+        /共享 recovery guard 也会再拉长一档/,
+        'README should document the longer shared major-special recovery'
+    );
+    assert.match(
+        source,
         /`charmBolt` \/ `dash` 的占比也会再往上抬一档/,
         'README should document the stronger phase-3 light-pressure weighting'
+    );
+    assert.match(
+        source,
+        /至少串入两段轻压后才允许回到 `reverseControl` \/ `illusion` \/ `mirageDance`/,
+        'README should document the phase-3 double-breather chain after major specials'
     );
 }
 
@@ -8714,6 +8785,7 @@ function main() {
     runTest('lust phase-local cooldown hooks', testLustPhaseLocalCooldownHooks);
     runTest('lust post-mirage breather hooks', testLustPostMirageBreatherHooks);
     runTest('lust shared major recovery hooks', testLustSharedMajorRecoveryHooks);
+    runTest('lust double breather chain hooks', testLustDoubleBreatherChainHooks);
     runTest('lust mirage dance executor hooks', testLustMirageDanceExecutorHooks);
     runTest('lust special recovery hooks', testLustSpecialRecoveryHooks);
     runTest('keyboard aim state helper', testKeyboardAimState);

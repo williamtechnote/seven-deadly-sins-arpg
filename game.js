@@ -3147,6 +3147,7 @@ class Boss {
         this.phaseMajorAttackQueue = new Set();
         this.phaseAttackCooldownExpires = {};
         this.phaseAttackGroupRecoveryExpires = {};
+        this.phaseBreatherChainRemaining = 0;
         this.activeStatusEffects = {};
         this._statusSpeedMultiplier = 1;
         this.phaseAlertUntil = 0;
@@ -3167,6 +3168,10 @@ class Boss {
         const phaseLocalCooldownMs = phase && phase.phaseLocalCooldownMs ? phase.phaseLocalCooldownMs : {};
         const sharedAttackRecoveryMs = phase && phase.sharedAttackRecoveryMs ? phase.sharedAttackRecoveryMs : {};
         const sharedAttackRecoveryGroups = phase && phase.sharedAttackRecoveryGroups ? phase.sharedAttackRecoveryGroups : {};
+        const postMajorBreatherChain = phase && phase.postMajorBreatherChain ? phase.postMajorBreatherChain : null;
+        const triggerAttacks = postMajorBreatherChain && Array.isArray(postMajorBreatherChain.triggerAttacks) ? postMajorBreatherChain.triggerAttacks : [];
+        const breatherAttacks = postMajorBreatherChain && Array.isArray(postMajorBreatherChain.breatherAttacks) ? postMajorBreatherChain.breatherAttacks : [];
+        const requiredBreatherCount = postMajorBreatherChain && postMajorBreatherChain.requiredCount > 0 ? postMajorBreatherChain.requiredCount : 0;
         const postAttackBreatherGuards = phase && phase.postAttackBreatherGuards ? phase.postAttackBreatherGuards : {};
         const now = this.scene.time.now;
         let selectedAttack = attacks[this.attackIndex % attacks.length];
@@ -3181,6 +3186,9 @@ class Boss {
             const candidateSharedGroupKey = Object.keys(sharedAttackRecoveryGroups).find(groupKey => Array.isArray(sharedAttackRecoveryGroups[groupKey]) && sharedAttackRecoveryGroups[groupKey].includes(candidate));
             const sharedRecoveryExpiresAt = candidateSharedGroupKey ? (this.phaseAttackGroupRecoveryExpires[candidateSharedGroupKey] || 0) : 0;
             if (sharedRecoveryExpiresAt > now && attacks.some(attack => !sharedAttackRecoveryGroups[candidateSharedGroupKey].includes(attack))) {
+                continue;
+            }
+            if (this.phaseBreatherChainRemaining > 0 && triggerAttacks.includes(candidate) && breatherAttacks.length > 0 && attacks.some(attack => breatherAttacks.includes(attack))) {
                 continue;
             }
             const blockedAfterLastAttack = Array.isArray(postAttackBreatherGuards[this.lastCompletedAttack]) ? postAttackBreatherGuards[this.lastCompletedAttack] : null;
@@ -3319,6 +3327,7 @@ class Boss {
         this.speed *= 1.2;
         this.phaseAttackCooldownExpires = {};
         this.phaseAttackGroupRecoveryExpires = {};
+        this.phaseBreatherChainRemaining = 0;
         const phase = this.config.phases[phaseIndex];
         const prevAttacks = phaseIndex > 0
             ? (this.config.phases[phaseIndex - 1].attacks || [])
@@ -4150,6 +4159,10 @@ class Boss {
         const phaseLocalCooldownMs = phase && phase.phaseLocalCooldownMs ? phase.phaseLocalCooldownMs : {};
         const sharedAttackRecoveryMs = phase && phase.sharedAttackRecoveryMs ? phase.sharedAttackRecoveryMs : {};
         const sharedAttackRecoveryGroups = phase && phase.sharedAttackRecoveryGroups ? phase.sharedAttackRecoveryGroups : {};
+        const postMajorBreatherChain = phase && phase.postMajorBreatherChain ? phase.postMajorBreatherChain : null;
+        const triggerAttacks = postMajorBreatherChain && Array.isArray(postMajorBreatherChain.triggerAttacks) ? postMajorBreatherChain.triggerAttacks : [];
+        const breatherAttacks = postMajorBreatherChain && Array.isArray(postMajorBreatherChain.breatherAttacks) ? postMajorBreatherChain.breatherAttacks : [];
+        const requiredBreatherCount = postMajorBreatherChain && postMajorBreatherChain.requiredCount > 0 ? postMajorBreatherChain.requiredCount : 0;
         const finishedAttackCooldownMs = phaseLocalCooldownMs[this.currentAttack] || 0;
         if (finishedAttackCooldownMs > 0) {
             this.phaseAttackCooldownExpires[this.currentAttack] = time + finishedAttackCooldownMs;
@@ -4160,6 +4173,11 @@ class Boss {
             if (sharedRecoveryMs <= 0) return;
             this.phaseAttackGroupRecoveryExpires[groupKey] = time + sharedRecoveryMs;
         });
+        if (requiredBreatherCount > 0 && triggerAttacks.includes(this.currentAttack)) {
+            this.phaseBreatherChainRemaining = requiredBreatherCount;
+        } else if (this.phaseBreatherChainRemaining > 0 && breatherAttacks.includes(this.currentAttack)) {
+            this.phaseBreatherChainRemaining = Math.max(0, this.phaseBreatherChainRemaining - 1);
+        }
         this.lastCompletedAttack = this.currentAttack;
         this.attackState = 'cooldown';
         this.cooldownStart = time;
