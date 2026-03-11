@@ -1552,6 +1552,56 @@ function testBossMechanicDiversityHooks() {
     );
 }
 
+function testLustMirageDanceHooks() {
+    const { BOSSES } = loadDataConstants();
+    const source = loadGameSource();
+
+    assert.ok(
+        BOSSES.lust.phases.some(phase => Array.isArray(phase.attacks) && phase.attacks.includes('mirageDance')),
+        'lust should add mirageDance into its phase-3 attack pool'
+    );
+    assert.match(
+        source,
+        /mirageDance:\s*'魅影连舞'/,
+        'attack display names should expose the localized mirageDance label'
+    );
+    assert.match(
+        source,
+        /mirageDance:\s*'反制: 观察真身换位节奏，留翻滚躲最后逆转波'/,
+        'mirageDance should advertise a dedicated counter hint'
+    );
+    assert.match(
+        source,
+        /mirageDance:\s*1600/,
+        'mirageDance should define a counter window for the telegraph HUD'
+    );
+    assert.match(
+        source,
+        /SPECIAL:\s*\[[^\]]*'mirageDance'[^\]]*\]/,
+        'mirageDance should be classified as a SPECIAL boss attack'
+    );
+}
+
+function testLustMirageDanceExecutorHooks() {
+    const source = loadGameSource();
+
+    assert.match(
+        source,
+        /else if \(atk === 'mirageDance'\)/,
+        'Boss special attack executor should expose a mirageDance branch'
+    );
+    assert.match(
+        source,
+        /this\.attackData\.beatCount\s*=\s*3/,
+        'mirageDance should initialize a three-beat dance cadence'
+    );
+    assert.match(
+        source,
+        /player\.applyReverseControl\(1800\)/,
+        'mirageDance finisher should apply a short reverse-control punish on hit'
+    );
+}
+
 function testKeyboardAimState() {
     const aimRight = resolveKeyboardAimState({
         up: false,
@@ -8315,6 +8365,8 @@ function main() {
     runTest('status HUD summary', testStatusHudSummary);
     runTest('boss HUD readability helpers', testBossHudReadability);
     runTest('boss mechanic diversity hooks', testBossMechanicDiversityHooks);
+    runTest('lust mirage dance hooks', testLustMirageDanceHooks);
+    runTest('lust mirage dance executor hooks', testLustMirageDanceExecutorHooks);
     runTest('keyboard aim state helper', testKeyboardAimState);
     runTest('aim direction label helper', testAimDirectionLabel);
     runTest('keyboard aim source hooks', testKeyboardAimSourceHooks);

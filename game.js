@@ -149,6 +149,7 @@ const ATTACK_DISPLAY_NAMES = {
     bladeOrbit: '圣剑环阵',
     mirror: '镜像突袭',
     shapeShift: '形态裂变',
+    mirageDance: '魅影连舞',
     reverseControl: '混乱逆转',
     illusion: '幻影风暴',
     sleepFog: '沉眠迷雾',
@@ -167,6 +168,7 @@ const ATTACK_COUNTER_HINTS = {
     bladeOrbit: '反制: 先绕 Boss 小步走位，再穿过飞剑空档',
     mirror: '反制: 先清镜像再贴身输出',
     shapeShift: '反制: 保持中距离，观察变身后出手',
+    mirageDance: '反制: 观察真身换位节奏，留翻滚躲最后逆转波',
     reverseControl: '反制: 停止冲刺，短步修正方向',
     illusion: '反制: 先躲弹幕，再找本体',
     sleepFog: '反制: 迅速离开雾区，避免持续减速',
@@ -185,6 +187,7 @@ const ATTACK_COUNTER_WINDOW_MS = {
     bladeOrbit: 1500,
     mirror: 1400,
     shapeShift: 1200,
+    mirageDance: 1600,
     reverseControl: 1500,
     illusion: 1700,
     sleepFog: 1800,
@@ -239,6 +242,7 @@ const MAJOR_BOSS_PHASE_ATTACKS = new Set([
     'bladeOrbit',
     'mirror',
     'shapeShift',
+    'mirageDance',
     'illusion',
     'coinTrap',
     'sleepFog',
@@ -3084,7 +3088,7 @@ const BOSS_ATTACK_TYPES = {
     DASH: ['firePunch', 'slash', 'poisonSpit', 'bite', 'charmBolt', 'webShot', 'tailSwipe', 'devour'],
     AOE: ['groundSlam', 'vomit', 'goldBreath'],
     CONE: ['flameBreath', 'charge', 'lunge', 'dash'],
-    SPECIAL: ['mirror', 'copyWeapon', 'shapeShift', 'reverseControl', 'illusion', 'bladeOrbit'],
+    SPECIAL: ['mirror', 'copyWeapon', 'shapeShift', 'reverseControl', 'illusion', 'bladeOrbit', 'mirageDance'],
     BUFF: ['berserk', 'nightmare', 'treasureStorm', 'consume', 'divineStrike'],
     HAZARD: ['summonSpider', 'coinTrap', 'sleepFog', 'magmaRing']
 };
@@ -3681,6 +3685,103 @@ class Boss {
                 this.sprite.setAlpha(1);
                 for (const ill of this.attackData.illusions) if (ill.active) ill.destroy();
                 this._finishAttack(time);
+            }
+        } else if (atk === 'mirageDance') {
+            if (!this.attackData.started) {
+                this.attackData.started = true;
+                this.sprite.body.setVelocity(0, 0);
+                this.sprite.setAlpha(0.82);
+                this.attackData.beatCount = 3;
+                this.attackData.completedBeats = 0;
+                this.attackData.nextBeatAt = time + 180;
+                this.attackData.lastHitBeat = -1;
+                this.attackData.finisherStartedAt = 0;
+                this.attackData.projectiles = [];
+                this.attackData.illusions = [];
+                const tex = this.sprite.texture.key;
+                for (let i = 0; i < 3; i++) {
+                    const ill = this.scene.add.sprite(this.sprite.x, this.sprite.y, tex);
+                    ill.setScale(this.sprite.scaleX);
+                    ill.setTint(this.config.color);
+                    ill.setAlpha(0.42);
+                    ill.setDepth(9);
+                    this.attackData.illusions.push(ill);
+                }
+            }
+            const wb = this.scene.physics.world.bounds;
+            const orbitBaseAngle = elapsed / 420;
+            const orbitRadius = 118 - Math.min(24, this.attackData.completedBeats * 10);
+            for (let i = 0; i < this.attackData.illusions.length; i++) {
+                const ill = this.attackData.illusions[i];
+                if (!ill.active) continue;
+                const angle = orbitBaseAngle + (Math.PI * 2 / this.attackData.illusions.length) * i;
+                ill.setPosition(
+                    Phaser.Math.Clamp(player.x + Math.cos(angle) * orbitRadius, wb.x + 40, wb.right - 40),
+                    Phaser.Math.Clamp(player.y + Math.sin(angle) * (orbitRadius * 0.72), wb.y + 40, wb.bottom - 40)
+                );
+            }
+            while (this.attackData.completedBeats < this.attackData.beatCount && time >= this.attackData.nextBeatAt) {
+                const beatIndex = this.attackData.completedBeats;
+                this.attackData.completedBeats++;
+                this.attackData.nextBeatAt += 260;
+                const anchorAngle = -Math.PI / 2 + beatIndex * 0.95;
+                const anchorRadius = 140 - beatIndex * 18;
+                const targetX = Phaser.Math.Clamp(player.x + Math.cos(anchorAngle) * anchorRadius, wb.x + 36, wb.right - 36);
+                const targetY = Phaser.Math.Clamp(player.y + Math.sin(anchorAngle) * Math.max(72, anchorRadius - 24), wb.y + 36, wb.bottom - 36);
+                this.sprite.setPosition(targetX, targetY);
+                showHitImpactPulse(this.scene, targetX, targetY, this.config.color, beatIndex === this.attackData.beatCount - 1 ? 22 : 16);
+                const distToPlayer = Phaser.Math.Distance.Between(targetX, targetY, player.x, player.y);
+                if (distToPlayer < 92 && !player.isInvincible && this.attackData.lastHitBeat !== beatIndex) {
+                    this.attackData.lastHitBeat = beatIndex;
+                    this._dealDamageToPlayer(player, this.damage * 0.45, atk);
+                }
+                if (beatIndex === this.attackData.beatCount - 1) {
+                    this.attackData.finisherStartedAt = time;
+                    const count = 6;
+                    for (let i = 0; i < count; i++) {
+                        const angle = (Math.PI * 2 / count) * i;
+                        const g = this.scene.add.graphics();
+                        g.fillStyle(this.config.color, 0.72);
+                        g.fillCircle(0, 0, 8);
+                        g.setDepth(9);
+                        g.setPosition(targetX, targetY);
+                        this.attackData.projectiles.push({ g, angle, hit: false });
+                    }
+                }
+            }
+            if (this.attackData.finisherStartedAt) {
+                const finisherElapsed = time - this.attackData.finisherStartedAt;
+                const expandMs = 180;
+                const collapseMs = 620;
+                for (const p of this.attackData.projectiles) {
+                    if (!p.g.active) continue;
+                    if (finisherElapsed < expandMs) {
+                        const dist = (finisherElapsed / expandMs) * 118;
+                        p.g.setPosition(
+                            this.sprite.x + Math.cos(p.angle) * dist,
+                            this.sprite.y + Math.sin(p.angle) * dist
+                        );
+                    } else {
+                        const t = Math.min(1, (finisherElapsed - expandMs) / collapseMs);
+                        const sx = this.sprite.x + Math.cos(p.angle) * 118;
+                        const sy = this.sprite.y + Math.sin(p.angle) * 118;
+                        p.g.setPosition(
+                            sx + (player.x - sx) * t,
+                            sy + (player.y - sy) * t
+                        );
+                        const d = Phaser.Math.Distance.Between(p.g.x, p.g.y, player.x, player.y);
+                        if (d < 32 && !player.isInvincible && !p.hit) {
+                            p.hit = true;
+                            this._dealDamageToPlayer(player, this.damage * 0.35, atk, () => player.applyReverseControl(1800));
+                        }
+                    }
+                }
+                if (finisherElapsed >= expandMs + collapseMs) {
+                    this.sprite.setAlpha(1);
+                    for (const p of this.attackData.projectiles) if (p.g.active) p.g.destroy();
+                    for (const ill of this.attackData.illusions) if (ill.active) ill.destroy();
+                    this._finishAttack(time);
+                }
             }
         } else if (atk === 'copyWeapon') {
             // Rapid projectile barrage toward player
