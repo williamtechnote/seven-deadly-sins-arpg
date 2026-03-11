@@ -3683,8 +3683,12 @@ class Boss {
                     }
                 }
             }
-            if (elapsed >= 1400) {
+            const recoveryMs = 240;
+            if (elapsed >= 1400 && !this.attackData.recoveryStarted) {
+                this.attackData.recoveryStarted = true;
                 for (const p of this.attackData.projectiles) if (p.g.active) p.g.destroy();
+            }
+            if (elapsed >= 1400 + recoveryMs) {
                 this._finishAttack(time);
             }
         } else if (atk === 'illusion') {
@@ -3716,9 +3720,13 @@ class Boss {
                     if (ill.y < 150 || ill.y > 650) ill.vy *= -1;
                 }
             }
-            if (elapsed >= 3000) {
+            const recoveryMs = 320;
+            if (elapsed >= 3000 && !this.attackData.recoveryStarted) {
+                this.attackData.recoveryStarted = true;
                 this.sprite.setAlpha(1);
                 for (const ill of this.attackData.illusions) if (ill.active) ill.destroy();
+            }
+            if (elapsed >= 3000 + recoveryMs) {
                 this._finishAttack(time);
             }
         } else if (atk === 'mirageDance') {

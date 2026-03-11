@@ -1779,6 +1779,41 @@ function testLustMirageDanceExecutorHooks() {
     );
 }
 
+function testLustSpecialRecoveryHooks() {
+    const source = loadGameSource();
+
+    assert.match(
+        source,
+        /} else if \(atk === 'reverseControl'\) \{[\s\S]*?const recoveryMs = 240;/,
+        'reverseControl should define an explicit post-collapse recovery window'
+    );
+    assert.match(
+        source,
+        /} else if \(atk === 'reverseControl'\) \{[\s\S]*?if \(elapsed >= 1400 && !this\.attackData\.recoveryStarted\) \{[\s\S]*?this\.attackData\.recoveryStarted = true;/,
+        'reverseControl should start a recovery phase after the projectile collapse resolves'
+    );
+    assert.match(
+        source,
+        /} else if \(atk === 'reverseControl'\) \{[\s\S]*?if \(elapsed >= 1400 \+ recoveryMs\) \{[\s\S]*?this\._finishAttack\(time\);/,
+        'reverseControl should stay in attack state through the recovery window before finishing'
+    );
+    assert.match(
+        source,
+        /} else if \(atk === 'illusion'\) \{[\s\S]*?const recoveryMs = 320;/,
+        'illusion should define an explicit post-despawn recovery window'
+    );
+    assert.match(
+        source,
+        /} else if \(atk === 'illusion'\) \{[\s\S]*?if \(elapsed >= 3000 && !this\.attackData\.recoveryStarted\) \{[\s\S]*?this\.attackData\.recoveryStarted = true;/,
+        'illusion should start a recovery phase after clones disperse'
+    );
+    assert.match(
+        source,
+        /} else if \(atk === 'illusion'\) \{[\s\S]*?if \(elapsed >= 3000 \+ recoveryMs\) \{[\s\S]*?this\._finishAttack\(time\);/,
+        'illusion should stay in attack state through the recovery window before finishing'
+    );
+}
+
 function testReadmeLustPostMirageSpacing() {
     const source = loadReadmeSource();
 
@@ -1806,6 +1841,21 @@ function testReadmeLustPostMirageSpacing() {
         source,
         /逆转波收尾后也会多留一小段 recovery 空档/,
         'README should document the explicit post-mirage recovery window'
+    );
+}
+
+function testReadmeLustSpecialRecovery() {
+    const source = loadReadmeSource();
+
+    assert.match(
+        source,
+        /`reverseControl` 回卷收束后也会多留一小段 recovery 空档/,
+        'README should document the reverseControl recovery window'
+    );
+    assert.match(
+        source,
+        /`illusion` 幻身散场后也会多留一小段 recovery 空档/,
+        'README should document the illusion recovery window'
     );
 }
 
@@ -8578,6 +8628,7 @@ function main() {
     runTest('lust phase-local cooldown hooks', testLustPhaseLocalCooldownHooks);
     runTest('lust post-mirage breather hooks', testLustPostMirageBreatherHooks);
     runTest('lust mirage dance executor hooks', testLustMirageDanceExecutorHooks);
+    runTest('lust special recovery hooks', testLustSpecialRecoveryHooks);
     runTest('keyboard aim state helper', testKeyboardAimState);
     runTest('aim direction label helper', testAimDirectionLabel);
     runTest('keyboard aim source hooks', testKeyboardAimSourceHooks);
@@ -8595,6 +8646,7 @@ function main() {
     runTest('fixed sidebar measurement hooks', testSidebarMeasurementHooks);
     runTest('README lust phase-local cooldowns', testReadmeLustPhaseLocalCooldowns);
     runTest('README lust post-mirage spacing', testReadmeLustPostMirageSpacing);
+    runTest('README lust special recovery', testReadmeLustSpecialRecovery);
     runTest('combat action HUD summary helper', testCombatActionHudSummary);
     runTest('quick-slot item label helper', testQuickSlotItemLabel);
     runTest('keyboard HUD QoL hooks', testKeyboardHudQolHooks);
