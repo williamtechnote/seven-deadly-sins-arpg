@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>七宗罪 - Seven Deadly Sins</title>
+    <link rel="icon" href="data:,">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -18,7 +19,13 @@
     </style>
 </head>
 <body>
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+    <script src="vendor/phaser.min.js"></script>
+    <script>
+        if (typeof Phaser === 'undefined') {
+            document.write('<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"><\\/script>');
+        }
+    </script>
+    <script src="scripts/e2e/phaser-test-harness.js"></script>
     <script src="data.js"></script>
     <script src="shared/game-core.js"></script>
     <script src="game.js"></script>

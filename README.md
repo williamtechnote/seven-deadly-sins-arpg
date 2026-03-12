@@ -174,6 +174,22 @@ node scripts/regression-checks.mjs
 - Run Modifier 抽取唯一性与效果合成
 - 铁匠制作配方消耗与产出确定性
 
+## Playwright E2E 测试（新增）
+
+```bash
+npm install
+npx playwright install --with-deps chromium
+npm run e2e:smoke
+npm run e2e:all
+npm run e2e:report
+```
+
+新增覆盖：
+- 场景与 UI 流程（title/hub/overlay）
+- 战斗与 Boss 基础路径
+- 稳定性矩阵、长跑与边界场景
+- 失败留证据（截图 / console / state snapshot）
+
 ## License
 
 MIT
