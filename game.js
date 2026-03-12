@@ -1031,6 +1031,14 @@ class TitleScene extends Phaser.Scene {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
         AudioSystem.bindSceneInput(this);
+
+        const overlayScenes = ['InventoryScene', 'HelpScene', 'PauseScene', 'DialogScene', 'ShopScene', 'BlacksmithScene'];
+        overlayScenes.forEach((sceneKey) => {
+            if (this.scene.isActive(sceneKey)) {
+                this.scene.stop(sceneKey);
+            }
+        });
+
         GameState.ensureRunModifiers();
 
         this.add.text(width / 2, height / 2 - 80, '七宗罪', {
@@ -1344,6 +1352,17 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         if (this._controlInvertFx) {
             this.clearTint();
             this._controlInvertFx = false;
+        }
+
+        // Ensure visual state cannot remain in a stale walk/attack animation after death.
+        if (this.scene && this.scene.anims && this.scene.anims.exists('player_death_down')) {
+            this._animState = 'death';
+            this._animDir = 'down';
+            this.play('player_death_down', true);
+        } else {
+            this._animState = 'idle';
+            this._animDir = 'down';
+            this._playAnim('idle', 'down');
         }
     }
 
@@ -4918,6 +4937,32 @@ class BossScene extends Phaser.Scene {
     }
 }
 
+const DIALOG_PORTRAIT_CATALOG = {
+    系统: { texture: 'npc_wizard', scale: 2, tint: 0xD9E6FF },
+    黑市商人: { texture: 'npc_rogue', scale: 2, tint: 0xE8D0A0 },
+    铁匠: { texture: 'npc_knight', scale: 2, tint: 0xC5CFDF },
+    先知: { texture: 'npc_wizard', scale: 2, tint: 0xC6B5FF },
+    Pride: { texture: 'enemy_orc_warrior', scale: 2, tint: 0xE4BA63 },
+    Envy: { texture: 'enemy_skeleton_rogue', scale: 2, tint: 0x9BE5B7 },
+    Wrath: { texture: 'enemy_orc_base', scale: 2, tint: 0xFF8D8D },
+    Sloth: { texture: 'enemy_skeleton_base', scale: 2, tint: 0xC2B9F6 },
+    Greed: { texture: 'enemy_orc_shaman', scale: 2, tint: 0xF3DA8A },
+    Gluttony: { texture: 'enemy_orc_rogue', scale: 2, tint: 0xD9A5A5 },
+    Lust: { texture: 'enemy_skeleton_mage', scale: 2, tint: 0xE4A7F1 },
+    原罪: { texture: 'enemy_orc_base', scale: 2, tint: 0xFFFFFF }
+};
+
+function getPortraitConfigBySpeaker(speaker) {
+    if (!speaker || typeof speaker !== 'string') return null;
+    if (DIALOG_PORTRAIT_CATALOG[speaker]) return DIALOG_PORTRAIT_CATALOG[speaker];
+    const lower = speaker.toLowerCase();
+    if (lower.includes('merchant')) return DIALOG_PORTRAIT_CATALOG['黑市商人'];
+    if (lower.includes('smith')) return DIALOG_PORTRAIT_CATALOG['铁匠'];
+    if (lower.includes('sage')) return DIALOG_PORTRAIT_CATALOG['先知'];
+    if (lower.includes('system')) return DIALOG_PORTRAIT_CATALOG['系统'];
+    return null;
+}
+
 /**
  * DialogScene - Overlay dialog with typewriter effect and portrait display
  */
@@ -6633,4 +6678,55 @@ if (typeof globalThis !== 'undefined') {
     if (isTestModeEnabled()) {
         globalThis.GameState = GameState;
     }
+}
+
+if (isTestModeEnabled() && TestHarness && typeof TestHarness.setSnapshotProvider === 'function') {
+    TestHarness.setSnapshotProvider(() => {
+        const scenes = game && game.scene && typeof game.scene.getScenes === 'function'
+            ? game.scene.getScenes(true)
+            : [];
+        const activeScenes = scenes
+            .filter(scene => scene && scene.sys && scene.sys.settings && scene.sys.settings.active !== false)
+            .map(scene => scene.sys.settings.key);
+
+        const pickScene = (...keys) => keys.find(key => activeScenes.includes(key)) || activeScenes[0] || null;
+        const primaryScene = pickScene('BossScene', 'LevelScene', 'HubScene', 'TitleScene', 'DialogScene', 'InventoryScene', 'ShopScene', 'BlacksmithScene', 'PauseScene', 'HelpScene');
+
+        const levelScene = game.scene.getScene('LevelScene');
+        const bossScene = game.scene.getScene('BossScene');
+        const hubScene = game.scene.getScene('HubScene');
+
+        return {
+            scene: primaryScene,
+            activeScenes,
+            gameState: {
+                gold: GameState.gold,
+                defeatedBosses: Array.isArray(GameState.defeatedBosses) ? [...GameState.defeatedBosses] : [],
+                sinSeals: Array.isArray(GameState.sinSeals) ? [...GameState.sinSeals] : [],
+                inventoryKeys: Object.keys(GameState.inventory || {}),
+                selectedWeaponKey: GameState.selectedWeaponKey || null
+            },
+            level: levelScene && levelScene.sys && levelScene.sys.settings && levelScene.sys.settings.active
+                ? {
+                    bossKey: levelScene.bossKey || null,
+                    enemiesAlive: Array.isArray(levelScene.enemies) ? levelScene.enemies.filter(e => e && e.isAlive).length : 0,
+                    playerDead: !!levelScene.playerDead
+                }
+                : null,
+            boss: bossScene && bossScene.sys && bossScene.sys.settings && bossScene.sys.settings.active
+                ? {
+                    bossKey: bossScene.bossKey || null,
+                    bossHp: bossScene.boss && Number.isFinite(bossScene.boss.hp) ? bossScene.boss.hp : null,
+                    bossAlive: !!(bossScene.boss && bossScene.boss.isAlive),
+                    playerDead: !!bossScene.playerDead
+                }
+                : null,
+            hub: hubScene && hubScene.sys && hubScene.sys.settings && hubScene.sys.settings.active
+                ? {
+                    portalCount: Array.isArray(hubScene.portals) ? hubScene.portals.length : 0,
+                    nearestNpc: hubScene.nearestNpc ? hubScene.nearestNpc.npcKey : null
+                }
+                : null
+        };
+    });
 }

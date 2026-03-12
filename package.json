@@ -1,0 +1,16 @@
+{
+  "name": "seven-deadly-sins-arpg",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "e2e:smoke": "playwright test tests/e2e/smoke.spec.js",
+    "e2e:combat": "playwright test tests/e2e/combat.spec.js",
+    "e2e:longrun": "playwright test tests/e2e/longrun.spec.js",
+    "e2e:fullflow": "playwright test tests/e2e/fullflow.spec.js",
+    "e2e:all": "playwright test tests/e2e/*.spec.js",
+    "e2e:report": "node scripts/e2e-report.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.53.1"
+  }
+}
