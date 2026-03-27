@@ -1,7 +1,9 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 机制多样性：`魅惑女妖` phase 3 后续观察二十九-三：若 `reverseControl` recovery 继续再回调后 live pacing 仍偏密，再评估是否继续补一段 phase 3 轻压过桥或继续拉长 `reverseControl` recovery
+- [ ] Boss 机制多样性：`魅惑女妖` phase 3 定向过桥三十-一：在 `reverseControl` 与 `illusion` 之间继续再补一段 `charmBolt` / `dash` 定向轻压过桥，让更长的 `reverseControl` recovery 落地后，下一段 phase 3 追压继续先由轻压接棒
+- [ ] Boss 机制多样性：README / regression checks 三十-二：同步锁定 `魅惑女妖` phase 3 新一轮 `reverseControl -> illusion` 轻压过桥契约与 live pacing 文案，避免后续漂移
+- [ ] Boss 机制多样性：`魅惑女妖` phase 3 后续观察三十-三：若更长的 `reverseControl` recovery 与新增 `reverseControl -> illusion` 过桥都落地后 live pacing 仍偏密，再评估是否继续拉长 `reverseControl` recovery 或继续加长 `illusion` 前的轻压串
 
 ## Completed
 - [x] Boss 机制多样性：README / regression checks 二十九-二：同步锁定 `魅惑女妖` phase 3 更长的 `reverseControl` 单招 recovery 契约与 live pacing 文案，避免后续回调漂移（完成：2026-03-27 09:10 +08）
