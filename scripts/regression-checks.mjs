@@ -1587,8 +1587,8 @@ function testLustPhase3AttackOrder() {
 
     assert.deepEqual(
         attacks.slice(reverseControlIndex + 1, illusionIndex),
-        ['dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash'],
-        'lust phase 3 should keep reverseControl and illusion separated by a longer directed light-pressure bridge'
+        ['dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash'],
+        'lust phase 3 should keep reverseControl and illusion separated by an extra directed light-pressure bridge'
     );
     assert.deepEqual(
         attacks.slice(illusionIndex + 1, mirageDanceIndex),
@@ -2076,8 +2076,8 @@ function testReadmeLustSharedMajorRecovery() {
     );
     assert.match(
         source,
-        /在 `reverseControl` 与 `illusion` 之间会继续再补一整段 `charmBolt` \/ `dash` 定向轻压过桥/,
-        'README should document the newly extended directed bridge between reverseControl and illusion'
+        /在更长的 `reverseControl` recovery 之后，`reverseControl` 与 `illusion` 之间会继续再补一小段 `charmBolt` \/ `dash` 定向轻压过桥/,
+        'README should document the extra post-reverseControl bridge before illusion'
     );
     assert.match(
         source,
