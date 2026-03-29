@@ -1592,13 +1592,26 @@ function testLustPhase3AttackOrder() {
     );
     assert.deepEqual(
         attacks.slice(illusionIndex + 1, mirageDanceIndex),
-        ['dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash'],
-        'lust phase 3 should keep illusion and mirageDance separated by a longer directed light-pressure bridge'
+        ['dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash'],
+        'lust phase 3 should keep illusion and mirageDance separated by an extended directed light-pressure bridge after the longer illusion recovery pass'
     );
     assert.deepEqual(
         attacks.slice(mirageDanceIndex + 1),
         ['dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt'],
         'lust phase 3 should keep the loopback after mirageDance on an extra-long directed light-pressure bridge'
+    );
+}
+
+function testLustIllusionMirageBridgeFollowup() {
+    const { BOSSES } = loadDataConstants();
+    const attacks = Array.from(BOSSES.lust.phases[2].attacks);
+    const illusionIndex = attacks.indexOf('illusion');
+    const mirageDanceIndex = attacks.indexOf('mirageDance');
+
+    assert.equal(
+        mirageDanceIndex - illusionIndex - 1,
+        13,
+        'lust phase 3 should add one more dash-charmBolt step before mirageDance after the illusion recovery follow-up'
     );
 }
 
@@ -2091,8 +2104,8 @@ function testReadmeLustSharedMajorRecovery() {
     );
     assert.match(
         source,
-        /在 `illusion` 与 `mirageDance` 之间也会继续再补一整段 `charmBolt` \/ `dash` 定向轻压过桥/,
-        'README should document the newly extended directed bridge between illusion and mirageDance'
+        /在 `illusion` 与 `mirageDance` 之间也会继续再补更长的一整段 `charmBolt` \/ `dash` 定向轻压过桥/,
+        'README should document the newest directed bridge extension between illusion and mirageDance'
     );
     assert.match(
         source,
@@ -8874,6 +8887,7 @@ function main() {
     runTest('lust mirage dance executor hooks', testLustMirageDanceExecutorHooks);
     runTest('lust special recovery hooks', testLustSpecialRecoveryHooks);
     runTest('lust illusion recovery follow-up', testLustIllusionRecoveryWindowFollowup);
+    runTest('lust illusion-mirage bridge follow-up', testLustIllusionMirageBridgeFollowup);
     runTest('keyboard aim state helper', testKeyboardAimState);
     runTest('aim direction label helper', testAimDirectionLabel);
     runTest('keyboard aim source hooks', testKeyboardAimSourceHooks);
