@@ -1931,8 +1931,8 @@ function testLustMirageDanceExecutorHooks() {
     );
     assert.match(
         source,
-        /this\.attackData\.finisherRecoveryMs\s*=\s*360/,
-        'mirageDance should define a longer explicit recovery window after the reverse-wave collapse'
+        /this\.attackData\.finisherRecoveryMs\s*=\s*440/,
+        'mirageDance should define an even longer explicit recovery window after the extended loopback bridge'
     );
     assert.match(
         source,
@@ -2051,8 +2051,8 @@ function testReadmeLustPostMirageSpacing() {
     );
     assert.match(
         source,
-        /逆转波收尾后的 recovery 空档也会继续再拉长一档，让 loopback 过桥继续加长后下一轮 `reverseControl` 仍再晚半拍回切/,
-        'README should document the newest mirageDance recovery tuning pass'
+        /逆转波收尾后的 recovery 空档这轮也会在更长的 `mirageDance` -> `reverseControl` loopback 过桥落地后继续再拉长一档，让下一轮 `reverseControl` 仍再晚半拍回切/,
+        'README should document the newest mirageDance recovery tuning pass after the extended loopback bridge'
     );
 }
 
