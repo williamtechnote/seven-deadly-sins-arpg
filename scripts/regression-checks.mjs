@@ -1597,8 +1597,8 @@ function testLustPhase3AttackOrder() {
     );
     assert.deepEqual(
         attacks.slice(mirageDanceIndex + 1),
-        ['dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt'],
-        'lust phase 3 should keep the loopback after mirageDance on an extra-long directed light-pressure bridge'
+        ['dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt'],
+        'lust phase 3 should keep the loopback after mirageDance on an even longer directed light-pressure bridge'
     );
 }
 
@@ -1612,6 +1612,18 @@ function testLustIllusionMirageBridgeFollowup() {
         mirageDanceIndex - illusionIndex - 1,
         13,
         'lust phase 3 should add one more dash-charmBolt step before mirageDance after the illusion recovery follow-up'
+    );
+}
+
+function testLustMirageLoopbackBridgeFollowup() {
+    const { BOSSES } = loadDataConstants();
+    const attacks = Array.from(BOSSES.lust.phases[2].attacks);
+    const mirageDanceIndex = attacks.indexOf('mirageDance');
+
+    assert.equal(
+        attacks.length - mirageDanceIndex - 1,
+        16,
+        'lust phase 3 should add one more dash-charmBolt loopback step before returning to reverseControl'
     );
 }
 
@@ -2109,8 +2121,8 @@ function testReadmeLustSharedMajorRecovery() {
     );
     assert.match(
         source,
-        /在 `mirageDance` 与下一轮 `reverseControl` 之间也会继续再补更长的双段 `charmBolt` \/ `dash` 定向轻压过桥/,
-        'README should document the newly extended double-step bridge between mirageDance and the next reverseControl loop'
+        /在 `mirageDance` 与下一轮 `reverseControl` 之间也会继续再补更长的一整段 `charmBolt` \/ `dash` 定向轻压过桥/,
+        'README should document the newly extended loopback bridge between mirageDance and the next reverseControl loop'
     );
 }
 
@@ -8888,6 +8900,7 @@ function main() {
     runTest('lust special recovery hooks', testLustSpecialRecoveryHooks);
     runTest('lust illusion recovery follow-up', testLustIllusionRecoveryWindowFollowup);
     runTest('lust illusion-mirage bridge follow-up', testLustIllusionMirageBridgeFollowup);
+    runTest('lust mirage loopback bridge follow-up', testLustMirageLoopbackBridgeFollowup);
     runTest('keyboard aim state helper', testKeyboardAimState);
     runTest('aim direction label helper', testAimDirectionLabel);
     runTest('keyboard aim source hooks', testKeyboardAimSourceHooks);
