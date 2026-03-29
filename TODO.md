@@ -1,9 +1,15 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 机制多样性：`魅惑女妖` phase 3 后续观察二十八-三：若 `illusion` recovery 与共享 `majorSpecial` recovery 继续再回调后 live pacing 仍偏密，再评估是否继续拉长 `reverseControl` 单招 recovery
 
 ## Completed
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 定向过桥三十一：在 `reverseControl` 与 `illusion` 之间继续再补一小段 `charmBolt` / `dash` 定向轻压过桥，让 `illusion` 前的 phase 3 追压再晚半拍回切（完成：2026-03-29 16:30 +08）
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 后续观察三十-三：若更长的 `reverseControl` recovery 与新增且继续加长的 `reverseControl -> illusion` 过桥都落地后 live pacing 仍偏密，再评估是否继续拉长 `reverseControl` recovery 或继续加长 `illusion` 前的轻压串（完成：2026-03-29 16:10 +08，已拆分为三十一）
+- [x] Boss 机制多样性：README / regression checks 三十-二：同步锁定 `魅惑女妖` phase 3 新一轮更长的 `reverseControl -> illusion` 轻压过桥契约与更长的 `reverseControl` phase-local recovery 文案，避免后续漂移（完成：2026-03-28 06:28 +08）
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 定向过桥三十-一：在 `reverseControl` 与 `illusion` 之间继续再补一段更长的 `charmBolt` / `dash` 定向轻压过桥，让更长的 `reverseControl` recovery 落地后，下一段 phase 3 追压继续先由轻压接棒（完成：2026-03-28 06:28 +08）
+- [x] Boss 机制多样性：README / regression checks 二十九-二：同步锁定 `魅惑女妖` phase 3 更长的 `reverseControl` 单招 recovery 契约与 live pacing 文案，避免后续回调漂移（完成：2026-03-27 09:10 +08）
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 收招细调二十九-一：继续拉长 `reverseControl` 回卷收束后的 recovery 空档，让 `illusion` recovery 与共享 `majorSpecial` recovery 继续再回调后，下一段追压再继续晚半拍回切（完成：2026-03-27 09:10 +08）
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 后续观察二十八-三：若 `illusion` recovery 与共享 `majorSpecial` recovery 继续再回调后 live pacing 仍偏密，再评估是否继续拉长 `reverseControl` 单招 recovery（完成：2026-03-27 09:07 +08，已拆分为二十九-一 / 二十九-二 / 二十九-三）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 共享 recovery 二十八-二：在 `illusion` recovery 再次回调后，继续再拉长 `reverseControl` / `illusion` / `mirageDance` 的共享 `majorSpecial` recovery guard，让下一段 major special 再继续晚半拍（完成：2026-03-11 19:22 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 幻身收招二十八-一：继续拉长 `illusion` 幻身散场后的 recovery 空档，让幻身散场后的下一段 major special 再继续晚半拍回切（完成：2026-03-11 19:22 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 后续观察二十七-三：若 `illusion` recovery 与共享 `majorSpecial` recovery 再次回调后 live pacing 仍偏密，再评估是否继续拉长 `reverseControl` 单招 recovery（完成：2026-03-11 19:22 +08，已拆分为二十八-一 / 二十八-二 / 二十八-三）
