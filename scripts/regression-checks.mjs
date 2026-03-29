@@ -1936,8 +1936,8 @@ function testLustMirageDanceExecutorHooks() {
     );
     assert.match(
         source,
-        /this\.attackData\.finisherRecoveryMs\s*=\s*560/,
-        'mirageDance should lengthen its explicit post-collapse recovery window again after the shared major-recovery follow-up'
+        /this\.attackData\.finisherRecoveryMs\s*=\s*680/,
+        'mirageDance should lengthen its explicit post-collapse recovery window again after the shared-recovery return follow-up still leaves the loopback too eager'
     );
     assert.match(
         source,
@@ -2056,8 +2056,8 @@ function testReadmeLustPostMirageSpacing() {
     );
     assert.match(
         source,
-        /逆转波收尾后的 recovery 空档这轮也会在更长的共享 `majorSpecial` recovery window 落地后继续再拉长一档，让下一轮 `reverseControl` 仍再晚半拍回切/,
-        'README should document the newest mirageDance recovery tuning pass after the shared major-recovery follow-up'
+        /逆转波收尾后的 recovery 空档这轮也会在更长的共享 `majorSpecial` recovery window`? 与更长的 `mirageDance -> reverseControl` 定向轻压过桥都落地后继续再拉长一档，让下一轮 `reverseControl` 仍再晚半拍回切/,
+        'README should document the newest mirageDance recovery tuning pass after the shared-recovery return and longer loopback bridge follow-ups'
     );
 }
 
