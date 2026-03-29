@@ -3816,7 +3816,7 @@ class Boss {
                     if (ill.y < 150 || ill.y > 650) ill.vy *= -1;
                 }
             }
-            const recoveryMs = 1440;
+            const recoveryMs = 1560;
             if (elapsed >= 3000 && !this.attackData.recoveryStarted) {
                 this.attackData.recoveryStarted = true;
                 this.sprite.setAlpha(1);

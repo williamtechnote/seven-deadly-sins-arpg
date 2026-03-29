@@ -1996,8 +1996,8 @@ function testLustSpecialRecoveryHooks() {
     );
     assert.match(
         source,
-        /} else if \(atk === 'illusion'\) \{[\s\S]*?const recoveryMs = 1440;/,
-        'illusion should lengthen its explicit post-despawn recovery window once more after the shared major recovery recheck'
+        /} else if \(atk === 'illusion'\) \{[\s\S]*?const recoveryMs = 1560;/,
+        'illusion should lengthen its explicit post-despawn recovery window again after the reverseControl recovery follow-up still left the next mirageDance too close'
     );
     assert.match(
         source,
@@ -2016,8 +2016,8 @@ function testLustIllusionRecoveryWindowFollowup() {
 
     assert.match(
         source,
-        /} else if \(atk === 'illusion'\) \{[\s\S]*?const recoveryMs = 1440;/,
-        'illusion follow-up tuning should lock the newest 1440ms post-despawn recovery window'
+        /} else if \(atk === 'illusion'\) \{[\s\S]*?const recoveryMs = 1560;/,
+        'illusion follow-up tuning should lock the newest 1560ms post-despawn recovery window'
     );
 }
 
@@ -2081,8 +2081,8 @@ function testReadmeLustSpecialRecovery() {
     );
     assert.match(
         source,
-        /`illusion` 的 recovery 空档这轮会在共享 `majorSpecial` recovery window 再次回调后继续再拉长一档，让下一段 `reverseControl` \/ `mirageDance` 再继续晚半拍回切/,
-        'README should document the newest illusion recovery tuning pass after the shared recovery recheck'
+        /`illusion` 的 recovery 空档这轮会在更长的 `reverseControl` recovery 空档落地后继续再拉长一档，让下一段 `mirageDance` 再继续晚半拍回切/,
+        'README should document the newest illusion recovery tuning pass after the reverseControl recovery follow-up'
     );
     assert.match(
         source,
