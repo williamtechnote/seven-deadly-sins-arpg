@@ -139,7 +139,7 @@ const BOSSES = {
                 phaseLocalCooldownMs: {
                     reverseControl: 14000,
                     illusion: 15500,
-                    mirageDance: 16500
+                    mirageDance: 17500
                 },
                 sharedAttackRecoveryMs: {
                     majorSpecial: 6800

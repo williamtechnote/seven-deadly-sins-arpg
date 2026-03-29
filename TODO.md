@@ -1,9 +1,11 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 机制多样性：`魅惑女妖` phase 3 后续观察五十九：若更长的共享 `majorSpecial` recovery window 在八码轻压守卫与更长的 `mirageDance -> reverseControl` loopback 过桥都落地后仍不足以拉开 live pacing，再评估是否回到 `mirageDance` recovery
+- [ ] Boss 机制多样性：`魅惑女妖` phase 3 后续观察六十一：若更长的 `mirageDance` phase-local cooldown 落地后 live pacing 仍偏密，再评估是否回到共享 `majorSpecial` recovery 或 `mirageDance` recovery
 
 ## Completed
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 魅影连舞冷却六十：在共享 `majorSpecial` recovery window 再次回调后，继续再拉长 `mirageDance` 的 phase-local cooldown，让完整循环后的下一轮 `reverseControl` 更晚回切（完成：2026-03-30 06:26 +08）
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 后续观察五十九：若更长的共享 `majorSpecial` recovery window 在八码轻压守卫与更长的 `mirageDance -> reverseControl` loopback 过桥都落地后仍不足以拉开 live pacing，再评估是否回到 `mirageDance` recovery（完成：2026-03-30 06:26 +08，已拆分为六十 / 六十一）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 共享 recovery 五十八：在八码轻压守卫与更长的 `mirageDance -> reverseControl` loopback 过桥都落地后，继续再拉长共享 `majorSpecial` recovery window，让下一段 `reverseControl` / `illusion` / `mirageDance` 再继续晚半拍回切（完成：2026-03-30 06:21 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 后续观察五十七：若八码轻压守卫在更长的 `mirageDance -> reverseControl` loopback 过桥落地后 live pacing 仍偏密，再评估是否回到 `mirageDance` recovery 或共享 `majorSpecial` recovery（完成：2026-03-30 06:18 +08，已拆分为五十八）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 呼吸段契约五十六：将 `postMajorBreatherChain` 提升为至少串入八段 `charmBolt` / `dash` 后才允许回到 `reverseControl` / `illusion` / `mirageDance`，把更长的 loopback 过桥正式锁成选招守卫（完成：2026-03-30 06:15 +08）

@@ -1708,8 +1708,8 @@ function testLustPhaseLocalCooldownHooks() {
     );
     assert.equal(
         BOSSES.lust.phases[2].phaseLocalCooldownMs.mirageDance,
-        16500,
-        'lust phase 3 should configure a local cooldown for mirageDance'
+        17500,
+        'lust phase 3 should extend the mirageDance local cooldown again after the shared-recovery recheck still left the loopback too tight'
     );
     assert.match(
         source,
@@ -1903,6 +1903,11 @@ function testReadmeLustPhaseLocalCooldowns() {
         source,
         /`魅惑女妖` 末阶段还会继续拉高 `reverseControl`、`illusion` 与 `mirageDance` 的 phase-local 冷却/,
         'README should document the completed lust phase-local cooldown trio'
+    );
+    assert.match(
+        source,
+        /`mirageDance` 的 phase-local 冷却这轮也会继续再拉长一档，让完整循环后的下一轮 `reverseControl` 更晚回切/,
+        'README should document the newest mirageDance cooldown follow-up after the shared-recovery recheck'
     );
 }
 
