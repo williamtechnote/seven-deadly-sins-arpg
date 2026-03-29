@@ -1597,8 +1597,8 @@ function testLustPhase3AttackOrder() {
     );
     assert.deepEqual(
         attacks.slice(mirageDanceIndex + 1),
-        ['dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt'],
-        'lust phase 3 should keep the loopback after mirageDance on an even longer directed light-pressure bridge again after the illusion-bridge follow-up'
+        ['dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt'],
+        'lust phase 3 should keep the loopback after mirageDance on an even longer directed light-pressure bridge again after the illusion-recovery follow-up still left the return path too eager'
     );
 }
 
@@ -1622,8 +1622,8 @@ function testLustMirageLoopbackBridgeFollowup() {
 
     assert.equal(
         attacks.length - mirageDanceIndex - 1,
-        20,
-        'lust phase 3 should add one more dash-charmBolt pair to the loopback before returning to reverseControl'
+        22,
+        'lust phase 3 should add one more dash-charmBolt pair again to the loopback before returning to reverseControl'
     );
 }
 
@@ -2146,8 +2146,8 @@ function testReadmeLustSharedMajorRecovery() {
     );
     assert.match(
         source,
-        /并再多压两组 `dash` \/ `charmBolt`/,
-        'README should document the second extra dash-charmBolt pair added to the mirageDance loopback bridge'
+        /并再多压三组 `dash` \/ `charmBolt`/,
+        'README should document the third extra dash-charmBolt pair added to the mirageDance loopback bridge'
     );
 }
 
