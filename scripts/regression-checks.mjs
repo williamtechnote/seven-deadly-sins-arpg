@@ -1597,8 +1597,8 @@ function testLustPhase3AttackOrder() {
     );
     assert.deepEqual(
         attacks.slice(mirageDanceIndex + 1),
-        ['dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt'],
-        'lust phase 3 should keep the loopback after mirageDance on an even longer directed light-pressure bridge'
+        ['dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt'],
+        'lust phase 3 should keep the loopback after mirageDance on an even longer directed light-pressure bridge again after the shared recovery follow-up'
     );
 }
 
@@ -1622,8 +1622,8 @@ function testLustMirageLoopbackBridgeFollowup() {
 
     assert.equal(
         attacks.length - mirageDanceIndex - 1,
-        16,
-        'lust phase 3 should add one more dash-charmBolt loopback step before returning to reverseControl'
+        18,
+        'lust phase 3 should add yet another dash-charmBolt loopback step before returning to reverseControl'
     );
 }
 
@@ -2123,6 +2123,11 @@ function testReadmeLustSharedMajorRecovery() {
         source,
         /在 `mirageDance` 与下一轮 `reverseControl` 之间也会继续再补更长的一整段 `charmBolt` \/ `dash` 定向轻压过桥/,
         'README should document the newly extended loopback bridge between mirageDance and the next reverseControl loop'
+    );
+    assert.match(
+        source,
+        /并再多压一组 `dash` \/ `charmBolt`/,
+        'README should document the extra dash-charmBolt pair added to the mirageDance loopback bridge'
     );
 }
 
