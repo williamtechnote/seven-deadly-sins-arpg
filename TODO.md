@@ -1,9 +1,11 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 机制多样性：`魅惑女妖` phase 3 后续观察六十五：若更长的 `mirageDance` recovery 空档在共享 `majorSpecial` recovery window 再次回调后仍不足以拉开 live pacing，再评估是否继续回到共享 `majorSpecial` recovery
+- [ ] Boss 机制多样性：`魅惑女妖` phase 3 后续观察六十七：若更长的共享 `majorSpecial` recovery window 在更长的 `mirageDance` recovery 空档落地后仍不足以拉开 live pacing，再评估是否继续回到 `reverseControl` / `illusion` recovery，或继续补 phase 3 轻压过桥
 
 ## Completed
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 共享 recovery 六十六：在更长的 `mirageDance` recovery 空档落地后，继续再拉长共享 `majorSpecial` recovery window，让下一段 `reverseControl` / `illusion` / `mirageDance` 再继续晚半拍回切（完成：2026-03-30 06:47 +08）
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 后续观察六十五：若更长的 `mirageDance` recovery 空档在共享 `majorSpecial` recovery window 再次回调后仍不足以拉开 live pacing，再评估是否继续回到共享 `majorSpecial` recovery（完成：2026-03-30 06:47 +08，已拆分为六十六 / 六十七）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 魅影连舞收招六十四：在更长的共享 `majorSpecial` recovery window 落地后，继续再拉长 `mirageDance` 逆转波收尾后的 recovery 空档，让下一轮 `reverseControl` 再继续晚半拍回切（完成：2026-03-30 06:42 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 后续观察六十三：若共享 `majorSpecial` recovery window 在更长的 `mirageDance` phase-local cooldown 落地后继续再回调后 live pacing 仍偏密，再评估是否回到 `mirageDance` recovery（完成：2026-03-30 06:42 +08，已拆分为六十四 / 六十五）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 共享 recovery 六十二：在更长的 `mirageDance` phase-local cooldown 落地后，继续再拉长共享 `majorSpecial` recovery window，让下一段 `reverseControl` / `illusion` / `mirageDance` 再继续晚半拍回切（完成：2026-03-30 06:33 +08）
