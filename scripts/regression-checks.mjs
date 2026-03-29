@@ -1592,8 +1592,8 @@ function testLustPhase3AttackOrder() {
     );
     assert.deepEqual(
         attacks.slice(illusionIndex + 1, mirageDanceIndex),
-        ['dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash'],
-        'lust phase 3 should keep illusion and mirageDance separated by an extended directed light-pressure bridge after the longer illusion recovery pass'
+        ['dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash'],
+        'lust phase 3 should keep illusion and mirageDance separated by an even longer directed light-pressure bridge after the illusion recovery follow-up'
     );
     assert.deepEqual(
         attacks.slice(mirageDanceIndex + 1),
@@ -1610,8 +1610,8 @@ function testLustIllusionMirageBridgeFollowup() {
 
     assert.equal(
         mirageDanceIndex - illusionIndex - 1,
-        13,
-        'lust phase 3 should add one more dash-charmBolt step before mirageDance after the illusion recovery follow-up'
+        15,
+        'lust phase 3 should add another charmBolt-dash pair before mirageDance after the illusion recovery follow-up'
     );
 }
 
@@ -2128,6 +2128,11 @@ function testReadmeLustSharedMajorRecovery() {
         source,
         /在 `illusion` 与 `mirageDance` 之间也会继续再补更长的一整段 `charmBolt` \/ `dash` 定向轻压过桥/,
         'README should document the newest directed bridge extension between illusion and mirageDance'
+    );
+    assert.match(
+        source,
+        /并再多压一组 `charmBolt` \/ `dash`，让 `mirageDance` 再继续晚半拍回切/,
+        'README should document the extra charmBolt-dash pair added before mirageDance'
     );
     assert.match(
         source,
