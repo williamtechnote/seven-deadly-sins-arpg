@@ -3779,7 +3779,7 @@ class Boss {
                     }
                 }
             }
-            const recoveryMs = 1080;
+            const recoveryMs = 1200;
             if (elapsed >= 1400 && !this.attackData.recoveryStarted) {
                 this.attackData.recoveryStarted = true;
                 for (const p of this.attackData.projectiles) if (p.g.active) p.g.destroy();

@@ -1981,8 +1981,8 @@ function testLustSpecialRecoveryHooks() {
 
     assert.match(
         source,
-        /} else if \(atk === 'reverseControl'\) \{[\s\S]*?const recoveryMs = 1080;/,
-        'reverseControl should lengthen its explicit post-collapse recovery window again'
+        /} else if \(atk === 'reverseControl'\) \{[\s\S]*?const recoveryMs = 1200;/,
+        'reverseControl should lengthen its explicit post-collapse recovery window again after the shared-recovery and mirage-recovery follow-ups still left the next illusion too close'
     );
     assert.match(
         source,
@@ -2071,8 +2071,8 @@ function testReadmeLustSpecialRecovery() {
     );
     assert.match(
         source,
-        /`reverseControl` 的 recovery 空档这轮会继续再拉长一档，在 `reverseControl -> illusion` 额外轻压过桥落地后，让下一段 `illusion` 再继续晚半拍回切/,
-        'README should document the latest reverseControl recovery tuning pass'
+        /`reverseControl` 的 recovery 空档这轮会在更长的共享 `majorSpecial` recovery window 与更长的 `mirageDance` recovery 空档都落地后继续再拉长一档，让下一段 `illusion` 再继续晚半拍回切/,
+        'README should document the newest reverseControl recovery tuning pass after the shared- and mirage-recovery follow-ups'
     );
     assert.match(
         source,
