@@ -1835,7 +1835,7 @@ function testLustSharedMajorRecoveryHooks() {
     );
 }
 
-function testLustSixBreatherChainHooks() {
+function testLustEightBreatherChainHooks() {
     const { BOSSES } = loadDataConstants();
     const source = loadGameSource();
 
@@ -1851,8 +1851,8 @@ function testLustSixBreatherChainHooks() {
     );
     assert.equal(
         BOSSES.lust.phases[2].postMajorBreatherChain.requiredCount,
-        6,
-        'lust phase 3 should require six lighter attacks before the next major special'
+        8,
+        'lust phase 3 should require eight lighter attacks before the next major special'
     );
     assert.match(
         source,
@@ -2041,7 +2041,7 @@ function testReadmeLustPostMirageSpacing() {
     );
     assert.match(
         source,
-        /共享 recovery 与六轻压守卫之外也会继续提高 `charmBolt` \/ `dash` 的占比/,
+        /共享 recovery 与八轻压守卫之外也会继续提高 `charmBolt` \/ `dash` 的占比/,
         'README should document the additional phase-3 light-pressure weighting pass'
     );
     assert.match(
@@ -2106,8 +2106,8 @@ function testReadmeLustSharedMajorRecovery() {
     );
     assert.match(
         source,
-        /至少串入六段轻压后才允许回到 `reverseControl` \/ `illusion` \/ `mirageDance`/,
-        'README should document the phase-3 six-breather chain after major specials'
+        /至少串入八段轻压后才允许回到 `reverseControl` \/ `illusion` \/ `mirageDance`/,
+        'README should document the phase-3 eight-breather chain after major specials'
     );
     assert.match(
         source,
@@ -8900,7 +8900,7 @@ function main() {
     runTest('lust phase-local cooldown hooks', testLustPhaseLocalCooldownHooks);
     runTest('lust post-mirage breather hooks', testLustPostMirageBreatherHooks);
     runTest('lust shared major recovery hooks', testLustSharedMajorRecoveryHooks);
-    runTest('lust six breather chain hooks', testLustSixBreatherChainHooks);
+    runTest('lust eight breather chain hooks', testLustEightBreatherChainHooks);
     runTest('lust mirage dance executor hooks', testLustMirageDanceExecutorHooks);
     runTest('lust special recovery hooks', testLustSpecialRecoveryHooks);
     runTest('lust illusion recovery follow-up', testLustIllusionRecoveryWindowFollowup);

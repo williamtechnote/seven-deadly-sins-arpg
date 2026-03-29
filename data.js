@@ -150,7 +150,7 @@ const BOSSES = {
                 postMajorBreatherChain: {
                     triggerAttacks: ['reverseControl', 'illusion', 'mirageDance'],
                     breatherAttacks: ['charmBolt', 'dash'],
-                    requiredCount: 6
+                    requiredCount: 8
                 },
                 postAttackBreatherGuards: {
                     reverseControl: ['reverseControl', 'illusion', 'mirageDance'],
