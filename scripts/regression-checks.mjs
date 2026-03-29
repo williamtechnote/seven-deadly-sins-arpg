@@ -1966,8 +1966,8 @@ function testLustSpecialRecoveryHooks() {
     );
     assert.match(
         source,
-        /} else if \(atk === 'illusion'\) \{[\s\S]*?const recoveryMs = 1280;/,
-        'illusion should lengthen its explicit post-despawn recovery window again after the shared major recovery recheck'
+        /} else if \(atk === 'illusion'\) \{[\s\S]*?const recoveryMs = 1440;/,
+        'illusion should lengthen its explicit post-despawn recovery window once more after the shared major recovery recheck'
     );
     assert.match(
         source,
@@ -1978,6 +1978,16 @@ function testLustSpecialRecoveryHooks() {
         source,
         /} else if \(atk === 'illusion'\) \{[\s\S]*?if \(elapsed >= 3000 \+ recoveryMs\) \{[\s\S]*?this\._finishAttack\(time\);/,
         'illusion should stay in attack state through the recovery window before finishing'
+    );
+}
+
+function testLustIllusionRecoveryWindowFollowup() {
+    const source = loadGameSource();
+
+    assert.match(
+        source,
+        /} else if \(atk === 'illusion'\) \{[\s\S]*?const recoveryMs = 1440;/,
+        'illusion follow-up tuning should lock the newest 1440ms post-despawn recovery window'
     );
 }
 
@@ -2041,7 +2051,7 @@ function testReadmeLustSpecialRecovery() {
     );
     assert.match(
         source,
-        /`illusion` 的 recovery 空档这轮会继续再拉长一档，在共享 `majorSpecial` recovery window 再次回调后，让下一段 `reverseControl` \/ `mirageDance` 再继续晚半拍回切/,
+        /`illusion` 的 recovery 空档这轮会在共享 `majorSpecial` recovery window 再次回调后继续再拉长一档，让下一段 `reverseControl` \/ `mirageDance` 再继续晚半拍回切/,
         'README should document the newest illusion recovery tuning pass after the shared recovery recheck'
     );
     assert.match(
@@ -8863,6 +8873,7 @@ function main() {
     runTest('lust six breather chain hooks', testLustSixBreatherChainHooks);
     runTest('lust mirage dance executor hooks', testLustMirageDanceExecutorHooks);
     runTest('lust special recovery hooks', testLustSpecialRecoveryHooks);
+    runTest('lust illusion recovery follow-up', testLustIllusionRecoveryWindowFollowup);
     runTest('keyboard aim state helper', testKeyboardAimState);
     runTest('aim direction label helper', testAimDirectionLabel);
     runTest('keyboard aim source hooks', testKeyboardAimSourceHooks);
