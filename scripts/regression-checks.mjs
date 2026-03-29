@@ -1966,8 +1966,8 @@ function testLustSpecialRecoveryHooks() {
     );
     assert.match(
         source,
-        /} else if \(atk === 'illusion'\) \{[\s\S]*?const recoveryMs = 1160;/,
-        'illusion should lengthen its explicit post-despawn recovery window once more'
+        /} else if \(atk === 'illusion'\) \{[\s\S]*?const recoveryMs = 1280;/,
+        'illusion should lengthen its explicit post-despawn recovery window again after the shared major recovery recheck'
     );
     assert.match(
         source,
@@ -2041,8 +2041,8 @@ function testReadmeLustSpecialRecovery() {
     );
     assert.match(
         source,
-        /`illusion` 的 recovery 空档这轮会继续再拉长一档，让幻身散场后的下一段 major special 再继续晚半拍回切/,
-        'README should document the newest illusion recovery tuning pass'
+        /`illusion` 的 recovery 空档这轮会继续再拉长一档，在共享 `majorSpecial` recovery window 再次回调后，让下一段 `reverseControl` \/ `mirageDance` 再继续晚半拍回切/,
+        'README should document the newest illusion recovery tuning pass after the shared recovery recheck'
     );
     assert.match(
         source,
