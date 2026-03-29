@@ -1587,8 +1587,8 @@ function testLustPhase3AttackOrder() {
 
     assert.deepEqual(
         attacks.slice(reverseControlIndex + 1, illusionIndex),
-        ['dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash'],
-        'lust phase 3 should keep reverseControl and illusion separated by an extra-long directed light-pressure bridge'
+        ['dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash'],
+        'lust phase 3 should keep reverseControl and illusion separated by a newly extended directed light-pressure bridge'
     );
     assert.deepEqual(
         attacks.slice(illusionIndex + 1, mirageDanceIndex),
@@ -1673,8 +1673,8 @@ function testLustPhaseLocalCooldownHooks() {
 
     assert.equal(
         BOSSES.lust.phases[2].phaseLocalCooldownMs.reverseControl,
-        14000,
-        'lust phase 3 should configure a local cooldown for reverseControl'
+        15000,
+        'lust phase 3 should configure a longer local cooldown for reverseControl'
     );
     assert.equal(
         BOSSES.lust.phases[2].phaseLocalCooldownMs.illusion,
@@ -2036,6 +2036,11 @@ function testReadmeLustSpecialRecovery() {
     );
     assert.match(
         source,
+        /在 `reverseControl` 与 `illusion` 之间还会继续再补一小段 `charmBolt` \/ `dash` 定向轻压过桥/,
+        'README should document the newest reverseControl-to-illusion bridge extension'
+    );
+    assert.match(
+        source,
         /`illusion` 幻身散场后也会多留一小段 recovery 空档/,
         'README should document the illusion recovery window'
     );
@@ -2076,8 +2081,8 @@ function testReadmeLustSharedMajorRecovery() {
     );
     assert.match(
         source,
-        /在 `reverseControl` 与 `illusion` 之间还会继续再补一段 `charmBolt` \/ `dash` 定向轻压过桥/,
-        'README should document the newest reverseControl-to-illusion directed bridge follow-up'
+        /在 `reverseControl` 与 `illusion` 之间还会继续再补一小段 `charmBolt` \/ `dash` 定向轻压过桥/,
+        'README should document the newest reverseControl-to-illusion bridge extension'
     );
     assert.match(
         source,
