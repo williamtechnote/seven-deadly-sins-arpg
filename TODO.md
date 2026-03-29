@@ -1,9 +1,11 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 机制多样性：`魅惑女妖` phase 3 后续观察七十三：若更长的 `illusion -> mirageDance` 定向轻压过桥落地后 live pacing 仍偏密，再评估是否继续回到 `mirageDance -> reverseControl` 的 phase 3 轻压过桥
+- [ ] Boss 机制多样性：`魅惑女妖` phase 3 后续观察七十五：若更长的 `mirageDance -> reverseControl` 定向轻压过桥落地后 live pacing 仍偏密，再评估是否继续回到共享 `majorSpecial` recovery 或 `mirageDance` recovery
 
 ## Completed
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 loopback 过桥七十四：在更长的 `illusion -> mirageDance` 定向轻压过桥落地后，继续把 `mirageDance -> reverseControl` 之间的 phase 3 定向轻压过桥再补一组 `dash` / `charmBolt`，让下一轮 `reverseControl` 再继续晚半拍回切（完成：2026-03-30 08:07 +08）
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 后续观察七十三：若更长的 `illusion -> mirageDance` 定向轻压过桥落地后 live pacing 仍偏密，再评估是否继续回到 `mirageDance -> reverseControl` 的 phase 3 轻压过桥（完成：2026-03-30 08:01 +08，已拆分为七十四）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 幻身后过桥七十二：在更长的 `illusion` recovery 空档落地后，继续把 `illusion -> mirageDance` 之间的 phase 3 定向轻压过桥再补一组 `charmBolt` / `dash`，让下一段 `mirageDance` 再继续晚半拍回切（完成：2026-03-30 07:09 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 过桥补压七十一：若更长的 `illusion` recovery 空档落地后 live pacing 仍偏密，再评估是否继续补 `illusion -> mirageDance` 或 `mirageDance -> reverseControl` 的 phase 3 轻压过桥（完成：2026-03-30 07:09 +08，已拆分为七十二 / 七十三）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 幻身收招七十：在更长的 `reverseControl` recovery 空档落地后，继续再拉长 `illusion` 幻身散场后的 recovery 空档，让下一段 `mirageDance` 再继续晚半拍回切（完成：2026-03-30 07:04 +08）
