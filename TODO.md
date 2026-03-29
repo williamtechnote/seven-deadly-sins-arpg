@@ -1,9 +1,11 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 机制多样性：`魅惑女妖` phase 3 后续观察三十-六：若共享 `majorSpecial` recovery guard 再次回调后 live pacing 仍偏密，再评估是否继续回到 `illusion` recovery
+- [ ] Boss 机制多样性：`魅惑女妖` phase 3 后续观察三十-八：若共享 `majorSpecial` recovery window 再次回调后 live pacing 仍偏密，再评估是否继续回到 `illusion` recovery
 
 ## Completed
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 共享 recovery 三十-七：在共享 `majorSpecial` recovery guard 再次回调后，继续再拉长 phase 3 的共享 `majorSpecial` recovery window，让下一段 `reverseControl` / `illusion` / `mirageDance` 再继续晚半拍回切（完成：2026-03-29 22:08 +08）
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 后续观察三十-六：若共享 `majorSpecial` recovery guard 再次回调后 live pacing 仍偏密，再评估是否继续回到 `illusion` recovery（完成：2026-03-29 22:06 +08，已拆分为三十-七 / 三十-八）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 共享 recovery 三十-五：在更长的 `reverseControl` recovery 落地后，继续再拉长 `reverseControl` / `illusion` / `mirageDance` 的共享 `majorSpecial` recovery guard，让下一段 major special 再继续晚半拍（完成：2026-03-29 21:06 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 后续观察三十-四：若更长的 `reverseControl` recovery 落地后 live pacing 仍偏密，再评估是否继续回到 `illusion` recovery 或共享 `majorSpecial` recovery（完成：2026-03-29 20:56 +08，已拆分为三十-五 / 三十-六）
 - [x] Boss 机制多样性：README / regression checks 三十-二：同步锁定 `魅惑女妖` phase 3 更长的 `reverseControl` recovery 契约与 live pacing 文案，避免后续回调漂移（完成：2026-03-29 18:46 +08）
