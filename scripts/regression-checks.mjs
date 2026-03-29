@@ -1785,8 +1785,8 @@ function testLustSharedMajorRecoveryHooks() {
 
     assert.equal(
         BOSSES.lust.phases[2].sharedAttackRecoveryMs.majorSpecial,
-        6000,
-        'lust phase 3 should stretch the shared recovery window for major specials again after the longer mirageDance recovery pass'
+        6800,
+        'lust phase 3 should stretch the shared recovery window for major specials again after the eight-breather lock and longer mirageDance loopback bridge'
     );
     assert.deepEqual(
         Array.from(BOSSES.lust.phases[2].sharedAttackRecoveryGroups.majorSpecial),
@@ -2096,8 +2096,8 @@ function testReadmeLustSharedMajorRecovery() {
     );
     assert.match(
         source,
-        /共享 `majorSpecial` recovery window 这轮也会在更长的 `mirageDance` recovery 空档落地后继续再拉长一档，让下一段 `reverseControl` \/ `illusion` \/ `mirageDance` 再继续晚半拍回切/,
-        'README should document the newest shared major-special recovery extension after the longer mirageDance recovery pass'
+        /共享 `majorSpecial` recovery window 这轮也会在八码轻压守卫与更长的 `mirageDance` -> `reverseControl` loopback 过桥都落地后继续再拉长一档，让下一段 `reverseControl` \/ `illusion` \/ `mirageDance` 再继续晚半拍回切/,
+        'README should document the newest shared major-special recovery extension after the eight-breather lock and longer mirageDance loopback bridge'
     );
     assert.match(
         source,
