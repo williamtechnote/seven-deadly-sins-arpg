@@ -142,7 +142,7 @@ const BOSSES = {
                     mirageDance: 16500
                 },
                 sharedAttackRecoveryMs: {
-                    majorSpecial: 4500
+                    majorSpecial: 4800
                 },
                 sharedAttackRecoveryGroups: {
                     majorSpecial: ['reverseControl', 'illusion', 'mirageDance']
