@@ -419,7 +419,15 @@
         return `${seconds.toFixed(1)}s`;
     }
 
-    function formatCombatActionReadyLabel(cooldownMs, stamina, staminaCost) {
+    function formatStaminaRecoveryEtaLabel(missingStamina, staminaRegenPerSecond) {
+        const safeMissingStamina = Math.max(0, Number(missingStamina) || 0);
+        const safeStaminaRegenPerSecond = Math.max(0, Number(staminaRegenPerSecond) || 0);
+        if (safeMissingStamina <= 0 || safeStaminaRegenPerSecond <= 0) return '';
+        const seconds = Math.max(0.1, Math.round((safeMissingStamina / safeStaminaRegenPerSecond) * 10) / 10);
+        return `${seconds.toFixed(1)}s`;
+    }
+
+    function formatCombatActionReadyLabel(cooldownMs, stamina, staminaCost, staminaRegenPerSecond) {
         const remainingCooldownMs = Math.max(0, Number(cooldownMs) || 0);
         if (remainingCooldownMs > 0) {
             return formatCooldownSecondsLabel(remainingCooldownMs);
@@ -428,7 +436,9 @@
         const currentStamina = Math.max(0, Number(stamina) || 0);
         const requiredStamina = Math.max(0, Number(staminaCost) || 0);
         if (requiredStamina > 0 && currentStamina < requiredStamina) {
-            return `差${Math.max(1, Math.ceil(requiredStamina - currentStamina))}体`;
+            const missingStamina = Math.max(1, Math.ceil(requiredStamina - currentStamina));
+            const recoveryEta = formatStaminaRecoveryEtaLabel(missingStamina, staminaRegenPerSecond);
+            return recoveryEta ? `差${missingStamina}体/${recoveryEta}` : `差${missingStamina}体`;
         }
 
         return '就绪';
@@ -439,17 +449,20 @@
         const attackLabel = formatCombatActionReadyLabel(
             safe.attackCooldownMs,
             safe.stamina,
-            safe.attackStaminaCost
+            safe.attackStaminaCost,
+            safe.staminaRegenPerSecond
         );
         const specialLabel = formatCombatActionReadyLabel(
             safe.specialCooldownMs,
             safe.stamina,
-            safe.specialStaminaCost
+            safe.specialStaminaCost,
+            safe.staminaRegenPerSecond
         );
         const dodgeLabel = formatCombatActionReadyLabel(
             safe.dodgeCooldownMs,
             safe.stamina,
-            safe.dodgeStaminaCost
+            safe.dodgeStaminaCost,
+            safe.staminaRegenPerSecond
         );
         return `普攻 U: ${attackLabel}  特攻 O: ${specialLabel}  闪避 Space: ${dodgeLabel}`;
     }

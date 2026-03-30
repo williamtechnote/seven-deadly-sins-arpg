@@ -4,6 +4,7 @@
 - [ ] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百二十二：若 drift-only mini checklist 已带 `counterWindowTailPhase` short note 仍要把 phase 与 offset 两段信息拼起来才知道究竟是 `telegraph后 +400ms 收尾` 还是 `telegraph内 -200ms 收尾`，再给每条 drift row 补一段 `counterWindowClosureCue` short note，直接落成 telegraph 相对收尾短句，继续压缩 telegraph 异常排查路径
 
 ## Completed
+- [x] 核心战斗体验：行动 HUD 的 `差X体` 提示补上体力自然回复 ETA（如 `差2体/0.1s`），让玩家在普攻 / 特攻 / 闪避被体力卡住时立刻判断是原地等半拍还是先走位，减少试错停顿（完成：2026-03-30 11:48 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百二十一：若 drift-only mini checklist 已带 `counterWindowTailOffsetMs` short note 仍要心算正负号究竟代表 `telegraph内收束` 还是 `telegraph后延`，再给每条 drift row 补一段 `counterWindowTailPhase` short note，直接点明收尾发生在 telegraph 内还是 telegraph 后，继续压缩 telegraph 异常排查路径（完成：2026-03-30 11:40 +08，已拆分为一百二十二）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百二十：若 drift-only mini checklist 已带 `counterWindowDeltaMs` short note 仍要回头翻 telegraph HUD 才能确认可反制空档是在 telegraph 结束前收束还是一路拖到 telegraph 结束后，再给每条 drift row 补一段 `counterWindowTailOffsetMs` short note，继续压缩 telegraph 异常排查路径（完成：2026-03-30 11:34 +08，已拆分为一百二十一）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百一十九：若 drift-only mini checklist 已带 `counterWindowRatio` short note 仍要心算可反制空档究竟比整段 telegraph 溢出多少，再给每条 drift row 补一段 `counterWindowDeltaMs` short note，继续压缩 telegraph 异常排查路径（完成：2026-03-30 11:26 +08，已拆分为一百二十）

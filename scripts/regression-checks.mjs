@@ -2867,12 +2867,27 @@ function testCombatActionHudSummary() {
             specialCooldownMs: 0,
             dodgeCooldownMs: 0,
             stamina: 8,
+            staminaRegenPerSecond: 15,
+            attackStaminaCost: 10,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 25
+        }),
+        '普攻 U: 差2体/0.1s  特攻 O: 差12体/0.8s  闪避 Space: 差17体/1.1s',
+        'combat action HUD helper should expose exact stamina gaps plus a short natural-recovery ETA for stamina-gated actions'
+    );
+    assert.equal(
+        buildCombatActionHudSummary({
+            attackCooldownMs: 0,
+            specialCooldownMs: 0,
+            dodgeCooldownMs: 0,
+            stamina: 8,
+            staminaRegenPerSecond: 0,
             attackStaminaCost: 10,
             specialStaminaCost: 20,
             dodgeStaminaCost: 25
         }),
         '普攻 U: 差2体  特攻 O: 差12体  闪避 Space: 差17体',
-        'combat action HUD helper should expose exact stamina gaps for gated actions instead of a generic insufficient-stamina label'
+        'combat action HUD helper should keep the old stamina-gap fallback when regen timing is unavailable'
     );
 }
 
@@ -2894,8 +2909,8 @@ function testKeyboardHudQolHooks() {
     );
     assert.match(
         source,
-        /this\.actionText\.setText\(buildCombatActionHudSummary\(\{[\s\S]*?attackCooldownMs:\s*player\.attackCooldown,[\s\S]*?specialCooldownMs:\s*player\.specialCooldown,[\s\S]*?dodgeCooldownMs:\s*player\.dodgeCooldownTimer,[\s\S]*?stamina:\s*player\.stamina,[\s\S]*?attackStaminaCost:\s*weapon\s*\?\s*weapon\.staminaCost\s*:\s*0,[\s\S]*?specialStaminaCost:\s*weapon\s*\?\s*weapon\.specialStaminaCost\s*:\s*0,[\s\S]*?dodgeStaminaCost:\s*GAME_CONFIG\.PLAYER\.dodgeStaminaCost[\s\S]*?\}\)\);/,
-        'HUD should derive cooldown and stamina-gated combat readiness text from the shared combat-action helper'
+        /const runEffects = GameState\.runEffects \|\| DEFAULT_RUN_EFFECTS;[\s\S]*?const staminaRegenPerSecond = GAME_CONFIG\.PLAYER\.staminaRegen \* \(runEffects\.playerStaminaRegenMultiplier \|\| 1\);[\s\S]*?this\.actionText\.setText\(buildCombatActionHudSummary\(\{[\s\S]*?attackCooldownMs:\s*player\.attackCooldown,[\s\S]*?specialCooldownMs:\s*player\.specialCooldown,[\s\S]*?dodgeCooldownMs:\s*player\.dodgeCooldownTimer,[\s\S]*?stamina:\s*player\.stamina,[\s\S]*?staminaRegenPerSecond,[\s\S]*?attackStaminaCost:\s*weapon\s*\?\s*weapon\.staminaCost\s*:\s*0,[\s\S]*?specialStaminaCost:\s*weapon\s*\?\s*weapon\.specialStaminaCost\s*:\s*0,[\s\S]*?dodgeStaminaCost:\s*GAME_CONFIG\.PLAYER\.dodgeStaminaCost[\s\S]*?\}\)\);/,
+        'HUD should derive cooldown, stamina gaps, and stamina-recovery ETA from the shared combat-action helper'
     );
     assert.match(
         source,
