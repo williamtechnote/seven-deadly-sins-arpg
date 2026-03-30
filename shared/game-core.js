@@ -2705,7 +2705,12 @@
         const counterWindowStartMarkerVisible = counterWindowMs > 0
             && counterWindowStartOffsetMs > 0
             && counterWindowStartOffsetMs < telegraphDurationMs;
+        const counterWindowEndMs = counterWindowStartOffsetMs + counterWindowMs;
         const counterWindowOverflowMs = Math.max(0, counterWindowStartOffsetMs + counterWindowMs - telegraphDurationMs);
+        const counterWindowSpanVisible = counterWindowMs > 0
+            && counterWindowStartOffsetMs > 0
+            && counterWindowEndMs < telegraphDurationMs;
+        const counterWindowSpanMs = counterWindowSpanVisible ? counterWindowMs : 0;
 
         if (!attackLabel) {
             return {
@@ -2718,7 +2723,10 @@
                 counterWindowStartMarkerVisible: false,
                 counterWindowStartMarkerRatio: 0,
                 counterWindowTailMarkerVisible: false,
-                counterWindowOverflowMs: 0
+                counterWindowOverflowMs: 0,
+                counterWindowSpanVisible: false,
+                counterWindowSpanStartRatio: 0,
+                counterWindowSpanWidthRatio: 0
             };
         }
 
@@ -2736,7 +2744,14 @@
                 ? clampRatio(counterWindowStartOffsetMs / telegraphDurationMs, 0)
                 : 0,
             counterWindowTailMarkerVisible: counterWindowOverflowMs > 0,
-            counterWindowOverflowMs
+            counterWindowOverflowMs,
+            counterWindowSpanVisible,
+            counterWindowSpanStartRatio: counterWindowSpanVisible
+                ? clampRatio(counterWindowStartOffsetMs / telegraphDurationMs, 0)
+                : 0,
+            counterWindowSpanWidthRatio: counterWindowSpanVisible
+                ? clampRatio(counterWindowSpanMs / telegraphDurationMs, 0)
+                : 0
         };
     }
 
