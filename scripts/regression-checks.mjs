@@ -1597,8 +1597,8 @@ function testLustPhase3AttackOrder() {
     );
     assert.deepEqual(
         attacks.slice(mirageDanceIndex + 1),
-        ['dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt'],
-        'lust phase 3 should keep the loopback after mirageDance on an even longer directed light-pressure bridge again after the shared-recovery follow-up still left the return path too eager'
+        ['dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt', 'dash', 'charmBolt'],
+        'lust phase 3 should keep the loopback after mirageDance on an even longer directed light-pressure bridge again after the shared-recovery return pass still left the return path too eager'
     );
 }
 
@@ -1622,8 +1622,8 @@ function testLustMirageLoopbackBridgeFollowup() {
 
     assert.equal(
         attacks.length - mirageDanceIndex - 1,
-        24,
-        'lust phase 3 should add one more dash-charmBolt pair again to the loopback before returning to reverseControl after the shared-recovery follow-up'
+        26,
+        'lust phase 3 should add one more dash-charmBolt pair again to the loopback before returning to reverseControl after the shared-recovery return pass'
     );
 }
 
@@ -2161,8 +2161,8 @@ function testReadmeLustSharedMajorRecovery() {
     );
     assert.match(
         source,
-        /并再多压四组 `dash` \/ `charmBolt`/,
-        'README should document the fourth extra dash-charmBolt pair added to the mirageDance loopback bridge after the shared-recovery follow-up'
+        /并再多压五组 `dash` \/ `charmBolt`/,
+        'README should document the fifth extra dash-charmBolt pair added to the mirageDance loopback bridge after the shared-recovery return pass'
     );
 }
 
