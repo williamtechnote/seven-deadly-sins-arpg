@@ -464,6 +464,9 @@
 
     function buildCombatActionHudSummary(input) {
         const safe = input && typeof input === 'object' ? input : {};
+        if (safe.isDodging) {
+            return '普攻 U: 翻滚中  特攻 O: 翻滚中  闪避 Space: 翻滚中';
+        }
         const attackLabel = formatCombatActionReadyLabel(
             safe.attackCooldownMs,
             safe.stamina,

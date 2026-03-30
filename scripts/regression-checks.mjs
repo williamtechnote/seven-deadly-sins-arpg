@@ -2844,6 +2844,20 @@ function testCombatActionHudSummary() {
     assert.equal(typeof buildCombatActionHudSummary, 'function', 'combat action HUD helper should be exported');
     assert.equal(
         buildCombatActionHudSummary({
+            isDodging: true,
+            attackCooldownMs: 0,
+            specialCooldownMs: 0,
+            dodgeCooldownMs: 480,
+            stamina: 60,
+            attackStaminaCost: 10,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 25
+        }),
+        '普攻 U: 翻滚中  特攻 O: 翻滚中  闪避 Space: 翻滚中',
+        'combat action HUD helper should surface dodge lockout instead of claiming actions are ready during roll i-frames'
+    );
+    assert.equal(
+        buildCombatActionHudSummary({
             attackCooldownMs: 0,
             specialCooldownMs: 0,
             dodgeCooldownMs: 0,
@@ -2958,8 +2972,8 @@ function testKeyboardHudQolHooks() {
     );
     assert.match(
         source,
-        /const runEffects = GameState\.runEffects \|\| DEFAULT_RUN_EFFECTS;[\s\S]*?const staminaRegenPerSecond = GAME_CONFIG\.PLAYER\.staminaRegen \* \(runEffects\.playerStaminaRegenMultiplier \|\| 1\);[\s\S]*?this\.actionText\.setText\(buildCombatActionHudSummary\(\{[\s\S]*?attackCooldownMs:\s*player\.attackCooldown,[\s\S]*?specialCooldownMs:\s*player\.specialCooldown,[\s\S]*?dodgeCooldownMs:\s*player\.dodgeCooldownTimer,[\s\S]*?stamina:\s*player\.stamina,[\s\S]*?staminaRegenPerSecond,[\s\S]*?attackStaminaCost:\s*weapon\s*\?\s*weapon\.staminaCost\s*:\s*0,[\s\S]*?specialStaminaCost:\s*weapon\s*\?\s*weapon\.specialStaminaCost\s*:\s*0,[\s\S]*?dodgeStaminaCost:\s*GAME_CONFIG\.PLAYER\.dodgeStaminaCost[\s\S]*?\}\)\);/,
-        'HUD should derive cooldown, stamina gaps, and stamina-recovery ETA from the shared combat-action helper'
+        /const runEffects = GameState\.runEffects \|\| DEFAULT_RUN_EFFECTS;[\s\S]*?const staminaRegenPerSecond = GAME_CONFIG\.PLAYER\.staminaRegen \* \(runEffects\.playerStaminaRegenMultiplier \|\| 1\);[\s\S]*?this\.actionText\.setText\(buildCombatActionHudSummary\(\{[\s\S]*?isDodging:\s*player\.isDodging,[\s\S]*?attackCooldownMs:\s*player\.attackCooldown,[\s\S]*?specialCooldownMs:\s*player\.specialCooldown,[\s\S]*?dodgeCooldownMs:\s*player\.dodgeCooldownTimer,[\s\S]*?stamina:\s*player\.stamina,[\s\S]*?staminaRegenPerSecond,[\s\S]*?attackStaminaCost:\s*weapon\s*\?\s*weapon\.staminaCost\s*:\s*0,[\s\S]*?specialStaminaCost:\s*weapon\s*\?\s*weapon\.specialStaminaCost\s*:\s*0,[\s\S]*?dodgeStaminaCost:\s*GAME_CONFIG\.PLAYER\.dodgeStaminaCost[\s\S]*?\}\)\);/,
+        'HUD should derive dodge lockout, cooldown, stamina gaps, and stamina-recovery ETA from the shared combat-action helper'
     );
     assert.match(
         source,
@@ -7837,6 +7851,11 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /若冷却结束后仍差体力，则会直接预告 `0\.3s后差8体\/0\.5s` 这类双阶段提示/,
         'README should document the post-cooldown stamina-gap preview on the action HUD'
+    );
+    assert.match(
+        source,
+        /翻滚无敌帧内则会直接显示 `翻滚中`，避免 HUD 在锁定期间误报 `就绪`/,
+        'README should document the dodge-lockout label on the action HUD'
     );
     assert.match(
         source,
