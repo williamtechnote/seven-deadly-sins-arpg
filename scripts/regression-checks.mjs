@@ -93,6 +93,7 @@ const {
     buildRunEventRoomWorldLabel,
     buildRunEventRoomPromptLabel,
     formatAimDirectionLabel,
+    buildPlayerHudLayout,
     buildCombatActionReadiness,
     buildCombatActionHudLayout,
     buildCombatActionHudSegments,
@@ -2705,6 +2706,11 @@ function testKeyboardControlReadabilityHooks() {
     );
     assert.match(
         source,
+        /若 Boss 战切到专用 HUD，则顶部血条会收紧，但左下角当前瞄准 \/ 武器 \/ 行动行与右下快捷栏仍保持稳定底边留白/,
+        'help overlay should explain that boss layout keeps the bottom combat lane anchored'
+    );
+    assert.match(
+        source,
         /点击背包消耗品会自动装入快捷栏首个空位/,
         'help overlay should explain the backpack-click auto-fill rule'
     );
@@ -3121,8 +3127,8 @@ function testKeyboardHudQolHooks() {
     );
     assert.match(
         source,
-        /const actionLayout = buildCombatActionHudLayout\([\s\S]*?startX:\s*layout\.pad,[\s\S]*?maxWidth:\s*Math\.max\(0,\s*this\.quickSlots\[0\]\.box\.x - layout\.pad - 12\),[\s\S]*?\);[\s\S]*?const actionClusterLift = Math\.max\(0,\s*actionLayout\.rowCount - 1\) \* 22;[\s\S]*?this\.aimText\.setPosition\(layout\.pad,\s*this\.cameras\.main\.height - 80 - actionClusterLift\);[\s\S]*?this\.weaponText\.setPosition\(layout\.pad,\s*this\.cameras\.main\.height - 58 - actionClusterLift\);[\s\S]*?actionLayout\.placements\.forEach\(placement => \{[\s\S]*?actionTextNode\.setPosition\(placement\.x,\s*this\.cameras\.main\.height - 36 - actionClusterLift \+ placement\.y\);[\s\S]*?\}\);/,
-        'HUD should wrap long action labels inside the reserved bottom-left lane and lift the bottom-left cluster when a second row is needed'
+        /const bottomPad = Number\.isFinite\(layout\.bottomPad\) && layout\.bottomPad >= 0 \? layout\.bottomPad : layout\.pad;[\s\S]*?const actionLayout = buildCombatActionHudLayout\([\s\S]*?startX:\s*bottomPad,[\s\S]*?maxWidth:\s*Math\.max\(0,\s*this\.quickSlots\[0\]\.box\.x - bottomPad - 12\),[\s\S]*?\);[\s\S]*?const actionClusterLift = Math\.max\(0,\s*actionLayout\.rowCount - 1\) \* 22;[\s\S]*?this\.aimText\.setPosition\(bottomPad,\s*this\.cameras\.main\.height - 80 - actionClusterLift\);[\s\S]*?this\.weaponText\.setPosition\(bottomPad,\s*this\.cameras\.main\.height - 58 - actionClusterLift\);[\s\S]*?actionLayout\.placements\.forEach\(placement => \{[\s\S]*?actionTextNode\.setPosition\(placement\.x,\s*this\.cameras\.main\.height - 36 - actionClusterLift \+ placement\.y\);[\s\S]*?\}\);/,
+        'HUD should wrap long action labels inside the reserved bottom-left lane and keep that lane anchored to a stable bottom pad'
     );
     assert.match(
         source,
@@ -3183,6 +3189,28 @@ function testKeyboardHudQolHooks() {
         source,
         /_showTooltip\(text,\s*anchorX,\s*anchorY\)\s*{[\s\S]*?this\.tooltip\.setText\(text\);[\s\S]*?getInventoryTooltipClampX\(anchorX,\s*this\.tooltip\.width,\s*this\.cameras\.main\.width\)/,
         'InventoryScene should clamp tooltip placement from the real rendered tooltip width via the shared helper'
+    );
+}
+
+function testBossActionHudBottomLayoutGuard() {
+    assert.equal(typeof buildPlayerHudLayout, 'function', 'screen HUD layout helper should be exported');
+    const regularLayout = buildPlayerHudLayout({ width: 1024, isBossLayout: false });
+    assert.equal(regularLayout.pad, 16, 'regular HUD layout should keep the shared top pad');
+    assert.equal(regularLayout.bottomPad, 16, 'regular HUD layout should keep the stable bottom pad');
+    assert.equal(regularLayout.sidePanelStartY, 26, 'regular HUD layout should start the sidebar beneath the top bars');
+    assert.equal(regularLayout.showSidePanel, true, 'regular HUD layout should keep the sidebar visible');
+
+    const bossLayout = buildPlayerHudLayout({ width: 1024, isBossLayout: true });
+    assert.equal(bossLayout.pad, 8, 'boss HUD layout should tighten only the top pad');
+    assert.equal(bossLayout.bottomPad, 16, 'boss HUD layout should preserve the stable bottom pad for aim, weapon, and action rows');
+    assert.equal(bossLayout.sidePanelStartY, 112, 'boss HUD layout should keep the boss-fight sidebar guard height');
+    assert.equal(bossLayout.showSidePanel, false, 'boss HUD layout should hide the sidebar while the boss HUD is active');
+
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /const quickSlotPad = this\._hudLayout\.bottomPad;[\s\S]*?const slotsStartX = width - quickSlotPad - \(4 \* slotSize \+ 3 \* slotGap\);[\s\S]*?const slotsY = height - quickSlotPad - slotSize;/,
+        'quick-slot boxes should anchor to the stable bottom pad so boss-layout top compression does not drag the quick bar'
     );
 }
 
@@ -8013,6 +8041,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /Boss 战切到专用 HUD 后，顶部血条会继续收紧，但左下角 `当前瞄准 \/ 武器 \/ 普攻-特攻-闪避` 与右下快捷栏仍保持同一套底边留白/,
+        'README should document the stable bottom spacing guard when boss layout tightens the top HUD'
+    );
+    assert.match(
+        source,
         /快捷栏N：\+<短名>/,
         'README should document the slot-led plus-marker shortform for non-overwrite quick-slot placement feedback'
     );
@@ -9660,6 +9693,7 @@ function main() {
     runTest('combat action HUD layout helper', testCombatActionHudLayout);
     runTest('quick-slot item label helper', testQuickSlotItemLabel);
     runTest('keyboard HUD QoL hooks', testKeyboardHudQolHooks);
+    runTest('boss action HUD bottom-layout guard', testBossActionHudBottomLayoutGuard);
     runTest('README keyboard inventory loop', testReadmeKeyboardInventoryLoop);
     runTest('help overlay quick-slot loop', testHelpOverlayQuickSlotLoop);
     runTest('priority text stack layout helper', testPriorityTextStackLayoutHelper);

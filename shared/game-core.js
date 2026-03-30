@@ -575,6 +575,25 @@
         };
     }
 
+    function buildPlayerHudLayout(options) {
+        const safeOptions = options && typeof options === 'object' ? options : {};
+        const isBossLayout = !!safeOptions.isBossLayout;
+        const width = Number.isFinite(safeOptions.width) && safeOptions.width > 0 ? safeOptions.width : 0;
+        const pad = isBossLayout ? 8 : 16;
+        const bottomPad = 16;
+        const hpBarY = pad;
+        const staminaBarY = hpBarY + 20 + 8;
+        return {
+            pad,
+            bottomPad,
+            hpBarY,
+            staminaBarY,
+            sidePanelStartY: isBossLayout ? 112 : pad + 10,
+            showSidePanel: !isBossLayout,
+            width
+        };
+    }
+
     function getHudSidebarViewportTier(viewportWidth, viewportHeight) {
         const safeWidth = Number.isFinite(viewportWidth) && viewportWidth > 0
             ? viewportWidth
@@ -3015,6 +3034,7 @@
         resolveKeyboardAimState,
         formatAimDirectionLabel,
         buildCombatActionReadiness,
+        buildPlayerHudLayout,
         buildCombatActionHudLayout,
         buildCombatActionHudSegments,
         buildCombatActionHudSummary,
