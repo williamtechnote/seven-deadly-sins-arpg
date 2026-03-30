@@ -2428,6 +2428,52 @@
         };
     }
 
+    function buildBossAttackCadenceArtifactBundle(options) {
+        const safe = options && typeof options === 'object' ? options : {};
+        const review = buildBossAttackCadenceReviewChecklist(safe);
+        const checkpointLines = review.checkpoints.map((entry, index) => {
+            const suffix = entry.telegraphHint ? ` | ${entry.telegraphHint}` : '';
+            return `${index + 1}. ${entry.recordingFocusLabel}${suffix}`;
+        });
+        const telegraphSource = safe.telegraphSnapshot && typeof safe.telegraphSnapshot === 'object'
+            ? safe.telegraphSnapshot
+            : {};
+        const sharedRecoverySource = safe.sharedRecoverySnapshot && typeof safe.sharedRecoverySnapshot === 'object'
+            ? safe.sharedRecoverySnapshot
+            : {};
+
+        return {
+            review,
+            checkpointLines,
+            checkpointText: checkpointLines.join('\n'),
+            telegraphSnapshot: {
+                attackLabel: typeof telegraphSource.attackLabel === 'string' ? telegraphSource.attackLabel.trim() : '',
+                counterHint: typeof telegraphSource.counterHint === 'string' ? telegraphSource.counterHint.trim() : '',
+                telegraphDurationMs: Math.max(0, clampInt(telegraphSource.telegraphDurationMs, 0, Number.MAX_SAFE_INTEGER, 0))
+            },
+            sharedRecoverySnapshot: {
+                sharedRecoveryRemainingMs: Math.max(
+                    0,
+                    clampInt(sharedRecoverySource.sharedRecoveryRemainingMs, 0, Number.MAX_SAFE_INTEGER, 0)
+                ),
+                breatherRemaining: Math.max(
+                    0,
+                    clampInt(sharedRecoverySource.breatherRemaining, 0, Number.MAX_SAFE_INTEGER, 0)
+                ),
+                expectedReturnAttack: typeof sharedRecoverySource.expectedReturnAttack === 'string'
+                    ? sharedRecoverySource.expectedReturnAttack.trim()
+                    : '',
+                expectedReturnLabel: typeof sharedRecoverySource.expectedReturnLabel === 'string'
+                    ? sharedRecoverySource.expectedReturnLabel.trim()
+                    : '',
+                sharedRecoveryLabel: typeof sharedRecoverySource.sharedRecoveryLabel === 'string'
+                    && sharedRecoverySource.sharedRecoveryLabel.trim()
+                    ? sharedRecoverySource.sharedRecoveryLabel.trim()
+                    : review.sharedRecoveryLabel
+            }
+        };
+    }
+
     function buildBossAttackRhythmSummary(options) {
         const trace = buildBossAttackCadenceTrace(options);
         const transitionBridgeCounts = trace.transitions.map(entry => entry.bridgeCount);
@@ -2849,6 +2895,7 @@
         advanceBossHpAfterimage,
         buildBossAttackCadenceTrace,
         buildBossAttackCadenceReviewChecklist,
+        buildBossAttackCadenceArtifactBundle,
         buildBossAttackRhythmSummary,
         buildBossTelegraphHudSummary,
         buildBossPhaseHudSummary,

@@ -115,6 +115,7 @@ const {
     buildBossAttackRhythmSummary,
     buildBossAttackCadenceTrace,
     buildBossAttackCadenceReviewChecklist,
+    buildBossAttackCadenceArtifactBundle,
     buildBossPhaseHudSummary,
     buildBossTelegraphHudSummary,
     buildBossStatusHighlightSummary,
@@ -1813,6 +1814,77 @@ function testLustPhase3CadenceReviewChecklist() {
         review.checkpoints[2].telegraphHint,
         '反制: 观察真身换位节奏，留翻滚躲最后逆转波',
         'lust phase 3 cadence review should preserve the live HUD counter-hint alongside the loopback review cue'
+    );
+}
+
+function testLustPhase3CadenceArtifactBundle() {
+    const { BOSSES } = loadDataConstants();
+    const phase = BOSSES.lust.phases[2];
+    const artifact = buildBossAttackCadenceArtifactBundle({
+        attacks: phase.attacks,
+        majorAttacks: ['reverseControl', 'illusion', 'mirageDance'],
+        bridgeAttacks: ['dash', 'charmBolt'],
+        attackLabels: {
+            reverseControl: '混乱逆转',
+            illusion: '幻影风暴',
+            mirageDance: '魅影连舞'
+        },
+        counterHints: {
+            reverseControl: '反制: 停止冲刺，短步修正方向',
+            illusion: '反制: 先躲弹幕，再找本体',
+            mirageDance: '反制: 观察真身换位节奏，留翻滚躲最后逆转波'
+        },
+        sharedRecoveryMs: phase.sharedAttackRecoveryMs.majorSpecial,
+        telegraphSnapshot: {
+            attackLabel: '混乱逆转',
+            counterHint: '反制: 停止冲刺，短步修正方向',
+            telegraphDurationMs: 1300
+        },
+        sharedRecoverySnapshot: {
+            sharedRecoveryRemainingMs: 10200,
+            breatherRemaining: 8,
+            expectedReturnAttack: 'illusion',
+            expectedReturnLabel: '幻影风暴'
+        }
+    });
+
+    assert.deepEqual(
+        artifact.checkpointLines,
+        [
+            '1. HUD telegraph 混乱逆转 -> shared recovery≈10.2s -> 13-step dash/charmBolt bridge -> 幻影风暴 | 反制: 停止冲刺，短步修正方向',
+            '2. HUD telegraph 幻影风暴 -> shared recovery≈10.2s -> 15-step dash/charmBolt bridge -> 魅影连舞 | 反制: 先躲弹幕，再找本体',
+            '3. HUD telegraph 魅影连舞 -> shared recovery≈10.2s -> 28-step dash/charmBolt loopback -> 混乱逆转 | 反制: 观察真身换位节奏，留翻滚躲最后逆转波'
+        ],
+        'lust cadence artifact bundle should emit numbered checkpoint lines for recording review output'
+    );
+    assert.equal(
+        artifact.checkpointText,
+        [
+            '1. HUD telegraph 混乱逆转 -> shared recovery≈10.2s -> 13-step dash/charmBolt bridge -> 幻影风暴 | 反制: 停止冲刺，短步修正方向',
+            '2. HUD telegraph 幻影风暴 -> shared recovery≈10.2s -> 15-step dash/charmBolt bridge -> 魅影连舞 | 反制: 先躲弹幕，再找本体',
+            '3. HUD telegraph 魅影连舞 -> shared recovery≈10.2s -> 28-step dash/charmBolt loopback -> 混乱逆转 | 反制: 观察真身换位节奏，留翻滚躲最后逆转波'
+        ].join('\n'),
+        'lust cadence artifact bundle should keep a printable multiline checkpoint summary'
+    );
+    assert.deepEqual(
+        artifact.telegraphSnapshot,
+        {
+            attackLabel: '混乱逆转',
+            counterHint: '反制: 停止冲刺，短步修正方向',
+            telegraphDurationMs: 1300
+        },
+        'lust cadence artifact bundle should preserve the live telegraph snapshot for artifact export'
+    );
+    assert.deepEqual(
+        artifact.sharedRecoverySnapshot,
+        {
+            sharedRecoveryRemainingMs: 10200,
+            breatherRemaining: 8,
+            expectedReturnAttack: 'illusion',
+            expectedReturnLabel: '幻影风暴',
+            sharedRecoveryLabel: 'shared recovery≈10.2s'
+        },
+        'lust cadence artifact bundle should preserve the shared-recovery snapshot plus the readable recovery label'
     );
 }
 
@@ -9122,6 +9194,7 @@ function main() {
     runTest('lust phase 3 rhythm summary', testLustPhase3RhythmSummary);
     runTest('lust phase 3 cadence trace', testLustPhase3CadenceTrace);
     runTest('lust phase 3 cadence review checklist', testLustPhase3CadenceReviewChecklist);
+    runTest('lust phase 3 cadence artifact bundle', testLustPhase3CadenceArtifactBundle);
     runTest('lust mirage dance hooks', testLustMirageDanceHooks);
     runTest('boss major attack breather hooks', testBossMajorAttackBreatherHooks);
     runTest('lust phase-local cooldown hooks', testLustPhaseLocalCooldownHooks);

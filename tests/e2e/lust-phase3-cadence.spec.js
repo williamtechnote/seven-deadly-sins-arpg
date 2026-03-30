@@ -110,10 +110,51 @@ test('lust cadence: phase-3 review checkpoints align telegraph and shared recove
   expect(recoveryState.breatherRemaining).toBe(8);
   expect(recoveryState.review.sharedRecoveryLabel).toBe('shared recovery≈10.2s');
 
+  const cadenceArtifact = await page.evaluate(() => {
+    const scene = window.__SDS_GAME__.scene.getScene('BossScene');
+    const phase = scene.boss.config.phases[2];
+    return window.GameCore.buildBossAttackCadenceArtifactBundle({
+      attacks: phase.attacks,
+      majorAttacks: ['reverseControl', 'illusion', 'mirageDance'],
+      bridgeAttacks: ['dash', 'charmBolt'],
+      attackLabels: {
+        reverseControl: '混乱逆转',
+        illusion: '幻影风暴',
+        mirageDance: '魅影连舞'
+      },
+      counterHints: {
+        reverseControl: '反制: 停止冲刺，短步修正方向',
+        illusion: '反制: 先躲弹幕，再找本体',
+        mirageDance: '反制: 观察真身换位节奏，留翻滚躲最后逆转波'
+      },
+      sharedRecoveryMs: phase.sharedAttackRecoveryMs.majorSpecial,
+      telegraphSnapshot: scene.boss.activeTelegraph
+        ? {
+            attackLabel: scene.boss.activeTelegraph.attackLabel,
+            counterHint: scene.boss.activeTelegraph.counterHint,
+            telegraphDurationMs: scene.boss.activeTelegraph.telegraphDurationMs
+          }
+        : null,
+      sharedRecoverySnapshot: {
+        sharedRecoveryRemainingMs: Math.max(0, (scene.boss.phaseAttackGroupRecoveryExpires.majorSpecial || 0) - scene.time.now),
+        breatherRemaining: scene.boss.phaseBreatherChainRemaining,
+        expectedReturnAttack: 'illusion',
+        expectedReturnLabel: '幻影风暴'
+      }
+    });
+  });
+
+  expect(cadenceArtifact.checkpointLines[0]).toBe(
+    '1. HUD telegraph 混乱逆转 -> shared recovery≈10.2s -> 13-step dash/charmBolt bridge -> 幻影风暴 | 反制: 停止冲刺，短步修正方向'
+  );
+  expect(cadenceArtifact.sharedRecoverySnapshot.sharedRecoveryLabel).toBe('shared recovery≈10.2s');
+
   await dumpEvidence(page, testInfo, 'lust-phase3-cadence-review', {
     consoleErrors,
     reviewState,
-    recoveryState
+    recoveryState,
+    cadenceArtifact,
+    telegraphHudScreenshot: true
   });
   expect(consoleErrors).toEqual([]);
 });

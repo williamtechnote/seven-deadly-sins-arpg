@@ -85,10 +85,52 @@ export async function dumpEvidence(page, testInfo, name, extra = {}) {
     path: path.join(outputDir, 'page.png'),
     fullPage: true
   });
+  await testInfo.attach('page-screenshot', {
+    path: path.join(outputDir, 'page.png'),
+    contentType: 'image/png'
+  });
   await fs.writeFile(path.join(outputDir, 'snapshot.json'), JSON.stringify(snapshot, null, 2));
+  await testInfo.attach('state-snapshot', {
+    path: path.join(outputDir, 'snapshot.json'),
+    contentType: 'application/json'
+  });
   await fs.writeFile(path.join(outputDir, 'events.json'), JSON.stringify(events, null, 2));
   await fs.writeFile(path.join(outputDir, 'input-log.json'), JSON.stringify(inputLog, null, 2));
   await fs.writeFile(path.join(outputDir, 'console-errors.json'), JSON.stringify(consoleErrors, null, 2));
+
+  if (extra.cadenceArtifact && typeof extra.cadenceArtifact === 'object') {
+    const cadenceReviewPath = path.join(outputDir, 'cadence-review.json');
+    const checkpointPath = path.join(outputDir, 'phase3-checkpoints.txt');
+    const sharedRecoveryPath = path.join(outputDir, 'shared-recovery-snapshot.json');
+    await fs.writeFile(cadenceReviewPath, JSON.stringify(extra.cadenceArtifact, null, 2));
+    await fs.writeFile(checkpointPath, `${extra.cadenceArtifact.checkpointText || ''}\n`);
+    await fs.writeFile(
+      sharedRecoveryPath,
+      JSON.stringify(extra.cadenceArtifact.sharedRecoverySnapshot || {}, null, 2)
+    );
+    await testInfo.attach('cadence-review', {
+      path: cadenceReviewPath,
+      contentType: 'application/json'
+    });
+    await testInfo.attach('phase3-checkpoints', {
+      path: checkpointPath,
+      contentType: 'text/plain'
+    });
+    await testInfo.attach('shared-recovery-snapshot', {
+      path: sharedRecoveryPath,
+      contentType: 'application/json'
+    });
+  }
+
+  if (extra.telegraphHudScreenshot) {
+    const telegraphPath = path.join(outputDir, 'telegraph-hud.png');
+    await page.locator('canvas').first().screenshot({ path: telegraphPath });
+    await testInfo.attach('telegraph-hud', {
+      path: telegraphPath,
+      contentType: 'image/png'
+    });
+  }
+
   await fs.writeFile(
     path.join(outputDir, 'meta.json'),
     JSON.stringify(
