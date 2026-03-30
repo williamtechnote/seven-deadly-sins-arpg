@@ -64,6 +64,7 @@ test('lust cadence: phase-3 review checkpoints align telegraph and shared recove
         ? {
             attackLabel: scene.boss.activeTelegraph.attackLabel,
             counterHint: scene.boss.activeTelegraph.counterHint,
+            counterWindowMs: scene.boss.activeTelegraph.counterWindowMs,
             telegraphDurationMs: scene.boss.activeTelegraph.telegraphDurationMs
           }
         : null,
@@ -74,6 +75,7 @@ test('lust cadence: phase-3 review checkpoints align telegraph and shared recove
   expect(reviewState.review.checkpoints).toHaveLength(3);
   expect(reviewState.telegraph?.attackLabel).toBe(reviewState.review.checkpoints[0].telegraphLabel);
   expect(reviewState.telegraph?.counterHint).toBe(reviewState.review.checkpoints[0].telegraphHint);
+  expect(reviewState.telegraph?.counterWindowMs).toBe(1700);
   expect(reviewState.review.checkpoints[0].recordingFocusLabel).toBe(
     'HUD telegraph 混乱逆转 -> shared recovery≈10.2s -> 13-step dash/charmBolt bridge -> 幻影风暴'
   );
@@ -136,6 +138,7 @@ test('lust cadence: phase-3 review checkpoints align telegraph and shared recove
         ? {
             attackLabel: scene.boss.activeTelegraph.attackLabel,
             counterHint: scene.boss.activeTelegraph.counterHint,
+            counterWindowMs: scene.boss.activeTelegraph.counterWindowMs,
             telegraphDurationMs: scene.boss.activeTelegraph.telegraphDurationMs
           }
         : null,
@@ -155,6 +158,7 @@ test('lust cadence: phase-3 review checkpoints align telegraph and shared recove
     dash: 14,
     charmBolt: 14
   });
+  expect(cadenceArtifact.telegraphSnapshot.counterWindowMs).toBe(1700);
   expect(cadenceArtifact.sharedRecoverySnapshot.sharedRecoveryLabel).toBe('shared recovery≈10.2s');
 
   await dumpEvidence(page, testInfo, 'lust-phase3-cadence-review', {

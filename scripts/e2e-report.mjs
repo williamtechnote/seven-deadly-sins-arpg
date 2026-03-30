@@ -71,6 +71,22 @@ function buildTelegraphDurationShortNote(cadenceArtifacts) {
   return `telegraphDurationMs: \`${telegraphDurationMs}ms\``;
 }
 
+function buildCounterWindowShortNote(cadenceArtifacts) {
+  const snapshot = cadenceArtifacts?.telegraphSnapshot && typeof cadenceArtifacts.telegraphSnapshot === 'object'
+    ? cadenceArtifacts.telegraphSnapshot
+    : null;
+  if (!snapshot) return '';
+
+  const counterWindowMs = Number.isFinite(snapshot.counterWindowMs)
+    ? Math.max(0, Math.trunc(snapshot.counterWindowMs))
+    : null;
+  if (counterWindowMs === null || counterWindowMs <= 0) {
+    return '';
+  }
+
+  return `counterWindowMs: \`${counterWindowMs}ms\``;
+}
+
 function buildExpectedReturnDriftNote(checkpointExpectedReturnLabel, recoveryExpectedReturnLabel) {
   const checkpointLabel = typeof checkpointExpectedReturnLabel === 'string'
     ? checkpointExpectedReturnLabel.trim()
@@ -263,6 +279,7 @@ function collectCadenceDriftEntries(cadenceArtifacts) {
           checkpointAliasShortNote: buildCheckpointAliasShortNote(checkpoint),
           bridgeAttackCountShortNote: buildBridgeAttackCountShortNote(checkpoint),
           bridgeTimelineIndexShortNote: buildBridgeTimelineIndexShortNote(checkpoint),
+          counterWindowShortNote: buildCounterWindowShortNote(cadenceArtifacts),
           telegraphDurationShortNote: buildTelegraphDurationShortNote(cadenceArtifacts)
         });
       }
@@ -320,6 +337,7 @@ function buildCadenceDriftMiniChecklistLines(cadenceArtifacts) {
       checkpointAliasShortNote,
       bridgeAttackCountShortNote,
       bridgeTimelineIndexShortNote,
+      counterWindowShortNote,
       telegraphDurationShortNote
     }) => {
       const parts = [line];
@@ -340,6 +358,9 @@ function buildCadenceDriftMiniChecklistLines(cadenceArtifacts) {
       }
       if (bridgeTimelineIndexShortNote) {
         parts.push(bridgeTimelineIndexShortNote);
+      }
+      if (counterWindowShortNote) {
+        parts.push(counterWindowShortNote);
       }
       if (telegraphDurationShortNote) {
         parts.push(telegraphDurationShortNote);
