@@ -2281,7 +2281,7 @@
         return Math.max(safeTarget, safePrevious - safeStep);
     }
 
-    function buildBossAttackRhythmSummary(options) {
+    function buildBossAttackCadenceTrace(options) {
         const safe = options && typeof options === 'object' ? options : {};
         const attacks = Array.isArray(safe.attacks)
             ? safe.attacks
@@ -2312,6 +2312,9 @@
         const transitions = majorEntries.map((entry, index) => {
             const nextEntry = majorEntries[index + 1] || null;
             const bridgeAttacksInWindow = attacks.slice(entry.index + 1, nextEntry ? nextEntry.index : attacks.length);
+            const bridgeStartIndex = bridgeAttacksInWindow.length > 0 ? entry.index + 1 : -1;
+            const bridgeEndIndex = bridgeAttacksInWindow.length > 0 ? bridgeStartIndex + bridgeAttacksInWindow.length - 1 : -1;
+            const bridgeTimeline = bridgeAttacksInWindow.map((attack, bridgeIndex) => `${bridgeStartIndex + bridgeIndex}:${attack}`);
             const offPatternAttacks = bridgeAttackSet.size > 0
                 ? bridgeAttacksInWindow.filter(attack => !bridgeAttackSet.has(attack))
                 : [];
@@ -2319,42 +2322,78 @@
                 key: nextEntry ? `${entry.attack}->${nextEntry.attack}` : `${entry.attack}->loopback`,
                 fromAttack: entry.attack,
                 toAttack: nextEntry ? nextEntry.attack : 'loopback',
+                fromIndex: entry.index,
+                toIndex: nextEntry ? nextEntry.index : -1,
+                bridgeStartIndex,
+                bridgeEndIndex,
                 bridgeCount: bridgeAttacksInWindow.length,
                 bridgeAttacks: bridgeAttacksInWindow,
+                bridgeTimeline,
+                bridgePatternLabel: bridgeTimeline.join(' | '),
                 offPatternAttacks
             };
         });
 
-        const transitionBridgeCounts = transitions.map(entry => entry.bridgeCount);
-        const maxBridgeCount = transitionBridgeCounts.length > 0 ? Math.max(...transitionBridgeCounts) : 0;
-        const minBridgeCount = transitionBridgeCounts.length > 0 ? Math.min(...transitionBridgeCounts) : 0;
-        const longestTransition = transitions.find(entry => entry.bridgeCount === maxBridgeCount) || null;
         const loopbackTransition = transitions.find(entry => entry.toAttack === 'loopback') || null;
         const previousTransitions = transitions.filter(entry => entry.toAttack !== 'loopback');
         const previousMaxBridgeCount = previousTransitions.length > 0
             ? Math.max(...previousTransitions.map(entry => entry.bridgeCount))
             : 0;
-        const loopbackBridgeDeltaVsPreviousMax = loopbackTransition
+        const loopbackBridgeLead = loopbackTransition
             ? loopbackTransition.bridgeCount - previousMaxBridgeCount
             : 0;
 
         return {
             majorAttackOrder: majorEntries.map(entry => entry.attack),
-            transitionBridgeCounts,
-            transitionSummaries: transitions.map(entry => ({
+            majorAnchors: majorEntries.map(entry => ({
+                attack: entry.attack,
+                index: entry.index
+            })),
+            transitions: transitions.map(entry => ({
                 ...entry,
+                bridgeAttacks: entry.bridgeAttacks.slice(),
+                bridgeTimeline: entry.bridgeTimeline.slice(),
+                offPatternAttacks: entry.offPatternAttacks.slice()
+            })),
+            loopbackBridgeLead,
+            longestBridgeKey: transitions.reduce((selected, entry) => {
+                if (!selected || entry.bridgeCount > selected.bridgeCount) return entry;
+                return selected;
+            }, null)?.key || '',
+            hasOffPatternBridgeAttacks: transitions.some(entry => entry.offPatternAttacks.length > 0)
+        };
+    }
+
+    function buildBossAttackRhythmSummary(options) {
+        const trace = buildBossAttackCadenceTrace(options);
+        const transitionBridgeCounts = trace.transitions.map(entry => entry.bridgeCount);
+        const maxBridgeCount = transitionBridgeCounts.length > 0 ? Math.max(...transitionBridgeCounts) : 0;
+        const minBridgeCount = transitionBridgeCounts.length > 0 ? Math.min(...transitionBridgeCounts) : 0;
+        const loopbackTransition = trace.transitions.find(entry => entry.toAttack === 'loopback') || null;
+        const previousMaxBridgeCount = trace.transitions
+            .filter(entry => entry.toAttack !== 'loopback')
+            .reduce((maxCount, entry) => Math.max(maxCount, entry.bridgeCount), 0);
+
+        return {
+            majorAttackOrder: trace.majorAttackOrder.slice(),
+            transitionBridgeCounts,
+            transitionSummaries: trace.transitions.map(entry => ({
+                key: entry.key,
+                fromAttack: entry.fromAttack,
+                toAttack: entry.toAttack,
+                bridgeCount: entry.bridgeCount,
                 bridgeAttacks: entry.bridgeAttacks.slice(),
                 offPatternAttacks: entry.offPatternAttacks.slice()
             })),
             minBridgeCount,
             maxBridgeCount,
-            longestBridgeKey: longestTransition ? longestTransition.key : '',
+            longestBridgeKey: trace.longestBridgeKey,
             loopbackBridgeCount: loopbackTransition ? loopbackTransition.bridgeCount : 0,
-            loopbackBridgeDeltaVsPreviousMax,
+            loopbackBridgeDeltaVsPreviousMax: trace.loopbackBridgeLead,
             secondLoopDensityWarning: !!loopbackTransition
                 && previousMaxBridgeCount > 0
                 && loopbackTransition.bridgeCount <= previousMaxBridgeCount,
-            hasOffPatternBridgeAttacks: transitions.some(entry => entry.offPatternAttacks.length > 0)
+            hasOffPatternBridgeAttacks: trace.hasOffPatternBridgeAttacks
         };
     }
 
@@ -2744,6 +2783,7 @@
         resolveConsumableUse,
         buildStatusHudSummary,
         advanceBossHpAfterimage,
+        buildBossAttackCadenceTrace,
         buildBossAttackRhythmSummary,
         buildBossTelegraphHudSummary,
         buildBossPhaseHudSummary,

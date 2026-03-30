@@ -113,6 +113,7 @@ const {
     buildStatusHudSummary,
     advanceBossHpAfterimage,
     buildBossAttackRhythmSummary,
+    buildBossAttackCadenceTrace,
     buildBossPhaseHudSummary,
     buildBossTelegraphHudSummary,
     buildBossStatusHighlightSummary,
@@ -1665,6 +1666,81 @@ function testLustPhase3RhythmSummary() {
         summary.hasOffPatternBridgeAttacks,
         false,
         'lust phase 3 rhythm summary should confirm the bridge windows stay on the intended charmBolt/dash breather palette'
+    );
+}
+
+function testLustPhase3CadenceTrace() {
+    const { BOSSES } = loadDataConstants();
+    const trace = buildBossAttackCadenceTrace({
+        attacks: BOSSES.lust.phases[2].attacks,
+        majorAttacks: ['reverseControl', 'illusion', 'mirageDance'],
+        bridgeAttacks: ['dash', 'charmBolt']
+    });
+
+    assert.deepEqual(
+        trace.majorAnchors,
+        [
+            { attack: 'reverseControl', index: 2 },
+            { attack: 'illusion', index: 16 },
+            { attack: 'mirageDance', index: 32 }
+        ],
+        'lust phase 3 cadence trace should expose the exact major-special anchor indexes'
+    );
+    assert.deepEqual(
+        trace.transitions.map(entry => ({
+            key: entry.key,
+            fromIndex: entry.fromIndex,
+            toIndex: entry.toIndex,
+            bridgeStartIndex: entry.bridgeStartIndex,
+            bridgeEndIndex: entry.bridgeEndIndex,
+            bridgeCount: entry.bridgeCount
+        })),
+        [
+            {
+                key: 'reverseControl->illusion',
+                fromIndex: 2,
+                toIndex: 16,
+                bridgeStartIndex: 3,
+                bridgeEndIndex: 15,
+                bridgeCount: 13
+            },
+            {
+                key: 'illusion->mirageDance',
+                fromIndex: 16,
+                toIndex: 32,
+                bridgeStartIndex: 17,
+                bridgeEndIndex: 31,
+                bridgeCount: 15
+            },
+            {
+                key: 'mirageDance->loopback',
+                fromIndex: 32,
+                toIndex: -1,
+                bridgeStartIndex: 33,
+                bridgeEndIndex: 60,
+                bridgeCount: 28
+            }
+        ],
+        'lust phase 3 cadence trace should map the bridge windows between each major-special anchor and the loopback'
+    );
+    assert.deepEqual(
+        trace.transitions.map(entry => Array.from(entry.bridgeTimeline.slice(0, 4))),
+        [
+            ['3:dash', '4:charmBolt', '5:dash', '6:charmBolt'],
+            ['17:dash', '18:charmBolt', '19:dash', '20:charmBolt'],
+            ['33:dash', '34:charmBolt', '35:dash', '36:charmBolt']
+        ],
+        'lust phase 3 cadence trace should expose indexed bridge timeline entries for CLI export'
+    );
+    assert.equal(
+        trace.loopbackBridgeLead,
+        13,
+        'lust phase 3 cadence trace should quantify how much wider the loopback window stays than the earlier bridges'
+    );
+    assert.equal(
+        trace.transitions[2].bridgePatternLabel,
+        '33:dash | 34:charmBolt | 35:dash | 36:charmBolt | 37:dash | 38:charmBolt | 39:dash | 40:charmBolt | 41:dash | 42:charmBolt | 43:dash | 44:charmBolt | 45:dash | 46:charmBolt | 47:dash | 48:charmBolt | 49:dash | 50:charmBolt | 51:dash | 52:charmBolt | 53:dash | 54:charmBolt | 55:dash | 56:charmBolt | 57:dash | 58:charmBolt | 59:dash | 60:charmBolt',
+        'lust phase 3 cadence trace should keep a printable loopback pattern for log-friendly live pacing analysis'
     );
 }
 
@@ -8972,6 +9048,7 @@ function main() {
     runTest('boss mechanic diversity hooks', testBossMechanicDiversityHooks);
     runTest('lust phase 3 attack order', testLustPhase3AttackOrder);
     runTest('lust phase 3 rhythm summary', testLustPhase3RhythmSummary);
+    runTest('lust phase 3 cadence trace', testLustPhase3CadenceTrace);
     runTest('lust mirage dance hooks', testLustMirageDanceHooks);
     runTest('boss major attack breather hooks', testBossMajorAttackBreatherHooks);
     runTest('lust phase-local cooldown hooks', testLustPhaseLocalCooldownHooks);
