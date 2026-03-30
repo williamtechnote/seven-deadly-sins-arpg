@@ -2758,6 +2758,9 @@
         const currentCountdownHeadMarkerVisible = counterWindowTailAfterglowActive
             && progressFillAlpha < 0.9
             && progressRatio > 0;
+        const currentCountdownHeadMarkerLateGlowVisible = currentCountdownHeadMarkerVisible
+            && remainingMs > 0
+            && remainingMs < 220;
         const currentCountdownHeadMarkerWarmFlashDurationMs = currentCountdownHeadMarkerVisible ? 120 : 0;
 
         if (!attackLabel) {
@@ -2771,6 +2774,7 @@
                 progressFillAlpha: 0.9,
                 currentCountdownHeadMarkerVisible: false,
                 currentCountdownHeadMarkerRatio: 0,
+                currentCountdownHeadMarkerLateGlowVisible: false,
                 currentCountdownHeadMarkerWarmFlashDurationMs: 0,
                 counterWindowStartMarkerVisible: false,
                 counterWindowStartMarkerRatio: 0,
@@ -2805,6 +2809,7 @@
             progressFillAlpha,
             currentCountdownHeadMarkerVisible,
             currentCountdownHeadMarkerRatio: currentCountdownHeadMarkerVisible ? progressRatio : 0,
+            currentCountdownHeadMarkerLateGlowVisible,
             currentCountdownHeadMarkerWarmFlashDurationMs,
             counterWindowStartMarkerVisible,
             counterWindowStartMarkerRatio: counterWindowStartMarkerVisible

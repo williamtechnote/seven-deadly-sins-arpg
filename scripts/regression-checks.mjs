@@ -1537,6 +1537,7 @@ function testBossHudReadability() {
     assert.equal(earlyClosureTelegraphSummary.currentCountdownHeadMarkerVisible, false, 'telegraph summary should keep the live countdown head marker hidden before the dimmed tail segment actually becomes active');
     assert.equal(earlyClosureTelegraphSummary.currentCountdownHeadMarkerRatio, 0, 'telegraph summary should not expose a live countdown head ratio before the dimmed tail segment becomes active');
     assert.equal(earlyClosureTelegraphSummary.currentCountdownHeadMarkerWarmFlashDurationMs, 0, 'telegraph summary should keep the head-marker warm-flash duration at zero before the dimmed tail segment becomes active');
+    assert.equal(earlyClosureTelegraphSummary.currentCountdownHeadMarkerLateGlowVisible, false, 'telegraph summary should keep the late head-marker glow disabled before the dimmed tail segment actually becomes active');
     assert.equal(earlyClosureTelegraphSummary.counterWindowSpanVisible, false, 'telegraph summary should avoid drawing a contained span when the counter window starts at the first frame');
 
     const activeTailAfterglowTelegraphSummary = buildBossTelegraphHudSummary({
@@ -1558,6 +1559,18 @@ function testBossHudReadability() {
     assert.equal(activeTailAfterglowTelegraphSummary.currentCountdownHeadMarkerVisible, true, 'telegraph summary should expose a dedicated live countdown head marker once the dimmed tail segment is active and the surviving fill has settled');
     assert.equal(activeTailAfterglowTelegraphSummary.currentCountdownHeadMarkerRatio, activeTailAfterglowTelegraphSummary.progressRatio, 'telegraph summary should anchor the live countdown head marker to the current telegraph progress edge');
     assert.equal(activeTailAfterglowTelegraphSummary.currentCountdownHeadMarkerWarmFlashDurationMs, 120, 'telegraph summary should advertise a short warm-flash budget when the live countdown head marker first becomes relevant');
+    assert.equal(activeTailAfterglowTelegraphSummary.currentCountdownHeadMarkerLateGlowVisible, false, 'telegraph summary should keep the weaker late head-marker glow disabled until the remaining countdown drops into the final tail beat');
+
+    const lateCountdownHeadGlowTelegraphSummary = buildBossTelegraphHudSummary({
+        attackLabel: '混乱逆转',
+        attackTypeLabel: '特殊',
+        counterWindowMs: 800,
+        counterHint: '反制: 停止冲刺，短步修正方向',
+        telegraphDurationMs: 1300,
+        remainingMs: 180
+    });
+    assert.equal(lateCountdownHeadGlowTelegraphSummary.currentCountdownHeadMarkerVisible, true, 'telegraph summary should keep the live countdown head marker visible during the final tail beat');
+    assert.equal(lateCountdownHeadGlowTelegraphSummary.currentCountdownHeadMarkerLateGlowVisible, true, 'telegraph summary should flag the weaker late head-marker glow once the remaining countdown drops into the final tail beat');
 
     const activeTailAfterglowFollowupTelegraphSummary = buildBossTelegraphHudSummary({
         attackLabel: '幻影风暴',
@@ -7920,7 +7933,7 @@ function testBossHudMeasurementHooks() {
     );
     assert.match(
         source,
-        /this\.bossTelegraphCountdownHeadFlash\.clear\(\);[\s\S]*?if \(telegraphHud\.currentCountdownHeadMarkerVisible && !this\._bossTelegraphCountdownHeadMarkerWasVisible\) \{[\s\S]*?this\._bossTelegraphCountdownHeadFlashUntil = this\.time\.now \+ telegraphHud\.currentCountdownHeadMarkerWarmFlashDurationMs;[\s\S]*?\}[\s\S]*?const countdownHeadFlashRemainingMs = Math\.max\(0,\s*this\._bossTelegraphCountdownHeadFlashUntil - this\.time\.now\);[\s\S]*?if \(countdownHeadFlashRemainingMs > 0 && telegraphHud\.currentCountdownHeadMarkerVisible\) \{[\s\S]*?this\.bossTelegraphCountdownHeadFlash\.fillRoundedRect\(\s*countdownHeadMarkerX - 4,\s*telegraphRect\.y - 2,\s*8,\s*telegraphRect\.h \+ 4,\s*3\s*\);/,
+        /this\.bossTelegraphCountdownHeadFlash\.clear\(\);[\s\S]*?if \(telegraphHud\.currentCountdownHeadMarkerVisible && !this\._bossTelegraphCountdownHeadMarkerWasVisible\) \{[\s\S]*?this\._bossTelegraphCountdownHeadFlashUntil = this\.time\.now \+ telegraphHud\.currentCountdownHeadMarkerWarmFlashDurationMs;[\s\S]*?\}[\s\S]*?const countdownHeadFlashRemainingMs = Math\.max\(0,\s*this\._bossTelegraphCountdownHeadFlashUntil - this\.time\.now\);[\s\S]*?if \(telegraphHud\.currentCountdownHeadMarkerVisible\) \{[\s\S]*?if \(countdownHeadFlashRemainingMs > 0\) \{[\s\S]*?this\.bossTelegraphCountdownHeadFlash\.fillRoundedRect\(\s*countdownHeadMarkerX - 4,\s*telegraphRect\.y - 2,\s*8,\s*telegraphRect\.h \+ 4,\s*3\s*\);/,
         'Boss telegraph should trigger a short warm flash only when the live countdown head marker first appears at the tail-afterglow transition'
     );
     assert.match(
@@ -8285,6 +8298,11 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /若 Boss telegraph 刚从可反制主拍切进 `尾段残影` 且新的 `当前倒计时头标` 首次出现，头标还会追加约 120ms 的短促暖闪/,
         'README should document the short warm flash that fires when the live countdown head marker first appears at the tail-afterglow transition'
+    );
+    assert.match(
+        source,
+        /若这段短促暖闪刚结束且剩余读招倒计时已低于约 220ms，头标外侧还会续上一层更弱的暖色余辉/,
+        'README should document the weaker late warm glow that persists after the head-marker flash ends near the final tail beat'
     );
     assert.match(
         source,
@@ -9454,6 +9472,21 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若 Boss telegraph 刚从可反制主拍切进“尾段残影”且新的“当前倒计时头标”首次出现，头标还会追加约 120ms 的短促暖闪/,
         'help overlay should document the short warm flash that fires when the live countdown head marker first appears at the tail-afterglow transition'
+    );
+    assert.match(
+        source,
+        /currentCountdownHeadMarkerLateGlowVisible/,
+        'boss telegraph rendering should consume the late head-marker glow flag from the shared summary'
+    );
+    assert.match(
+        source,
+        /countdownHeadFlashRemainingMs\s*<=\s*0[\s\S]*currentCountdownHeadMarkerLateGlowVisible/,
+        'boss telegraph rendering should only draw the weaker late head-marker glow after the short warm flash has already finished'
+    );
+    assert.match(
+        source,
+        /若这段短促暖闪刚结束且剩余读招倒计时已低于约 220ms，头标外侧还会续上一层更弱的暖色余辉/,
+        'help overlay should document the weaker late warm glow that persists after the head-marker flash ends near the final tail beat'
     );
     assert.match(
         source,
