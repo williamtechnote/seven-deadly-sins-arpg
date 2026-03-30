@@ -1504,6 +1504,20 @@ function testBossHudReadability() {
     assert.equal(telegraphSummary.counterWindowLabel, '反制窗口 1.7s', 'telegraph summary should format the counter window in seconds');
     assert.equal(telegraphSummary.hintLabel, '反制: 先躲弹幕，再找本体', 'telegraph summary should keep the counter hint');
     assert.equal(telegraphSummary.progressRatio, 0.5, 'telegraph progress should report the remaining telegraph time ratio');
+    assert.equal(telegraphSummary.counterWindowTailMarkerVisible, true, 'telegraph summary should flag when the counter window extends beyond the telegraph bar');
+    assert.equal(telegraphSummary.counterWindowOverflowMs, 400, 'telegraph summary should expose how much the counter window outlasts the telegraph');
+
+    const containedTelegraphSummary = buildBossTelegraphHudSummary({
+        attackLabel: '圣剑环阵',
+        attackTypeLabel: '弹幕',
+        counterWindowMs: 900,
+        counterWindowStartOffsetMs: 200,
+        counterHint: '反制: 留在外圈，等回收',
+        telegraphDurationMs: 1300,
+        remainingMs: 650
+    });
+    assert.equal(containedTelegraphSummary.counterWindowTailMarkerVisible, false, 'telegraph summary should stay quiet when the counter window ends before the telegraph bar');
+    assert.equal(containedTelegraphSummary.counterWindowOverflowMs, 0, 'telegraph summary should report no overflow when the counter window stays inside the telegraph');
 
     const inlineTelegraphLayout = buildBossTelegraphTextLayout({
         telegraphWidth: 220,
@@ -7824,6 +7838,11 @@ function testBossHudMeasurementHooks() {
         /this\.bossTelegraphWindowGuard\.clear\(\);[\s\S]*?if \(telegraphLayout\.windowAccentVisible\) \{[\s\S]*?this\.bossTelegraphWindowGuard\.fillRoundedRect\(\s*telegraphRect\.x,\s*telegraphRect\.y \+ telegraphLayout\.windowAccentYOffset,\s*telegraphRect\.w,\s*telegraphLayout\.windowAccentHeight,\s*4\s*\);[\s\S]*?\}[\s\S]*?this\.bossTelegraphWindowText\.setX\(telegraphRect\.x \+ telegraphLayout\.windowX\);[\s\S]*?this\.bossTelegraphWindowText\.setOrigin\(telegraphLayout\.windowOriginX,\s*0\);[\s\S]*?this\.bossTelegraphWindowText\.setY\(telegraphRect\.y \+ telegraphLayout\.windowYOffset\);[\s\S]*?this\.bossTelegraphWindowText\.setText\(this\._fitBossHudTextToWidth\(telegraphHud\.counterWindowLabel,\s*telegraphLayout\.windowMaxWidth,\s*'bossTelegraphWindow'\)\);[\s\S]*?this\.bossTelegraphHintText\.setY\(telegraphRect\.y \+ telegraphLayout\.hintYOffset\);[\s\S]*?this\.bossTelegraphHintText\.setText\(this\._fitBossHudTextToWidth\(telegraphHud\.hintLabel \|\| '',\s*telegraphRect\.w,\s*'bossTelegraphHint'\)\);/,
         'Boss telegraph window row should use the shared stacked-layout guard band, anchor, and offsets when warning copy grows long'
     );
+    assert.match(
+        source,
+        /this\.bossTelegraphTailMarker\.clear\(\);[\s\S]*?if \(telegraphHud\.counterWindowTailMarkerVisible\) \{[\s\S]*?const tailMarkerX = telegraphRect\.x \+ telegraphRect\.w - 1;[\s\S]*?this\.bossTelegraphTailMarker\.fillRoundedRect\(\s*tailMarkerX,\s*telegraphRect\.y - 1,\s*6,\s*telegraphRect\.h \+ 2,\s*2\s*\);/,
+        'Boss telegraph should draw a dedicated end-of-bar tail marker when the counter window outlasts the telegraph body'
+    );
 }
 
 function testSidebarMeasurementHooks() {
@@ -8076,6 +8095,11 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /顶部 telegraph 也会自动切成双行测量布局[\s\S]*?第二行 `反制窗口` 还会改成左对齐高亮带/,
         'README should document the stacked telegraph fallback and highlighted counter-window row for long boss warning copy'
+    );
+    assert.match(
+        source,
+        /若 `反制窗口` 实际会拖到进度条终点之后，条尾还会补一枚 `超出尾标`/,
+        'README should document the telegraph tail marker for counter windows that outlast the bar body'
     );
     assert.match(
         source,

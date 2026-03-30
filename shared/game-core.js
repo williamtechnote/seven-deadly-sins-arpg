@@ -2699,8 +2699,10 @@
         const attackTypeLabel = typeof safe.attackTypeLabel === 'string' ? safe.attackTypeLabel.trim() : '';
         const counterHint = typeof safe.counterHint === 'string' ? safe.counterHint.trim() : '';
         const counterWindowMs = Math.max(0, clampInt(safe.counterWindowMs, 0, Number.MAX_SAFE_INTEGER, 0));
+        const counterWindowStartOffsetMs = Math.max(0, clampInt(safe.counterWindowStartOffsetMs, 0, Number.MAX_SAFE_INTEGER, 0));
         const telegraphDurationMs = Math.max(1, clampInt(safe.telegraphDurationMs, 1, Number.MAX_SAFE_INTEGER, 1));
         const remainingMs = Math.max(0, clampInt(safe.remainingMs, 0, Number.MAX_SAFE_INTEGER, 0));
+        const counterWindowOverflowMs = Math.max(0, counterWindowStartOffsetMs + counterWindowMs - telegraphDurationMs);
 
         if (!attackLabel) {
             return {
@@ -2709,7 +2711,9 @@
                 typeLabel: '',
                 counterWindowLabel: '',
                 hintLabel: '',
-                progressRatio: 0
+                progressRatio: 0,
+                counterWindowTailMarkerVisible: false,
+                counterWindowOverflowMs: 0
             };
         }
 
@@ -2721,7 +2725,9 @@
                 ? `反制窗口 ${Math.max(1, Math.round(counterWindowMs / 100) / 10)}s`
                 : '',
             hintLabel: counterHint,
-            progressRatio: clampRatio(remainingMs / telegraphDurationMs, 0)
+            progressRatio: clampRatio(remainingMs / telegraphDurationMs, 0),
+            counterWindowTailMarkerVisible: counterWindowOverflowMs > 0,
+            counterWindowOverflowMs
         };
     }
 
