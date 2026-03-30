@@ -9651,8 +9651,18 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /lateGlowOuterX = telegraphHud\.currentCountdownHeadMarkerLateGlowTrimmed \? countdownHeadMarkerX - 4 : countdownHeadMarkerX - 5;[\s\S]*?lateGlowOuterX = telegraphHud\.currentCountdownHeadMarkerLateGlowFinalWidthTrimmed \? countdownHeadMarkerX - 3 : lateGlowOuterX;[\s\S]*?lateGlowOuterWidth = telegraphHud\.currentCountdownHeadMarkerLateGlowFinalWidthTrimmed \? 6 : telegraphHud\.currentCountdownHeadMarkerLateGlowTrimmed \? 8 : 10;[\s\S]*?lateGlowInnerX = telegraphHud\.currentCountdownHeadMarkerLateGlowTrimmed \? countdownHeadMarkerX - 2 : countdownHeadMarkerX - 3;[\s\S]*?lateGlowInnerWidth = telegraphHud\.currentCountdownHeadMarkerLateGlowTrimmed \? 4 : 6;/,
-        'boss telegraph rendering should contract the weaker late head-marker glow around the endpoint during the final trim beat'
+        /currentCountdownHeadMarkerLateGlowInnerWidthTrimmed/,
+        'boss telegraph rendering should consume the residual inner late-glow width-trim flag from the shared summary'
+    );
+    assert.match(
+        source,
+        /lateGlowOuterX = telegraphHud\.currentCountdownHeadMarkerLateGlowTrimmed\s*\?\s*countdownHeadMarkerX - 4\s*:\s*countdownHeadMarkerX - 5;[\s\S]*?lateGlowOuterX = telegraphHud\.currentCountdownHeadMarkerLateGlowFinalWidthTrimmed\s*\?\s*countdownHeadMarkerX - 3\s*:\s*lateGlowOuterX;[\s\S]*?lateGlowOuterWidth = telegraphHud\.currentCountdownHeadMarkerLateGlowFinalWidthTrimmed\s*\?\s*6\s*:\s*telegraphHud\.currentCountdownHeadMarkerLateGlowTrimmed\s*\?\s*8\s*:\s*10;/,
+        'boss telegraph rendering should contract the residual outer late glow around the endpoint during the final trim beat'
+    );
+    assert.match(
+        source,
+        /const lateGlowInnerX = telegraphHud\.currentCountdownHeadMarkerLateGlowInnerWidthTrimmed\s*\?\s*countdownHeadMarkerX - 1\s*:\s*telegraphHud\.currentCountdownHeadMarkerLateGlowTrimmed\s*\?\s*countdownHeadMarkerX - 2\s*:\s*countdownHeadMarkerX - 3;[\s\S]*?const lateGlowInnerWidth = telegraphHud\.currentCountdownHeadMarkerLateGlowInnerWidthTrimmed\s*\?\s*2\s*:\s*telegraphHud\.currentCountdownHeadMarkerLateGlowTrimmed\s*\?\s*4\s*:\s*6;/,
+        'boss telegraph rendering should also narrow the residual inner late glow during the final sub-millisecond trim beat'
     );
     assert.match(
         source,
@@ -9763,6 +9773,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”外侧残余暖辉也同步压成更贴边的极细收尾/,
         'help overlay should document that the residual outer late glow also narrows during the final sub-millisecond trim beat'
+    );
+    assert.match(
+        source,
+        /若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”内层残余暖辉的左右宽度也同步收窄半拍/,
+        'help overlay should document that the residual inner late glow width also narrows during the final sub-millisecond trim beat'
     );
     assert.match(
         source,
