@@ -1682,6 +1682,7 @@ function testBossHudReadability() {
     assert.equal(finalCountdownHeadShellAlphaTrimTelegraphSummary.currentCountdownHeadMarkerShellCoreEdgeSoftened, false, 'telegraph summary should keep the countdown-head shell/core seam at its normal crispness until the remaining tail countdown falls into the final sub-millisecond trim beat');
     assert.equal(finalCountdownHeadShellAlphaTrimTelegraphSummary.currentCountdownHeadMarkerShellCoreEdgeHighlightFlattened, false, 'telegraph summary should keep the countdown-head shell/core edge highlight at its normal crest until the remaining tail countdown falls into the final sub-millisecond trim beat');
     assert.equal(finalCountdownHeadShellAlphaTrimTelegraphSummary.currentCountdownHeadMarkerShellCoreEdgeHighlightBrightnessBalanced, false, 'telegraph summary should keep the countdown-head shell/core edge-highlight brightness at its normal lateral bias until the remaining tail countdown falls into the final sub-millisecond trim beat');
+    assert.equal(finalCountdownHeadShellAlphaTrimTelegraphSummary.currentCountdownHeadMarkerShellCoreEdgeHighlightWarmthBalanced, false, 'telegraph summary should keep the countdown-head shell/core edge-highlight warmth at its normal lateral bias until the remaining tail countdown falls into the final sub-millisecond trim beat');
     assert.equal(finalCountdownHeadShellAlphaTrimTelegraphSummary.currentCountdownHeadMarkerLateGlowOuterAlphaMuted, false, 'telegraph summary should keep the residual outer late glow alpha at full strength until the remaining tail countdown falls into the final sub-millisecond beat');
     assert.equal(finalCountdownHeadShellAlphaTrimTelegraphSummary.currentCountdownHeadMarkerLateGlowOuterWarmthMuted, false, 'telegraph summary should keep the residual outer late glow at its warmer color temperature until the remaining tail countdown falls into the final sub-millisecond beat');
     assert.equal(finalCountdownHeadShellAlphaTrimTelegraphSummary.currentCountdownHeadMarkerLateGlowOuterHeightTrimmed, false, 'telegraph summary should keep the residual outer late glow at full height until the remaining tail countdown falls into the final sub-millisecond trim beat');
@@ -1713,6 +1714,7 @@ function testBossHudReadability() {
     assert.equal(finalCountdownHeadInnerCoreAlphaTrimTelegraphSummary.currentCountdownHeadMarkerShellCoreEdgeHighlightFlattened, true, 'telegraph summary should also flatten the countdown-head shell/core edge highlight during the final sub-millisecond trim beat');
     assert.equal(finalCountdownHeadInnerCoreAlphaTrimTelegraphSummary.currentCountdownHeadMarkerShellCoreEdgeHighlightThicknessBalanced, true, 'telegraph summary should also balance the countdown-head shell/core edge-highlight thickness during the final sub-millisecond trim beat');
     assert.equal(finalCountdownHeadInnerCoreAlphaTrimTelegraphSummary.currentCountdownHeadMarkerShellCoreEdgeHighlightBrightnessBalanced, true, 'telegraph summary should also balance the countdown-head shell/core edge-highlight brightness during the final sub-millisecond trim beat');
+    assert.equal(finalCountdownHeadInnerCoreAlphaTrimTelegraphSummary.currentCountdownHeadMarkerShellCoreEdgeHighlightWarmthBalanced, true, 'telegraph summary should also balance the countdown-head shell/core edge-highlight warmth during the final sub-millisecond trim beat');
     assert.equal(finalCountdownHeadInnerCoreAlphaTrimTelegraphSummary.currentCountdownHeadMarkerLateGlowFinalWidthTrimmed, true, 'telegraph summary should also narrow the residual outer late glow during the final sub-millisecond trim beat');
     assert.equal(finalCountdownHeadInnerCoreAlphaTrimTelegraphSummary.currentCountdownHeadMarkerLateGlowOuterAlphaMuted, true, 'telegraph summary should also lower the residual outer late glow alpha during the final sub-millisecond trim beat');
     assert.equal(finalCountdownHeadInnerCoreAlphaTrimTelegraphSummary.currentCountdownHeadMarkerLateGlowOuterWarmthMuted, true, 'telegraph summary should also cool the residual outer late glow during the final sub-millisecond trim beat');
@@ -9756,12 +9758,12 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /const countdownHeadShellAlpha = telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeHighlightBrightnessBalanced \? 0\.7 : telegraphHud\.currentCountdownHeadMarkerShellCoreContrastMuted \? 0\.72 : telegraphHud\.currentCountdownHeadMarkerShellAlphaMuted\s*\?\s*0\.76\s*:\s*0\.94;[\s\S]*?const countdownHeadShellColor = telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeHighlightBrightnessBalanced \? 0xF4E6CC : telegraphHud\.currentCountdownHeadMarkerShellCoreSaturationMuted \? 0xEEE7DC : telegraphHud\.currentCountdownHeadMarkerShellCoreWarmthMuted \? 0xF2E5D2 : telegraphHud\.currentCountdownHeadMarkerShellCoreContrastMuted \? 0xF8E0AE : 0xFFE7AE;[\s\S]*?this\.bossTelegraphCountdownHeadMarker\.fillStyle\(countdownHeadShellColor,\s*countdownHeadShellAlpha\);/,
+        /const countdownHeadShellAlpha = telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeHighlightBrightnessBalanced \? 0\.7 : telegraphHud\.currentCountdownHeadMarkerShellCoreContrastMuted \? 0\.72 : telegraphHud\.currentCountdownHeadMarkerShellAlphaMuted\s*\?\s*0\.76\s*:\s*0\.94;[\s\S]*?const countdownHeadShellColor = telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeHighlightWarmthBalanced \? 0xF3E8DC : telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeHighlightBrightnessBalanced \? 0xF4E6CC : telegraphHud\.currentCountdownHeadMarkerShellCoreSaturationMuted \? 0xEEE7DC : telegraphHud\.currentCountdownHeadMarkerShellCoreWarmthMuted \? 0xF2E5D2 : telegraphHud\.currentCountdownHeadMarkerShellCoreContrastMuted \? 0xF8E0AE : 0xFFE7AE;[\s\S]*?this\.bossTelegraphCountdownHeadMarker\.fillStyle\(countdownHeadShellColor,\s*countdownHeadShellAlpha\);/,
         'boss telegraph rendering should also converge the countdown-head shell brightness during the final sub-millisecond trim beat'
     );
     assert.match(
         source,
-        /const countdownHeadShellColor = telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeHighlightBrightnessBalanced \? 0xF4E6CC : telegraphHud\.currentCountdownHeadMarkerShellCoreSaturationMuted \? 0xEEE7DC : telegraphHud\.currentCountdownHeadMarkerShellCoreWarmthMuted \? 0xF2E5D2 : telegraphHud\.currentCountdownHeadMarkerShellCoreContrastMuted \? 0xF8E0AE : 0xFFE7AE;[\s\S]*?this\.bossTelegraphCountdownHeadMarker\.fillStyle\(countdownHeadShellColor,\s*countdownHeadShellAlpha\);/,
+        /const countdownHeadShellColor = telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeHighlightWarmthBalanced \? 0xF3E8DC : telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeHighlightBrightnessBalanced \? 0xF4E6CC : telegraphHud\.currentCountdownHeadMarkerShellCoreSaturationMuted \? 0xEEE7DC : telegraphHud\.currentCountdownHeadMarkerShellCoreWarmthMuted \? 0xF2E5D2 : telegraphHud\.currentCountdownHeadMarkerShellCoreContrastMuted \? 0xF8E0AE : 0xFFE7AE;[\s\S]*?this\.bossTelegraphCountdownHeadMarker\.fillStyle\(countdownHeadShellColor,\s*countdownHeadShellAlpha\);/,
         'boss telegraph rendering should also cool the countdown-head shell color temperature during the final sub-millisecond trim beat'
     );
     assert.match(
@@ -9771,7 +9773,7 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /const countdownHeadInnerCoreAlpha = telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeHighlightBrightnessBalanced \? 0\.8 : telegraphHud\.currentCountdownHeadMarkerShellCoreContrastMuted \? 0\.76 : telegraphHud\.currentCountdownHeadMarkerInnerCoreAlphaMuted\s*\?\s*0\.82\s*:\s*1;[\s\S]*?const countdownHeadInnerCoreColor = telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeHighlightBrightnessBalanced \? 0xF9ECCB : telegraphHud\.currentCountdownHeadMarkerShellCoreSaturationMuted \? 0xF4EEE4 : telegraphHud\.currentCountdownHeadMarkerShellCoreWarmthMuted \? 0xF4E7D7 : telegraphHud\.currentCountdownHeadMarkerShellCoreContrastMuted \? 0xFBE8B9 : 0xFFF2C8;[\s\S]*?this\.bossTelegraphCountdownHeadMarker\.fillStyle\(countdownHeadInnerCoreColor,\s*countdownHeadInnerCoreAlpha\);/,
+        /const countdownHeadInnerCoreAlpha = telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeHighlightBrightnessBalanced \? 0\.8 : telegraphHud\.currentCountdownHeadMarkerShellCoreContrastMuted \? 0\.76 : telegraphHud\.currentCountdownHeadMarkerInnerCoreAlphaMuted\s*\?\s*0\.82\s*:\s*1;[\s\S]*?const countdownHeadInnerCoreColor = telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeHighlightWarmthBalanced \? 0xF6EDE3 : telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeHighlightBrightnessBalanced \? 0xF9ECCB : telegraphHud\.currentCountdownHeadMarkerShellCoreSaturationMuted \? 0xF4EEE4 : telegraphHud\.currentCountdownHeadMarkerShellCoreWarmthMuted \? 0xF4E7D7 : telegraphHud\.currentCountdownHeadMarkerShellCoreContrastMuted \? 0xFBE8B9 : 0xFFF2C8;[\s\S]*?this\.bossTelegraphCountdownHeadMarker\.fillStyle\(countdownHeadInnerCoreColor,\s*countdownHeadInnerCoreAlpha\);/,
         'boss telegraph rendering should also converge the countdown-head inner-core brightness during the final sub-millisecond trim beat'
     );
     assert.match(
@@ -9801,8 +9803,18 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
+        /currentCountdownHeadMarkerShellCoreEdgeHighlightWarmthBalanced/,
+        'boss telegraph rendering should consume the countdown-head shell/core edge-highlight warmth-balance flag from the shared summary'
+    );
+    assert.match(
+        source,
         /currentCountdownHeadMarkerShellCoreEdgeHighlightThicknessBalanced/,
         'boss telegraph rendering should consume the countdown-head shell/core edge-highlight thickness-balance flag from the shared summary'
+    );
+    assert.match(
+        source,
+        /const countdownHeadShellColor = telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeHighlightWarmthBalanced \? 0xF3E8DC : telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeHighlightBrightnessBalanced \? 0xF4E6CC : telegraphHud\.currentCountdownHeadMarkerShellCoreSaturationMuted \? 0xEEE7DC : telegraphHud\.currentCountdownHeadMarkerShellCoreWarmthMuted \? 0xF2E5D2 : telegraphHud\.currentCountdownHeadMarkerShellCoreContrastMuted \? 0xF8E0AE : 0xFFE7AE;[\s\S]*?const countdownHeadInnerCoreColor = telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeHighlightWarmthBalanced \? 0xF6EDE3 : telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeHighlightBrightnessBalanced \? 0xF9ECCB : telegraphHud\.currentCountdownHeadMarkerShellCoreSaturationMuted \? 0xF4EEE4 : telegraphHud\.currentCountdownHeadMarkerShellCoreWarmthMuted \? 0xF4E7D7 : telegraphHud\.currentCountdownHeadMarkerShellCoreContrastMuted \? 0xFBE8B9 : 0xFFF2C8;/,
+        'boss telegraph rendering should further neutralize the countdown-head shell/core edge-highlight warmth during the final sub-millisecond trim beat'
     );
     assert.match(
         source,
@@ -9993,6 +10005,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”壳芯之间残余边缘高光的左右亮度偏心也同步压匀半拍，避免清零前最后一粒撞线仍像单侧多挂半圈白边/,
         'help overlay should document the countdown-head shell/core edge-highlight brightness balancing during the final sub-millisecond trim beat'
+    );
+    assert.match(
+        source,
+        /若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”壳芯之间残余边缘高光的左右色温偏心也同步压匀半拍，避免清零前最后一粒撞线仍像单侧偏暖半圈/,
+        'help overlay should document the countdown-head shell/core edge-highlight warmth balancing during the final sub-millisecond trim beat'
     );
     assert.match(
         source,
