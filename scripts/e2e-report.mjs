@@ -133,6 +133,31 @@ function buildCounterWindowDeltaShortNote(cadenceArtifacts) {
   return `counterWindowDeltaMs: \`${deltaLabel}\``;
 }
 
+function buildCounterWindowEntryCueShortNote(cadenceArtifacts) {
+  const snapshot = cadenceArtifacts?.telegraphSnapshot && typeof cadenceArtifacts.telegraphSnapshot === 'object'
+    ? cadenceArtifacts.telegraphSnapshot
+    : null;
+  if (!snapshot) return '';
+
+  const counterWindowMs = Number.isFinite(snapshot.counterWindowMs)
+    ? Math.max(0, Math.trunc(snapshot.counterWindowMs))
+    : null;
+  const startOffsetMs = Number.isFinite(snapshot.counterWindowStartOffsetMs)
+    ? Math.trunc(snapshot.counterWindowStartOffsetMs)
+    : null;
+  if (counterWindowMs === null || counterWindowMs <= 0 || startOffsetMs === null) {
+    return '';
+  }
+
+  let entryCueLabel = 'telegraph开头 0ms 开放';
+  if (startOffsetMs > 0) {
+    entryCueLabel = `telegraph后 +${startOffsetMs}ms 开放`;
+  } else if (startOffsetMs < 0) {
+    entryCueLabel = `telegraph前 ${startOffsetMs}ms 预开`;
+  }
+  return `counterWindowEntryCue: \`${entryCueLabel}\``;
+}
+
 function buildCounterWindowTailOffsetShortNote(cadenceArtifacts) {
   const snapshot = cadenceArtifacts?.telegraphSnapshot && typeof cadenceArtifacts.telegraphSnapshot === 'object'
     ? cadenceArtifacts.telegraphSnapshot
@@ -437,6 +462,7 @@ function collectCadenceDriftEntries(cadenceArtifacts) {
           counterWindowShortNote: buildCounterWindowShortNote(cadenceArtifacts),
           counterWindowRatioShortNote: buildCounterWindowRatioShortNote(cadenceArtifacts),
           counterWindowDeltaShortNote: buildCounterWindowDeltaShortNote(cadenceArtifacts),
+          counterWindowEntryCueShortNote: buildCounterWindowEntryCueShortNote(cadenceArtifacts),
           counterWindowTailOffsetShortNote: buildCounterWindowTailOffsetShortNote(cadenceArtifacts),
           counterWindowTailPhaseShortNote: buildCounterWindowTailPhaseShortNote(cadenceArtifacts),
           counterWindowClosureCueShortNote: buildCounterWindowClosureCueShortNote(cadenceArtifacts),
@@ -501,6 +527,7 @@ function buildCadenceDriftMiniChecklistLines(cadenceArtifacts) {
       counterWindowShortNote,
       counterWindowRatioShortNote,
       counterWindowDeltaShortNote,
+      counterWindowEntryCueShortNote,
       counterWindowTailOffsetShortNote,
       counterWindowTailPhaseShortNote,
       counterWindowClosureCueShortNote,
@@ -534,6 +561,9 @@ function buildCadenceDriftMiniChecklistLines(cadenceArtifacts) {
       }
       if (counterWindowDeltaShortNote) {
         parts.push(counterWindowDeltaShortNote);
+      }
+      if (counterWindowEntryCueShortNote) {
+        parts.push(counterWindowEntryCueShortNote);
       }
       if (counterWindowTailOffsetShortNote) {
         parts.push(counterWindowTailOffsetShortNote);

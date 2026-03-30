@@ -226,6 +226,25 @@ const ATTACK_COUNTER_WINDOW_MS = {
     bite: 1000
 };
 
+const ATTACK_COUNTER_WINDOW_START_OFFSET_MS = {
+    flameBreath: 0,
+    magmaRing: 0,
+    divineStrike: 0,
+    bladeOrbit: 0,
+    mirror: 0,
+    shapeShift: 0,
+    mirageDance: 0,
+    reverseControl: 0,
+    illusion: 0,
+    sleepFog: 0,
+    coinTrap: 0,
+    treasureStorm: 0,
+    consume: 0,
+    nightmare: 0,
+    goldBreath: 0,
+    bite: 0
+};
+
 const BOSS_TELEGRAPH_TYPE_LABELS = {
     DASH: '突进',
     AOE: '范围',
@@ -3349,6 +3368,7 @@ class Boss {
                 const attackType = getAttackType(this.currentAttack);
                 const hint = ATTACK_COUNTER_HINTS[this.currentAttack];
                 const windowMs = ATTACK_COUNTER_WINDOW_MS[this.currentAttack] || 0;
+                const windowStartOffsetMs = ATTACK_COUNTER_WINDOW_START_OFFSET_MS[this.currentAttack] || 0;
                 if (this.phaseMajorAttackQueue.has(this.currentAttack)) {
                     this.attackWindupDelay = 450;
                     this.phaseMajorAttackQueue.delete(this.currentAttack);
@@ -3368,6 +3388,7 @@ class Boss {
                         attackTypeLabel: BOSS_TELEGRAPH_TYPE_LABELS[attackType] || attackType,
                         counterHint: hint || '',
                         counterWindowMs: windowMs,
+                        counterWindowStartOffsetMs: windowStartOffsetMs,
                         telegraphDurationMs: telegraphDuration,
                         expiresAt: time + telegraphDuration,
                         typeKey: attackType

@@ -2502,6 +2502,12 @@
                 attackLabel: typeof telegraphSource.attackLabel === 'string' ? telegraphSource.attackLabel.trim() : '',
                 counterHint: typeof telegraphSource.counterHint === 'string' ? telegraphSource.counterHint.trim() : '',
                 counterWindowMs: Math.max(0, clampInt(telegraphSource.counterWindowMs, 0, Number.MAX_SAFE_INTEGER, 0)),
+                counterWindowStartOffsetMs: clampInt(
+                    telegraphSource.counterWindowStartOffsetMs,
+                    Number.MIN_SAFE_INTEGER,
+                    Number.MAX_SAFE_INTEGER,
+                    0
+                ),
                 telegraphDurationMs: Math.max(0, clampInt(telegraphSource.telegraphDurationMs, 0, Number.MAX_SAFE_INTEGER, 0))
             },
             sharedRecoverySnapshot: {
