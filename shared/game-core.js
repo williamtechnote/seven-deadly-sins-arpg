@@ -429,15 +429,33 @@
 
     function formatCombatActionReadyLabel(cooldownMs, stamina, staminaCost, staminaRegenPerSecond) {
         const remainingCooldownMs = Math.max(0, Number(cooldownMs) || 0);
+        const currentStamina = Math.max(0, Number(stamina) || 0);
+        const requiredStamina = Math.max(0, Number(staminaCost) || 0);
+        const safeStaminaRegenPerSecond = Math.max(0, Number(staminaRegenPerSecond) || 0);
+
         if (remainingCooldownMs > 0) {
+            if (requiredStamina > 0 && currentStamina < requiredStamina) {
+                const staminaRecoveredDuringCooldown = safeStaminaRegenPerSecond > 0
+                    ? (safeStaminaRegenPerSecond * remainingCooldownMs) / 1000
+                    : 0;
+                const staminaAtCooldownEnd = currentStamina + staminaRecoveredDuringCooldown;
+                if (staminaAtCooldownEnd + 1e-6 >= requiredStamina) {
+                    return formatCooldownSecondsLabel(remainingCooldownMs);
+                }
+
+                const missingStaminaAfterCooldown = Math.max(1, Math.ceil(requiredStamina - staminaAtCooldownEnd));
+                const recoveryEta = formatStaminaRecoveryEtaLabel(requiredStamina - staminaAtCooldownEnd, safeStaminaRegenPerSecond);
+                return recoveryEta
+                    ? `${formatCooldownSecondsLabel(remainingCooldownMs)}后差${missingStaminaAfterCooldown}体/${recoveryEta}`
+                    : `${formatCooldownSecondsLabel(remainingCooldownMs)}后差${missingStaminaAfterCooldown}体`;
+            }
+
             return formatCooldownSecondsLabel(remainingCooldownMs);
         }
 
-        const currentStamina = Math.max(0, Number(stamina) || 0);
-        const requiredStamina = Math.max(0, Number(staminaCost) || 0);
         if (requiredStamina > 0 && currentStamina < requiredStamina) {
             const missingStamina = Math.max(1, Math.ceil(requiredStamina - currentStamina));
-            const recoveryEta = formatStaminaRecoveryEtaLabel(missingStamina, staminaRegenPerSecond);
+            const recoveryEta = formatStaminaRecoveryEtaLabel(missingStamina, safeStaminaRegenPerSecond);
             return recoveryEta ? `差${missingStamina}体/${recoveryEta}` : `差${missingStamina}体`;
         }
 

@@ -4,6 +4,7 @@
 - [ ] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百二十五：若 drift-only mini checklist 已带 `counterWindowEntryCue` 与 `counterWindowClosureCue` short note 仍要来回拼两段信息才看得出整段可反制空档跨度，再给每条 drift row 补一段 `counterWindowSpanCue` short note，直接落成 `telegraph开头 -> telegraph后 +400ms` 这类完整区间短句，继续压缩 telegraph 异常排查路径
 
 ## Completed
+- [x] 核心战斗体验：行动 HUD 在技能仍处冷却时也要预告冷却结束后的真实可用状态；若届时体力仍不足，则直接显示 `0.3s后差8体/0.5s` 这类双阶段提示，减少玩家误判“CD 转好就能按”的空按（完成：2026-03-30 12:18 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百二十四：若 drift-only mini checklist 已带 `counterWindowCoverageCue` short note 仍要心算可反制空档是从 telegraph 开头就开放，还是要等到中后段才出现，再给每条 drift row 补一段 `counterWindowEntryCue` short note，直接落成 telegraph 相对起始短句，继续压缩 telegraph 异常排查路径（完成：2026-03-30 12:09 +08，已拆分为一百二十五）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百二十三：若 drift-only mini checklist 已带 `counterWindowClosureCue` short note 仍要回头对照 counter hint 才知道可反制空档覆盖 telegraph 全程还是只落在后半段，再给每条 drift row 补一段 `counterWindowCoverageCue` short note，直接落成 telegraph 覆盖范围短句，继续压缩 telegraph 异常排查路径（完成：2026-03-30 12:00 +08，已拆分为一百二十四）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百二十二：若 drift-only mini checklist 已带 `counterWindowTailPhase` short note 仍要把 phase 与 offset 两段信息拼起来才知道究竟是 `telegraph后 +400ms 收尾` 还是 `telegraph内 -200ms 收尾`，再给每条 drift row 补一段 `counterWindowClosureCue` short note，直接落成 telegraph 相对收尾短句，继续压缩 telegraph 异常排查路径（完成：2026-03-30 11:55 +08，已拆分为一百二十三）

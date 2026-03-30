@@ -2692,6 +2692,11 @@ function testKeyboardControlReadabilityHooks() {
     );
     assert.match(
         source,
+        /若冷却转好后仍差体力，则会预告“0\.3s后差8体\/0\.5s”/,
+        'help overlay should explain the post-cooldown stamina-gap preview'
+    );
+    assert.match(
+        source,
         /点击背包消耗品会自动装入快捷栏首个空位/,
         'help overlay should explain the backpack-click auto-fill rule'
     );
@@ -2890,6 +2895,48 @@ function testCombatActionHudSummary() {
         }),
         '普攻 U: 差2体  特攻 O: 差12体  闪避 Space: 差17体',
         'combat action HUD helper should keep the old stamina-gap fallback when regen timing is unavailable'
+    );
+    assert.equal(
+        buildCombatActionHudSummary({
+            attackCooldownMs: 300,
+            specialCooldownMs: 0,
+            dodgeCooldownMs: 0,
+            stamina: 8,
+            staminaRegenPerSecond: 15,
+            attackStaminaCost: 10,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 25
+        }),
+        '普攻 U: 0.3s  特攻 O: 差12体/0.8s  闪避 Space: 差17体/1.1s',
+        'combat action HUD helper should keep the plain cooldown label when cooldown time already covers the stamina gap'
+    );
+    assert.equal(
+        buildCombatActionHudSummary({
+            attackCooldownMs: 0,
+            specialCooldownMs: 300,
+            dodgeCooldownMs: 0,
+            stamina: 10,
+            staminaRegenPerSecond: 15,
+            attackStaminaCost: 10,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 25
+        }),
+        '普攻 U: 就绪  特攻 O: 0.3s后差6体/0.4s  闪避 Space: 差15体/1.0s',
+        'combat action HUD helper should preview the remaining stamina gap after cooldown ends when stamina recovery still lags behind'
+    );
+    assert.equal(
+        buildCombatActionHudSummary({
+            attackCooldownMs: 0,
+            specialCooldownMs: 300,
+            dodgeCooldownMs: 0,
+            stamina: 10,
+            staminaRegenPerSecond: 0,
+            attackStaminaCost: 10,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 25
+        }),
+        '普攻 U: 就绪  特攻 O: 0.3s后差10体  闪避 Space: 差15体',
+        'combat action HUD helper should keep a no-ETA fallback when cooldown ends before enough stamina is available and regen timing is unknown'
     );
 }
 
@@ -7785,6 +7832,11 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /Tab -> 点击背包消耗品 -> 1-4 使用/,
         'README should document the keyboard inventory-to-quick-slot loop'
+    );
+    assert.match(
+        source,
+        /若冷却结束后仍差体力，则会直接预告 `0\.3s后差8体\/0\.5s` 这类双阶段提示/,
+        'README should document the post-cooldown stamina-gap preview on the action HUD'
     );
     assert.match(
         source,
