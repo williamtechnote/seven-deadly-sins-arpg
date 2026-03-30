@@ -1972,6 +1972,11 @@ function testE2eReportPhase3CadenceMarkdownIndex() {
     );
     assert.match(
         output,
+        /- Drift-only mini checklist:\n  - 2\. HUD telegraph 魅影连舞 -> shared recovery≈10\.2s -> 28-step dash\/charmBolt loopback -> 混乱逆转 \| 反制: 观察真身换位节奏，留翻滚躲最后逆转波 -> \[checkpoints]\(artifacts\/e2e\/lust-phase3-cadence-review\/phase3-checkpoints\.txt\)/,
+        'e2e report should add a drift-only mini checklist that relists each drifting checkpoint line with a direct checkpoints anchor'
+    );
+    assert.match(
+        output,
         /1\. HUD telegraph 混乱逆转 -> shared recovery≈10\.2s -> 13-step dash\/charmBolt bridge -> 幻影风暴 \| 反制: 停止冲刺，短步修正方向 \| 回切目标: `幻影风暴` \| recovery 快照: `sharedRecoveryRemainingMs=10200 · breatherRemaining=8 · expectedReturnLabel=幻影风暴` \| 回切校验: match \| 证据: \[review]\(artifacts\/e2e\/lust-phase3-cadence-review\/cadence-review\.json\) \[checkpoints]\(artifacts\/e2e\/lust-phase3-cadence-review\/phase3-checkpoints\.txt\) \[recovery]\(artifacts\/e2e\/lust-phase3-cadence-review\/shared-recovery-snapshot\.json\) \[telegraph]\(artifacts\/e2e\/lust-phase3-cadence-review\/telegraph-hud\.png\)/,
         'e2e report should inline cadence checkpoint lines with recovery snapshot notes, a match note, and direct artifact anchors'
     );

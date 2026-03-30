@@ -91,9 +91,14 @@ function buildCadenceSummaryEvidenceLinks(cadenceArtifacts) {
   ].filter(Boolean).join(' ');
 }
 
-function buildCadenceCheckpointSummaryLine(cadenceArtifacts) {
+function collectCadenceDriftEntries(cadenceArtifacts) {
   if (!cadenceArtifacts || !Array.isArray(cadenceArtifacts.checkpointLines) || cadenceArtifacts.checkpointLines.length === 0) {
-    return '';
+    return {
+      matchCount: 0,
+      driftCount: 0,
+      driftCheckpointLabels: [],
+      driftCheckpointLines: []
+    };
   }
 
   const checkpointEntries = Array.isArray(cadenceArtifacts.review?.checkpoints)
@@ -103,14 +108,20 @@ function buildCadenceCheckpointSummaryLine(cadenceArtifacts) {
     ? cadenceArtifacts.sharedRecoverySnapshot.expectedReturnLabel.trim()
     : '';
   if (!sharedRecoveryExpectedReturnLabel) {
-    return '';
+    return {
+      matchCount: 0,
+      driftCount: 0,
+      driftCheckpointLabels: [],
+      driftCheckpointLines: []
+    };
   }
 
   let matchCount = 0;
   let driftCount = 0;
   const driftCheckpointLabels = [];
+  const driftCheckpointLines = [];
 
-  cadenceArtifacts.checkpointLines.forEach((_line, index) => {
+  cadenceArtifacts.checkpointLines.forEach((line, index) => {
     const checkpoint = checkpointEntries[index] && typeof checkpointEntries[index] === 'object'
       ? checkpointEntries[index]
       : null;
@@ -132,8 +143,26 @@ function buildCadenceCheckpointSummaryLine(cadenceArtifacts) {
       if (expectedReturnLabel) {
         driftCheckpointLabels.push(`\`${expectedReturnLabel}\``);
       }
+      if (line) {
+        driftCheckpointLines.push(line);
+      }
     }
   });
+
+  return {
+    matchCount,
+    driftCount,
+    driftCheckpointLabels,
+    driftCheckpointLines
+  };
+}
+
+function buildCadenceCheckpointSummaryLine(cadenceArtifacts) {
+  const {
+    matchCount,
+    driftCount,
+    driftCheckpointLabels
+  } = collectCadenceDriftEntries(cadenceArtifacts);
 
   if (matchCount === 0 && driftCount === 0) {
     return '';
@@ -148,6 +177,23 @@ function buildCadenceCheckpointSummaryLine(cadenceArtifacts) {
     }
   }
   return parts.join(' | ');
+}
+
+function buildCadenceDriftMiniChecklistLines(cadenceArtifacts) {
+  const checkpointLink = formatMarkdownLink('checkpoints', cadenceArtifacts?.files?.checkpointText);
+  if (!checkpointLink) {
+    return [];
+  }
+
+  const { driftCheckpointLines } = collectCadenceDriftEntries(cadenceArtifacts);
+  if (driftCheckpointLines.length === 0) {
+    return [];
+  }
+
+  return [
+    '- Drift-only mini checklist:',
+    ...driftCheckpointLines.map((line) => `  - ${line} -> ${checkpointLink}`)
+  ];
 }
 
 function buildCadenceCheckpointIndexLines(cadenceArtifacts) {
@@ -310,6 +356,10 @@ function renderMarkdownReport(summary) {
         const summaryLine = buildCadenceCheckpointSummaryLine(test.cadenceArtifacts);
         if (summaryLine) {
           lines.push(summaryLine, '');
+        }
+        const driftMiniChecklistLines = buildCadenceDriftMiniChecklistLines(test.cadenceArtifacts);
+        if (driftMiniChecklistLines.length > 0) {
+          lines.push(...driftMiniChecklistLines, '');
         }
         lines.push(...buildCadenceCheckpointIndexLines(test.cadenceArtifacts));
       } else {
