@@ -1508,9 +1508,26 @@ function testBossHudReadability() {
     assert.equal(telegraphSummary.counterWindowStartMarkerRatio, 0, 'telegraph summary should not offset the start marker when the counter window starts immediately');
     assert.equal(telegraphSummary.counterWindowTailMarkerVisible, true, 'telegraph summary should flag when the counter window extends beyond the telegraph bar');
     assert.equal(telegraphSummary.counterWindowOverflowMs, 400, 'telegraph summary should expose how much the counter window outlasts the telegraph');
+    assert.equal(telegraphSummary.counterWindowClosureMarkerVisible, false, 'telegraph summary should not draw an in-bar closure marker when the counter window outlasts the telegraph');
+    assert.equal(telegraphSummary.counterWindowClosureMarkerRatio, 0, 'telegraph summary should keep the closure marker ratio at zero when the counter window does not close inside the bar');
     assert.equal(telegraphSummary.counterWindowSpanVisible, false, 'telegraph summary should not draw a contained span when the counter window touches the bar edges');
     assert.equal(telegraphSummary.counterWindowSpanStartRatio, 0, 'telegraph summary should keep the contained span start ratio at zero when no contained span exists');
     assert.equal(telegraphSummary.counterWindowSpanWidthRatio, 0, 'telegraph summary should keep the contained span width ratio at zero when no contained span exists');
+
+    const earlyClosureTelegraphSummary = buildBossTelegraphHudSummary({
+        attackLabel: '熔火围城',
+        attackTypeLabel: '范围',
+        counterWindowMs: 800,
+        counterHint: '反制: 贴身压住起手',
+        telegraphDurationMs: 1300,
+        remainingMs: 650
+    });
+    assert.equal(earlyClosureTelegraphSummary.counterWindowStartMarkerVisible, false, 'telegraph summary should stay quiet at the bar head when the counter window opens from frame one');
+    assert.equal(earlyClosureTelegraphSummary.counterWindowTailMarkerVisible, false, 'telegraph summary should stay quiet at the bar tail when the counter window closes before the telegraph ends');
+    assert.equal(earlyClosureTelegraphSummary.counterWindowOverflowMs, 0, 'telegraph summary should report no overflow when the counter window closes inside the telegraph');
+    assert.equal(earlyClosureTelegraphSummary.counterWindowClosureMarkerVisible, true, 'telegraph summary should flag when a frame-one counter window closes before the telegraph bar finishes');
+    assert.equal(earlyClosureTelegraphSummary.counterWindowClosureMarkerRatio, 800 / 1300, 'telegraph summary should expose the early counter-window closure point as a bar ratio');
+    assert.equal(earlyClosureTelegraphSummary.counterWindowSpanVisible, false, 'telegraph summary should avoid drawing a contained span when the counter window starts at the first frame');
 
     const containedTelegraphSummary = buildBossTelegraphHudSummary({
         attackLabel: '圣剑环阵',
@@ -1525,6 +1542,8 @@ function testBossHudReadability() {
     assert.equal(containedTelegraphSummary.counterWindowStartMarkerRatio, 200 / 1300, 'telegraph summary should expose the delayed counter-window entry as a bar ratio');
     assert.equal(containedTelegraphSummary.counterWindowTailMarkerVisible, false, 'telegraph summary should stay quiet when the counter window ends before the telegraph bar');
     assert.equal(containedTelegraphSummary.counterWindowOverflowMs, 0, 'telegraph summary should report no overflow when the counter window stays inside the telegraph');
+    assert.equal(containedTelegraphSummary.counterWindowClosureMarkerVisible, false, 'telegraph summary should not add a duplicate closure marker when the contained span already marks both boundaries');
+    assert.equal(containedTelegraphSummary.counterWindowClosureMarkerRatio, 0, 'telegraph summary should keep the closure marker ratio at zero when the contained span covers the end cue');
     assert.equal(containedTelegraphSummary.counterWindowSpanVisible, true, 'telegraph summary should flag when the counter window lives inside the telegraph body');
     assert.equal(containedTelegraphSummary.counterWindowSpanStartRatio, 200 / 1300, 'telegraph summary should expose the contained span start as a bar ratio');
     assert.equal(containedTelegraphSummary.counterWindowSpanWidthRatio, 900 / 1300, 'telegraph summary should expose the contained counter-window span width as a bar ratio');
@@ -7860,6 +7879,11 @@ function testBossHudMeasurementHooks() {
     );
     assert.match(
         source,
+        /this\.bossTelegraphClosureMarker\.clear\(\);[\s\S]*?if \(telegraphHud\.counterWindowClosureMarkerVisible\) \{[\s\S]*?const closureMarkerX = telegraphRect\.x \+ telegraphRect\.w \* telegraphHud\.counterWindowClosureMarkerRatio;[\s\S]*?this\.bossTelegraphClosureMarker\.fillRoundedRect\(\s*closureMarkerX - 2,\s*telegraphRect\.y - 1,\s*4,\s*telegraphRect\.h \+ 2,\s*2\s*\);/,
+        'Boss telegraph should draw a dedicated in-bar closure marker when a frame-one counter window closes before the telegraph body ends'
+    );
+    assert.match(
+        source,
         /this\.bossTelegraphTailMarker\.clear\(\);[\s\S]*?if \(telegraphHud\.counterWindowTailMarkerVisible\) \{[\s\S]*?const tailMarkerX = telegraphRect\.x \+ telegraphRect\.w - 1;[\s\S]*?this\.bossTelegraphTailMarker\.fillRoundedRect\(\s*tailMarkerX,\s*telegraphRect\.y - 1,\s*6,\s*telegraphRect\.h \+ 2,\s*2\s*\);/,
         'Boss telegraph should draw a dedicated end-of-bar tail marker when the counter window outlasts the telegraph body'
     );
@@ -8125,6 +8149,11 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /若 `反制窗口` 起点实际晚于进度条开头，条内还会补一枚 `起跳刻度`/,
         'README should document the telegraph start marker for delayed counter-window entry'
+    );
+    assert.match(
+        source,
+        /若 `反制窗口` 从第一帧开放、却会在进度条清空前提早收束，条内还会补一枚 `收束刻度`/,
+        'README should document the in-bar closure marker for frame-one counter windows that end early'
     );
     assert.match(
         source,
@@ -9249,6 +9278,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若 Boss 的“反制窗口”起点实际晚于 telegraph 进度条开头，条内还会补一枚“起跳刻度”，避免把整段条体误读成从第一帧起就能反制/,
         'help overlay should document the telegraph start marker for delayed counter-window entry'
+    );
+    assert.match(
+        source,
+        /若 Boss 的“反制窗口”从第一帧开放、却会在 telegraph 进度条清空前提早收束，条内还会补一枚“收束刻度”，避免把剩余条体误读成还在可反制/,
+        'help overlay should document the telegraph closure marker for frame-one counter windows that end before the bar does'
     );
     assert.match(
         source,

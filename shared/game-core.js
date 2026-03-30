@@ -2707,6 +2707,9 @@
             && counterWindowStartOffsetMs < telegraphDurationMs;
         const counterWindowEndMs = counterWindowStartOffsetMs + counterWindowMs;
         const counterWindowOverflowMs = Math.max(0, counterWindowStartOffsetMs + counterWindowMs - telegraphDurationMs);
+        const counterWindowClosureMarkerVisible = counterWindowMs > 0
+            && counterWindowStartOffsetMs === 0
+            && counterWindowEndMs < telegraphDurationMs;
         const counterWindowSpanVisible = counterWindowMs > 0
             && counterWindowStartOffsetMs > 0
             && counterWindowEndMs < telegraphDurationMs;
@@ -2724,6 +2727,8 @@
                 counterWindowStartMarkerRatio: 0,
                 counterWindowTailMarkerVisible: false,
                 counterWindowOverflowMs: 0,
+                counterWindowClosureMarkerVisible: false,
+                counterWindowClosureMarkerRatio: 0,
                 counterWindowSpanVisible: false,
                 counterWindowSpanStartRatio: 0,
                 counterWindowSpanWidthRatio: 0
@@ -2745,6 +2750,10 @@
                 : 0,
             counterWindowTailMarkerVisible: counterWindowOverflowMs > 0,
             counterWindowOverflowMs,
+            counterWindowClosureMarkerVisible,
+            counterWindowClosureMarkerRatio: counterWindowClosureMarkerVisible
+                ? clampRatio(counterWindowEndMs / telegraphDurationMs, 0)
+                : 0,
             counterWindowSpanVisible,
             counterWindowSpanStartRatio: counterWindowSpanVisible
                 ? clampRatio(counterWindowStartOffsetMs / telegraphDurationMs, 0)
