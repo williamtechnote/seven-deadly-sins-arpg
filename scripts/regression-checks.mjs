@@ -2828,14 +2828,43 @@ function testQuickSlotAutoAssignNotice() {
 function testCombatActionHudSummary() {
     assert.equal(typeof buildCombatActionHudSummary, 'function', 'combat action HUD helper should be exported');
     assert.equal(
-        buildCombatActionHudSummary({ attackCooldownMs: 0, specialCooldownMs: 0 }),
-        '普攻 U: 就绪  特攻 O: 就绪  闪避: Space',
-        'combat action HUD helper should show both actions as ready when cooldowns are clear'
+        buildCombatActionHudSummary({
+            attackCooldownMs: 0,
+            specialCooldownMs: 0,
+            dodgeCooldownMs: 0,
+            stamina: 60,
+            attackStaminaCost: 10,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 25
+        }),
+        '普攻 U: 就绪  特攻 O: 就绪  闪避 Space: 就绪',
+        'combat action HUD helper should show all three actions as ready when cooldowns are clear and stamina is sufficient'
     );
     assert.equal(
-        buildCombatActionHudSummary({ attackCooldownMs: 320, specialCooldownMs: 1080 }),
-        '普攻 U: 0.3s  特攻 O: 1.1s  闪避: Space',
+        buildCombatActionHudSummary({
+            attackCooldownMs: 320,
+            specialCooldownMs: 1080,
+            dodgeCooldownMs: 640,
+            stamina: 60,
+            attackStaminaCost: 10,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 25
+        }),
+        '普攻 U: 0.3s  特攻 O: 1.1s  闪避 Space: 0.6s',
         'combat action HUD helper should format short cooldown seconds for unreadied actions'
+    );
+    assert.equal(
+        buildCombatActionHudSummary({
+            attackCooldownMs: 0,
+            specialCooldownMs: 0,
+            dodgeCooldownMs: 0,
+            stamina: 8,
+            attackStaminaCost: 10,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 25
+        }),
+        '普攻 U: 体力不足  特攻 O: 体力不足  闪避 Space: 体力不足',
+        'combat action HUD helper should expose stamina-gated actions instead of showing them as ready'
     );
 }
 
@@ -2857,8 +2886,8 @@ function testKeyboardHudQolHooks() {
     );
     assert.match(
         source,
-        /this\.actionText\.setText\(buildCombatActionHudSummary\(\{\s*attackCooldownMs:\s*player\.attackCooldown,\s*specialCooldownMs:\s*player\.specialCooldown\s*\}\)\);/,
-        'HUD should derive the keyboard combat loop text from the shared combat-action helper'
+        /this\.actionText\.setText\(buildCombatActionHudSummary\(\{[\s\S]*?attackCooldownMs:\s*player\.attackCooldown,[\s\S]*?specialCooldownMs:\s*player\.specialCooldown,[\s\S]*?dodgeCooldownMs:\s*player\.dodgeCooldownTimer,[\s\S]*?stamina:\s*player\.stamina,[\s\S]*?attackStaminaCost:\s*weapon\s*\?\s*weapon\.staminaCost\s*:\s*0,[\s\S]*?specialStaminaCost:\s*weapon\s*\?\s*weapon\.specialStaminaCost\s*:\s*0,[\s\S]*?dodgeStaminaCost:\s*GAME_CONFIG\.PLAYER\.dodgeStaminaCost[\s\S]*?\}\)\);/,
+        'HUD should derive cooldown and stamina-gated combat readiness text from the shared combat-action helper'
     );
     assert.match(
         source,

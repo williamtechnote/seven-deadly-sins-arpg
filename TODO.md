@@ -4,6 +4,7 @@
 - [ ] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百一十六：若 drift-only mini checklist 已带 `dash/charmBolt` bridge count short note 仍要回头翻 telegraph HUD 才能确认这段漂移前的起手压迫时长，再给每条 drift row 补一段 `telegraphDurationMs` short note，继续压缩 live pacing 排查路径
 
 ## Completed
+- [x] 核心战斗体验：行动 HUD 需要把 `普攻 U / 特攻 O / 闪避 Space` 从静态提示改成真实 readiness 行，显式区分 `就绪` / `冷却剩余` / `体力不足`，减少玩家误判输入失败原因（完成：2026-03-30 10:53 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百一十五：若 drift-only mini checklist 已带 `bridgeTimeline` index short note 仍要逐格心算这段轻压过桥的组成，再给每条 drift row 补一段 `dash/charmBolt` bridge count short note，继续压缩 live pacing 排查路径（完成：2026-03-30 10:44 +08，已拆分为一百一十六）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百一十四：若 drift-only mini checklist 已带 bridge/loopback checkpoint alias short note 仍要翻 `cadence-review.json` 才能确认具体 bridge span，再给每条 drift row 补一段 `bridgeTimeline` index short note，继续压缩 live pacing 排查路径（完成：2026-03-30 10:38 +08，已拆分为一百一十五）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百一十三：若 drift-only mini checklist 已带 `review checkpoint #n` short note 仍要回头翻完整 checkpoint 索引确认 telegraph 上下文，再给每条 drift row 补一段 bridge/loopback checkpoint alias short note，继续压缩 live pacing 排查路径（完成：2026-03-30 10:28 +08，已拆分为一百一十四）

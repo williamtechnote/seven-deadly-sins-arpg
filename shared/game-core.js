@@ -419,9 +419,39 @@
         return `${seconds.toFixed(1)}s`;
     }
 
+    function formatCombatActionReadyLabel(cooldownMs, stamina, staminaCost) {
+        const remainingCooldownMs = Math.max(0, Number(cooldownMs) || 0);
+        if (remainingCooldownMs > 0) {
+            return formatCooldownSecondsLabel(remainingCooldownMs);
+        }
+
+        const currentStamina = Math.max(0, Number(stamina) || 0);
+        const requiredStamina = Math.max(0, Number(staminaCost) || 0);
+        if (requiredStamina > 0 && currentStamina < requiredStamina) {
+            return '体力不足';
+        }
+
+        return '就绪';
+    }
+
     function buildCombatActionHudSummary(input) {
         const safe = input && typeof input === 'object' ? input : {};
-        return `普攻 U: ${formatCooldownSecondsLabel(safe.attackCooldownMs)}  特攻 O: ${formatCooldownSecondsLabel(safe.specialCooldownMs)}  闪避: Space`;
+        const attackLabel = formatCombatActionReadyLabel(
+            safe.attackCooldownMs,
+            safe.stamina,
+            safe.attackStaminaCost
+        );
+        const specialLabel = formatCombatActionReadyLabel(
+            safe.specialCooldownMs,
+            safe.stamina,
+            safe.specialStaminaCost
+        );
+        const dodgeLabel = formatCombatActionReadyLabel(
+            safe.dodgeCooldownMs,
+            safe.stamina,
+            safe.dodgeStaminaCost
+        );
+        return `普攻 U: ${attackLabel}  特攻 O: ${specialLabel}  闪避 Space: ${dodgeLabel}`;
     }
 
     function getHudSidebarViewportTier(viewportWidth, viewportHeight) {

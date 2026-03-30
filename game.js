@@ -6224,7 +6224,12 @@ class UIScene extends Phaser.Scene {
         this.weaponText.setText('⚔ ' + weaponName + ' (' + weaponKey + ') [Q/E 切换]');
         this.actionText.setText(buildCombatActionHudSummary({
             attackCooldownMs: player.attackCooldown,
-            specialCooldownMs: player.specialCooldown
+            specialCooldownMs: player.specialCooldown,
+            dodgeCooldownMs: player.dodgeCooldownTimer,
+            stamina: player.stamina,
+            attackStaminaCost: weapon ? weapon.staminaCost : 0,
+            specialStaminaCost: weapon ? weapon.specialStaminaCost : 0,
+            dodgeStaminaCost: GAME_CONFIG.PLAYER.dodgeStaminaCost
         }));
         if (UI_DEBUG_FLAGS.showSavedWeaponInHUD) {
             const savedWeaponKey = GameState.ensureSelectedWeapon();
