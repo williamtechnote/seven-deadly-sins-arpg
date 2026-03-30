@@ -4882,6 +4882,12 @@ class BossScene extends Phaser.Scene {
             const countdownHeadFlashRemainingMs = Math.max(0, this._bossTelegraphCountdownHeadFlashUntil - this.time.now);
             if (telegraphHud.currentCountdownHeadMarkerVisible) {
                 const countdownHeadMarkerX = telegraphRect.x + telegraphRect.w * telegraphHud.currentCountdownHeadMarkerRatio;
+                const countdownHeadShellY = telegraphHud.currentCountdownHeadMarkerShellCapTrimmed
+                    ? telegraphRect.y + 2
+                    : telegraphRect.y + 1;
+                const countdownHeadShellHeight = telegraphHud.currentCountdownHeadMarkerShellCapTrimmed
+                    ? telegraphRect.h - 4
+                    : telegraphRect.h - 2;
                 if (countdownHeadFlashRemainingMs > 0) {
                     const countdownHeadFlashProgress = telegraphHud.currentCountdownHeadMarkerWarmFlashDurationMs > 0
                         ? countdownHeadFlashRemainingMs / telegraphHud.currentCountdownHeadMarkerWarmFlashDurationMs
@@ -4903,7 +4909,7 @@ class BossScene extends Phaser.Scene {
                     this.bossTelegraphCountdownHeadFlash.fillRoundedRect(lateGlowInnerX, telegraphRect.y - 2, lateGlowInnerWidth, telegraphRect.h + 4, 3);
                 }
                 this.bossTelegraphCountdownHeadMarker.fillStyle(0xFFE7AE, 0.94);
-                this.bossTelegraphCountdownHeadMarker.fillRoundedRect(countdownHeadMarkerX - 1, telegraphRect.y + 1, 2, telegraphRect.h - 2, 1);
+                this.bossTelegraphCountdownHeadMarker.fillRoundedRect(countdownHeadMarkerX - 1, countdownHeadShellY, 2, countdownHeadShellHeight, 1);
                 if (telegraphHud.currentCountdownHeadMarkerInnerCoreFocused) {
                     const countdownHeadInnerCoreY = telegraphHud.currentCountdownHeadMarkerInnerCoreHeightTrimmed
                         ? telegraphRect.y + 3
@@ -6726,7 +6732,7 @@ class HelpScene extends Phaser.Scene {
         const sections = [
             { title: '移动', items: ['WASD  —  八方向移动'] },
             { title: '瞄准', items: ['I / J / K / L  —  键盘双轴瞄准（保留上次朝向）', '当前瞄准会显示在 HUD 左下角'] },
-            { title: '战斗', items: ['U / 鼠标左键  —  普通攻击', 'O / 鼠标右键  —  特殊攻击', '左下角行动行会显示冷却；若只差体力，则会显示“差2体/0.1s”这类自然回复 ETA；若冷却转好后仍差体力，则会预告“0.3s后差8体/0.5s”；若正处于翻滚锁定，则会继续预告“翻滚中 -> 就绪”这类翻滚后的下一状态；当任一动作刚切进“就绪”时，只有对应那一项会短促闪亮一下；若 Boss 战切到专用 HUD，则顶部血条会收紧，但左下角当前瞄准 / 武器 / 行动行与右下快捷栏仍保持稳定底边留白；若 Boss 的“反制窗口”起点实际晚于 telegraph 进度条开头，条内还会补一枚“起跳刻度”，避免把整段条体误读成从第一帧起就能反制；若 Boss 的“反制窗口”从第一帧开放、却会在 telegraph 进度条清空前提早收束，条内还会补一枚“收束刻度”，避免把剩余条体误读成还在可反制；“收束刻度”右侧剩余条体也会压成更暗的“尾段残影”，提醒那一截只剩读招倒计时，不再代表可反制窗口；一旦倒计时已经走进这段“尾段残影”，第二行“反制窗口”也会同步切成更低饱和的“已收束提示”，第三行 hint 则会把原本的“反制:”/“反制提示:”前缀改写成更明确的“收束后处理:”或“闪避提示:”，并同步降成更柔和的琥珀色，避免窗口已过后仍把旧提示读成“现在还能反制”；若第二、三行都已切进收束态，第一行“类型 | 攻击名”也会同步压成更低饱和的暖灰白；若第一、二、三行都已切进收束态，进度条左侧仍存活的主色填充也会同步降一档 alpha，避免剩余倒计时继续冒充“当前节奏仍在可反制主拍”；若 Boss telegraph 已进入“尾段残影”区间且主色填充已同步降档 alpha，还会在进度头部补一枚更细的暖色“当前倒计时头标”，避免整段主色一起变淡后，余光里更难抓到剩余读招进度；若 Boss telegraph 刚从可反制主拍切进“尾段残影”且新的“当前倒计时头标”首次出现，头标还会追加约 120ms 的短促暖闪，避免余光里漏掉“反制窗刚收束，后面只剩读招倒计时”的节奏切换；若这段短促暖闪刚结束且剩余读招倒计时已低于约 220ms，头标外侧还会续上一层更弱的暖色余辉，避免最后半拍又失去剩余时长重心；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 120ms，还会把“当前倒计时头标”的内芯略微收窄提亮，避免最后一瞬被外侧余辉吃掉读秒重心；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 80ms，还会把“当前倒计时头标”外侧那层弱暖色余辉略微收短贴边，避免最后一瞬外辉继续压过内芯的终点定位；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 40ms，还会把“当前倒计时头标”外层余辉 alpha 继续压低并钳在条体终点内侧，避免清零前最后一帧仍把条尾看成还有额外余量；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 20ms，还会把“当前倒计时头标”的主芯高度略微收短贴边，避免清零前最后半拍仍像保留完整读秒柱；若 Boss 的“反制窗口”只落在 telegraph 进度条本体中段，条内还会补一段“窗口高亮区段”，避免还要自己心算真正可反制跨度；若 Boss 的“反制窗口”会拖到 telegraph 进度条终点之后，条尾还会额外补一枚“超出尾标”，避免把条体清空误读成反制窗也已经结束'] },
+            { title: '战斗', items: ['U / 鼠标左键  —  普通攻击', 'O / 鼠标右键  —  特殊攻击', '左下角行动行会显示冷却；若只差体力，则会显示“差2体/0.1s”这类自然回复 ETA；若冷却转好后仍差体力，则会预告“0.3s后差8体/0.5s”；若正处于翻滚锁定，则会继续预告“翻滚中 -> 就绪”这类翻滚后的下一状态；当任一动作刚切进“就绪”时，只有对应那一项会短促闪亮一下；若 Boss 战切到专用 HUD，则顶部血条会收紧，但左下角当前瞄准 / 武器 / 行动行与右下快捷栏仍保持稳定底边留白；若 Boss 的“反制窗口”起点实际晚于 telegraph 进度条开头，条内还会补一枚“起跳刻度”，避免把整段条体误读成从第一帧起就能反制；若 Boss 的“反制窗口”从第一帧开放、却会在 telegraph 进度条清空前提早收束，条内还会补一枚“收束刻度”，避免把剩余条体误读成还在可反制；“收束刻度”右侧剩余条体也会压成更暗的“尾段残影”，提醒那一截只剩读招倒计时，不再代表可反制窗口；一旦倒计时已经走进这段“尾段残影”，第二行“反制窗口”也会同步切成更低饱和的“已收束提示”，第三行 hint 则会把原本的“反制:”/“反制提示:”前缀改写成更明确的“收束后处理:”或“闪避提示:”，并同步降成更柔和的琥珀色，避免窗口已过后仍把旧提示读成“现在还能反制”；若第二、三行都已切进收束态，第一行“类型 | 攻击名”也会同步压成更低饱和的暖灰白；若第一、二、三行都已切进收束态，进度条左侧仍存活的主色填充也会同步降一档 alpha，避免剩余倒计时继续冒充“当前节奏仍在可反制主拍”；若 Boss telegraph 已进入“尾段残影”区间且主色填充已同步降档 alpha，还会在进度头部补一枚更细的暖色“当前倒计时头标”，避免整段主色一起变淡后，余光里更难抓到剩余读招进度；若 Boss telegraph 刚从可反制主拍切进“尾段残影”且新的“当前倒计时头标”首次出现，头标还会追加约 120ms 的短促暖闪，避免余光里漏掉“反制窗刚收束，后面只剩读招倒计时”的节奏切换；若这段短促暖闪刚结束且剩余读招倒计时已低于约 220ms，头标外侧还会续上一层更弱的暖色余辉，避免最后半拍又失去剩余时长重心；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 120ms，还会把“当前倒计时头标”的内芯略微收窄提亮，避免最后一瞬被外侧余辉吃掉读秒重心；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 80ms，还会把“当前倒计时头标”外侧那层弱暖色余辉略微收短贴边，避免最后一瞬外辉继续压过内芯的终点定位；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 40ms，还会把“当前倒计时头标”外层余辉 alpha 继续压低并钳在条体终点内侧，避免清零前最后一帧仍把条尾看成还有额外余量；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 20ms，还会把“当前倒计时头标”的主芯高度略微收短贴边，避免清零前最后半拍仍像保留完整读秒柱；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 10ms，还会把“当前倒计时头标”外壳的上下帽沿也略微压短，避免清零前最后一闪仍像保留整段完整高度；若 Boss 的“反制窗口”只落在 telegraph 进度条本体中段，条内还会补一段“窗口高亮区段”，避免还要自己心算真正可反制跨度；若 Boss 的“反制窗口”会拖到 telegraph 进度条终点之后，条尾还会额外补一枚“超出尾标”，避免把条体清空误读成反制窗也已经结束'] },
             { title: '防御', items: ['Space  —  闪避翻滚（无敌帧）'] },
             { title: '武器', items: ['Q / E  —  切换武器'] },
             { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位，并提示“快捷栏N：+<短名>”；若临时拿不到显式短名则会沿用道具名生成“快捷栏N：+生命”这类短句；提示现在会优先按 Phaser 文本实际宽度钳制，因此“快捷栏N：+HP恢复”这类混排会尽量保留更多有效信息；若当前环境拿不到真实测量结果则回退为宽度权重估算；若道具名词干过长则会截成“快捷栏N：+圣疗秘…”这类省略短句；快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”；若拿不到显式短名则改用“快捷栏1：狂战→净化”这类道具名短句；若这些道具名过长则同样会截成“快捷栏1：古代狂…→神圣净…”这类省略短句', '背包悬停说明也会按实际文本宽度贴边，因此靠近屏幕右缘时不会继续沿用固定 200px 估算', '净化药剂/狂战油可在铁匠制作'] },
