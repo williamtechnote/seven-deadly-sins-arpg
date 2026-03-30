@@ -2776,6 +2776,7 @@
         const currentCountdownHeadMarkerShellCoreContrastMuted = currentCountdownHeadMarkerFinalWidthTrimmed;
         const currentCountdownHeadMarkerShellCoreWarmthMuted = currentCountdownHeadMarkerFinalWidthTrimmed;
         const currentCountdownHeadMarkerShellCoreSaturationMuted = currentCountdownHeadMarkerFinalWidthTrimmed;
+        const currentCountdownHeadMarkerShellCoreEdgeSoftened = currentCountdownHeadMarkerFinalWidthTrimmed;
         const currentCountdownHeadMarkerLateGlowFinalWidthTrimmed = currentCountdownHeadMarkerLateGlowContained
             && currentCountdownHeadMarkerFinalWidthTrimmed;
         const currentCountdownHeadMarkerLateGlowOuterAlphaMuted = currentCountdownHeadMarkerLateGlowFinalWidthTrimmed;
@@ -2824,6 +2825,7 @@
                 currentCountdownHeadMarkerShellCoreContrastMuted: false,
                 currentCountdownHeadMarkerShellCoreWarmthMuted: false,
                 currentCountdownHeadMarkerShellCoreSaturationMuted: false,
+                currentCountdownHeadMarkerShellCoreEdgeSoftened: false,
                 currentCountdownHeadMarkerShellCapTrimmed: false,
                 currentCountdownHeadMarkerShellAlphaMuted: false,
                 currentCountdownHeadMarkerWarmFlashDurationMs: 0,
@@ -2880,6 +2882,7 @@
             currentCountdownHeadMarkerShellCoreContrastMuted,
             currentCountdownHeadMarkerShellCoreWarmthMuted,
             currentCountdownHeadMarkerShellCoreSaturationMuted,
+            currentCountdownHeadMarkerShellCoreEdgeSoftened,
             currentCountdownHeadMarkerShellCapTrimmed,
             currentCountdownHeadMarkerShellAlphaMuted,
             currentCountdownHeadMarkerWarmFlashDurationMs,
