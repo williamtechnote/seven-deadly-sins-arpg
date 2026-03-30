@@ -2754,7 +2754,12 @@
             windowMaxWidth: stacked ? telegraphWidth : inlineWindowMaxWidth,
             mainYOffset: -4,
             windowYOffset: stacked ? 8 : -4,
-            hintYOffset: stacked ? 28 : 16
+            hintYOffset: stacked ? 28 : 16,
+            windowX: stacked ? 10 : telegraphWidth,
+            windowOriginX: stacked ? 0 : 1,
+            windowAccentVisible: stacked && !!windowText,
+            windowAccentYOffset: stacked ? 5 : 0,
+            windowAccentHeight: stacked ? 14 : 0
         };
     }
 

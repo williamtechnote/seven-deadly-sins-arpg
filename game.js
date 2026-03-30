@@ -4452,6 +4452,8 @@ class BossScene extends Phaser.Scene {
         this.bossTelegraphBarBg.setScrollFactor(0);
         this.bossTelegraphBarFill = this.add.graphics();
         this.bossTelegraphBarFill.setScrollFactor(0);
+        this.bossTelegraphWindowGuard = this.add.graphics();
+        this.bossTelegraphWindowGuard.setScrollFactor(0);
         this.bossTelegraphText = this.add.text(barX, telegraphY - 4, '', {
             fontSize: '11px',
             fill: '#fff6da',
@@ -4767,6 +4769,7 @@ class BossScene extends Phaser.Scene {
 
         this.bossTelegraphBarBg.clear();
         this.bossTelegraphBarFill.clear();
+        this.bossTelegraphWindowGuard.clear();
         if (telegraphHud.visible) {
             const telegraphRect = this._bossTelegraphRect;
             const typeKey = this.boss.activeTelegraph ? this.boss.activeTelegraph.typeKey : 'DASH';
@@ -4791,7 +4794,19 @@ class BossScene extends Phaser.Scene {
                 telegraphRect.h,
                 4
             );
+            if (telegraphLayout.windowAccentVisible) {
+                this.bossTelegraphWindowGuard.fillStyle(0x3E2B18, 0.88);
+                this.bossTelegraphWindowGuard.fillRoundedRect(
+                    telegraphRect.x,
+                    telegraphRect.y + telegraphLayout.windowAccentYOffset,
+                    telegraphRect.w,
+                    telegraphLayout.windowAccentHeight,
+                    4
+                );
+            }
             this.bossTelegraphText.setY(telegraphRect.y + telegraphLayout.mainYOffset);
+            this.bossTelegraphWindowText.setX(telegraphRect.x + telegraphLayout.windowX);
+            this.bossTelegraphWindowText.setOrigin(telegraphLayout.windowOriginX, 0);
             this.bossTelegraphWindowText.setY(telegraphRect.y + telegraphLayout.windowYOffset);
             this.bossTelegraphText.setText(this._fitBossHudTextToWidth(telegraphMainText, telegraphLayout.mainMaxWidth, 'bossTelegraphMain'));
             this.bossTelegraphWindowText.setText(this._fitBossHudTextToWidth(telegraphHud.counterWindowLabel, telegraphLayout.windowMaxWidth, 'bossTelegraphWindow'));
@@ -4800,6 +4815,8 @@ class BossScene extends Phaser.Scene {
         } else {
             const telegraphRect = this._bossTelegraphRect;
             this.bossTelegraphText.setY(telegraphRect.y - 4);
+            this.bossTelegraphWindowText.setX(telegraphRect.x + telegraphRect.w);
+            this.bossTelegraphWindowText.setOrigin(1, 0);
             this.bossTelegraphWindowText.setY(telegraphRect.y - 4);
             this.bossTelegraphHintText.setY(telegraphRect.y + 16);
             this.bossTelegraphText.setText('');

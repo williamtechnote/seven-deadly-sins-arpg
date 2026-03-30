@@ -1521,7 +1521,12 @@ function testBossHudReadability() {
             windowMaxWidth: 112,
             mainYOffset: -4,
             windowYOffset: -4,
-            hintYOffset: 16
+            hintYOffset: 16,
+            windowX: 220,
+            windowOriginX: 1,
+            windowAccentVisible: false,
+            windowAccentYOffset: 0,
+            windowAccentHeight: 0
         },
         'short telegraph copy should stay on a single measured title row'
     );
@@ -1542,9 +1547,14 @@ function testBossHudReadability() {
             windowMaxWidth: 220,
             mainYOffset: -4,
             windowYOffset: 8,
-            hintYOffset: 28
+            hintYOffset: 28,
+            windowX: 10,
+            windowOriginX: 0,
+            windowAccentVisible: true,
+            windowAccentYOffset: 5,
+            windowAccentHeight: 14
         },
-        'long telegraph title, counter window and hint copy should promote the warning header into a measured two-line layout'
+        'long telegraph title, counter window and hint copy should promote the warning header into a measured two-line layout with a dedicated counter-window guard row'
     );
 
     const controlSummary = buildBossStatusHighlightSummary({
@@ -7811,8 +7821,8 @@ function testBossHudMeasurementHooks() {
     );
     assert.match(
         source,
-        /this\.bossTelegraphWindowText\.setY\(telegraphRect\.y \+ telegraphLayout\.windowYOffset\);[\s\S]*?this\.bossTelegraphWindowText\.setText\(this\._fitBossHudTextToWidth\(telegraphHud\.counterWindowLabel,\s*telegraphLayout\.windowMaxWidth,\s*'bossTelegraphWindow'\)\);[\s\S]*?this\.bossTelegraphHintText\.setY\(telegraphRect\.y \+ telegraphLayout\.hintYOffset\);[\s\S]*?this\.bossTelegraphHintText\.setText\(this\._fitBossHudTextToWidth\(telegraphHud\.hintLabel \|\| '',\s*telegraphRect\.w,\s*'bossTelegraphHint'\)\);/,
-        'Boss telegraph window and hint rows should follow the shared stacked-layout offsets when copy grows long'
+        /this\.bossTelegraphWindowGuard\.clear\(\);[\s\S]*?if \(telegraphLayout\.windowAccentVisible\) \{[\s\S]*?this\.bossTelegraphWindowGuard\.fillRoundedRect\(\s*telegraphRect\.x,\s*telegraphRect\.y \+ telegraphLayout\.windowAccentYOffset,\s*telegraphRect\.w,\s*telegraphLayout\.windowAccentHeight,\s*4\s*\);[\s\S]*?\}[\s\S]*?this\.bossTelegraphWindowText\.setX\(telegraphRect\.x \+ telegraphLayout\.windowX\);[\s\S]*?this\.bossTelegraphWindowText\.setOrigin\(telegraphLayout\.windowOriginX,\s*0\);[\s\S]*?this\.bossTelegraphWindowText\.setY\(telegraphRect\.y \+ telegraphLayout\.windowYOffset\);[\s\S]*?this\.bossTelegraphWindowText\.setText\(this\._fitBossHudTextToWidth\(telegraphHud\.counterWindowLabel,\s*telegraphLayout\.windowMaxWidth,\s*'bossTelegraphWindow'\)\);[\s\S]*?this\.bossTelegraphHintText\.setY\(telegraphRect\.y \+ telegraphLayout\.hintYOffset\);[\s\S]*?this\.bossTelegraphHintText\.setText\(this\._fitBossHudTextToWidth\(telegraphHud\.hintLabel \|\| '',\s*telegraphRect\.w,\s*'bossTelegraphHint'\)\);/,
+        'Boss telegraph window row should use the shared stacked-layout guard band, anchor, and offsets when warning copy grows long'
     );
 }
 
@@ -8064,8 +8074,8 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /顶部 telegraph 也会自动切成双行测量布局/,
-        'README should document the stacked telegraph fallback for long boss warning copy'
+        /顶部 telegraph 也会自动切成双行测量布局[\s\S]*?第二行 `反制窗口` 还会改成左对齐高亮带/,
+        'README should document the stacked telegraph fallback and highlighted counter-window row for long boss warning copy'
     );
     assert.match(
         source,
