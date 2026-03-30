@@ -91,6 +91,12 @@ function buildCadenceSummaryEvidenceLinks(cadenceArtifacts) {
   ].filter(Boolean).join(' ');
 }
 
+function buildCadenceChecklistEvidenceLinks(cadenceArtifacts) {
+  const summaryLinks = buildCadenceSummaryEvidenceLinks(cadenceArtifacts);
+  const checkpointLink = formatMarkdownLink('checkpoints', cadenceArtifacts?.files?.checkpointText);
+  return [summaryLinks, checkpointLink].filter(Boolean).join(' ');
+}
+
 function collectCadenceDriftEntries(cadenceArtifacts) {
   if (!cadenceArtifacts || !Array.isArray(cadenceArtifacts.checkpointLines) || cadenceArtifacts.checkpointLines.length === 0) {
     return {
@@ -184,8 +190,8 @@ function buildCadenceCheckpointSummaryLine(cadenceArtifacts) {
 }
 
 function buildCadenceDriftMiniChecklistLines(cadenceArtifacts) {
-  const checkpointLink = formatMarkdownLink('checkpoints', cadenceArtifacts?.files?.checkpointText);
-  if (!checkpointLink) {
+  const evidenceLinks = buildCadenceChecklistEvidenceLinks(cadenceArtifacts);
+  if (!evidenceLinks) {
     return [];
   }
 
@@ -204,7 +210,8 @@ function buildCadenceDriftMiniChecklistLines(cadenceArtifacts) {
       if (driftNote) {
         parts.push(driftNote);
       }
-      return `  - ${parts.join(' | ')} -> ${checkpointLink}`;
+      parts.push(`证据: ${evidenceLinks}`);
+      return `  - ${parts.join(' | ')}`;
     })
   ];
 }
