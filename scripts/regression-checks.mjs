@@ -1535,10 +1535,10 @@ function testBossHudReadability() {
     assert.equal(earlyClosureTelegraphSummary.counterWindowSpanVisible, false, 'telegraph summary should avoid drawing a contained span when the counter window starts at the first frame');
 
     const activeTailAfterglowTelegraphSummary = buildBossTelegraphHudSummary({
-        attackLabel: '熔火围城',
-        attackTypeLabel: '范围',
+        attackLabel: '混乱逆转',
+        attackTypeLabel: '特殊',
         counterWindowMs: 800,
-        counterHint: '反制: 贴身压住起手',
+        counterHint: '反制: 停止冲刺，短步修正方向',
         telegraphDurationMs: 1300,
         remainingMs: 400
     });
@@ -1546,6 +1546,17 @@ function testBossHudReadability() {
     assert.equal(activeTailAfterglowTelegraphSummary.counterWindowTailAfterglowActive, true, 'telegraph summary should flag when the live telegraph has already entered the dimmed tail segment');
     assert.equal(activeTailAfterglowTelegraphSummary.counterWindowLabel, '已收束提示', 'telegraph summary should swap the counter-window label once the live telegraph has already entered the dimmed tail segment');
     assert.equal(activeTailAfterglowTelegraphSummary.counterWindowLabelMuted, true, 'telegraph summary should mark the counter-window label as muted once the telegraph is already in the tail-afterglow phase');
+    assert.equal(activeTailAfterglowTelegraphSummary.hintLabel, '闪避提示: 停止冲刺，短步修正方向', 'telegraph summary should relabel stale counter hints as dodge guidance once the live telegraph has already entered the dimmed tail segment');
+
+    const activeTailAfterglowFollowupTelegraphSummary = buildBossTelegraphHudSummary({
+        attackLabel: '幻影风暴',
+        attackTypeLabel: '特殊',
+        counterWindowMs: 800,
+        counterHint: '反制提示: 先躲弹幕，再找本体',
+        telegraphDurationMs: 1300,
+        remainingMs: 400
+    });
+    assert.equal(activeTailAfterglowFollowupTelegraphSummary.hintLabel, '收束后处理: 先躲弹幕，再找本体', 'telegraph summary should relabel stale counter hints as post-window follow-up guidance when the remaining copy describes the recovery step');
 
     const containedTelegraphSummary = buildBossTelegraphHudSummary({
         attackLabel: '圣剑环阵',
@@ -8195,6 +8206,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /第三行 hint 则会把原本的 `反制:` \/ `反制提示:` 前缀改写成更明确的 `收束后处理:` 或 `闪避提示:`/,
+        'README should document that the telegraph hint switches from counter phrasing to post-window guidance once the live telegraph is already in the tail-afterglow phase'
+    );
+    assert.match(
+        source,
         /若 `反制窗口` 只落在进度条本体中段，条内还会补一段 `窗口高亮区段`/,
         'README should document the contained counter-window span highlight for mid-bar counter windows'
     );
@@ -9329,8 +9345,13 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /一旦倒计时已经走进这段“尾段残影”，第二行“反制窗口”也会同步切成更低饱和的“已收束提示”，避免只看文字还误以为当前仍能反制/,
+        /一旦倒计时已经走进这段“尾段残影”，第二行“反制窗口”也会同步切成更低饱和的“已收束提示”[\s\S]*?避免窗口已过后仍把旧提示读成“现在还能反制”/,
         'help overlay should document that the counter-window row flips to a subdued settled label once the live telegraph is already inside the tail-afterglow segment'
+    );
+    assert.match(
+        source,
+        /第三行 hint 则会把原本的“反制:”\/“反制提示:”前缀改写成更明确的“收束后处理:”或“闪避提示:”/,
+        'help overlay should document that the telegraph hint switches from counter phrasing to post-window guidance once the live telegraph is already inside the tail-afterglow segment'
     );
     assert.match(
         source,

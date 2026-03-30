@@ -2693,6 +2693,29 @@
         };
     }
 
+    function formatBossTelegraphHintLabel(counterHint, options) {
+        const safe = options && typeof options === 'object' ? options : {};
+        const hintLabel = typeof counterHint === 'string' ? counterHint.trim() : '';
+        if (!hintLabel) return '';
+
+        if (!safe.counterWindowTailAfterglowActive) {
+            return hintLabel;
+        }
+
+        const prefixMatch = /^(反制提示|反制)\s*:\s*/u.exec(hintLabel);
+        if (!prefixMatch) {
+            return hintLabel;
+        }
+
+        const hintBody = hintLabel.slice(prefixMatch[0].length).trim();
+        if (!hintBody) {
+            return '';
+        }
+
+        const prefersRecoveryLabel = /(收束后|结束后|之后|再|间隙|找本体|贴近|反打|输出)/u.test(hintBody);
+        return `${prefersRecoveryLabel ? '收束后处理' : '闪避提示'}: ${hintBody}`;
+    }
+
     function buildBossTelegraphHudSummary(options) {
         const safe = options && typeof options === 'object' ? options : {};
         const attackLabel = typeof safe.attackLabel === 'string' ? safe.attackLabel.trim() : '';
@@ -2721,6 +2744,9 @@
         const counterWindowTailAfterglowActive = counterWindowTailAfterglowVisible
             && remainingMs <= counterWindowTailAfterglowMs;
         const counterWindowLabelMuted = counterWindowTailAfterglowActive;
+        const hintLabel = formatBossTelegraphHintLabel(counterHint, {
+            counterWindowTailAfterglowActive
+        });
 
         if (!attackLabel) {
             return {
@@ -2756,7 +2782,7 @@
                     ? '已收束提示'
                     : `反制窗口 ${Math.max(1, Math.round(counterWindowMs / 100) / 10)}s`)
                 : '',
-            hintLabel: counterHint,
+            hintLabel,
             progressRatio: clampRatio(remainingMs / telegraphDurationMs, 0),
             counterWindowStartMarkerVisible,
             counterWindowStartMarkerRatio: counterWindowStartMarkerVisible
