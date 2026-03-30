@@ -1536,6 +1536,7 @@ function testBossHudReadability() {
     assert.equal(earlyClosureTelegraphSummary.progressFillAlpha, 0.9, 'telegraph summary should keep the main telegraph fill alpha at its normal strength before every warning row has settled');
     assert.equal(earlyClosureTelegraphSummary.currentCountdownHeadMarkerVisible, false, 'telegraph summary should keep the live countdown head marker hidden before the dimmed tail segment actually becomes active');
     assert.equal(earlyClosureTelegraphSummary.currentCountdownHeadMarkerRatio, 0, 'telegraph summary should not expose a live countdown head ratio before the dimmed tail segment becomes active');
+    assert.equal(earlyClosureTelegraphSummary.currentCountdownHeadMarkerWarmFlashDurationMs, 0, 'telegraph summary should keep the head-marker warm-flash duration at zero before the dimmed tail segment becomes active');
     assert.equal(earlyClosureTelegraphSummary.counterWindowSpanVisible, false, 'telegraph summary should avoid drawing a contained span when the counter window starts at the first frame');
 
     const activeTailAfterglowTelegraphSummary = buildBossTelegraphHudSummary({
@@ -1556,6 +1557,7 @@ function testBossHudReadability() {
     assert.equal(activeTailAfterglowTelegraphSummary.progressFillAlpha, 0.62, 'telegraph summary should lower the surviving main telegraph fill alpha once the live warning has fully settled into the tail-afterglow state');
     assert.equal(activeTailAfterglowTelegraphSummary.currentCountdownHeadMarkerVisible, true, 'telegraph summary should expose a dedicated live countdown head marker once the dimmed tail segment is active and the surviving fill has settled');
     assert.equal(activeTailAfterglowTelegraphSummary.currentCountdownHeadMarkerRatio, activeTailAfterglowTelegraphSummary.progressRatio, 'telegraph summary should anchor the live countdown head marker to the current telegraph progress edge');
+    assert.equal(activeTailAfterglowTelegraphSummary.currentCountdownHeadMarkerWarmFlashDurationMs, 120, 'telegraph summary should advertise a short warm-flash budget when the live countdown head marker first becomes relevant');
 
     const activeTailAfterglowFollowupTelegraphSummary = buildBossTelegraphHudSummary({
         attackLabel: '幻影风暴',
@@ -7903,8 +7905,23 @@ function testBossHudMeasurementHooks() {
     );
     assert.match(
         source,
+        /this\.bossTelegraphCountdownHeadFlash = this\.add\.graphics\(\);[\s\S]*?this\.bossTelegraphCountdownHeadFlash\.setScrollFactor\(0\);/,
+        'Boss telegraph should create a dedicated graphics layer for the countdown head warm flash'
+    );
+    assert.match(
+        source,
+        /this\._bossTelegraphCountdownHeadFlashUntil = 0;[\s\S]*?this\._bossTelegraphCountdownHeadMarkerWasVisible = false;/,
+        'Boss telegraph should initialize countdown-head flash timing and visibility state'
+    );
+    assert.match(
+        source,
         /this\.bossTelegraphCountdownHeadMarker\.clear\(\);[\s\S]*?if \(telegraphHud\.currentCountdownHeadMarkerVisible\) \{[\s\S]*?const countdownHeadMarkerX = telegraphRect\.x \+ telegraphRect\.w \* telegraphHud\.currentCountdownHeadMarkerRatio;[\s\S]*?this\.bossTelegraphCountdownHeadMarker\.fillRoundedRect\(\s*countdownHeadMarkerX - 1,\s*telegraphRect\.y \+ 1,\s*2,\s*telegraphRect\.h - 2,\s*1\s*\);/,
         'Boss telegraph should draw a thin dedicated live countdown head marker once the dimmed tail segment becomes active'
+    );
+    assert.match(
+        source,
+        /this\.bossTelegraphCountdownHeadFlash\.clear\(\);[\s\S]*?if \(telegraphHud\.currentCountdownHeadMarkerVisible && !this\._bossTelegraphCountdownHeadMarkerWasVisible\) \{[\s\S]*?this\._bossTelegraphCountdownHeadFlashUntil = this\.time\.now \+ telegraphHud\.currentCountdownHeadMarkerWarmFlashDurationMs;[\s\S]*?\}[\s\S]*?const countdownHeadFlashRemainingMs = Math\.max\(0,\s*this\._bossTelegraphCountdownHeadFlashUntil - this\.time\.now\);[\s\S]*?if \(countdownHeadFlashRemainingMs > 0 && telegraphHud\.currentCountdownHeadMarkerVisible\) \{[\s\S]*?this\.bossTelegraphCountdownHeadFlash\.fillRoundedRect\(\s*countdownHeadMarkerX - 4,\s*telegraphRect\.y - 2,\s*8,\s*telegraphRect\.h \+ 4,\s*3\s*\);/,
+        'Boss telegraph should trigger a short warm flash only when the live countdown head marker first appears at the tail-afterglow transition'
     );
     assert.match(
         source,
@@ -8263,6 +8280,11 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /若 Boss telegraph 已进入 `尾段残影` 区间且主色填充已同步降档 alpha，再给进度头部补一枚更细的暖色 `当前倒计时头标`/,
         'README should document the dedicated live countdown head marker for the dimmed tail-afterglow phase'
+    );
+    assert.match(
+        source,
+        /若 Boss telegraph 刚从可反制主拍切进 `尾段残影` 且新的 `当前倒计时头标` 首次出现，头标还会追加约 120ms 的短促暖闪/,
+        'README should document the short warm flash that fires when the live countdown head marker first appears at the tail-afterglow transition'
     );
     assert.match(
         source,
@@ -9427,6 +9449,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若 Boss telegraph 已进入“尾段残影”区间且主色填充已同步降档 alpha，还会在进度头部补一枚更细的暖色“当前倒计时头标”/,
         'help overlay should document the dedicated live countdown head marker for the dimmed tail-afterglow phase'
+    );
+    assert.match(
+        source,
+        /若 Boss telegraph 刚从可反制主拍切进“尾段残影”且新的“当前倒计时头标”首次出现，头标还会追加约 120ms 的短促暖闪/,
+        'help overlay should document the short warm flash that fires when the live countdown head marker first appears at the tail-afterglow transition'
     );
     assert.match(
         source,

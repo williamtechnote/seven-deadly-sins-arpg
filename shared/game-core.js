@@ -2758,6 +2758,7 @@
         const currentCountdownHeadMarkerVisible = counterWindowTailAfterglowActive
             && progressFillAlpha < 0.9
             && progressRatio > 0;
+        const currentCountdownHeadMarkerWarmFlashDurationMs = currentCountdownHeadMarkerVisible ? 120 : 0;
 
         if (!attackLabel) {
             return {
@@ -2770,6 +2771,7 @@
                 progressFillAlpha: 0.9,
                 currentCountdownHeadMarkerVisible: false,
                 currentCountdownHeadMarkerRatio: 0,
+                currentCountdownHeadMarkerWarmFlashDurationMs: 0,
                 counterWindowStartMarkerVisible: false,
                 counterWindowStartMarkerRatio: 0,
                 counterWindowTailMarkerVisible: false,
@@ -2803,6 +2805,7 @@
             progressFillAlpha,
             currentCountdownHeadMarkerVisible,
             currentCountdownHeadMarkerRatio: currentCountdownHeadMarkerVisible ? progressRatio : 0,
+            currentCountdownHeadMarkerWarmFlashDurationMs,
             counterWindowStartMarkerVisible,
             counterWindowStartMarkerRatio: counterWindowStartMarkerVisible
                 ? clampRatio(counterWindowStartOffsetMs / telegraphDurationMs, 0)
