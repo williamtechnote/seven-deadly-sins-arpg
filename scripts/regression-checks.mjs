@@ -1530,7 +1530,22 @@ function testBossHudReadability() {
     assert.equal(earlyClosureTelegraphSummary.counterWindowTailAfterglowVisible, true, 'telegraph summary should dim the tail segment after a frame-one counter window closes early');
     assert.equal(earlyClosureTelegraphSummary.counterWindowTailAfterglowStartRatio, 800 / 1300, 'telegraph summary should expose where the early-closure tail afterglow begins');
     assert.equal(earlyClosureTelegraphSummary.counterWindowTailAfterglowWidthRatio, 500 / 1300, 'telegraph summary should expose how much of the telegraph body remains after the early closure');
+    assert.equal(earlyClosureTelegraphSummary.counterWindowTailAfterglowActive, false, 'telegraph summary should not flip the label before the timeline actually reaches the dimmed tail segment');
+    assert.equal(earlyClosureTelegraphSummary.counterWindowLabelMuted, false, 'telegraph summary should keep the counter-window row highlighted until the tail segment becomes active');
     assert.equal(earlyClosureTelegraphSummary.counterWindowSpanVisible, false, 'telegraph summary should avoid drawing a contained span when the counter window starts at the first frame');
+
+    const activeTailAfterglowTelegraphSummary = buildBossTelegraphHudSummary({
+        attackLabel: '熔火围城',
+        attackTypeLabel: '范围',
+        counterWindowMs: 800,
+        counterHint: '反制: 贴身压住起手',
+        telegraphDurationMs: 1300,
+        remainingMs: 400
+    });
+    assert.equal(activeTailAfterglowTelegraphSummary.counterWindowTailAfterglowVisible, true, 'telegraph summary should keep the tail-afterglow metadata once the early-closing window exists');
+    assert.equal(activeTailAfterglowTelegraphSummary.counterWindowTailAfterglowActive, true, 'telegraph summary should flag when the live telegraph has already entered the dimmed tail segment');
+    assert.equal(activeTailAfterglowTelegraphSummary.counterWindowLabel, '已收束提示', 'telegraph summary should swap the counter-window label once the live telegraph has already entered the dimmed tail segment');
+    assert.equal(activeTailAfterglowTelegraphSummary.counterWindowLabelMuted, true, 'telegraph summary should mark the counter-window label as muted once the telegraph is already in the tail-afterglow phase');
 
     const containedTelegraphSummary = buildBossTelegraphHudSummary({
         attackLabel: '圣剑环阵',
@@ -7892,6 +7907,11 @@ function testBossHudMeasurementHooks() {
     );
     assert.match(
         source,
+        /const telegraphWindowTextFill = telegraphHud\.counterWindowLabelMuted \? '#c6b7a1' : '#ffe1a1';[\s\S]*?this\.bossTelegraphWindowText\.setStyle\(\{\s*fill:\s*telegraphWindowTextFill\s*\}\);[\s\S]*?this\.bossTelegraphWindowText\.setText\(this\._fitBossHudTextToWidth\(telegraphHud\.counterWindowLabel,\s*telegraphLayout\.windowMaxWidth,\s*'bossTelegraphWindow'\)\);/,
+        'Boss telegraph should mute the counter-window row color once the live telegraph has already entered the tail-afterglow segment'
+    );
+    assert.match(
+        source,
         /this\.bossTelegraphTailMarker\.clear\(\);[\s\S]*?if \(telegraphHud\.counterWindowTailMarkerVisible\) \{[\s\S]*?const tailMarkerX = telegraphRect\.x \+ telegraphRect\.w - 1;[\s\S]*?this\.bossTelegraphTailMarker\.fillRoundedRect\(\s*tailMarkerX,\s*telegraphRect\.y - 1,\s*6,\s*telegraphRect\.h \+ 2,\s*2\s*\);/,
         'Boss telegraph should draw a dedicated end-of-bar tail marker when the counter window outlasts the telegraph body'
     );
@@ -8167,6 +8187,11 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /`收束刻度` 右侧剩余条体也会压成更暗的 `尾段残影`/,
         'README should document the dimmed tail afterglow for frame-one counter windows that close early'
+    );
+    assert.match(
+        source,
+        /一旦倒计时已经走进这段 `尾段残影`，第二行 `反制窗口` 也会同步切成更低饱和的 `已收束提示`/,
+        'README should document that the counter-window row flips to a subdued settled label once the live telegraph is already in the tail-afterglow phase'
     );
     assert.match(
         source,
@@ -9301,6 +9326,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /“收束刻度”右侧剩余条体也会压成更暗的“尾段残影”，提醒那一截只剩读招倒计时，不再代表可反制窗口/,
         'help overlay should document the dimmed tail afterglow after an early-closing frame-one counter window'
+    );
+    assert.match(
+        source,
+        /一旦倒计时已经走进这段“尾段残影”，第二行“反制窗口”也会同步切成更低饱和的“已收束提示”，避免只看文字还误以为当前仍能反制/,
+        'help overlay should document that the counter-window row flips to a subdued settled label once the live telegraph is already inside the tail-afterglow segment'
     );
     assert.match(
         source,

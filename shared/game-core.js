@@ -2718,6 +2718,9 @@
         const counterWindowTailAfterglowMs = counterWindowTailAfterglowVisible
             ? Math.max(0, telegraphDurationMs - counterWindowEndMs)
             : 0;
+        const counterWindowTailAfterglowActive = counterWindowTailAfterglowVisible
+            && remainingMs <= counterWindowTailAfterglowMs;
+        const counterWindowLabelMuted = counterWindowTailAfterglowActive;
 
         if (!attackLabel) {
             return {
@@ -2734,8 +2737,10 @@
                 counterWindowClosureMarkerVisible: false,
                 counterWindowClosureMarkerRatio: 0,
                 counterWindowTailAfterglowVisible: false,
+                counterWindowTailAfterglowActive: false,
                 counterWindowTailAfterglowStartRatio: 0,
                 counterWindowTailAfterglowWidthRatio: 0,
+                counterWindowLabelMuted: false,
                 counterWindowSpanVisible: false,
                 counterWindowSpanStartRatio: 0,
                 counterWindowSpanWidthRatio: 0
@@ -2747,7 +2752,9 @@
             attackLabel,
             typeLabel: attackTypeLabel ? `类型 ${attackTypeLabel}` : '',
             counterWindowLabel: counterWindowMs > 0
-                ? `反制窗口 ${Math.max(1, Math.round(counterWindowMs / 100) / 10)}s`
+                ? (counterWindowTailAfterglowActive
+                    ? '已收束提示'
+                    : `反制窗口 ${Math.max(1, Math.round(counterWindowMs / 100) / 10)}s`)
                 : '',
             hintLabel: counterHint,
             progressRatio: clampRatio(remainingMs / telegraphDurationMs, 0),
@@ -2762,12 +2769,14 @@
                 ? clampRatio(counterWindowEndMs / telegraphDurationMs, 0)
                 : 0,
             counterWindowTailAfterglowVisible,
+            counterWindowTailAfterglowActive,
             counterWindowTailAfterglowStartRatio: counterWindowTailAfterglowVisible
                 ? clampRatio(counterWindowEndMs / telegraphDurationMs, 0)
                 : 0,
             counterWindowTailAfterglowWidthRatio: counterWindowTailAfterglowVisible
                 ? clampRatio(counterWindowTailAfterglowMs / telegraphDurationMs, 0)
                 : 0,
+            counterWindowLabelMuted,
             counterWindowSpanVisible,
             counterWindowSpanStartRatio: counterWindowSpanVisible
                 ? clampRatio(counterWindowStartOffsetMs / telegraphDurationMs, 0)
