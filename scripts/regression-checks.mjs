@@ -1533,6 +1533,7 @@ function testBossHudReadability() {
     assert.equal(earlyClosureTelegraphSummary.counterWindowTailAfterglowActive, false, 'telegraph summary should not flip the label before the timeline actually reaches the dimmed tail segment');
     assert.equal(earlyClosureTelegraphSummary.attackLabelMuted, false, 'telegraph summary should keep the attack title bright until the telegraph actually reaches the dimmed tail segment');
     assert.equal(earlyClosureTelegraphSummary.counterWindowLabelMuted, false, 'telegraph summary should keep the counter-window row highlighted until the tail segment becomes active');
+    assert.equal(earlyClosureTelegraphSummary.progressFillAlpha, 0.9, 'telegraph summary should keep the main telegraph fill alpha at its normal strength before every warning row has settled');
     assert.equal(earlyClosureTelegraphSummary.counterWindowSpanVisible, false, 'telegraph summary should avoid drawing a contained span when the counter window starts at the first frame');
 
     const activeTailAfterglowTelegraphSummary = buildBossTelegraphHudSummary({
@@ -1550,6 +1551,7 @@ function testBossHudReadability() {
     assert.equal(activeTailAfterglowTelegraphSummary.counterWindowLabelMuted, true, 'telegraph summary should mark the counter-window label as muted once the telegraph is already in the tail-afterglow phase');
     assert.equal(activeTailAfterglowTelegraphSummary.hintLabel, '闪避提示: 停止冲刺，短步修正方向', 'telegraph summary should relabel stale counter hints as dodge guidance once the live telegraph has already entered the dimmed tail segment');
     assert.equal(activeTailAfterglowTelegraphSummary.hintLabelMuted, true, 'telegraph summary should mark rewritten tail-phase hint copy as muted once the live telegraph has already entered the dimmed tail segment');
+    assert.equal(activeTailAfterglowTelegraphSummary.progressFillAlpha, 0.62, 'telegraph summary should lower the surviving main telegraph fill alpha once the live warning has fully settled into the tail-afterglow state');
 
     const activeTailAfterglowFollowupTelegraphSummary = buildBossTelegraphHudSummary({
         attackLabel: '幻影风暴',
@@ -7922,6 +7924,11 @@ function testBossHudMeasurementHooks() {
     );
     assert.match(
         source,
+        /this\.bossTelegraphBarFill\.fillStyle\(telegraphColor,\s*telegraphHud\.progressFillAlpha\);[\s\S]*?this\.bossTelegraphBarFill\.fillRoundedRect\(/,
+        'Boss telegraph should lower the surviving main-fill alpha through the shared telegraph summary once every warning row has settled into tail-afterglow copy'
+    );
+    assert.match(
+        source,
         /const telegraphMainTextFill = telegraphHud\.attackLabelMuted \? '#d6c9bb' : '#f7e6cf';[\s\S]*?this\.bossTelegraphText\.setStyle\(\{\s*fill:\s*telegraphMainTextFill\s*\}\);[\s\S]*?this\.bossTelegraphText\.setText\(this\._fitBossHudTextToWidth\(telegraphMainText,\s*telegraphLayout\.mainMaxWidth,\s*'bossTelegraphMain'\)\);/,
         'Boss telegraph should mute the main attack-title row to a warm gray-white once the live telegraph has already entered the tail-afterglow segment'
     );
@@ -8232,6 +8239,11 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /若第二、三行都已切进收束态，第一行 `类型 \| 攻击名` 也会同步压成更低饱和的暖灰白/,
         'README should document that the telegraph title row also dims once the live telegraph has already entered the settled tail phase'
+    );
+    assert.match(
+        source,
+        /若第一、二、三行都已切进收束态，进度条左侧仍存活的主色填充也会同步降一档 alpha/,
+        'README should document that the surviving telegraph fill also dims once every warning row has settled into the tail-afterglow state'
     );
     assert.match(
         source,
@@ -9386,6 +9398,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若第二、三行都已切进收束态，第一行“类型 \| 攻击名”也会同步压成更低饱和的暖灰白/,
         'help overlay should document that the telegraph title row also dims once the live telegraph has already entered the settled tail phase'
+    );
+    assert.match(
+        source,
+        /若第一、二、三行都已切进收束态，进度条左侧仍存活的主色填充也会同步降一档 alpha/,
+        'help overlay should document that the surviving telegraph fill also dims once every warning row has settled into the tail-afterglow state'
     );
     assert.match(
         source,

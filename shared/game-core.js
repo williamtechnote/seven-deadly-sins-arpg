@@ -2751,6 +2751,9 @@
         const hintLabelMuted = counterWindowTailAfterglowActive
             && hintLabel !== counterHint
             && !!hintLabel;
+        const progressFillAlpha = attackLabelMuted && counterWindowLabelMuted && hintLabelMuted
+            ? 0.62
+            : 0.9;
 
         if (!attackLabel) {
             return {
@@ -2760,6 +2763,7 @@
                 counterWindowLabel: '',
                 hintLabel: '',
                 progressRatio: 0,
+                progressFillAlpha: 0.9,
                 counterWindowStartMarkerVisible: false,
                 counterWindowStartMarkerRatio: 0,
                 counterWindowTailMarkerVisible: false,
@@ -2790,6 +2794,7 @@
                 : '',
             hintLabel,
             progressRatio: clampRatio(remainingMs / telegraphDurationMs, 0),
+            progressFillAlpha,
             counterWindowStartMarkerVisible,
             counterWindowStartMarkerRatio: counterWindowStartMarkerVisible
                 ? clampRatio(counterWindowStartOffsetMs / telegraphDurationMs, 0)
