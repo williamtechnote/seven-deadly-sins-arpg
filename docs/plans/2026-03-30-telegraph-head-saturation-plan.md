@@ -1,0 +1,56 @@
+# Telegraph Head Saturation Implementation Plan
+
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+
+**Goal:** Converge the Boss telegraph countdown head shell/core saturation during the final sub-millisecond endpoint beat.
+
+**Architecture:** Add one shared telegraph-summary flag for the existing final width-trim state, then let the Phaser renderer switch both shell and core to more desaturated endpoint colors when that flag is active. Timing and layout thresholds stay unchanged.
+
+**Tech Stack:** JavaScript, Phaser 3, Node-based regression checks
+
+---
+
+### Task 1: Lock the behavior in tests
+
+**Files:**
+- Modify: `scripts/regression-checks.mjs`
+
+**Step 1: Write the failing test**
+
+Add assertions that the final sub-millisecond telegraph summary exposes `currentCountdownHeadMarkerShellCoreSaturationMuted`, and that the Boss telegraph renderer consumes that flag when selecting shell/core colors.
+
+**Step 2: Run test to verify it fails**
+
+Run: `node scripts/regression-checks.mjs`
+Expected: FAIL because the new flag and rendering hook do not exist yet.
+
+### Task 2: Implement the shared flag and rendering hook
+
+**Files:**
+- Modify: `shared/game-core.js`
+- Modify: `game.js`
+
+**Step 1: Write minimal implementation**
+
+Add the new shared-summary field next to the existing final-width-trim convergence flags, then update the countdown-head shell/core color selection so both colors switch to more desaturated endpoint tones when the new flag is active.
+
+**Step 2: Run test to verify it passes**
+
+Run: `node scripts/regression-checks.mjs`
+Expected: PASS
+
+### Task 3: Sync docs and audit trail
+
+**Files:**
+- Modify: `TODO.md`
+- Modify: `README.md`
+- Modify: `PROGRESS.log`
+
+**Step 1: Update docs**
+
+Mark the implemented TODO item complete, add the next active heartbeat item, and describe the new endpoint saturation convergence in the README/help copy.
+
+**Step 2: Final verification**
+
+Run: `node --check game.js && node --check data.js && node --check shared/game-core.js && node scripts/regression-checks.mjs`
+Expected: PASS
