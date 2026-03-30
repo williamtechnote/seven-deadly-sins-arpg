@@ -2871,8 +2871,8 @@ function testCombatActionHudSummary() {
             specialStaminaCost: 20,
             dodgeStaminaCost: 25
         }),
-        '普攻 U: 体力不足  特攻 O: 体力不足  闪避 Space: 体力不足',
-        'combat action HUD helper should expose stamina-gated actions instead of showing them as ready'
+        '普攻 U: 差2体  特攻 O: 差12体  闪避 Space: 差17体',
+        'combat action HUD helper should expose exact stamina gaps for gated actions instead of a generic insufficient-stamina label'
     );
 }
 

@@ -428,7 +428,7 @@
         const currentStamina = Math.max(0, Number(stamina) || 0);
         const requiredStamina = Math.max(0, Number(staminaCost) || 0);
         if (requiredStamina > 0 && currentStamina < requiredStamina) {
-            return '体力不足';
+            return `差${Math.max(1, Math.ceil(requiredStamina - currentStamina))}体`;
         }
 
         return '就绪';
