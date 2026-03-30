@@ -465,7 +465,26 @@
     function buildCombatActionHudSummary(input) {
         const safe = input && typeof input === 'object' ? input : {};
         if (safe.isDodging) {
-            return '普攻 U: 翻滚中  特攻 O: 翻滚中  闪避 Space: 翻滚中';
+            const remainingDodgeLockoutMs = Math.max(0, Number(safe.dodgeLockoutMs) || 0);
+            const attackPreviewLabel = formatCombatActionReadyLabel(
+                Math.max(0, (Number(safe.attackCooldownMs) || 0) - remainingDodgeLockoutMs),
+                safe.stamina,
+                safe.attackStaminaCost,
+                safe.staminaRegenPerSecond
+            );
+            const specialPreviewLabel = formatCombatActionReadyLabel(
+                Math.max(0, (Number(safe.specialCooldownMs) || 0) - remainingDodgeLockoutMs),
+                safe.stamina,
+                safe.specialStaminaCost,
+                safe.staminaRegenPerSecond
+            );
+            const dodgePreviewLabel = formatCombatActionReadyLabel(
+                safe.dodgePostLockoutCooldownMs,
+                safe.stamina,
+                safe.dodgeStaminaCost,
+                safe.staminaRegenPerSecond
+            );
+            return `普攻 U: 翻滚中 -> ${attackPreviewLabel}  特攻 O: 翻滚中 -> ${specialPreviewLabel}  闪避 Space: 翻滚中 -> ${dodgePreviewLabel}`;
         }
         const attackLabel = formatCombatActionReadyLabel(
             safe.attackCooldownMs,

@@ -2697,6 +2697,11 @@ function testKeyboardControlReadabilityHooks() {
     );
     assert.match(
         source,
+        /若正处于翻滚锁定，则会继续预告“翻滚中 -> 就绪”这类翻滚后的下一状态/,
+        'help overlay should explain the post-roll readiness preview during dodge lockout'
+    );
+    assert.match(
+        source,
         /点击背包消耗品会自动装入快捷栏首个空位/,
         'help overlay should explain the backpack-click auto-fill rule'
     );
@@ -2845,16 +2850,36 @@ function testCombatActionHudSummary() {
     assert.equal(
         buildCombatActionHudSummary({
             isDodging: true,
+            dodgeLockoutMs: 300,
+            dodgePostLockoutCooldownMs: 700,
+            attackCooldownMs: 100,
+            specialCooldownMs: 500,
+            dodgeCooldownMs: 0,
+            stamina: 10,
+            staminaRegenPerSecond: 15,
+            attackStaminaCost: 10,
+            specialStaminaCost: 25,
+            dodgeStaminaCost: 25
+        }),
+        '普攻 U: 翻滚中 -> 就绪  特攻 O: 翻滚中 -> 0.2s后差12体/0.8s  闪避 Space: 翻滚中 -> 0.7s后差5体/0.3s',
+        'combat action HUD helper should preview each action state after dodge lockout ends instead of collapsing everything into a generic roll label'
+    );
+    assert.equal(
+        buildCombatActionHudSummary({
+            isDodging: true,
+            dodgeLockoutMs: 300,
+            dodgePostLockoutCooldownMs: 700,
             attackCooldownMs: 0,
             specialCooldownMs: 0,
-            dodgeCooldownMs: 480,
-            stamina: 60,
-            attackStaminaCost: 10,
+            dodgeCooldownMs: 0,
+            stamina: 10,
+            staminaRegenPerSecond: 15,
+            attackStaminaCost: 25,
             specialStaminaCost: 20,
             dodgeStaminaCost: 25
         }),
-        '普攻 U: 翻滚中  特攻 O: 翻滚中  闪避 Space: 翻滚中',
-        'combat action HUD helper should surface dodge lockout instead of claiming actions are ready during roll i-frames'
+        '普攻 U: 翻滚中 -> 差15体/1.0s  特攻 O: 翻滚中 -> 差10体/0.7s  闪避 Space: 翻滚中 -> 0.7s后差5体/0.3s',
+        'combat action HUD helper should keep the post-roll stamina-gap preview visible while dodge lockout is still active'
     );
     assert.equal(
         buildCombatActionHudSummary({
@@ -2972,7 +2997,7 @@ function testKeyboardHudQolHooks() {
     );
     assert.match(
         source,
-        /const runEffects = GameState\.runEffects \|\| DEFAULT_RUN_EFFECTS;[\s\S]*?const staminaRegenPerSecond = GAME_CONFIG\.PLAYER\.staminaRegen \* \(runEffects\.playerStaminaRegenMultiplier \|\| 1\);[\s\S]*?this\.actionText\.setText\(buildCombatActionHudSummary\(\{[\s\S]*?isDodging:\s*player\.isDodging,[\s\S]*?attackCooldownMs:\s*player\.attackCooldown,[\s\S]*?specialCooldownMs:\s*player\.specialCooldown,[\s\S]*?dodgeCooldownMs:\s*player\.dodgeCooldownTimer,[\s\S]*?stamina:\s*player\.stamina,[\s\S]*?staminaRegenPerSecond,[\s\S]*?attackStaminaCost:\s*weapon\s*\?\s*weapon\.staminaCost\s*:\s*0,[\s\S]*?specialStaminaCost:\s*weapon\s*\?\s*weapon\.specialStaminaCost\s*:\s*0,[\s\S]*?dodgeStaminaCost:\s*GAME_CONFIG\.PLAYER\.dodgeStaminaCost[\s\S]*?\}\)\);/,
+        /const runEffects = GameState\.runEffects \|\| DEFAULT_RUN_EFFECTS;[\s\S]*?const staminaRegenPerSecond = GAME_CONFIG\.PLAYER\.staminaRegen \* \(runEffects\.playerStaminaRegenMultiplier \|\| 1\);[\s\S]*?this\.actionText\.setText\(buildCombatActionHudSummary\(\{[\s\S]*?isDodging:\s*player\.isDodging,[\s\S]*?dodgeLockoutMs:\s*player\.dodgeLockoutMsRemaining,[\s\S]*?dodgePostLockoutCooldownMs:\s*GAME_CONFIG\.PLAYER\.dodgeCooldown,[\s\S]*?attackCooldownMs:\s*player\.attackCooldown,[\s\S]*?specialCooldownMs:\s*player\.specialCooldown,[\s\S]*?dodgeCooldownMs:\s*player\.dodgeCooldownTimer,[\s\S]*?stamina:\s*player\.stamina,[\s\S]*?staminaRegenPerSecond,[\s\S]*?attackStaminaCost:\s*weapon\s*\?\s*weapon\.staminaCost\s*:\s*0,[\s\S]*?specialStaminaCost:\s*weapon\s*\?\s*weapon\.specialStaminaCost\s*:\s*0,[\s\S]*?dodgeStaminaCost:\s*GAME_CONFIG\.PLAYER\.dodgeStaminaCost[\s\S]*?\}\)\);/,
         'HUD should derive dodge lockout, cooldown, stamina gaps, and stamina-recovery ETA from the shared combat-action helper'
     );
     assert.match(
@@ -7854,8 +7879,8 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /翻滚无敌帧内则会直接显示 `翻滚中`，避免 HUD 在锁定期间误报 `就绪`/,
-        'README should document the dodge-lockout label on the action HUD'
+        /翻滚锁定期间则会继续预告 `翻滚中 -> 就绪`、`翻滚中 -> 0\.2s`、`翻滚中 -> 差15体\/1\.0s` 这类翻滚后的下一状态/,
+        'README should document the post-roll readiness preview on the action HUD during dodge lockout'
     );
     assert.match(
         source,
