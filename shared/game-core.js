@@ -2281,6 +2281,83 @@
         return Math.max(safeTarget, safePrevious - safeStep);
     }
 
+    function buildBossAttackRhythmSummary(options) {
+        const safe = options && typeof options === 'object' ? options : {};
+        const attacks = Array.isArray(safe.attacks)
+            ? safe.attacks
+                .filter(attack => typeof attack === 'string' && attack.trim())
+                .map(attack => attack.trim())
+            : [];
+        const majorAttacks = Array.isArray(safe.majorAttacks)
+            ? safe.majorAttacks
+                .filter((attack, index, list) => typeof attack === 'string' && attack.trim() && list.indexOf(attack) === index)
+                .map(attack => attack.trim())
+            : [];
+        const bridgeAttackSet = new Set(
+            Array.isArray(safe.bridgeAttacks)
+                ? safe.bridgeAttacks
+                    .filter(attack => typeof attack === 'string' && attack.trim())
+                    .map(attack => attack.trim())
+                : []
+        );
+        const majorAttackSet = new Set(majorAttacks);
+        const majorEntries = [];
+
+        attacks.forEach((attack, index) => {
+            if (!majorAttackSet.has(attack)) return;
+            if (majorEntries.some(entry => entry.attack === attack)) return;
+            majorEntries.push({ attack, index });
+        });
+
+        const transitions = majorEntries.map((entry, index) => {
+            const nextEntry = majorEntries[index + 1] || null;
+            const bridgeAttacksInWindow = attacks.slice(entry.index + 1, nextEntry ? nextEntry.index : attacks.length);
+            const offPatternAttacks = bridgeAttackSet.size > 0
+                ? bridgeAttacksInWindow.filter(attack => !bridgeAttackSet.has(attack))
+                : [];
+            return {
+                key: nextEntry ? `${entry.attack}->${nextEntry.attack}` : `${entry.attack}->loopback`,
+                fromAttack: entry.attack,
+                toAttack: nextEntry ? nextEntry.attack : 'loopback',
+                bridgeCount: bridgeAttacksInWindow.length,
+                bridgeAttacks: bridgeAttacksInWindow,
+                offPatternAttacks
+            };
+        });
+
+        const transitionBridgeCounts = transitions.map(entry => entry.bridgeCount);
+        const maxBridgeCount = transitionBridgeCounts.length > 0 ? Math.max(...transitionBridgeCounts) : 0;
+        const minBridgeCount = transitionBridgeCounts.length > 0 ? Math.min(...transitionBridgeCounts) : 0;
+        const longestTransition = transitions.find(entry => entry.bridgeCount === maxBridgeCount) || null;
+        const loopbackTransition = transitions.find(entry => entry.toAttack === 'loopback') || null;
+        const previousTransitions = transitions.filter(entry => entry.toAttack !== 'loopback');
+        const previousMaxBridgeCount = previousTransitions.length > 0
+            ? Math.max(...previousTransitions.map(entry => entry.bridgeCount))
+            : 0;
+        const loopbackBridgeDeltaVsPreviousMax = loopbackTransition
+            ? loopbackTransition.bridgeCount - previousMaxBridgeCount
+            : 0;
+
+        return {
+            majorAttackOrder: majorEntries.map(entry => entry.attack),
+            transitionBridgeCounts,
+            transitionSummaries: transitions.map(entry => ({
+                ...entry,
+                bridgeAttacks: entry.bridgeAttacks.slice(),
+                offPatternAttacks: entry.offPatternAttacks.slice()
+            })),
+            minBridgeCount,
+            maxBridgeCount,
+            longestBridgeKey: longestTransition ? longestTransition.key : '',
+            loopbackBridgeCount: loopbackTransition ? loopbackTransition.bridgeCount : 0,
+            loopbackBridgeDeltaVsPreviousMax,
+            secondLoopDensityWarning: !!loopbackTransition
+                && previousMaxBridgeCount > 0
+                && loopbackTransition.bridgeCount <= previousMaxBridgeCount,
+            hasOffPatternBridgeAttacks: transitions.some(entry => entry.offPatternAttacks.length > 0)
+        };
+    }
+
     function buildBossTelegraphHudSummary(options) {
         const safe = options && typeof options === 'object' ? options : {};
         const attackLabel = typeof safe.attackLabel === 'string' ? safe.attackLabel.trim() : '';
@@ -2667,6 +2744,7 @@
         resolveConsumableUse,
         buildStatusHudSummary,
         advanceBossHpAfterimage,
+        buildBossAttackRhythmSummary,
         buildBossTelegraphHudSummary,
         buildBossPhaseHudSummary,
         buildBossStatusHighlightSummary,

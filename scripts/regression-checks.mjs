@@ -112,6 +112,7 @@ const {
     resolveConsumableUse,
     buildStatusHudSummary,
     advanceBossHpAfterimage,
+    buildBossAttackRhythmSummary,
     buildBossPhaseHudSummary,
     buildBossTelegraphHudSummary,
     buildBossStatusHighlightSummary,
@@ -1624,6 +1625,46 @@ function testLustMirageLoopbackBridgeFollowup() {
         attacks.length - mirageDanceIndex - 1,
         28,
         'lust phase 3 should add one more dash-charmBolt pair again to the loopback before returning to reverseControl after the shared-recovery recheck'
+    );
+}
+
+function testLustPhase3RhythmSummary() {
+    const { BOSSES } = loadDataConstants();
+    const summary = buildBossAttackRhythmSummary({
+        attacks: BOSSES.lust.phases[2].attacks,
+        majorAttacks: ['reverseControl', 'illusion', 'mirageDance'],
+        bridgeAttacks: ['dash', 'charmBolt']
+    });
+
+    assert.deepEqual(
+        summary.majorAttackOrder,
+        ['reverseControl', 'illusion', 'mirageDance'],
+        'lust phase 3 rhythm summary should preserve the three major-special anchors in order'
+    );
+    assert.deepEqual(
+        summary.transitionBridgeCounts,
+        [13, 15, 28],
+        'lust phase 3 rhythm summary should expose the directed bridge counts between each major-special anchor and the loopback'
+    );
+    assert.equal(
+        summary.longestBridgeKey,
+        'mirageDance->loopback',
+        'lust phase 3 rhythm summary should identify the loopback as the longest breather bridge'
+    );
+    assert.equal(
+        summary.loopbackBridgeDeltaVsPreviousMax,
+        13,
+        'lust phase 3 rhythm summary should show the second-loop loopback still staying meaningfully wider than the earlier major-special bridges'
+    );
+    assert.equal(
+        summary.secondLoopDensityWarning,
+        false,
+        'lust phase 3 rhythm summary should keep the second-loop major-special return out of the dense-stack warning path'
+    );
+    assert.equal(
+        summary.hasOffPatternBridgeAttacks,
+        false,
+        'lust phase 3 rhythm summary should confirm the bridge windows stay on the intended charmBolt/dash breather palette'
     );
 }
 
@@ -8930,6 +8971,7 @@ function main() {
     runTest('boss HUD readability helpers', testBossHudReadability);
     runTest('boss mechanic diversity hooks', testBossMechanicDiversityHooks);
     runTest('lust phase 3 attack order', testLustPhase3AttackOrder);
+    runTest('lust phase 3 rhythm summary', testLustPhase3RhythmSummary);
     runTest('lust mirage dance hooks', testLustMirageDanceHooks);
     runTest('boss major attack breather hooks', testBossMajorAttackBreatherHooks);
     runTest('lust phase-local cooldown hooks', testLustPhaseLocalCooldownHooks);
