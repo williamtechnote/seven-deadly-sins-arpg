@@ -114,6 +114,7 @@ const {
     advanceBossHpAfterimage,
     buildBossAttackRhythmSummary,
     buildBossAttackCadenceTrace,
+    buildBossAttackCadenceReviewChecklist,
     buildBossPhaseHudSummary,
     buildBossTelegraphHudSummary,
     buildBossStatusHighlightSummary,
@@ -1741,6 +1742,77 @@ function testLustPhase3CadenceTrace() {
         trace.transitions[2].bridgePatternLabel,
         '33:dash | 34:charmBolt | 35:dash | 36:charmBolt | 37:dash | 38:charmBolt | 39:dash | 40:charmBolt | 41:dash | 42:charmBolt | 43:dash | 44:charmBolt | 45:dash | 46:charmBolt | 47:dash | 48:charmBolt | 49:dash | 50:charmBolt | 51:dash | 52:charmBolt | 53:dash | 54:charmBolt | 55:dash | 56:charmBolt | 57:dash | 58:charmBolt | 59:dash | 60:charmBolt',
         'lust phase 3 cadence trace should keep a printable loopback pattern for log-friendly live pacing analysis'
+    );
+}
+
+function testLustPhase3CadenceReviewChecklist() {
+    const { BOSSES } = loadDataConstants();
+    const phase = BOSSES.lust.phases[2];
+    const review = buildBossAttackCadenceReviewChecklist({
+        attacks: phase.attacks,
+        majorAttacks: ['reverseControl', 'illusion', 'mirageDance'],
+        bridgeAttacks: ['dash', 'charmBolt'],
+        attackLabels: {
+            reverseControl: '混乱逆转',
+            illusion: '幻影风暴',
+            mirageDance: '魅影连舞'
+        },
+        counterHints: {
+            reverseControl: '反制: 停止冲刺，短步修正方向',
+            illusion: '反制: 先躲弹幕，再找本体',
+            mirageDance: '反制: 观察真身换位节奏，留翻滚躲最后逆转波'
+        },
+        sharedRecoveryMs: phase.sharedAttackRecoveryMs.majorSpecial
+    });
+
+    assert.equal(
+        review.sharedRecoveryLabel,
+        'shared recovery≈10.2s',
+        'lust phase 3 cadence review should convert the shared major-special recovery window into a recording-friendly label'
+    );
+    assert.deepEqual(
+        review.checkpoints.map(entry => ({
+            key: entry.key,
+            telegraphAttack: entry.telegraphAttack,
+            expectedReturnAttack: entry.expectedReturnAttack,
+            bridgeCount: entry.bridgeCount
+        })),
+        [
+            {
+                key: 'reverseControl->illusion',
+                telegraphAttack: 'reverseControl',
+                expectedReturnAttack: 'illusion',
+                bridgeCount: 13
+            },
+            {
+                key: 'illusion->mirageDance',
+                telegraphAttack: 'illusion',
+                expectedReturnAttack: 'mirageDance',
+                bridgeCount: 15
+            },
+            {
+                key: 'mirageDance->loopback',
+                telegraphAttack: 'mirageDance',
+                expectedReturnAttack: 'reverseControl',
+                bridgeCount: 28
+            }
+        ],
+        'lust phase 3 cadence review should translate the trace into telegraph-to-return review checkpoints'
+    );
+    assert.equal(
+        review.checkpoints[0].recordingFocusLabel,
+        'HUD telegraph 混乱逆转 -> shared recovery≈10.2s -> 13-step dash/charmBolt bridge -> 幻影风暴',
+        'lust phase 3 cadence review should spell out the first telegraph/recovery/return alignment cue for Playwright or recording review'
+    );
+    assert.equal(
+        review.checkpoints[2].recordingFocusLabel,
+        'HUD telegraph 魅影连舞 -> shared recovery≈10.2s -> 28-step dash/charmBolt loopback -> 混乱逆转',
+        'lust phase 3 cadence review should keep a dedicated loopback cue for the second-loop return spacing review'
+    );
+    assert.equal(
+        review.checkpoints[2].telegraphHint,
+        '反制: 观察真身换位节奏，留翻滚躲最后逆转波',
+        'lust phase 3 cadence review should preserve the live HUD counter-hint alongside the loopback review cue'
     );
 }
 
@@ -9049,6 +9121,7 @@ function main() {
     runTest('lust phase 3 attack order', testLustPhase3AttackOrder);
     runTest('lust phase 3 rhythm summary', testLustPhase3RhythmSummary);
     runTest('lust phase 3 cadence trace', testLustPhase3CadenceTrace);
+    runTest('lust phase 3 cadence review checklist', testLustPhase3CadenceReviewChecklist);
     runTest('lust mirage dance hooks', testLustMirageDanceHooks);
     runTest('boss major attack breather hooks', testBossMajorAttackBreatherHooks);
     runTest('lust phase-local cooldown hooks', testLustPhaseLocalCooldownHooks);

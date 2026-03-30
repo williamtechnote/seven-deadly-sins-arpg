@@ -2364,6 +2364,70 @@
         };
     }
 
+    function buildBossAttackCadenceReviewChecklist(options) {
+        const safe = options && typeof options === 'object' ? options : {};
+        const trace = buildBossAttackCadenceTrace(safe);
+        const attackLabels = safe.attackLabels && typeof safe.attackLabels === 'object'
+            ? safe.attackLabels
+            : {};
+        const counterHints = safe.counterHints && typeof safe.counterHints === 'object'
+            ? safe.counterHints
+            : {};
+        const sharedRecoveryMs = Math.max(0, clampInt(safe.sharedRecoveryMs, 0, Number.MAX_SAFE_INTEGER, 0));
+        const sharedRecoveryLabel = sharedRecoveryMs > 0
+            ? `shared recovery≈${Math.max(1, Math.round(sharedRecoveryMs / 100) / 10)}s`
+            : '';
+        const bridgePaletteSource = Array.isArray(safe.bridgeAttacks) && safe.bridgeAttacks.length > 0
+            ? safe.bridgeAttacks
+            : trace.transitions.flatMap(entry => entry.bridgeAttacks);
+        const bridgePaletteLabel = bridgePaletteSource
+            .filter((attack, index, list) => typeof attack === 'string' && attack.trim() && list.indexOf(attack) === index)
+            .join('/');
+        const loopbackAttack = trace.majorAttackOrder[0] || '';
+
+        const checkpoints = trace.transitions.map((entry, index) => {
+            const expectedReturnAttack = entry.toAttack === 'loopback'
+                ? loopbackAttack
+                : entry.toAttack;
+            const telegraphAttack = entry.fromAttack;
+            const telegraphLabel = attackLabels[telegraphAttack] || telegraphAttack;
+            const expectedReturnLabel = attackLabels[expectedReturnAttack] || expectedReturnAttack;
+            const telegraphHint = counterHints[telegraphAttack] || '';
+            const bridgeDescriptor = bridgePaletteLabel ? `${bridgePaletteLabel} ` : '';
+            const spacingLabel = `${entry.bridgeCount}-step ${bridgeDescriptor}${entry.toAttack === 'loopback' ? 'loopback' : 'bridge'}`;
+            const recordingFocusParts = [`HUD telegraph ${telegraphLabel}`];
+            if (sharedRecoveryLabel) recordingFocusParts.push(sharedRecoveryLabel);
+            recordingFocusParts.push(spacingLabel);
+            if (expectedReturnLabel) recordingFocusParts.push(expectedReturnLabel);
+
+            return {
+                step: index + 1,
+                key: entry.key,
+                telegraphAttack,
+                telegraphLabel,
+                telegraphHint,
+                expectedReturnAttack,
+                expectedReturnLabel,
+                sharedRecoveryMs,
+                sharedRecoveryLabel,
+                bridgeCount: entry.bridgeCount,
+                bridgeStartIndex: entry.bridgeStartIndex,
+                bridgeEndIndex: entry.bridgeEndIndex,
+                bridgeTimeline: entry.bridgeTimeline.slice(),
+                bridgePatternLabel: entry.bridgePatternLabel,
+                bridgePaletteLabel: bridgePaletteLabel || '',
+                recordingFocusLabel: recordingFocusParts.join(' -> ')
+            };
+        });
+
+        return {
+            majorAttackOrder: trace.majorAttackOrder.slice(),
+            sharedRecoveryMs,
+            sharedRecoveryLabel,
+            checkpoints
+        };
+    }
+
     function buildBossAttackRhythmSummary(options) {
         const trace = buildBossAttackCadenceTrace(options);
         const transitionBridgeCounts = trace.transitions.map(entry => entry.bridgeCount);
@@ -2784,6 +2848,7 @@
         buildStatusHudSummary,
         advanceBossHpAfterimage,
         buildBossAttackCadenceTrace,
+        buildBossAttackCadenceReviewChecklist,
         buildBossAttackRhythmSummary,
         buildBossTelegraphHudSummary,
         buildBossPhaseHudSummary,

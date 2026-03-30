@@ -1,9 +1,10 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百零一：若 CLI `buildBossAttackCadenceTrace` 导出的 indexed bridge timeline 与 loopback pattern 仍不足以解释 live 观感，再补一条 Playwright / 录屏核验项，逐段对齐 HUD telegraph、shared recovery 与实际 special 回切间距
+- [ ] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百零二：把新的 `buildBossAttackCadenceReviewChecklist` 接进 Playwright artifact / 录屏复盘输出，失败时自动附上 phase 3 checkpoint、telegraph 截图与 shared-recovery snapshot，缩短 live pacing 复盘路径
 
 ## Completed
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百零一：若 CLI `buildBossAttackCadenceTrace` 导出的 indexed bridge timeline 与 loopback pattern 仍不足以解释 live 观感，再补一条 Playwright / 录屏核验项，逐段对齐 HUD telegraph、shared recovery 与实际 special 回切间距（完成：2026-03-30 09:06 +08，已拆分为一百零二）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 cadence trace 一百：将 TODO 收束为可导出的 CLI phase 3 special cadence trace：新增 `buildBossAttackCadenceTrace` 与回归断言，显式导出 major-special anchor index、bridge timeline 与 loopback pattern，方便核对 HUD telegraph、shared recovery 与实际回切间距（完成：2026-03-30 08:55 +08，已拆分为一百零一）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 后续观察九十九：在更长的 `mirageDance -> reverseControl` 定向轻压过桥、更长的共享 `majorSpecial` recovery window、更长的 `illusion` recovery 空档、更长的 `reverseControl` recovery 空档与更长的 `mirageDance` recovery 空档都落地后，先补一条 phase 3 节奏核验项：新增 `buildBossAttackRhythmSummary` 与回归断言，确认第二轮 special stack 不会比前两段过桥更密（完成：2026-03-30 08:47 +08，已拆分为一百）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 loopback 过桥九十八：在更长的共享 `majorSpecial` recovery window、更长的 `mirageDance -> reverseControl` 定向轻压过桥、更长的 `illusion` recovery 空档、更长的 `reverseControl` recovery 空档与更长的 `mirageDance` recovery 空档都落地后，继续把 `mirageDance -> reverseControl` 之间的 phase 3 定向轻压过桥再补一组 `dash` / `charmBolt`，让 loopback 轻压过桥结束后的下一轮 `reverseControl` 再继续晚半拍回切（完成：2026-03-30 08:40 +08，已拆分为九十九）
