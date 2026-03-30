@@ -4792,6 +4792,7 @@ class BossScene extends Phaser.Scene {
             const telegraphColor = BOSS_TELEGRAPH_TYPE_COLORS[typeKey] || 0xF5B58A;
             const telegraphWindowGuardColor = telegraphHud.counterWindowLabelMuted ? 0x2B2622 : 0x3E2B18;
             const telegraphWindowGuardAlpha = telegraphHud.counterWindowLabelMuted ? 0.76 : 0.88;
+            const telegraphMainTextFill = telegraphHud.attackLabelMuted ? '#d6c9bb' : '#f7e6cf';
             const telegraphWindowTextFill = telegraphHud.counterWindowLabelMuted ? '#c6b7a1' : '#ffe1a1';
             const telegraphHintTextFill = telegraphHud.hintLabelMuted ? '#d7b07a' : '#ffdcb3';
             const telegraphMainText = telegraphHud.typeLabel
@@ -4871,6 +4872,7 @@ class BossScene extends Phaser.Scene {
             this.bossTelegraphWindowText.setX(telegraphRect.x + telegraphLayout.windowX);
             this.bossTelegraphWindowText.setOrigin(telegraphLayout.windowOriginX, 0);
             this.bossTelegraphWindowText.setY(telegraphRect.y + telegraphLayout.windowYOffset);
+            this.bossTelegraphText.setStyle({ fill: telegraphMainTextFill });
             this.bossTelegraphWindowText.setStyle({ fill: telegraphWindowTextFill });
             this.bossTelegraphText.setText(this._fitBossHudTextToWidth(telegraphMainText, telegraphLayout.mainMaxWidth, 'bossTelegraphMain'));
             this.bossTelegraphWindowText.setText(this._fitBossHudTextToWidth(telegraphHud.counterWindowLabel, telegraphLayout.windowMaxWidth, 'bossTelegraphWindow'));
@@ -6665,7 +6667,7 @@ class HelpScene extends Phaser.Scene {
         const sections = [
             { title: '移动', items: ['WASD  —  八方向移动'] },
             { title: '瞄准', items: ['I / J / K / L  —  键盘双轴瞄准（保留上次朝向）', '当前瞄准会显示在 HUD 左下角'] },
-            { title: '战斗', items: ['U / 鼠标左键  —  普通攻击', 'O / 鼠标右键  —  特殊攻击', '左下角行动行会显示冷却；若只差体力，则会显示“差2体/0.1s”这类自然回复 ETA；若冷却转好后仍差体力，则会预告“0.3s后差8体/0.5s”；若正处于翻滚锁定，则会继续预告“翻滚中 -> 就绪”这类翻滚后的下一状态；当任一动作刚切进“就绪”时，只有对应那一项会短促闪亮一下；若 Boss 战切到专用 HUD，则顶部血条会收紧，但左下角当前瞄准 / 武器 / 行动行与右下快捷栏仍保持稳定底边留白；若 Boss 的“反制窗口”起点实际晚于 telegraph 进度条开头，条内还会补一枚“起跳刻度”，避免把整段条体误读成从第一帧起就能反制；若 Boss 的“反制窗口”从第一帧开放、却会在 telegraph 进度条清空前提早收束，条内还会补一枚“收束刻度”，避免把剩余条体误读成还在可反制；“收束刻度”右侧剩余条体也会压成更暗的“尾段残影”，提醒那一截只剩读招倒计时，不再代表可反制窗口；一旦倒计时已经走进这段“尾段残影”，第二行“反制窗口”也会同步切成更低饱和的“已收束提示”，第三行 hint 则会把原本的“反制:”/“反制提示:”前缀改写成更明确的“收束后处理:”或“闪避提示:”，并同步降成更柔和的琥珀色，避免窗口已过后仍把旧提示读成“现在还能反制”；若 Boss 的“反制窗口”只落在 telegraph 进度条本体中段，条内还会补一段“窗口高亮区段”，避免还要自己心算真正可反制跨度；若 Boss 的“反制窗口”会拖到 telegraph 进度条终点之后，条尾还会额外补一枚“超出尾标”，避免把条体清空误读成反制窗也已经结束'] },
+            { title: '战斗', items: ['U / 鼠标左键  —  普通攻击', 'O / 鼠标右键  —  特殊攻击', '左下角行动行会显示冷却；若只差体力，则会显示“差2体/0.1s”这类自然回复 ETA；若冷却转好后仍差体力，则会预告“0.3s后差8体/0.5s”；若正处于翻滚锁定，则会继续预告“翻滚中 -> 就绪”这类翻滚后的下一状态；当任一动作刚切进“就绪”时，只有对应那一项会短促闪亮一下；若 Boss 战切到专用 HUD，则顶部血条会收紧，但左下角当前瞄准 / 武器 / 行动行与右下快捷栏仍保持稳定底边留白；若 Boss 的“反制窗口”起点实际晚于 telegraph 进度条开头，条内还会补一枚“起跳刻度”，避免把整段条体误读成从第一帧起就能反制；若 Boss 的“反制窗口”从第一帧开放、却会在 telegraph 进度条清空前提早收束，条内还会补一枚“收束刻度”，避免把剩余条体误读成还在可反制；“收束刻度”右侧剩余条体也会压成更暗的“尾段残影”，提醒那一截只剩读招倒计时，不再代表可反制窗口；一旦倒计时已经走进这段“尾段残影”，第二行“反制窗口”也会同步切成更低饱和的“已收束提示”，第三行 hint 则会把原本的“反制:”/“反制提示:”前缀改写成更明确的“收束后处理:”或“闪避提示:”，并同步降成更柔和的琥珀色，避免窗口已过后仍把旧提示读成“现在还能反制”；若第二、三行都已切进收束态，第一行“类型 | 攻击名”也会同步压成更低饱和的暖灰白，避免整条 warning 在窗口已过后仍保留可反制阶段的最高亮度重心；若 Boss 的“反制窗口”只落在 telegraph 进度条本体中段，条内还会补一段“窗口高亮区段”，避免还要自己心算真正可反制跨度；若 Boss 的“反制窗口”会拖到 telegraph 进度条终点之后，条尾还会额外补一枚“超出尾标”，避免把条体清空误读成反制窗也已经结束'] },
             { title: '防御', items: ['Space  —  闪避翻滚（无敌帧）'] },
             { title: '武器', items: ['Q / E  —  切换武器'] },
             { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位，并提示“快捷栏N：+<短名>”；若临时拿不到显式短名则会沿用道具名生成“快捷栏N：+生命”这类短句；提示现在会优先按 Phaser 文本实际宽度钳制，因此“快捷栏N：+HP恢复”这类混排会尽量保留更多有效信息；若当前环境拿不到真实测量结果则回退为宽度权重估算；若道具名词干过长则会截成“快捷栏N：+圣疗秘…”这类省略短句；快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”；若拿不到显式短名则改用“快捷栏1：狂战→净化”这类道具名短句；若这些道具名过长则同样会截成“快捷栏1：古代狂…→神圣净…”这类省略短句', '背包悬停说明也会按实际文本宽度贴边，因此靠近屏幕右缘时不会继续沿用固定 200px 估算', '净化药剂/狂战油可在铁匠制作'] },

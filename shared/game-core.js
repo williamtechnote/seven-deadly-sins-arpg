@@ -2743,6 +2743,7 @@
             : 0;
         const counterWindowTailAfterglowActive = counterWindowTailAfterglowVisible
             && remainingMs <= counterWindowTailAfterglowMs;
+        const attackLabelMuted = counterWindowTailAfterglowActive;
         const counterWindowLabelMuted = counterWindowTailAfterglowActive;
         const hintLabel = formatBossTelegraphHintLabel(counterHint, {
             counterWindowTailAfterglowActive
@@ -2769,6 +2770,7 @@
                 counterWindowTailAfterglowActive: false,
                 counterWindowTailAfterglowStartRatio: 0,
                 counterWindowTailAfterglowWidthRatio: 0,
+                attackLabelMuted: false,
                 counterWindowLabelMuted: false,
                 hintLabelMuted: false,
                 counterWindowSpanVisible: false,
@@ -2806,6 +2808,7 @@
             counterWindowTailAfterglowWidthRatio: counterWindowTailAfterglowVisible
                 ? clampRatio(counterWindowTailAfterglowMs / telegraphDurationMs, 0)
                 : 0,
+            attackLabelMuted,
             counterWindowLabelMuted,
             hintLabelMuted,
             counterWindowSpanVisible,

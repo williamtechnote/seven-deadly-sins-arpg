@@ -1531,6 +1531,7 @@ function testBossHudReadability() {
     assert.equal(earlyClosureTelegraphSummary.counterWindowTailAfterglowStartRatio, 800 / 1300, 'telegraph summary should expose where the early-closure tail afterglow begins');
     assert.equal(earlyClosureTelegraphSummary.counterWindowTailAfterglowWidthRatio, 500 / 1300, 'telegraph summary should expose how much of the telegraph body remains after the early closure');
     assert.equal(earlyClosureTelegraphSummary.counterWindowTailAfterglowActive, false, 'telegraph summary should not flip the label before the timeline actually reaches the dimmed tail segment');
+    assert.equal(earlyClosureTelegraphSummary.attackLabelMuted, false, 'telegraph summary should keep the attack title bright until the telegraph actually reaches the dimmed tail segment');
     assert.equal(earlyClosureTelegraphSummary.counterWindowLabelMuted, false, 'telegraph summary should keep the counter-window row highlighted until the tail segment becomes active');
     assert.equal(earlyClosureTelegraphSummary.counterWindowSpanVisible, false, 'telegraph summary should avoid drawing a contained span when the counter window starts at the first frame');
 
@@ -1544,6 +1545,7 @@ function testBossHudReadability() {
     });
     assert.equal(activeTailAfterglowTelegraphSummary.counterWindowTailAfterglowVisible, true, 'telegraph summary should keep the tail-afterglow metadata once the early-closing window exists');
     assert.equal(activeTailAfterglowTelegraphSummary.counterWindowTailAfterglowActive, true, 'telegraph summary should flag when the live telegraph has already entered the dimmed tail segment');
+    assert.equal(activeTailAfterglowTelegraphSummary.attackLabelMuted, true, 'telegraph summary should mark the attack title as muted once the live telegraph has already entered the dimmed tail segment');
     assert.equal(activeTailAfterglowTelegraphSummary.counterWindowLabel, '已收束提示', 'telegraph summary should swap the counter-window label once the live telegraph has already entered the dimmed tail segment');
     assert.equal(activeTailAfterglowTelegraphSummary.counterWindowLabelMuted, true, 'telegraph summary should mark the counter-window label as muted once the telegraph is already in the tail-afterglow phase');
     assert.equal(activeTailAfterglowTelegraphSummary.hintLabel, '闪避提示: 停止冲刺，短步修正方向', 'telegraph summary should relabel stale counter hints as dodge guidance once the live telegraph has already entered the dimmed tail segment');
@@ -7920,6 +7922,11 @@ function testBossHudMeasurementHooks() {
     );
     assert.match(
         source,
+        /const telegraphMainTextFill = telegraphHud\.attackLabelMuted \? '#d6c9bb' : '#f7e6cf';[\s\S]*?this\.bossTelegraphText\.setStyle\(\{\s*fill:\s*telegraphMainTextFill\s*\}\);[\s\S]*?this\.bossTelegraphText\.setText\(this\._fitBossHudTextToWidth\(telegraphMainText,\s*telegraphLayout\.mainMaxWidth,\s*'bossTelegraphMain'\)\);/,
+        'Boss telegraph should mute the main attack-title row to a warm gray-white once the live telegraph has already entered the tail-afterglow segment'
+    );
+    assert.match(
+        source,
         /const telegraphWindowTextFill = telegraphHud\.counterWindowLabelMuted \? '#c6b7a1' : '#ffe1a1';[\s\S]*?this\.bossTelegraphWindowText\.setStyle\(\{\s*fill:\s*telegraphWindowTextFill\s*\}\);[\s\S]*?this\.bossTelegraphWindowText\.setText\(this\._fitBossHudTextToWidth\(telegraphHud\.counterWindowLabel,\s*telegraphLayout\.windowMaxWidth,\s*'bossTelegraphWindow'\)\);/,
         'Boss telegraph should mute the counter-window row color once the live telegraph has already entered the tail-afterglow segment'
     );
@@ -8220,6 +8227,11 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /第三行 hint 则会把原本的 `反制:` \/ `反制提示:` 前缀改写成更明确的 `收束后处理:` 或 `闪避提示:`，并同步降成更柔和的琥珀色/,
         'README should document that rewritten tail-phase hint copy also shifts to a softer amber once the live telegraph has already entered the tail-afterglow phase'
+    );
+    assert.match(
+        source,
+        /若第二、三行都已切进收束态，第一行 `类型 \| 攻击名` 也会同步压成更低饱和的暖灰白/,
+        'README should document that the telegraph title row also dims once the live telegraph has already entered the settled tail phase'
     );
     assert.match(
         source,
@@ -9369,6 +9381,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /第三行 hint 则会把原本的“反制:”\/“反制提示:”前缀改写成更明确的“收束后处理:”或“闪避提示:”，并同步降成更柔和的琥珀色/,
         'help overlay should document that rewritten tail-phase hint copy also shifts to a softer amber once the live telegraph is already inside the tail-afterglow segment'
+    );
+    assert.match(
+        source,
+        /若第二、三行都已切进收束态，第一行“类型 \| 攻击名”也会同步压成更低饱和的暖灰白/,
+        'help overlay should document that the telegraph title row also dims once the live telegraph has already entered the settled tail phase'
     );
     assert.match(
         source,
