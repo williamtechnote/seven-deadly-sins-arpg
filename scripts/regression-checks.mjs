@@ -94,6 +94,7 @@ const {
     buildRunEventRoomPromptLabel,
     formatAimDirectionLabel,
     buildCombatActionReadiness,
+    buildCombatActionHudLayout,
     buildCombatActionHudSegments,
     buildCombatActionHudSummary,
     buildQuickSlotItemLabel,
@@ -3038,6 +3039,55 @@ function testCombatActionHudSegments() {
     );
 }
 
+function testCombatActionHudLayout() {
+    assert.equal(typeof buildCombatActionHudLayout, 'function', 'combat action HUD layout helper should be exported');
+    const wrappedLayout = buildCombatActionHudLayout([
+        { key: 'attack', width: 188 },
+        { key: 'special', width: 278 },
+        { key: 'dodge', width: 292 }
+    ], {
+        startX: 16,
+        maxWidth: 620,
+        gap: 18,
+        rowGap: 22
+    });
+    assert.equal(wrappedLayout.rowCount, 2, 'combat action HUD layout helper should wrap onto a second row when long labels would overrun the quick-slot lane');
+    assert.deepEqual(
+        wrappedLayout.placements.map(({ key, x, row, y }) => ({ key, x, row, y })),
+        [
+            { key: 'attack', x: 16, row: 0, y: 0 },
+            { key: 'special', x: 222, row: 0, y: 0 },
+            { key: 'dodge', x: 16, row: 1, y: 22 }
+        ],
+        'combat action HUD layout helper should preserve action order while restarting wrapped rows from the left HUD pad'
+    );
+    wrappedLayout.placements.forEach((placement) => {
+        const right = placement.x + placement.width;
+        assert.ok(right <= 636, 'combat action HUD layout helper should keep every wrapped segment inside the reserved bottom-left HUD lane');
+    });
+
+    const singleRowLayout = buildCombatActionHudLayout([
+        { key: 'attack', width: 120 },
+        { key: 'special', width: 140 },
+        { key: 'dodge', width: 160 }
+    ], {
+        startX: 16,
+        maxWidth: 620,
+        gap: 18,
+        rowGap: 22
+    });
+    assert.equal(singleRowLayout.rowCount, 1, 'combat action HUD layout helper should keep short labels on one row');
+    assert.deepEqual(
+        singleRowLayout.placements.map(({ key, x, row, y }) => ({ key, x, row, y })),
+        [
+            { key: 'attack', x: 16, row: 0, y: 0 },
+            { key: 'special', x: 154, row: 0, y: 0 },
+            { key: 'dodge', x: 312, row: 0, y: 0 }
+        ],
+        'combat action HUD layout helper should keep short labels on a stable single row'
+    );
+}
+
 function testQuickSlotItemLabel() {
     assert.equal(typeof buildQuickSlotItemLabel, 'function', 'quick-slot item label helper should be exported');
     assert.equal(buildQuickSlotItemLabel(null, 0), '-', 'empty quick slot should render a stable placeholder');
@@ -3068,6 +3118,11 @@ function testKeyboardHudQolHooks() {
         source,
         /const actionHudState = \{[\s\S]*?isDodging:\s*player\.isDodging,[\s\S]*?dodgeStaminaCost:\s*GAME_CONFIG\.PLAYER\.dodgeStaminaCost[\s\S]*?\};[\s\S]*?const actionHudSegments = buildCombatActionHudSegments\(actionHudState\);[\s\S]*?const actionHudReadiness = buildCombatActionReadiness\(actionHudState\);[\s\S]*?const previousActionReadiness = this\._lastCombatActionReadiness;[\s\S]*?if \(previousActionReadiness\) \{[\s\S]*?Object\.keys\(actionHudReadiness\)\.forEach\(key => \{[\s\S]*?this\.actionTextReadyFlashUntil\[key\] = this\.time\.now \+ 220;[\s\S]*?\}\);[\s\S]*?\}[\s\S]*?actionHudSegments\.forEach\(segment => \{[\s\S]*?const actionHighlightActive = this\.actionTextReadyFlashUntil\[segment\.key\] > this\.time\.now;[\s\S]*?actionTextNode\.setStyle\(\{ fill: actionHighlightActive \? '#fff4b3' : '#cfd8e6' \}\);[\s\S]*?actionTextNode\.setText\(segment\.text\);/,
         'HUD should derive per-action readiness flashes from the shared combat-action readiness helper when individual actions newly become ready'
+    );
+    assert.match(
+        source,
+        /const actionLayout = buildCombatActionHudLayout\([\s\S]*?startX:\s*layout\.pad,[\s\S]*?maxWidth:\s*Math\.max\(0,\s*this\.quickSlots\[0\]\.box\.x - layout\.pad - 12\),[\s\S]*?\);[\s\S]*?const actionClusterLift = Math\.max\(0,\s*actionLayout\.rowCount - 1\) \* 22;[\s\S]*?this\.aimText\.setPosition\(layout\.pad,\s*this\.cameras\.main\.height - 80 - actionClusterLift\);[\s\S]*?this\.weaponText\.setPosition\(layout\.pad,\s*this\.cameras\.main\.height - 58 - actionClusterLift\);[\s\S]*?actionLayout\.placements\.forEach\(placement => \{[\s\S]*?actionTextNode\.setPosition\(placement\.x,\s*this\.cameras\.main\.height - 36 - actionClusterLift \+ placement\.y\);[\s\S]*?\}\);/,
+        'HUD should wrap long action labels inside the reserved bottom-left lane and lift the bottom-left cluster when a second row is needed'
     );
     assert.match(
         source,
@@ -7953,6 +8008,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /若窄屏下三段文案合计过长，行动 HUD 也会自动改成两行左对齐，并把瞄准\/武器提示整体上提/,
+        'README should document the narrow-screen two-line fallback for long action HUD labels'
+    );
+    assert.match(
+        source,
         /快捷栏N：\+<短名>/,
         'README should document the slot-led plus-marker shortform for non-overwrite quick-slot placement feedback'
     );
@@ -9597,6 +9657,7 @@ function main() {
     runTest('combat action HUD summary helper', testCombatActionHudSummary);
     runTest('combat action readiness helper', testCombatActionReadiness);
     runTest('combat action HUD segments helper', testCombatActionHudSegments);
+    runTest('combat action HUD layout helper', testCombatActionHudLayout);
     runTest('quick-slot item label helper', testQuickSlotItemLabel);
     runTest('keyboard HUD QoL hooks', testKeyboardHudQolHooks);
     runTest('README keyboard inventory loop', testReadmeKeyboardInventoryLoop);

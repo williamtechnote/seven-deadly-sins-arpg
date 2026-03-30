@@ -50,6 +50,7 @@ const {
     resolveKeyboardAimState,
     formatAimDirectionLabel,
     buildCombatActionReadiness,
+    buildCombatActionHudLayout,
     buildCombatActionHudSegments,
     buildCombatActionHudSummary,
     buildQuickSlotItemLabel,
@@ -6292,15 +6293,31 @@ class UIScene extends Phaser.Scene {
             });
         }
         this._lastCombatActionReadiness = actionHudReadiness;
-        let actionTextX = layout.pad;
-        const actionTextY = this.cameras.main.height - 36;
         actionHudSegments.forEach(segment => {
             const actionTextNode = this.actionText[segment.key];
             const actionHighlightActive = this.actionTextReadyFlashUntil[segment.key] > this.time.now;
             actionTextNode.setStyle({ fill: actionHighlightActive ? '#fff4b3' : '#cfd8e6' });
             actionTextNode.setText(segment.text);
-            actionTextNode.setPosition(actionTextX, actionTextY);
-            actionTextX += actionTextNode.width + 18;
+        });
+        const actionLayout = buildCombatActionHudLayout(
+            actionHudSegments.map(segment => ({
+                key: segment.key,
+                width: this.actionText[segment.key].width
+            })),
+            {
+                startX: layout.pad,
+                maxWidth: Math.max(0, this.quickSlots[0].box.x - layout.pad - 12),
+                gap: 18,
+                rowGap: 22
+            }
+        );
+        const actionClusterLift = Math.max(0, actionLayout.rowCount - 1) * 22;
+        this.aimText.setPosition(layout.pad, this.cameras.main.height - 80 - actionClusterLift);
+        this.weaponText.setPosition(layout.pad, this.cameras.main.height - 58 - actionClusterLift);
+        this.savedWeaponDebugText.setPosition(layout.pad, this.cameras.main.height - 102 - actionClusterLift);
+        actionLayout.placements.forEach(placement => {
+            const actionTextNode = this.actionText[placement.key];
+            actionTextNode.setPosition(placement.x, this.cameras.main.height - 36 - actionClusterLift + placement.y);
         });
         if (UI_DEBUG_FLAGS.showSavedWeaponInHUD) {
             const savedWeaponKey = GameState.ensureSelectedWeapon();

@@ -535,6 +535,46 @@
         return buildCombatActionHudSegments(input).map(segment => segment.text).join('  ');
     }
 
+    function buildCombatActionHudLayout(segments, options) {
+        const safeSegments = Array.isArray(segments) ? segments : [];
+        const safeOptions = options && typeof options === 'object' ? options : {};
+        const startX = Number.isFinite(safeOptions.startX) ? safeOptions.startX : 0;
+        const maxWidth = Number.isFinite(safeOptions.maxWidth) && safeOptions.maxWidth > 0
+            ? safeOptions.maxWidth
+            : Number.POSITIVE_INFINITY;
+        const gap = Number.isFinite(safeOptions.gap) && safeOptions.gap >= 0 ? safeOptions.gap : 18;
+        const rowGap = Number.isFinite(safeOptions.rowGap) && safeOptions.rowGap >= 0 ? safeOptions.rowGap : 22;
+        const placements = [];
+        let currentRow = 0;
+        let currentRowWidth = 0;
+
+        safeSegments.forEach((segment) => {
+            const safeSegment = segment && typeof segment === 'object' ? segment : {};
+            const width = Math.max(0, Number(safeSegment.width) || 0);
+            const needsGap = currentRowWidth > 0;
+            const proposedRowWidth = needsGap ? currentRowWidth + gap + width : width;
+            if (needsGap && proposedRowWidth > maxWidth) {
+                currentRow += 1;
+                currentRowWidth = 0;
+            }
+
+            const offsetX = currentRowWidth > 0 ? currentRowWidth + gap : 0;
+            placements.push({
+                key: safeSegment.key || '',
+                width,
+                row: currentRow,
+                x: startX + offsetX,
+                y: currentRow * rowGap
+            });
+            currentRowWidth = offsetX + width;
+        });
+
+        return {
+            rowCount: placements.length > 0 ? placements[placements.length - 1].row + 1 : 0,
+            placements
+        };
+    }
+
     function getHudSidebarViewportTier(viewportWidth, viewportHeight) {
         const safeWidth = Number.isFinite(viewportWidth) && viewportWidth > 0
             ? viewportWidth
@@ -2975,6 +3015,7 @@
         resolveKeyboardAimState,
         formatAimDirectionLabel,
         buildCombatActionReadiness,
+        buildCombatActionHudLayout,
         buildCombatActionHudSegments,
         buildCombatActionHudSummary,
         formatRunChallengeRewardShortLabel,
