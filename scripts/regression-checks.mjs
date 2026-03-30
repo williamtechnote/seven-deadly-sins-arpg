@@ -1561,6 +1561,7 @@ function testBossHudReadability() {
     assert.equal(activeTailAfterglowTelegraphSummary.currentCountdownHeadMarkerWarmFlashDurationMs, 120, 'telegraph summary should advertise a short warm-flash budget when the live countdown head marker first becomes relevant');
     assert.equal(activeTailAfterglowTelegraphSummary.currentCountdownHeadMarkerLateGlowVisible, false, 'telegraph summary should keep the weaker late head-marker glow disabled until the remaining countdown drops into the final tail beat');
     assert.equal(activeTailAfterglowTelegraphSummary.currentCountdownHeadMarkerInnerCoreFocused, false, 'telegraph summary should keep the inner countdown-head core in its normal profile until the remaining tail countdown drops under the final focus threshold');
+    assert.equal(activeTailAfterglowTelegraphSummary.currentCountdownHeadMarkerInnerCoreHeightTrimmed, false, 'telegraph summary should keep the countdown-head inner core at full height until the remaining tail countdown drops under the final height-trim threshold');
 
     const lateCountdownHeadGlowTelegraphSummary = buildBossTelegraphHudSummary({
         attackLabel: '混乱逆转',
@@ -1573,6 +1574,7 @@ function testBossHudReadability() {
     assert.equal(lateCountdownHeadGlowTelegraphSummary.currentCountdownHeadMarkerVisible, true, 'telegraph summary should keep the live countdown head marker visible during the final tail beat');
     assert.equal(lateCountdownHeadGlowTelegraphSummary.currentCountdownHeadMarkerLateGlowVisible, true, 'telegraph summary should flag the weaker late head-marker glow once the remaining countdown drops into the final tail beat');
     assert.equal(lateCountdownHeadGlowTelegraphSummary.currentCountdownHeadMarkerInnerCoreFocused, false, 'telegraph summary should keep the inner countdown-head core at its default width while the remaining tail countdown is still above the tighter final-focus beat');
+    assert.equal(lateCountdownHeadGlowTelegraphSummary.currentCountdownHeadMarkerInnerCoreHeightTrimmed, false, 'telegraph summary should keep the countdown-head inner core at full height while the remaining tail countdown is still above the final height-trim threshold');
 
     const finalCountdownHeadFocusTelegraphSummary = buildBossTelegraphHudSummary({
         attackLabel: '混乱逆转',
@@ -1586,6 +1588,7 @@ function testBossHudReadability() {
     assert.equal(finalCountdownHeadFocusTelegraphSummary.currentCountdownHeadMarkerLateGlowVisible, true, 'telegraph summary should keep the weaker late head-marker glow active during the final focus beat');
     assert.equal(finalCountdownHeadFocusTelegraphSummary.currentCountdownHeadMarkerInnerCoreFocused, true, 'telegraph summary should tighten the inner countdown-head core once the remaining tail countdown drops under the final focus threshold');
     assert.equal(finalCountdownHeadFocusTelegraphSummary.currentCountdownHeadMarkerLateGlowTrimmed, false, 'telegraph summary should keep the weaker late head-marker glow at its normal spread until the remaining countdown drops under the tighter final trim threshold');
+    assert.equal(finalCountdownHeadFocusTelegraphSummary.currentCountdownHeadMarkerInnerCoreHeightTrimmed, false, 'telegraph summary should keep the countdown-head inner core at full height until the remaining tail countdown reaches the final height-trim beat');
 
     const finalCountdownHeadGlowTrimTelegraphSummary = buildBossTelegraphHudSummary({
         attackLabel: '混乱逆转',
@@ -1600,6 +1603,7 @@ function testBossHudReadability() {
     assert.equal(finalCountdownHeadGlowTrimTelegraphSummary.currentCountdownHeadMarkerInnerCoreFocused, true, 'telegraph summary should keep the inner countdown-head core focused during the final trim beat');
     assert.equal(finalCountdownHeadGlowTrimTelegraphSummary.currentCountdownHeadMarkerLateGlowTrimmed, true, 'telegraph summary should flag when the weaker late head-marker glow needs to contract around the endpoint during the final trim beat');
     assert.equal(finalCountdownHeadGlowTrimTelegraphSummary.currentCountdownHeadMarkerLateGlowContained, false, 'telegraph summary should keep the weaker late head-marker glow in its normal spill state until the remaining countdown drops under the tighter final containment threshold');
+    assert.equal(finalCountdownHeadGlowTrimTelegraphSummary.currentCountdownHeadMarkerInnerCoreHeightTrimmed, false, 'telegraph summary should keep the countdown-head inner core at full height during the final trim beat until the remaining tail countdown reaches the last height-trim threshold');
 
     const finalCountdownHeadGlowContainTelegraphSummary = buildBossTelegraphHudSummary({
         attackLabel: '混乱逆转',
@@ -1614,6 +1618,19 @@ function testBossHudReadability() {
     assert.equal(finalCountdownHeadGlowContainTelegraphSummary.currentCountdownHeadMarkerInnerCoreFocused, true, 'telegraph summary should keep the inner countdown-head core focused during the final containment beat');
     assert.equal(finalCountdownHeadGlowContainTelegraphSummary.currentCountdownHeadMarkerLateGlowTrimmed, true, 'telegraph summary should keep the weaker late head-marker glow trimmed during the final containment beat');
     assert.equal(finalCountdownHeadGlowContainTelegraphSummary.currentCountdownHeadMarkerLateGlowContained, true, 'telegraph summary should flag when the weaker late head-marker glow needs to stay inside the bar endpoint during the final containment beat');
+    assert.equal(finalCountdownHeadGlowContainTelegraphSummary.currentCountdownHeadMarkerInnerCoreHeightTrimmed, false, 'telegraph summary should keep the countdown-head inner core at full height during the final containment beat until the remaining tail countdown reaches the last height-trim threshold');
+
+    const finalCountdownHeadHeightTrimTelegraphSummary = buildBossTelegraphHudSummary({
+        attackLabel: '混乱逆转',
+        attackTypeLabel: '特殊',
+        counterWindowMs: 800,
+        counterHint: '反制: 停止冲刺，短步修正方向',
+        telegraphDurationMs: 1300,
+        remainingMs: 10
+    });
+    assert.equal(finalCountdownHeadHeightTrimTelegraphSummary.currentCountdownHeadMarkerVisible, true, 'telegraph summary should keep the live countdown head marker visible during the final height-trim beat');
+    assert.equal(finalCountdownHeadHeightTrimTelegraphSummary.currentCountdownHeadMarkerInnerCoreFocused, true, 'telegraph summary should keep the inner countdown-head core focused during the final height-trim beat');
+    assert.equal(finalCountdownHeadHeightTrimTelegraphSummary.currentCountdownHeadMarkerInnerCoreHeightTrimmed, true, 'telegraph summary should shorten the countdown-head inner core once the remaining tail countdown drops under the final 20ms height-trim threshold');
 
     const activeTailAfterglowFollowupTelegraphSummary = buildBossTelegraphHudSummary({
         attackLabel: '幻影风暴',
@@ -8359,6 +8376,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /若 Boss telegraph 已进入 `尾段残影` 区间且剩余读招倒计时已低于约 20ms，再把 `当前倒计时头标` 的主芯高度略微收短贴边/,
+        'README should document the shorter countdown-head inner core height during the final 20ms tail beat'
+    );
+    assert.match(
+        source,
         /若 `反制窗口` 只落在进度条本体中段，条内还会补一段 `窗口高亮区段`/,
         'README should document the contained counter-window span highlight for mid-bar counter windows'
     );
@@ -9548,8 +9570,13 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /currentCountdownHeadMarkerInnerCoreFocused[\s\S]*?fillStyle\(0xFFF2C8,\s*1\)[\s\S]*?fillRoundedRect\(\s*countdownHeadMarkerX - 0\.25,\s*telegraphRect\.y \+ 2,\s*0\.5,\s*telegraphRect\.h - 4,\s*1\s*\)/,
+        /currentCountdownHeadMarkerInnerCoreFocused[\s\S]*?fillStyle\(0xFFF2C8,\s*1\)[\s\S]*?fillRoundedRect\(\s*countdownHeadMarkerX - 0\.25,\s*(?:telegraphRect\.y \+ 2|countdownHeadInnerCoreY),\s*0\.5,\s*(?:telegraphRect\.h - 4|countdownHeadInnerCoreHeight),\s*1\s*\)/,
         'boss telegraph rendering should narrow and brighten the countdown-head inner core during the final tail-focus beat'
+    );
+    assert.match(
+        source,
+        /const countdownHeadInnerCoreY = telegraphHud\.currentCountdownHeadMarkerInnerCoreHeightTrimmed\s*\?\s*telegraphRect\.y \+ 3\s*:\s*telegraphRect\.y \+ 2;[\s\S]*?const countdownHeadInnerCoreHeight = telegraphHud\.currentCountdownHeadMarkerInnerCoreHeightTrimmed\s*\?\s*telegraphRect\.h - 6\s*:\s*telegraphRect\.h - 4;[\s\S]*?fillRoundedRect\(\s*countdownHeadMarkerX - 0\.25,\s*countdownHeadInnerCoreY,\s*0\.5,\s*countdownHeadInnerCoreHeight,\s*1\s*\)/,
+        'boss telegraph rendering should shorten the countdown-head inner core height during the final 20ms tail beat'
     );
     assert.match(
         source,
@@ -9570,6 +9597,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 120ms，还会把“当前倒计时头标”的内芯略微收窄提亮/,
         'help overlay should document the narrower brighter countdown-head inner core during the last tail beat'
+    );
+    assert.match(
+        source,
+        /若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 20ms，还会把“当前倒计时头标”的主芯高度略微收短贴边/,
+        'help overlay should document the shorter countdown-head inner core height during the final 20ms tail beat'
     );
     assert.match(
         source,
