@@ -72,6 +72,68 @@ function buildExpectedReturnDriftNote(checkpointExpectedReturnLabel, recoveryExp
   return `回切校验: drift checkpoint=\`${checkpointLabel}\` recovery=\`${recoveryLabel}\``;
 }
 
+function getCheckpointExpectedReturnLabel(checkpoint, sharedRecoveryExpectedReturnLabel) {
+  if (typeof checkpoint?.expectedReturnLabel === 'string' && checkpoint.expectedReturnLabel.trim()) {
+    return checkpoint.expectedReturnLabel.trim();
+  }
+  return sharedRecoveryExpectedReturnLabel;
+}
+
+function buildCadenceCheckpointSummaryLine(cadenceArtifacts) {
+  if (!cadenceArtifacts || !Array.isArray(cadenceArtifacts.checkpointLines) || cadenceArtifacts.checkpointLines.length === 0) {
+    return '';
+  }
+
+  const checkpointEntries = Array.isArray(cadenceArtifacts.review?.checkpoints)
+    ? cadenceArtifacts.review.checkpoints
+    : [];
+  const sharedRecoveryExpectedReturnLabel = typeof cadenceArtifacts.sharedRecoverySnapshot?.expectedReturnLabel === 'string'
+    ? cadenceArtifacts.sharedRecoverySnapshot.expectedReturnLabel.trim()
+    : '';
+  if (!sharedRecoveryExpectedReturnLabel) {
+    return '';
+  }
+
+  let matchCount = 0;
+  let driftCount = 0;
+  const driftCheckpointLabels = [];
+
+  cadenceArtifacts.checkpointLines.forEach((_line, index) => {
+    const checkpoint = checkpointEntries[index] && typeof checkpointEntries[index] === 'object'
+      ? checkpointEntries[index]
+      : null;
+    const expectedReturnLabel = getCheckpointExpectedReturnLabel(
+      checkpoint,
+      sharedRecoveryExpectedReturnLabel
+    );
+    const driftNote = buildExpectedReturnDriftNote(
+      expectedReturnLabel,
+      sharedRecoveryExpectedReturnLabel
+    );
+
+    if (driftNote === '回切校验: match') {
+      matchCount += 1;
+      return;
+    }
+    if (driftNote.startsWith('回切校验: drift')) {
+      driftCount += 1;
+      if (expectedReturnLabel) {
+        driftCheckpointLabels.push(`\`${expectedReturnLabel}\``);
+      }
+    }
+  });
+
+  if (matchCount === 0 && driftCount === 0) {
+    return '';
+  }
+
+  const parts = [`- Phase 3 汇总: match=${matchCount} | drift=${driftCount}`];
+  if (driftCheckpointLabels.length > 0) {
+    parts.push(`drift checkpoints: ${driftCheckpointLabels.join(', ')}`);
+  }
+  return parts.join(' | ');
+}
+
 function buildCadenceCheckpointIndexLines(cadenceArtifacts) {
   if (!cadenceArtifacts || !Array.isArray(cadenceArtifacts.checkpointLines)) {
     return [];
@@ -94,9 +156,7 @@ function buildCadenceCheckpointIndexLines(cadenceArtifacts) {
     const checkpoint = checkpointEntries[index] && typeof checkpointEntries[index] === 'object'
       ? checkpointEntries[index]
       : null;
-    const expectedReturnLabel = typeof checkpoint?.expectedReturnLabel === 'string' && checkpoint.expectedReturnLabel.trim()
-      ? checkpoint.expectedReturnLabel.trim()
-      : sharedRecoveryExpectedReturnLabel;
+    const expectedReturnLabel = getCheckpointExpectedReturnLabel(checkpoint, sharedRecoveryExpectedReturnLabel);
     const parts = [line];
 
     if (expectedReturnLabel) {
@@ -231,6 +291,10 @@ function renderMarkdownReport(summary) {
       );
 
       if (test.cadenceArtifacts.checkpointLines.length > 0) {
+        const summaryLine = buildCadenceCheckpointSummaryLine(test.cadenceArtifacts);
+        if (summaryLine) {
+          lines.push(summaryLine, '');
+        }
         lines.push(...buildCadenceCheckpointIndexLines(test.cadenceArtifacts));
       } else {
         lines.push('暂无 checkpoint 文案');
