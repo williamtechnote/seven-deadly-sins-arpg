@@ -55,6 +55,22 @@ function buildRecoverySnapshotShortNote(cadenceArtifacts, checkpoint) {
   return `recovery 快照: \`${parts.join(' · ')}\``;
 }
 
+function buildTelegraphDurationShortNote(cadenceArtifacts) {
+  const snapshot = cadenceArtifacts?.telegraphSnapshot && typeof cadenceArtifacts.telegraphSnapshot === 'object'
+    ? cadenceArtifacts.telegraphSnapshot
+    : null;
+  if (!snapshot) return '';
+
+  const telegraphDurationMs = Number.isFinite(snapshot.telegraphDurationMs)
+    ? Math.max(0, Math.trunc(snapshot.telegraphDurationMs))
+    : null;
+  if (telegraphDurationMs === null || telegraphDurationMs <= 0) {
+    return '';
+  }
+
+  return `telegraphDurationMs: \`${telegraphDurationMs}ms\``;
+}
+
 function buildExpectedReturnDriftNote(checkpointExpectedReturnLabel, recoveryExpectedReturnLabel) {
   const checkpointLabel = typeof checkpointExpectedReturnLabel === 'string'
     ? checkpointExpectedReturnLabel.trim()
@@ -246,7 +262,8 @@ function collectCadenceDriftEntries(cadenceArtifacts) {
           reviewCheckpointShortNote: buildReviewCheckpointShortNote(index, checkpointEntries),
           checkpointAliasShortNote: buildCheckpointAliasShortNote(checkpoint),
           bridgeAttackCountShortNote: buildBridgeAttackCountShortNote(checkpoint),
-          bridgeTimelineIndexShortNote: buildBridgeTimelineIndexShortNote(checkpoint)
+          bridgeTimelineIndexShortNote: buildBridgeTimelineIndexShortNote(checkpoint),
+          telegraphDurationShortNote: buildTelegraphDurationShortNote(cadenceArtifacts)
         });
       }
     }
@@ -302,7 +319,8 @@ function buildCadenceDriftMiniChecklistLines(cadenceArtifacts) {
       reviewCheckpointShortNote,
       checkpointAliasShortNote,
       bridgeAttackCountShortNote,
-      bridgeTimelineIndexShortNote
+      bridgeTimelineIndexShortNote,
+      telegraphDurationShortNote
     }) => {
       const parts = [line];
       if (recoverySnapshotShortNote) {
@@ -322,6 +340,9 @@ function buildCadenceDriftMiniChecklistLines(cadenceArtifacts) {
       }
       if (bridgeTimelineIndexShortNote) {
         parts.push(bridgeTimelineIndexShortNote);
+      }
+      if (telegraphDurationShortNote) {
+        parts.push(telegraphDurationShortNote);
       }
       parts.push(`证据: ${evidenceLinks}`);
       return `  - ${parts.join(' | ')}`;
@@ -433,6 +454,7 @@ function collectArtifactReport(rootDir) {
       cadenceArtifacts: fs.existsSync(cadenceReviewPath) || fs.existsSync(checkpointPath) || fs.existsSync(sharedRecoveryPath) || fs.existsSync(telegraphHudPath)
         ? {
             review: cadenceReview?.review || null,
+            telegraphSnapshot: cadenceReview?.telegraphSnapshot || null,
             checkpointLines,
             sharedRecoverySnapshot,
             files: {

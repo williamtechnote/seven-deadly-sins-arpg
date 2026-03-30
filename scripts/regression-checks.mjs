@@ -1950,6 +1950,11 @@ function testE2eReportPhase3CadenceMarkdownIndex() {
                 }
             ]
         },
+        telegraphSnapshot: {
+            attackLabel: '魅影连舞',
+            counterHint: '反制: 观察真身换位节奏，留翻滚躲最后逆转波',
+            telegraphDurationMs: 1300
+        },
         checkpointLines: [
             '1. HUD telegraph 混乱逆转 -> shared recovery≈10.2s -> 13-step dash/charmBolt bridge -> 幻影风暴 | 反制: 停止冲刺，短步修正方向',
             '2. HUD telegraph 魅影连舞 -> shared recovery≈10.2s -> 28-step dash/charmBolt loopback -> 混乱逆转 | 反制: 观察真身换位节奏，留翻滚躲最后逆转波'
@@ -2000,8 +2005,8 @@ function testE2eReportPhase3CadenceMarkdownIndex() {
     );
     assert.match(
         output,
-        /- Drift-only mini checklist:\n  - 2\. HUD telegraph 魅影连舞 -> shared recovery≈10\.2s -> 28-step dash\/charmBolt loopback -> 混乱逆转 \| 反制: 观察真身换位节奏，留翻滚躲最后逆转波 \| recovery 快照: `sharedRecoveryRemainingMs=10200 · breatherRemaining=8 · expectedReturnLabel=幻影风暴` \| 回切校验: drift checkpoint=`混乱逆转` recovery=`幻影风暴` \| review checkpoint #2 \| loopback checkpoint alias: `mirageDance->loopback` \| dash\/charmBolt count: `14\/14 \(28 total\)` \| bridgeTimeline index: `29-56 \(29:dash -> 56:charmBolt\)` \| 证据: \[review]\(artifacts\/e2e\/lust-phase3-cadence-review\/cadence-review\.json\) \[recovery]\(artifacts\/e2e\/lust-phase3-cadence-review\/shared-recovery-snapshot\.json\) \[telegraph]\(artifacts\/e2e\/lust-phase3-cadence-review\/telegraph-hud\.png\) \[checkpoints]\(artifacts\/e2e\/lust-phase3-cadence-review\/phase3-checkpoints\.txt\)/,
-        'e2e report should add a drift-only mini checklist that relists each drifting checkpoint line with inline recovery/drift notes, a review checkpoint index, a bridge/loopback alias note, a dash/charmBolt count note, a bridgeTimeline span note, and direct artifact anchors'
+        /- Drift-only mini checklist:\n  - 2\. HUD telegraph 魅影连舞 -> shared recovery≈10\.2s -> 28-step dash\/charmBolt loopback -> 混乱逆转 \| 反制: 观察真身换位节奏，留翻滚躲最后逆转波 \| recovery 快照: `sharedRecoveryRemainingMs=10200 · breatherRemaining=8 · expectedReturnLabel=幻影风暴` \| 回切校验: drift checkpoint=`混乱逆转` recovery=`幻影风暴` \| review checkpoint #2 \| loopback checkpoint alias: `mirageDance->loopback` \| dash\/charmBolt count: `14\/14 \(28 total\)` \| bridgeTimeline index: `29-56 \(29:dash -> 56:charmBolt\)` \| telegraphDurationMs: `1300ms` \| 证据: \[review]\(artifacts\/e2e\/lust-phase3-cadence-review\/cadence-review\.json\) \[recovery]\(artifacts\/e2e\/lust-phase3-cadence-review\/shared-recovery-snapshot\.json\) \[telegraph]\(artifacts\/e2e\/lust-phase3-cadence-review\/telegraph-hud\.png\) \[checkpoints]\(artifacts\/e2e\/lust-phase3-cadence-review\/phase3-checkpoints\.txt\)/,
+        'e2e report should add a drift-only mini checklist that relists each drifting checkpoint line with inline recovery/drift notes, a review checkpoint index, a bridge/loopback alias note, a dash/charmBolt count note, a bridgeTimeline span note, a telegraphDurationMs short note, and direct artifact anchors'
     );
     assert.match(
         output,
@@ -2569,8 +2574,8 @@ function testReadmeLustCadenceReportChecklist() {
     );
     assert.match(
         source,
-        /`review checkpoint #n` 索引短注记、bridge\/loopback checkpoint alias short note、`dash\/charmBolt` bridge count short note 与 `bridgeTimeline` index short note/,
-        'README should document the dash/charmBolt bridge count short note in the drift-only mini checklist'
+        /`review checkpoint #n` 索引短注记、bridge\/loopback checkpoint alias short note、`dash\/charmBolt` bridge count short note、`bridgeTimeline` index short note 与 `telegraphDurationMs` short note/,
+        'README should document the telegraphDurationMs short note in the drift-only mini checklist'
     );
 }
 
