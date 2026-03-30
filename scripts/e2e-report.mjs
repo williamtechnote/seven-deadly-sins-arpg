@@ -97,7 +97,7 @@ function collectCadenceDriftEntries(cadenceArtifacts) {
       matchCount: 0,
       driftCount: 0,
       driftCheckpointLabels: [],
-      driftCheckpointLines: []
+      driftEntries: []
     };
   }
 
@@ -112,14 +112,14 @@ function collectCadenceDriftEntries(cadenceArtifacts) {
       matchCount: 0,
       driftCount: 0,
       driftCheckpointLabels: [],
-      driftCheckpointLines: []
+      driftEntries: []
     };
   }
 
   let matchCount = 0;
   let driftCount = 0;
   const driftCheckpointLabels = [];
-  const driftCheckpointLines = [];
+  const driftEntries = [];
 
   cadenceArtifacts.checkpointLines.forEach((line, index) => {
     const checkpoint = checkpointEntries[index] && typeof checkpointEntries[index] === 'object'
@@ -144,7 +144,11 @@ function collectCadenceDriftEntries(cadenceArtifacts) {
         driftCheckpointLabels.push(`\`${expectedReturnLabel}\``);
       }
       if (line) {
-        driftCheckpointLines.push(line);
+        driftEntries.push({
+          line,
+          recoverySnapshotShortNote: buildRecoverySnapshotShortNote(cadenceArtifacts, checkpoint),
+          driftNote
+        });
       }
     }
   });
@@ -153,7 +157,7 @@ function collectCadenceDriftEntries(cadenceArtifacts) {
     matchCount,
     driftCount,
     driftCheckpointLabels,
-    driftCheckpointLines
+    driftEntries
   };
 }
 
@@ -185,14 +189,23 @@ function buildCadenceDriftMiniChecklistLines(cadenceArtifacts) {
     return [];
   }
 
-  const { driftCheckpointLines } = collectCadenceDriftEntries(cadenceArtifacts);
-  if (driftCheckpointLines.length === 0) {
+  const { driftEntries } = collectCadenceDriftEntries(cadenceArtifacts);
+  if (driftEntries.length === 0) {
     return [];
   }
 
   return [
     '- Drift-only mini checklist:',
-    ...driftCheckpointLines.map((line) => `  - ${line} -> ${checkpointLink}`)
+    ...driftEntries.map(({ line, recoverySnapshotShortNote, driftNote }) => {
+      const parts = [line];
+      if (recoverySnapshotShortNote) {
+        parts.push(recoverySnapshotShortNote);
+      }
+      if (driftNote) {
+        parts.push(driftNote);
+      }
+      return `  - ${parts.join(' | ')} -> ${checkpointLink}`;
+    })
   ];
 }
 

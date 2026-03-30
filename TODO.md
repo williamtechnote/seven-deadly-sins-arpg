@@ -1,9 +1,10 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百一十：若 drift-only mini checklist 已经能把复盘者带到漂移 checkpoint 行但仍要回头翻完整列表确认上下文，再给 mini checklist 补上 checkpoint 的 `回切校验` / recovery 快照短注记，继续压缩 live pacing 排查路径
+- [ ] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百一十一：若 drift-only mini checklist 已经能独立说明 `回切校验` 与 recovery 快照但仍要回头翻 summary header 才能打开对应证据，再给每条 drift row 直接补上 `[review] [recovery] [telegraph]` artifact anchor，继续压缩 live pacing 排查路径
 
 ## Completed
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百一十：若 drift-only mini checklist 已经能把复盘者带到漂移 checkpoint 行但仍要回头翻完整列表确认上下文，再给 mini checklist 补上 checkpoint 的 `回切校验` / recovery 快照短注记，继续压缩 live pacing 排查路径（完成：2026-03-30 10:07 +08，已拆分为一百一十一）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百零九：若 phase 3 drift 汇总已经能直跳共享证据但仍要继续下滑定位具体 checkpoint 行，再给 markdown 版 `Phase 3 录屏复盘清单` 补一段 drift-only mini checklist，只重列发生漂移的 checkpoint 行与 `[checkpoints]` anchor，继续压缩 live pacing 排查路径（完成：2026-03-30 10:05 +08，已拆分为一百一十）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百零八：把 markdown 版 `Phase 3 录屏复盘清单` 的 phase 3 drift 汇总补成直接附带 `[review] [recovery] [telegraph]` anchor 的漂移索引，让复盘者在 summary header 就能直跳证据，继续压缩 live pacing 排查路径（完成：2026-03-30 09:56 +08，已拆分为一百零九）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百零七：若 checkpoint 行直接内联 `回切校验` 后仍要逐条人工扫列表，给 markdown 版 `Phase 3 录屏复盘清单` 再补一段 phase 3 汇总 header，直接统计 `match/drift` 数量并点名漂移 checkpoint，继续压缩 live pacing 排查路径（完成：2026-03-30 09:49 +08，已拆分为一百零八）
