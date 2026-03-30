@@ -159,6 +159,32 @@ function buildCounterWindowTailOffsetShortNote(cadenceArtifacts) {
   return `counterWindowTailOffsetMs: \`${tailLabel}\``;
 }
 
+function buildCounterWindowTailPhaseShortNote(cadenceArtifacts) {
+  const snapshot = cadenceArtifacts?.telegraphSnapshot && typeof cadenceArtifacts.telegraphSnapshot === 'object'
+    ? cadenceArtifacts.telegraphSnapshot
+    : null;
+  if (!snapshot) return '';
+
+  const counterWindowMs = Number.isFinite(snapshot.counterWindowMs)
+    ? Math.max(0, Math.trunc(snapshot.counterWindowMs))
+    : null;
+  const telegraphDurationMs = Number.isFinite(snapshot.telegraphDurationMs)
+    ? Math.max(0, Math.trunc(snapshot.telegraphDurationMs))
+    : null;
+  if (counterWindowMs === null || counterWindowMs <= 0 || telegraphDurationMs === null || telegraphDurationMs <= 0) {
+    return '';
+  }
+
+  const tailOffsetMs = counterWindowMs - telegraphDurationMs;
+  let tailPhaseLabel = 'telegraph尾端收束';
+  if (tailOffsetMs > 0) {
+    tailPhaseLabel = 'telegraph后收束';
+  } else if (tailOffsetMs < 0) {
+    tailPhaseLabel = 'telegraph内收束';
+  }
+  return `counterWindowTailPhase: \`${tailPhaseLabel}\``;
+}
+
 function buildExpectedReturnDriftNote(checkpointExpectedReturnLabel, recoveryExpectedReturnLabel) {
   const checkpointLabel = typeof checkpointExpectedReturnLabel === 'string'
     ? checkpointExpectedReturnLabel.trim()
@@ -355,6 +381,7 @@ function collectCadenceDriftEntries(cadenceArtifacts) {
           counterWindowRatioShortNote: buildCounterWindowRatioShortNote(cadenceArtifacts),
           counterWindowDeltaShortNote: buildCounterWindowDeltaShortNote(cadenceArtifacts),
           counterWindowTailOffsetShortNote: buildCounterWindowTailOffsetShortNote(cadenceArtifacts),
+          counterWindowTailPhaseShortNote: buildCounterWindowTailPhaseShortNote(cadenceArtifacts),
           telegraphDurationShortNote: buildTelegraphDurationShortNote(cadenceArtifacts)
         });
       }
@@ -416,6 +443,7 @@ function buildCadenceDriftMiniChecklistLines(cadenceArtifacts) {
       counterWindowRatioShortNote,
       counterWindowDeltaShortNote,
       counterWindowTailOffsetShortNote,
+      counterWindowTailPhaseShortNote,
       telegraphDurationShortNote
     }) => {
       const parts = [line];
@@ -448,6 +476,9 @@ function buildCadenceDriftMiniChecklistLines(cadenceArtifacts) {
       }
       if (counterWindowTailOffsetShortNote) {
         parts.push(counterWindowTailOffsetShortNote);
+      }
+      if (counterWindowTailPhaseShortNote) {
+        parts.push(counterWindowTailPhaseShortNote);
       }
       if (telegraphDurationShortNote) {
         parts.push(telegraphDurationShortNote);
