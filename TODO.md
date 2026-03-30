@@ -1,9 +1,10 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百一十八：若 drift-only mini checklist 已带 `counterWindowMs` short note 仍要心算这段可反制空档占整段 telegraph 的比例，再给每条 drift row 补一段 `counterWindowRatio` short note，继续压缩 live pacing 排查路径
+- [ ] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百一十九：若 drift-only mini checklist 已带 `counterWindowRatio` short note 仍要心算可反制空档究竟比整段 telegraph 溢出多少，再给每条 drift row 补一段 `counterWindowDeltaMs` short note，继续压缩 telegraph 异常排查路径
 
 ## Completed
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百一十八：若 drift-only mini checklist 已带 `counterWindowMs` short note 仍要心算这段可反制空档占整段 telegraph 的比例，再给每条 drift row 补一段 `counterWindowRatio` short note，继续压缩 live pacing 排查路径（完成：2026-03-30 11:14 +08，已拆分为一百一十九）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百一十七：若 drift-only mini checklist 已带 `telegraphDurationMs` short note 仍要回头翻 telegraph HUD 才能确认这段漂移前究竟剩多少可反制空档，再给每条 drift row 补一段 `counterWindowMs` short note，继续压缩 live pacing 排查路径（完成：2026-03-30 11:08 +08，已拆分为一百一十八）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百一十六：若 drift-only mini checklist 已带 `dash/charmBolt` bridge count short note 仍要回头翻 telegraph HUD 才能确认这段漂移前的起手压迫时长，再给每条 drift row 补一段 `telegraphDurationMs` short note，继续压缩 live pacing 排查路径（完成：2026-03-30 11:00 +08，已拆分为一百一十七）
 - [x] 核心战斗体验：行动 HUD 需要把 `普攻 U / 特攻 O / 闪避 Space` 从静态提示改成真实 readiness 行，显式区分 `就绪` / `冷却剩余` / `体力不足`，减少玩家误判输入失败原因（完成：2026-03-30 10:53 +08）
