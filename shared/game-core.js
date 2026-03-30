@@ -2761,6 +2761,9 @@
         const currentCountdownHeadMarkerLateGlowVisible = currentCountdownHeadMarkerVisible
             && remainingMs > 0
             && remainingMs < 220;
+        const currentCountdownHeadMarkerInnerCoreFocused = currentCountdownHeadMarkerVisible
+            && remainingMs > 0
+            && remainingMs < 120;
         const currentCountdownHeadMarkerWarmFlashDurationMs = currentCountdownHeadMarkerVisible ? 120 : 0;
 
         if (!attackLabel) {
@@ -2775,6 +2778,7 @@
                 currentCountdownHeadMarkerVisible: false,
                 currentCountdownHeadMarkerRatio: 0,
                 currentCountdownHeadMarkerLateGlowVisible: false,
+                currentCountdownHeadMarkerInnerCoreFocused: false,
                 currentCountdownHeadMarkerWarmFlashDurationMs: 0,
                 counterWindowStartMarkerVisible: false,
                 counterWindowStartMarkerRatio: 0,
@@ -2810,6 +2814,7 @@
             currentCountdownHeadMarkerVisible,
             currentCountdownHeadMarkerRatio: currentCountdownHeadMarkerVisible ? progressRatio : 0,
             currentCountdownHeadMarkerLateGlowVisible,
+            currentCountdownHeadMarkerInnerCoreFocused,
             currentCountdownHeadMarkerWarmFlashDurationMs,
             counterWindowStartMarkerVisible,
             counterWindowStartMarkerRatio: counterWindowStartMarkerVisible
