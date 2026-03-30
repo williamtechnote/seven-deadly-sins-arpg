@@ -1599,6 +1599,21 @@ function testBossHudReadability() {
     assert.equal(finalCountdownHeadGlowTrimTelegraphSummary.currentCountdownHeadMarkerLateGlowVisible, true, 'telegraph summary should keep the weaker late head-marker glow active during the final trim beat');
     assert.equal(finalCountdownHeadGlowTrimTelegraphSummary.currentCountdownHeadMarkerInnerCoreFocused, true, 'telegraph summary should keep the inner countdown-head core focused during the final trim beat');
     assert.equal(finalCountdownHeadGlowTrimTelegraphSummary.currentCountdownHeadMarkerLateGlowTrimmed, true, 'telegraph summary should flag when the weaker late head-marker glow needs to contract around the endpoint during the final trim beat');
+    assert.equal(finalCountdownHeadGlowTrimTelegraphSummary.currentCountdownHeadMarkerLateGlowContained, false, 'telegraph summary should keep the weaker late head-marker glow in its normal spill state until the remaining countdown drops under the tighter final containment threshold');
+
+    const finalCountdownHeadGlowContainTelegraphSummary = buildBossTelegraphHudSummary({
+        attackLabel: '混乱逆转',
+        attackTypeLabel: '特殊',
+        counterWindowMs: 800,
+        counterHint: '反制: 停止冲刺，短步修正方向',
+        telegraphDurationMs: 1300,
+        remainingMs: 30
+    });
+    assert.equal(finalCountdownHeadGlowContainTelegraphSummary.currentCountdownHeadMarkerVisible, true, 'telegraph summary should keep the live countdown head marker visible during the final containment beat');
+    assert.equal(finalCountdownHeadGlowContainTelegraphSummary.currentCountdownHeadMarkerLateGlowVisible, true, 'telegraph summary should keep the weaker late head-marker glow active during the final containment beat');
+    assert.equal(finalCountdownHeadGlowContainTelegraphSummary.currentCountdownHeadMarkerInnerCoreFocused, true, 'telegraph summary should keep the inner countdown-head core focused during the final containment beat');
+    assert.equal(finalCountdownHeadGlowContainTelegraphSummary.currentCountdownHeadMarkerLateGlowTrimmed, true, 'telegraph summary should keep the weaker late head-marker glow trimmed during the final containment beat');
+    assert.equal(finalCountdownHeadGlowContainTelegraphSummary.currentCountdownHeadMarkerLateGlowContained, true, 'telegraph summary should flag when the weaker late head-marker glow needs to stay inside the bar endpoint during the final containment beat');
 
     const activeTailAfterglowFollowupTelegraphSummary = buildBossTelegraphHudSummary({
         attackLabel: '幻影风暴',
@@ -8334,6 +8349,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /若 Boss telegraph 已进入 `尾段残影` 区间且剩余读招倒计时已低于约 40ms，再把 `当前倒计时头标` 外层余辉 alpha 继续压低并钳在条体终点内侧/,
+        'README should document the dimmer contained outer head-marker glow during the final 40ms tail beat'
+    );
+    assert.match(
+        source,
         /若 Boss telegraph 已进入 `尾段残影` 区间且剩余读招倒计时已低于约 120ms，再把 `当前倒计时头标` 的内芯略微收窄提亮/,
         'README should document the narrower brighter countdown-head inner core during the last tail beat'
     );
@@ -9523,6 +9543,11 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
+        /const lateGlowOuterAlpha = telegraphHud\.currentCountdownHeadMarkerLateGlowContained \? 0\.05 : 0\.08;[\s\S]*?lateGlowOuterX = telegraphHud\.currentCountdownHeadMarkerLateGlowContained \? Math\.max\(telegraphRect\.x \+ 1,\s*lateGlowOuterX\) : lateGlowOuterX;[\s\S]*?this\.bossTelegraphCountdownHeadFlash\.fillStyle\(0xFFE7AE,\s*lateGlowOuterAlpha\);/,
+        'boss telegraph rendering should lower and contain the weaker late head-marker outer glow during the final 40ms tail beat'
+    );
+    assert.match(
+        source,
         /currentCountdownHeadMarkerInnerCoreFocused[\s\S]*?fillStyle\(0xFFF2C8,\s*1\)[\s\S]*?fillRoundedRect\(\s*countdownHeadMarkerX - 0\.25,\s*telegraphRect\.y \+ 2,\s*0\.5,\s*telegraphRect\.h - 4,\s*1\s*\)/,
         'boss telegraph rendering should narrow and brighten the countdown-head inner core during the final tail-focus beat'
     );
@@ -9535,6 +9560,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 80ms，还会把“当前倒计时头标”外侧那层弱暖色余辉略微收短贴边/,
         'help overlay should document the trimmed late head-marker glow during the final 80ms tail beat'
+    );
+    assert.match(
+        source,
+        /若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 40ms，还会把“当前倒计时头标”外层余辉 alpha 继续压低并钳在条体终点内侧/,
+        'help overlay should document the dimmer contained outer head-marker glow during the final 40ms tail beat'
     );
     assert.match(
         source,

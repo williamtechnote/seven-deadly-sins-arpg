@@ -2763,6 +2763,8 @@
             && remainingMs < 220;
         const currentCountdownHeadMarkerLateGlowTrimmed = currentCountdownHeadMarkerLateGlowVisible
             && remainingMs < 80;
+        const currentCountdownHeadMarkerLateGlowContained = currentCountdownHeadMarkerLateGlowTrimmed
+            && remainingMs < 40;
         const currentCountdownHeadMarkerInnerCoreFocused = currentCountdownHeadMarkerVisible
             && remainingMs > 0
             && remainingMs < 120;
@@ -2781,6 +2783,7 @@
                 currentCountdownHeadMarkerRatio: 0,
                 currentCountdownHeadMarkerLateGlowVisible: false,
                 currentCountdownHeadMarkerLateGlowTrimmed: false,
+                currentCountdownHeadMarkerLateGlowContained: false,
                 currentCountdownHeadMarkerInnerCoreFocused: false,
                 currentCountdownHeadMarkerWarmFlashDurationMs: 0,
                 counterWindowStartMarkerVisible: false,
@@ -2818,6 +2821,7 @@
             currentCountdownHeadMarkerRatio: currentCountdownHeadMarkerVisible ? progressRatio : 0,
             currentCountdownHeadMarkerLateGlowVisible,
             currentCountdownHeadMarkerLateGlowTrimmed,
+            currentCountdownHeadMarkerLateGlowContained,
             currentCountdownHeadMarkerInnerCoreFocused,
             currentCountdownHeadMarkerWarmFlashDurationMs,
             counterWindowStartMarkerVisible,
