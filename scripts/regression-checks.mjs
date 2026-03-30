@@ -1680,6 +1680,7 @@ function testBossHudReadability() {
     assert.equal(finalCountdownHeadShellAlphaTrimTelegraphSummary.currentCountdownHeadMarkerShellCoreWarmthMuted, false, 'telegraph summary should keep the countdown-head shell/core color temperature split at its normal warmth until the remaining tail countdown falls into the final sub-millisecond trim beat');
     assert.equal(finalCountdownHeadShellAlphaTrimTelegraphSummary.currentCountdownHeadMarkerShellCoreSaturationMuted, false, 'telegraph summary should keep the countdown-head shell/core saturation split at its normal separation until the remaining tail countdown falls into the final sub-millisecond beat');
     assert.equal(finalCountdownHeadShellAlphaTrimTelegraphSummary.currentCountdownHeadMarkerShellCoreEdgeSoftened, false, 'telegraph summary should keep the countdown-head shell/core seam at its normal crispness until the remaining tail countdown falls into the final sub-millisecond trim beat');
+    assert.equal(finalCountdownHeadShellAlphaTrimTelegraphSummary.currentCountdownHeadMarkerShellCoreEdgeHighlightFlattened, false, 'telegraph summary should keep the countdown-head shell/core edge highlight at its normal crest until the remaining tail countdown falls into the final sub-millisecond trim beat');
     assert.equal(finalCountdownHeadShellAlphaTrimTelegraphSummary.currentCountdownHeadMarkerLateGlowOuterAlphaMuted, false, 'telegraph summary should keep the residual outer late glow alpha at full strength until the remaining tail countdown falls into the final sub-millisecond beat');
     assert.equal(finalCountdownHeadShellAlphaTrimTelegraphSummary.currentCountdownHeadMarkerLateGlowOuterWarmthMuted, false, 'telegraph summary should keep the residual outer late glow at its warmer color temperature until the remaining tail countdown falls into the final sub-millisecond beat');
     assert.equal(finalCountdownHeadShellAlphaTrimTelegraphSummary.currentCountdownHeadMarkerLateGlowOuterHeightTrimmed, false, 'telegraph summary should keep the residual outer late glow at full height until the remaining tail countdown falls into the final sub-millisecond trim beat');
@@ -1708,6 +1709,7 @@ function testBossHudReadability() {
     assert.equal(finalCountdownHeadInnerCoreAlphaTrimTelegraphSummary.currentCountdownHeadMarkerShellCoreWarmthMuted, true, 'telegraph summary should also converge the countdown-head shell/core color temperature during the final sub-millisecond trim beat');
     assert.equal(finalCountdownHeadInnerCoreAlphaTrimTelegraphSummary.currentCountdownHeadMarkerShellCoreSaturationMuted, true, 'telegraph summary should also converge the countdown-head shell/core saturation during the final sub-millisecond trim beat');
     assert.equal(finalCountdownHeadInnerCoreAlphaTrimTelegraphSummary.currentCountdownHeadMarkerShellCoreEdgeSoftened, true, 'telegraph summary should also soften the countdown-head shell/core seam during the final sub-millisecond trim beat');
+    assert.equal(finalCountdownHeadInnerCoreAlphaTrimTelegraphSummary.currentCountdownHeadMarkerShellCoreEdgeHighlightFlattened, true, 'telegraph summary should also flatten the countdown-head shell/core edge highlight during the final sub-millisecond trim beat');
     assert.equal(finalCountdownHeadInnerCoreAlphaTrimTelegraphSummary.currentCountdownHeadMarkerLateGlowFinalWidthTrimmed, true, 'telegraph summary should also narrow the residual outer late glow during the final sub-millisecond trim beat');
     assert.equal(finalCountdownHeadInnerCoreAlphaTrimTelegraphSummary.currentCountdownHeadMarkerLateGlowOuterAlphaMuted, true, 'telegraph summary should also lower the residual outer late glow alpha during the final sub-millisecond trim beat');
     assert.equal(finalCountdownHeadInnerCoreAlphaTrimTelegraphSummary.currentCountdownHeadMarkerLateGlowOuterWarmthMuted, true, 'telegraph summary should also cool the residual outer late glow during the final sub-millisecond trim beat');
@@ -8074,7 +8076,7 @@ function testBossHudMeasurementHooks() {
     );
     assert.match(
         source,
-        /this\.bossTelegraphCountdownHeadMarker\.clear\(\);[\s\S]*?if \(telegraphHud\.currentCountdownHeadMarkerVisible\) \{[\s\S]*?const countdownHeadMarkerX = telegraphRect\.x \+ telegraphRect\.w \* telegraphHud\.currentCountdownHeadMarkerRatio;[\s\S]*?const countdownHeadShellEdgeSoftInset = telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeSoftened \? 0\.25 : 0;[\s\S]*?const countdownHeadShellY = telegraphHud\.currentCountdownHeadMarkerShellCapTrimmed\s*\?\s*telegraphRect\.y \+ 2 \+ countdownHeadShellEdgeSoftInset\s*:\s*telegraphRect\.y \+ 1;[\s\S]*?const countdownHeadShellHeight = telegraphHud\.currentCountdownHeadMarkerShellCapTrimmed\s*\?\s*telegraphRect\.h - 4 - countdownHeadShellEdgeSoftInset \* 2\s*:\s*telegraphRect\.h - 2;[\s\S]*?this\.bossTelegraphCountdownHeadMarker\.fillRoundedRect\(\s*(?:countdownHeadMarkerX - 1|countdownHeadShellX),\s*countdownHeadShellY,\s*(?:2|countdownHeadShellWidth),\s*countdownHeadShellHeight,\s*1\s*\);/,
+        /this\.bossTelegraphCountdownHeadMarker\.clear\(\);[\s\S]*?if \(telegraphHud\.currentCountdownHeadMarkerVisible\) \{[\s\S]*?const countdownHeadMarkerX = telegraphRect\.x \+ telegraphRect\.w \* telegraphHud\.currentCountdownHeadMarkerRatio;[\s\S]*?const countdownHeadShellEdgeSoftInset = telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeSoftened \? 0\.25 : 0;[\s\S]*?const countdownHeadShellY = telegraphHud\.currentCountdownHeadMarkerShellCapTrimmed\s*\?\s*telegraphRect\.y \+ 2 \+ countdownHeadShellEdgeSoftInset\s*:\s*telegraphRect\.y \+ 1;[\s\S]*?const countdownHeadShellHeight = telegraphHud\.currentCountdownHeadMarkerShellCapTrimmed\s*\?\s*telegraphRect\.h - 4 - countdownHeadShellEdgeSoftInset \* 2\s*:\s*telegraphRect\.h - 2;[\s\S]*?this\.bossTelegraphCountdownHeadMarker\.fillRoundedRect\(\s*(?:countdownHeadMarkerX - 1|countdownHeadShellX),\s*(?:telegraphRect\.y \+ 1|countdownHeadShellY),\s*(?:2|countdownHeadShellWidth),\s*(?:telegraphRect\.h - 2|countdownHeadShellHeight),\s*(?:1|countdownHeadShellRadius)\s*\);/,
         'Boss telegraph should draw a thin dedicated live countdown head marker once the dimmed tail segment becomes active'
     );
     assert.match(
@@ -8504,6 +8506,11 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /若 Boss telegraph 已进入 `尾段残影` 区间且剩余读招倒计时已低于约 1ms，再把 `当前倒计时头标` 壳芯之间的边缘清晰度也同步压软半拍，避免清零前最后一粒撞线仍像保留双层描边/,
         'README should document that the countdown-head shell/core seam also softens during the final sub-millisecond trim beat'
+    );
+    assert.match(
+        source,
+        /若 Boss telegraph 已进入 `尾段残影` 区间且剩余读招倒计时已低于约 1ms，再把 `当前倒计时头标` 壳芯之间残余边缘高光也同步压平半拍，避免清零前最后一粒撞线仍像夹着一道细白描边/,
+        'README should document that the countdown-head shell/core edge highlight also flattens during the final sub-millisecond trim beat'
     );
     assert.match(
         source,
@@ -9716,17 +9723,17 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /currentCountdownHeadMarkerInnerCoreFocused[\s\S]*?fillStyle\((?:0xFFF2C8|countdownHeadInnerCoreColor),\s*(?:1|countdownHeadInnerCoreAlpha)\)[\s\S]*?fillRoundedRect\(\s*(?:countdownHeadMarkerX - 0\.25|countdownHeadInnerCoreX),\s*(?:telegraphRect\.y \+ 2|countdownHeadInnerCoreY),\s*(?:0\.5|countdownHeadInnerCoreWidth),\s*(?:telegraphRect\.h - 4|countdownHeadInnerCoreHeight),\s*1\s*\)/,
+        /currentCountdownHeadMarkerInnerCoreFocused[\s\S]*?fillStyle\((?:0xFFF2C8|countdownHeadInnerCoreColor),\s*(?:1|countdownHeadInnerCoreAlpha)\)[\s\S]*?fillRoundedRect\(\s*(?:countdownHeadMarkerX - 0\.25|countdownHeadInnerCoreX),\s*(?:telegraphRect\.y \+ 2|countdownHeadInnerCoreY),\s*(?:0\.5|countdownHeadInnerCoreWidth),\s*(?:telegraphRect\.h - 4|countdownHeadInnerCoreHeight),\s*(?:1|countdownHeadInnerCoreRadius)\s*\)/,
         'boss telegraph rendering should narrow and brighten the countdown-head inner core during the final tail-focus beat'
     );
     assert.match(
         source,
-        /const countdownHeadInnerCoreEdgeSoftInset = telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeSoftened \? 0\.25 : 0;[\s\S]*?const countdownHeadInnerCoreY = telegraphHud\.currentCountdownHeadMarkerInnerCoreHeightTrimmed\s*\?\s*telegraphRect\.y \+ 3 \+ countdownHeadInnerCoreEdgeSoftInset\s*:\s*telegraphRect\.y \+ 2;[\s\S]*?const countdownHeadInnerCoreHeight = telegraphHud\.currentCountdownHeadMarkerInnerCoreHeightTrimmed\s*\?\s*telegraphRect\.h - 6 - countdownHeadInnerCoreEdgeSoftInset \* 2\s*:\s*telegraphRect\.h - 4;[\s\S]*?fillRoundedRect\(\s*(?:countdownHeadMarkerX - 0\.25|countdownHeadInnerCoreX),\s*countdownHeadInnerCoreY,\s*(?:0\.5|countdownHeadInnerCoreWidth),\s*countdownHeadInnerCoreHeight,\s*1\s*\)/,
+        /const countdownHeadInnerCoreEdgeSoftInset = telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeSoftened \? 0\.25 : 0;[\s\S]*?const countdownHeadInnerCoreY = telegraphHud\.currentCountdownHeadMarkerInnerCoreHeightTrimmed\s*\?\s*telegraphRect\.y \+ 3 \+ countdownHeadInnerCoreEdgeSoftInset\s*:\s*telegraphRect\.y \+ 2;[\s\S]*?const countdownHeadInnerCoreHeight = telegraphHud\.currentCountdownHeadMarkerInnerCoreHeightTrimmed\s*\?\s*telegraphRect\.h - 6 - countdownHeadInnerCoreEdgeSoftInset \* 2\s*:\s*telegraphRect\.h - 4;[\s\S]*?fillRoundedRect\(\s*(?:countdownHeadMarkerX - 0\.25|countdownHeadInnerCoreX),\s*countdownHeadInnerCoreY,\s*(?:0\.5|countdownHeadInnerCoreWidth),\s*countdownHeadInnerCoreHeight,\s*(?:1|countdownHeadInnerCoreRadius)\s*\)/,
         'boss telegraph rendering should shorten the countdown-head inner core height during the final 20ms tail beat'
     );
     assert.match(
         source,
-        /const countdownHeadShellEdgeSoftInset = telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeSoftened \? 0\.25 : 0;[\s\S]*?const countdownHeadShellY = telegraphHud\.currentCountdownHeadMarkerShellCapTrimmed\s*\?\s*telegraphRect\.y \+ 2 \+ countdownHeadShellEdgeSoftInset\s*:\s*telegraphRect\.y \+ 1;[\s\S]*?const countdownHeadShellHeight = telegraphHud\.currentCountdownHeadMarkerShellCapTrimmed\s*\?\s*telegraphRect\.h - 4 - countdownHeadShellEdgeSoftInset \* 2\s*:\s*telegraphRect\.h - 2;[\s\S]*?fillRoundedRect\(\s*(?:countdownHeadMarkerX - 1|countdownHeadShellX),\s*countdownHeadShellY,\s*(?:2|countdownHeadShellWidth),\s*countdownHeadShellHeight,\s*1\s*\)/,
+        /const countdownHeadShellEdgeSoftInset = telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeSoftened \? 0\.25 : 0;[\s\S]*?const countdownHeadShellY = telegraphHud\.currentCountdownHeadMarkerShellCapTrimmed\s*\?\s*telegraphRect\.y \+ 2 \+ countdownHeadShellEdgeSoftInset\s*:\s*telegraphRect\.y \+ 1;[\s\S]*?const countdownHeadShellHeight = telegraphHud\.currentCountdownHeadMarkerShellCapTrimmed\s*\?\s*telegraphRect\.h - 4 - countdownHeadShellEdgeSoftInset \* 2\s*:\s*telegraphRect\.h - 2;[\s\S]*?fillRoundedRect\(\s*(?:countdownHeadMarkerX - 1|countdownHeadShellX),\s*countdownHeadShellY,\s*(?:2|countdownHeadShellWidth),\s*countdownHeadShellHeight,\s*(?:1|countdownHeadShellRadius)\s*\)/,
         'boss telegraph rendering should shorten the countdown-head shell caps during the final 10ms tail beat'
     );
     assert.match(
@@ -9771,22 +9778,27 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /const countdownHeadShellX = telegraphHud\.currentCountdownHeadMarkerFinalWidthTrimmed\s*\?\s*countdownHeadMarkerX - 0\.75\s*:\s*countdownHeadMarkerX - 1;[\s\S]*?const countdownHeadShellWidth = telegraphHud\.currentCountdownHeadMarkerFinalWidthTrimmed\s*\?\s*1\.5\s*:\s*2;[\s\S]*?fillRoundedRect\(\s*countdownHeadShellX,\s*countdownHeadShellY,\s*countdownHeadShellWidth,\s*countdownHeadShellHeight,\s*1\s*\)/,
+        /currentCountdownHeadMarkerShellCoreEdgeHighlightFlattened/,
+        'boss telegraph rendering should consume the countdown-head shell/core edge-highlight flatten flag from the shared summary'
+    );
+    assert.match(
+        source,
+        /const countdownHeadShellX = telegraphHud\.currentCountdownHeadMarkerFinalWidthTrimmed\s*\?\s*countdownHeadMarkerX - 0\.75\s*:\s*countdownHeadMarkerX - 1;[\s\S]*?const countdownHeadShellWidth = telegraphHud\.currentCountdownHeadMarkerFinalWidthTrimmed\s*\?\s*1\.5\s*:\s*2;[\s\S]*?const countdownHeadShellRadius = telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeHighlightFlattened \? 0\.5 : 1;[\s\S]*?fillRoundedRect\(\s*countdownHeadShellX,\s*countdownHeadShellY,\s*countdownHeadShellWidth,\s*countdownHeadShellHeight,\s*countdownHeadShellRadius\s*\)/,
         'boss telegraph rendering should narrow the countdown-head shell during the final sub-millisecond width-trim beat'
     );
     assert.match(
         source,
-        /const countdownHeadShellEdgeSoftInset = telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeSoftened \? 0\.25 : 0;[\s\S]*?const countdownHeadShellY = telegraphHud\.currentCountdownHeadMarkerShellCapTrimmed\s*\?\s*telegraphRect\.y \+ 2 \+ countdownHeadShellEdgeSoftInset\s*:\s*telegraphRect\.y \+ 1;[\s\S]*?const countdownHeadShellHeight = telegraphHud\.currentCountdownHeadMarkerShellCapTrimmed\s*\?\s*telegraphRect\.h - 4 - countdownHeadShellEdgeSoftInset \* 2\s*:\s*telegraphRect\.h - 2;[\s\S]*?fillRoundedRect\(\s*countdownHeadShellX,\s*countdownHeadShellY,\s*countdownHeadShellWidth,\s*countdownHeadShellHeight,\s*1\s*\)/,
+        /const countdownHeadShellEdgeSoftInset = telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeSoftened \? 0\.25 : 0;[\s\S]*?const countdownHeadShellY = telegraphHud\.currentCountdownHeadMarkerShellCapTrimmed\s*\?\s*telegraphRect\.y \+ 2 \+ countdownHeadShellEdgeSoftInset\s*:\s*telegraphRect\.y \+ 1;[\s\S]*?const countdownHeadShellHeight = telegraphHud\.currentCountdownHeadMarkerShellCapTrimmed\s*\?\s*telegraphRect\.h - 4 - countdownHeadShellEdgeSoftInset \* 2\s*:\s*telegraphRect\.h - 2;[\s\S]*?fillRoundedRect\(\s*countdownHeadShellX,\s*countdownHeadShellY,\s*countdownHeadShellWidth,\s*countdownHeadShellHeight,\s*(?:1|countdownHeadShellRadius)\s*\)/,
         'boss telegraph rendering should soften the countdown-head shell seam during the final sub-millisecond trim beat'
     );
     assert.match(
         source,
-        /const countdownHeadInnerCoreX = telegraphHud\.currentCountdownHeadMarkerFinalWidthTrimmed\s*\?\s*countdownHeadMarkerX - 0\.125\s*:\s*countdownHeadMarkerX - 0\.25;[\s\S]*?const countdownHeadInnerCoreWidth = telegraphHud\.currentCountdownHeadMarkerFinalWidthTrimmed\s*\?\s*0\.25\s*:\s*0\.5;[\s\S]*?fillRoundedRect\(\s*countdownHeadInnerCoreX,\s*countdownHeadInnerCoreY,\s*countdownHeadInnerCoreWidth,\s*countdownHeadInnerCoreHeight,\s*1\s*\)/,
+        /const countdownHeadInnerCoreX = telegraphHud\.currentCountdownHeadMarkerFinalWidthTrimmed\s*\?\s*countdownHeadMarkerX - 0\.125\s*:\s*countdownHeadMarkerX - 0\.25;[\s\S]*?const countdownHeadInnerCoreWidth = telegraphHud\.currentCountdownHeadMarkerFinalWidthTrimmed\s*\?\s*0\.25\s*:\s*0\.5;[\s\S]*?const countdownHeadInnerCoreRadius = telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeHighlightFlattened \? 0\.5 : 1;[\s\S]*?fillRoundedRect\(\s*countdownHeadInnerCoreX,\s*countdownHeadInnerCoreY,\s*countdownHeadInnerCoreWidth,\s*countdownHeadInnerCoreHeight,\s*countdownHeadInnerCoreRadius\s*\)/,
         'boss telegraph rendering should narrow the countdown-head inner core during the final sub-millisecond width-trim beat'
     );
     assert.match(
         source,
-        /const countdownHeadInnerCoreEdgeSoftInset = telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeSoftened \? 0\.25 : 0;[\s\S]*?const countdownHeadInnerCoreY = telegraphHud\.currentCountdownHeadMarkerInnerCoreHeightTrimmed\s*\?\s*telegraphRect\.y \+ 3 \+ countdownHeadInnerCoreEdgeSoftInset\s*:\s*telegraphRect\.y \+ 2;[\s\S]*?const countdownHeadInnerCoreHeight = telegraphHud\.currentCountdownHeadMarkerInnerCoreHeightTrimmed\s*\?\s*telegraphRect\.h - 6 - countdownHeadInnerCoreEdgeSoftInset \* 2\s*:\s*telegraphRect\.h - 4;[\s\S]*?fillRoundedRect\(\s*countdownHeadInnerCoreX,\s*countdownHeadInnerCoreY,\s*countdownHeadInnerCoreWidth,\s*countdownHeadInnerCoreHeight,\s*1\s*\)/,
+        /const countdownHeadInnerCoreEdgeSoftInset = telegraphHud\.currentCountdownHeadMarkerShellCoreEdgeSoftened \? 0\.25 : 0;[\s\S]*?const countdownHeadInnerCoreY = telegraphHud\.currentCountdownHeadMarkerInnerCoreHeightTrimmed\s*\?\s*telegraphRect\.y \+ 3 \+ countdownHeadInnerCoreEdgeSoftInset\s*:\s*telegraphRect\.y \+ 2;[\s\S]*?const countdownHeadInnerCoreHeight = telegraphHud\.currentCountdownHeadMarkerInnerCoreHeightTrimmed\s*\?\s*telegraphRect\.h - 6 - countdownHeadInnerCoreEdgeSoftInset \* 2\s*:\s*telegraphRect\.h - 4;[\s\S]*?fillRoundedRect\(\s*countdownHeadInnerCoreX,\s*countdownHeadInnerCoreY,\s*countdownHeadInnerCoreWidth,\s*countdownHeadInnerCoreHeight,\s*(?:1|countdownHeadInnerCoreRadius)\s*\)/,
         'boss telegraph rendering should soften the countdown-head inner-core seam during the final sub-millisecond trim beat'
     );
     assert.match(
@@ -9943,6 +9955,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”壳芯之间的边缘清晰度也同步压软半拍，避免清零前最后一粒撞线仍像保留双层描边/,
         'help overlay should document the countdown-head shell/core edge-softening during the final sub-millisecond trim beat'
+    );
+    assert.match(
+        source,
+        /若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”壳芯之间残余边缘高光也同步压平半拍，避免清零前最后一粒撞线仍像夹着一道细白描边/,
+        'help overlay should document the flattened countdown-head shell/core edge highlight during the final sub-millisecond trim beat'
     );
     assert.match(
         source,
