@@ -1,9 +1,10 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百一十四：若 drift-only mini checklist 已带 bridge/loopback checkpoint alias short note 仍要翻 `cadence-review.json` 才能确认具体 bridge span，再给每条 drift row 补一段 `bridgeTimeline` index short note，继续压缩 live pacing 排查路径
+- [ ] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百一十五：若 drift-only mini checklist 已带 `bridgeTimeline` index short note 仍要逐格心算这段轻压过桥的组成，再给每条 drift row 补一段 `dash/charmBolt` bridge count short note，继续压缩 live pacing 排查路径
 
 ## Completed
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百一十四：若 drift-only mini checklist 已带 bridge/loopback checkpoint alias short note 仍要翻 `cadence-review.json` 才能确认具体 bridge span，再给每条 drift row 补一段 `bridgeTimeline` index short note，继续压缩 live pacing 排查路径（完成：2026-03-30 10:38 +08，已拆分为一百一十五）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百一十三：若 drift-only mini checklist 已带 `review checkpoint #n` short note 仍要回头翻完整 checkpoint 索引确认 telegraph 上下文，再给每条 drift row 补一段 bridge/loopback checkpoint alias short note，继续压缩 live pacing 排查路径（完成：2026-03-30 10:28 +08，已拆分为一百一十四）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百一十二：给 markdown 版 `Phase 3 录屏复盘清单` 的 drift-only mini checklist 每条 drift row 补一段 `review checkpoint #n` short note，打开 `cadence-review.json` 后能立刻定位对应 checkpoint，继续压缩 live pacing 排查路径（完成：2026-03-30 10:21 +08，已拆分为一百一十三）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百一十一：若 drift-only mini checklist 已经能独立说明 `回切校验` 与 recovery 快照但仍要回头翻 summary header 才能打开对应证据，再给每条 drift row 直接补上 `[review] [recovery] [telegraph]` artifact anchor，继续压缩 live pacing 排查路径（完成：2026-03-30 10:14 +08，已拆分为一百一十二）

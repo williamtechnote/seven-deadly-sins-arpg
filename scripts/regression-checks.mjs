@@ -1920,7 +1920,15 @@ function testE2eReportPhase3CadenceMarkdownIndex() {
                 {
                     key: 'mirageDance->loopback',
                     expectedReturnLabel: '混乱逆转',
-                    telegraphHint: '反制: 观察真身换位节奏，留翻滚躲最后逆转波'
+                    telegraphHint: '反制: 观察真身换位节奏，留翻滚躲最后逆转波',
+                    bridgeStartIndex: 29,
+                    bridgeEndIndex: 56,
+                    bridgeTimeline: [
+                        '29:dash',
+                        '30:charmBolt',
+                        '55:dash',
+                        '56:charmBolt'
+                    ]
                 }
             ]
         },
@@ -1974,8 +1982,8 @@ function testE2eReportPhase3CadenceMarkdownIndex() {
     );
     assert.match(
         output,
-        /- Drift-only mini checklist:\n  - 2\. HUD telegraph 魅影连舞 -> shared recovery≈10\.2s -> 28-step dash\/charmBolt loopback -> 混乱逆转 \| 反制: 观察真身换位节奏，留翻滚躲最后逆转波 \| recovery 快照: `sharedRecoveryRemainingMs=10200 · breatherRemaining=8 · expectedReturnLabel=幻影风暴` \| 回切校验: drift checkpoint=`混乱逆转` recovery=`幻影风暴` \| review checkpoint #2 \| loopback checkpoint alias: `mirageDance->loopback` \| 证据: \[review]\(artifacts\/e2e\/lust-phase3-cadence-review\/cadence-review\.json\) \[recovery]\(artifacts\/e2e\/lust-phase3-cadence-review\/shared-recovery-snapshot\.json\) \[telegraph]\(artifacts\/e2e\/lust-phase3-cadence-review\/telegraph-hud\.png\) \[checkpoints]\(artifacts\/e2e\/lust-phase3-cadence-review\/phase3-checkpoints\.txt\)/,
-        'e2e report should add a drift-only mini checklist that relists each drifting checkpoint line with inline recovery/drift notes, a review checkpoint index, a bridge/loopback alias note, and direct artifact anchors'
+        /- Drift-only mini checklist:\n  - 2\. HUD telegraph 魅影连舞 -> shared recovery≈10\.2s -> 28-step dash\/charmBolt loopback -> 混乱逆转 \| 反制: 观察真身换位节奏，留翻滚躲最后逆转波 \| recovery 快照: `sharedRecoveryRemainingMs=10200 · breatherRemaining=8 · expectedReturnLabel=幻影风暴` \| 回切校验: drift checkpoint=`混乱逆转` recovery=`幻影风暴` \| review checkpoint #2 \| loopback checkpoint alias: `mirageDance->loopback` \| bridgeTimeline index: `29-56 \(29:dash -> 56:charmBolt\)` \| 证据: \[review]\(artifacts\/e2e\/lust-phase3-cadence-review\/cadence-review\.json\) \[recovery]\(artifacts\/e2e\/lust-phase3-cadence-review\/shared-recovery-snapshot\.json\) \[telegraph]\(artifacts\/e2e\/lust-phase3-cadence-review\/telegraph-hud\.png\) \[checkpoints]\(artifacts\/e2e\/lust-phase3-cadence-review\/phase3-checkpoints\.txt\)/,
+        'e2e report should add a drift-only mini checklist that relists each drifting checkpoint line with inline recovery/drift notes, a review checkpoint index, a bridge/loopback alias note, a bridgeTimeline span note, and direct artifact anchors'
     );
     assert.match(
         output,
@@ -2530,6 +2538,21 @@ function testReadmeLustSharedMajorRecovery() {
         source,
         /并再多压六组 `dash` \/ `charmBolt`/,
         'README should document the sixth extra dash-charmBolt pair added to the mirageDance loopback bridge after the shared-recovery recheck'
+    );
+}
+
+function testReadmeLustCadenceReportChecklist() {
+    const source = loadReadmeSource();
+
+    assert.match(
+        source,
+        /drift-only mini checklist；完整 checkpoint 索引则继续逐条附上/,
+        'README should continue documenting the dedicated drift-only mini checklist section'
+    );
+    assert.match(
+        source,
+        /`review checkpoint #n` 索引短注记、bridge\/loopback checkpoint alias short note 与 `bridgeTimeline` index short note/,
+        'README should document the new bridgeTimeline index short note in the drift-only mini checklist'
     );
 }
 
@@ -9333,6 +9356,7 @@ function main() {
     runTest('README lust post-mirage spacing', testReadmeLustPostMirageSpacing);
     runTest('README lust special recovery', testReadmeLustSpecialRecovery);
     runTest('README lust shared major recovery', testReadmeLustSharedMajorRecovery);
+    runTest('README lust cadence report checklist', testReadmeLustCadenceReportChecklist);
     runTest('combat action HUD summary helper', testCombatActionHudSummary);
     runTest('quick-slot item label helper', testQuickSlotItemLabel);
     runTest('keyboard HUD QoL hooks', testKeyboardHudQolHooks);

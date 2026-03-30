@@ -120,6 +120,43 @@ function buildCheckpointAliasShortNote(checkpoint) {
   return `${aliasKind} checkpoint alias: \`${checkpointKey}\``;
 }
 
+function buildBridgeTimelineIndexShortNote(checkpoint) {
+  const bridgeStartIndex = Number.isInteger(checkpoint?.bridgeStartIndex)
+    ? Math.max(0, checkpoint.bridgeStartIndex)
+    : null;
+  const bridgeEndIndex = Number.isInteger(checkpoint?.bridgeEndIndex)
+    ? Math.max(0, checkpoint.bridgeEndIndex)
+    : null;
+  const bridgeTimeline = Array.isArray(checkpoint?.bridgeTimeline)
+    ? checkpoint.bridgeTimeline
+        .filter(entry => typeof entry === 'string' && entry.trim())
+        .map(entry => entry.trim())
+    : [];
+
+  if (bridgeStartIndex === null && bridgeEndIndex === null && bridgeTimeline.length === 0) {
+    return '';
+  }
+
+  const firstToken = bridgeTimeline[0] || '';
+  const lastToken = bridgeTimeline[bridgeTimeline.length - 1] || firstToken;
+  const safeStartIndex = bridgeStartIndex ?? bridgeEndIndex;
+  const safeEndIndex = bridgeEndIndex ?? bridgeStartIndex;
+
+  if (safeStartIndex === null || safeEndIndex === null) {
+    return '';
+  }
+
+  if (safeStartIndex === safeEndIndex) {
+    const singleToken = firstToken || `${safeStartIndex}`;
+    return `bridgeTimeline index: \`${safeStartIndex} (${singleToken})\``;
+  }
+
+  const spanDescriptor = firstToken && lastToken
+    ? ` (${firstToken} -> ${lastToken})`
+    : '';
+  return `bridgeTimeline index: \`${safeStartIndex}-${safeEndIndex}${spanDescriptor}\``;
+}
+
 function collectCadenceDriftEntries(cadenceArtifacts) {
   if (!cadenceArtifacts || !Array.isArray(cadenceArtifacts.checkpointLines) || cadenceArtifacts.checkpointLines.length === 0) {
     return {
@@ -178,7 +215,8 @@ function collectCadenceDriftEntries(cadenceArtifacts) {
           recoverySnapshotShortNote: buildRecoverySnapshotShortNote(cadenceArtifacts, checkpoint),
           driftNote,
           reviewCheckpointShortNote: buildReviewCheckpointShortNote(index, checkpointEntries),
-          checkpointAliasShortNote: buildCheckpointAliasShortNote(checkpoint)
+          checkpointAliasShortNote: buildCheckpointAliasShortNote(checkpoint),
+          bridgeTimelineIndexShortNote: buildBridgeTimelineIndexShortNote(checkpoint)
         });
       }
     }
@@ -232,7 +270,8 @@ function buildCadenceDriftMiniChecklistLines(cadenceArtifacts) {
       recoverySnapshotShortNote,
       driftNote,
       reviewCheckpointShortNote,
-      checkpointAliasShortNote
+      checkpointAliasShortNote,
+      bridgeTimelineIndexShortNote
     }) => {
       const parts = [line];
       if (recoverySnapshotShortNote) {
@@ -246,6 +285,9 @@ function buildCadenceDriftMiniChecklistLines(cadenceArtifacts) {
       }
       if (checkpointAliasShortNote) {
         parts.push(checkpointAliasShortNote);
+      }
+      if (bridgeTimelineIndexShortNote) {
+        parts.push(bridgeTimelineIndexShortNote);
       }
       parts.push(`证据: ${evidenceLinks}`);
       return `  - ${parts.join(' | ')}`;
