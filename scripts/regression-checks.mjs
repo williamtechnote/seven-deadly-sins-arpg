@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import vm from 'node:vm';
 import { createRequire } from 'node:module';
@@ -1885,6 +1887,77 @@ function testLustPhase3CadenceArtifactBundle() {
             sharedRecoveryLabel: 'shared recovery≈10.2s'
         },
         'lust cadence artifact bundle should preserve the shared-recovery snapshot plus the readable recovery label'
+    );
+}
+
+function testE2eReportPhase3CadenceMarkdownIndex() {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sds-e2e-report-'));
+    const artifactDir = path.join(tempRoot, 'artifacts', 'e2e', 'lust-phase3-cadence-review');
+    fs.mkdirSync(artifactDir, { recursive: true });
+
+    fs.writeFileSync(
+        path.join(artifactDir, 'meta.json'),
+        JSON.stringify({
+            title: 'lust cadence review',
+            extra: {
+                cadenceArtifact: {
+                    checkpointLines: [
+                        '1. HUD telegraph 混乱逆转 -> shared recovery≈10.2s -> 13-step dash/charmBolt bridge -> 幻影风暴 | 反制: 停止冲刺，短步修正方向'
+                    ]
+                }
+            }
+        }, null, 2)
+    );
+    fs.writeFileSync(path.join(artifactDir, 'snapshot.json'), JSON.stringify({ scene: 'BossScene' }, null, 2));
+    fs.writeFileSync(path.join(artifactDir, 'cadence-review.json'), JSON.stringify({
+        checkpointLines: [
+            '1. HUD telegraph 混乱逆转 -> shared recovery≈10.2s -> 13-step dash/charmBolt bridge -> 幻影风暴 | 反制: 停止冲刺，短步修正方向'
+        ]
+    }, null, 2));
+    fs.writeFileSync(
+        path.join(artifactDir, 'phase3-checkpoints.txt'),
+        '1. HUD telegraph 混乱逆转 -> shared recovery≈10.2s -> 13-step dash/charmBolt bridge -> 幻影风暴 | 反制: 停止冲刺，短步修正方向\n'
+    );
+    fs.writeFileSync(
+        path.join(artifactDir, 'shared-recovery-snapshot.json'),
+        JSON.stringify({
+            sharedRecoveryRemainingMs: 10200,
+            breatherRemaining: 8,
+            expectedReturnLabel: '幻影风暴',
+            sharedRecoveryLabel: 'shared recovery≈10.2s'
+        }, null, 2)
+    );
+    fs.writeFileSync(path.join(artifactDir, 'telegraph-hud.png'), 'png-placeholder');
+
+    const output = execFileSync('node', [path.join(repoRoot, 'scripts', 'e2e-report.mjs')], {
+        cwd: tempRoot,
+        encoding: 'utf8'
+    });
+
+    assert.match(
+        output,
+        /^# E2E Artifact Report/m,
+        'e2e report should render a markdown heading instead of raw JSON'
+    );
+    assert.match(
+        output,
+        /## lust-phase3-cadence-review/,
+        'e2e report should render a dedicated section for each artifact directory'
+    );
+    assert.match(
+        output,
+        /Phase 3 录屏复盘清单/,
+        'e2e report should surface a readable phase-3 cadence checklist section when cadence artifacts exist'
+    );
+    assert.match(
+        output,
+        /1\. HUD telegraph 混乱逆转 -> shared recovery≈10\.2s -> 13-step dash\/charmBolt bridge -> 幻影风暴 \| 反制: 停止冲刺，短步修正方向/,
+        'e2e report should inline the phase-3 cadence checkpoint lines for faster recording review'
+    );
+    assert.match(
+        output,
+        /shared-recovery-snapshot\.json/,
+        'e2e report should index the shared recovery snapshot artifact path'
     );
 }
 
@@ -9195,6 +9268,7 @@ function main() {
     runTest('lust phase 3 cadence trace', testLustPhase3CadenceTrace);
     runTest('lust phase 3 cadence review checklist', testLustPhase3CadenceReviewChecklist);
     runTest('lust phase 3 cadence artifact bundle', testLustPhase3CadenceArtifactBundle);
+    runTest('e2e report phase-3 cadence markdown index', testE2eReportPhase3CadenceMarkdownIndex);
     runTest('lust mirage dance hooks', testLustMirageDanceHooks);
     runTest('boss major attack breather hooks', testBossMajorAttackBreatherHooks);
     runTest('lust phase-local cooldown hooks', testLustPhaseLocalCooldownHooks);
