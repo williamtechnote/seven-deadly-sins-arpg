@@ -1527,6 +1527,9 @@ function testBossHudReadability() {
     assert.equal(earlyClosureTelegraphSummary.counterWindowOverflowMs, 0, 'telegraph summary should report no overflow when the counter window closes inside the telegraph');
     assert.equal(earlyClosureTelegraphSummary.counterWindowClosureMarkerVisible, true, 'telegraph summary should flag when a frame-one counter window closes before the telegraph bar finishes');
     assert.equal(earlyClosureTelegraphSummary.counterWindowClosureMarkerRatio, 800 / 1300, 'telegraph summary should expose the early counter-window closure point as a bar ratio');
+    assert.equal(earlyClosureTelegraphSummary.counterWindowTailAfterglowVisible, true, 'telegraph summary should dim the tail segment after a frame-one counter window closes early');
+    assert.equal(earlyClosureTelegraphSummary.counterWindowTailAfterglowStartRatio, 800 / 1300, 'telegraph summary should expose where the early-closure tail afterglow begins');
+    assert.equal(earlyClosureTelegraphSummary.counterWindowTailAfterglowWidthRatio, 500 / 1300, 'telegraph summary should expose how much of the telegraph body remains after the early closure');
     assert.equal(earlyClosureTelegraphSummary.counterWindowSpanVisible, false, 'telegraph summary should avoid drawing a contained span when the counter window starts at the first frame');
 
     const containedTelegraphSummary = buildBossTelegraphHudSummary({
@@ -7884,6 +7887,11 @@ function testBossHudMeasurementHooks() {
     );
     assert.match(
         source,
+        /this\.bossTelegraphTailAfterglow\.clear\(\);[\s\S]*?if \(telegraphHud\.counterWindowTailAfterglowVisible\) \{[\s\S]*?const tailAfterglowX = telegraphRect\.x \+ telegraphRect\.w \* telegraphHud\.counterWindowTailAfterglowStartRatio;[\s\S]*?const tailAfterglowWidth = telegraphRect\.w \* telegraphHud\.counterWindowTailAfterglowWidthRatio;[\s\S]*?this\.bossTelegraphTailAfterglow\.fillRoundedRect\(\s*tailAfterglowX,\s*telegraphRect\.y \+ 1,\s*tailAfterglowWidth,\s*telegraphRect\.h - 2,\s*3\s*\);/,
+        'Boss telegraph should darken the post-closure tail segment when a frame-one counter window ends before the bar body'
+    );
+    assert.match(
+        source,
         /this\.bossTelegraphTailMarker\.clear\(\);[\s\S]*?if \(telegraphHud\.counterWindowTailMarkerVisible\) \{[\s\S]*?const tailMarkerX = telegraphRect\.x \+ telegraphRect\.w - 1;[\s\S]*?this\.bossTelegraphTailMarker\.fillRoundedRect\(\s*tailMarkerX,\s*telegraphRect\.y - 1,\s*6,\s*telegraphRect\.h \+ 2,\s*2\s*\);/,
         'Boss telegraph should draw a dedicated end-of-bar tail marker when the counter window outlasts the telegraph body'
     );
@@ -8154,6 +8162,11 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /若 `反制窗口` 从第一帧开放、却会在进度条清空前提早收束，条内还会补一枚 `收束刻度`/,
         'README should document the in-bar closure marker for frame-one counter windows that end early'
+    );
+    assert.match(
+        source,
+        /`收束刻度` 右侧剩余条体也会压成更暗的 `尾段残影`/,
+        'README should document the dimmed tail afterglow for frame-one counter windows that close early'
     );
     assert.match(
         source,
@@ -9283,6 +9296,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若 Boss 的“反制窗口”从第一帧开放、却会在 telegraph 进度条清空前提早收束，条内还会补一枚“收束刻度”，避免把剩余条体误读成还在可反制/,
         'help overlay should document the telegraph closure marker for frame-one counter windows that end before the bar does'
+    );
+    assert.match(
+        source,
+        /“收束刻度”右侧剩余条体也会压成更暗的“尾段残影”，提醒那一截只剩读招倒计时，不再代表可反制窗口/,
+        'help overlay should document the dimmed tail afterglow after an early-closing frame-one counter window'
     );
     assert.match(
         source,

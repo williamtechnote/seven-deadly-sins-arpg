@@ -2710,10 +2710,14 @@
         const counterWindowClosureMarkerVisible = counterWindowMs > 0
             && counterWindowStartOffsetMs === 0
             && counterWindowEndMs < telegraphDurationMs;
+        const counterWindowTailAfterglowVisible = counterWindowClosureMarkerVisible;
         const counterWindowSpanVisible = counterWindowMs > 0
             && counterWindowStartOffsetMs > 0
             && counterWindowEndMs < telegraphDurationMs;
         const counterWindowSpanMs = counterWindowSpanVisible ? counterWindowMs : 0;
+        const counterWindowTailAfterglowMs = counterWindowTailAfterglowVisible
+            ? Math.max(0, telegraphDurationMs - counterWindowEndMs)
+            : 0;
 
         if (!attackLabel) {
             return {
@@ -2729,6 +2733,9 @@
                 counterWindowOverflowMs: 0,
                 counterWindowClosureMarkerVisible: false,
                 counterWindowClosureMarkerRatio: 0,
+                counterWindowTailAfterglowVisible: false,
+                counterWindowTailAfterglowStartRatio: 0,
+                counterWindowTailAfterglowWidthRatio: 0,
                 counterWindowSpanVisible: false,
                 counterWindowSpanStartRatio: 0,
                 counterWindowSpanWidthRatio: 0
@@ -2753,6 +2760,13 @@
             counterWindowClosureMarkerVisible,
             counterWindowClosureMarkerRatio: counterWindowClosureMarkerVisible
                 ? clampRatio(counterWindowEndMs / telegraphDurationMs, 0)
+                : 0,
+            counterWindowTailAfterglowVisible,
+            counterWindowTailAfterglowStartRatio: counterWindowTailAfterglowVisible
+                ? clampRatio(counterWindowEndMs / telegraphDurationMs, 0)
+                : 0,
+            counterWindowTailAfterglowWidthRatio: counterWindowTailAfterglowVisible
+                ? clampRatio(counterWindowTailAfterglowMs / telegraphDurationMs, 0)
                 : 0,
             counterWindowSpanVisible,
             counterWindowSpanStartRatio: counterWindowSpanVisible
