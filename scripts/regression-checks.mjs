@@ -124,6 +124,7 @@ const {
     buildBossAttackCadenceArtifactBundle,
     buildBossPhaseHudSummary,
     buildBossTelegraphHudSummary,
+    buildBossTelegraphTextLayout,
     buildBossStatusHighlightSummary,
     canCraftRecipe,
     applyCraftRecipe,
@@ -1503,6 +1504,48 @@ function testBossHudReadability() {
     assert.equal(telegraphSummary.counterWindowLabel, '反制窗口 1.7s', 'telegraph summary should format the counter window in seconds');
     assert.equal(telegraphSummary.hintLabel, '反制: 先躲弹幕，再找本体', 'telegraph summary should keep the counter hint');
     assert.equal(telegraphSummary.progressRatio, 0.5, 'telegraph progress should report the remaining telegraph time ratio');
+
+    const inlineTelegraphLayout = buildBossTelegraphTextLayout({
+        telegraphWidth: 220,
+        mainText: '类型 特殊 | 幻影风暴',
+        windowText: '反制窗口 1.7s',
+        hintText: '反制: 先躲弹幕，再找本体',
+        measureTextWidth: text => text.length * 8
+    });
+    assert.deepEqual(
+        inlineTelegraphLayout,
+        {
+            stacked: false,
+            lineCount: 1,
+            mainMaxWidth: 100,
+            windowMaxWidth: 112,
+            mainYOffset: -4,
+            windowYOffset: -4,
+            hintYOffset: 16
+        },
+        'short telegraph copy should stay on a single measured title row'
+    );
+
+    const stackedTelegraphLayout = buildBossTelegraphTextLayout({
+        telegraphWidth: 220,
+        mainText: '类型 特殊 | 业火审判连锁陨落',
+        windowText: '反制窗口 12.5s',
+        hintText: '反制: 先停手观察第二拍，再向侧后方留翻滚躲收尾',
+        measureTextWidth: text => text.length * 8
+    });
+    assert.deepEqual(
+        stackedTelegraphLayout,
+        {
+            stacked: true,
+            lineCount: 2,
+            mainMaxWidth: 220,
+            windowMaxWidth: 220,
+            mainYOffset: -4,
+            windowYOffset: 8,
+            hintYOffset: 28
+        },
+        'long telegraph title, counter window and hint copy should promote the warning header into a measured two-line layout'
+    );
 
     const controlSummary = buildBossStatusHighlightSummary({
         hpRatio: 0.38,
@@ -7763,13 +7806,13 @@ function testBossHudMeasurementHooks() {
     );
     assert.match(
         source,
-        /const telegraphMainText = telegraphHud\.typeLabel[\s\S]*?this\.bossTelegraphText\.setText\(this\._fitBossHudTextToWidth\(telegraphMainText,\s*telegraphRect\.w - 120,\s*'bossTelegraphMain'\)\);/,
-        'Boss telegraph title should be measured against the available warning-bar width'
+        /const telegraphMainText = telegraphHud\.typeLabel[\s\S]*?const telegraphLayout = buildBossTelegraphTextLayout\({[\s\S]*?this\._measureBossHudTextWidth\(text,\s*styleKey\)[\s\S]*?this\.bossTelegraphText\.setY\(telegraphRect\.y \+ telegraphLayout\.mainYOffset\);[\s\S]*?this\.bossTelegraphText\.setText\(this\._fitBossHudTextToWidth\(telegraphMainText,\s*telegraphLayout\.mainMaxWidth,\s*'bossTelegraphMain'\)\);/,
+        'Boss telegraph title should derive its width budget and row position from the shared two-line layout helper'
     );
     assert.match(
         source,
-        /this\.bossTelegraphHintText\.setText\(this\._fitBossHudTextToWidth\(telegraphHud\.hintLabel \|\| '',\s*telegraphRect\.w,\s*'bossTelegraphHint'\)\);/,
-        'Boss telegraph hint should be measured against the full hint lane width'
+        /this\.bossTelegraphWindowText\.setY\(telegraphRect\.y \+ telegraphLayout\.windowYOffset\);[\s\S]*?this\.bossTelegraphWindowText\.setText\(this\._fitBossHudTextToWidth\(telegraphHud\.counterWindowLabel,\s*telegraphLayout\.windowMaxWidth,\s*'bossTelegraphWindow'\)\);[\s\S]*?this\.bossTelegraphHintText\.setY\(telegraphRect\.y \+ telegraphLayout\.hintYOffset\);[\s\S]*?this\.bossTelegraphHintText\.setText\(this\._fitBossHudTextToWidth\(telegraphHud\.hintLabel \|\| '',\s*telegraphRect\.w,\s*'bossTelegraphHint'\)\);/,
+        'Boss telegraph window and hint rows should follow the shared stacked-layout offsets when copy grows long'
     );
 }
 
@@ -8018,6 +8061,11 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /若临时拿不到新短名，则会改为沿用道具名生成的“快捷栏1：<旧标签>→<新标签>”短句，例如“快捷栏1：狂战→净化”/,
         'README should document the name-derived overwrite fallback when handcrafted short labels are unavailable'
+    );
+    assert.match(
+        source,
+        /顶部 telegraph 也会自动切成双行测量布局/,
+        'README should document the stacked telegraph fallback for long boss warning copy'
     );
     assert.match(
         source,

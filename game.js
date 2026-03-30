@@ -82,6 +82,7 @@ const {
     buildStatusHudSummary,
     advanceBossHpAfterimage,
     buildBossTelegraphHudSummary,
+    buildBossTelegraphTextLayout,
     buildBossPhaseHudSummary,
     buildBossStatusHighlightSummary,
     getRunModifierByKey,
@@ -4773,6 +4774,13 @@ class BossScene extends Phaser.Scene {
             const telegraphMainText = telegraphHud.typeLabel
                 ? `${telegraphHud.typeLabel} | ${telegraphHud.attackLabel}`
                 : telegraphHud.attackLabel;
+            const telegraphLayout = buildBossTelegraphTextLayout({
+                telegraphWidth: telegraphRect.w,
+                mainText: telegraphMainText,
+                windowText: telegraphHud.counterWindowLabel,
+                hintText: telegraphHud.hintLabel || '',
+                measureTextWidth: (text, styleKey) => this._measureBossHudTextWidth(text, styleKey)
+            });
             this.bossTelegraphBarBg.fillStyle(0x261F2D, 0.92);
             this.bossTelegraphBarBg.fillRoundedRect(telegraphRect.x, telegraphRect.y, telegraphRect.w, telegraphRect.h, 4);
             this.bossTelegraphBarFill.fillStyle(telegraphColor, 0.9);
@@ -4783,10 +4791,17 @@ class BossScene extends Phaser.Scene {
                 telegraphRect.h,
                 4
             );
-            this.bossTelegraphText.setText(this._fitBossHudTextToWidth(telegraphMainText, telegraphRect.w - 120, 'bossTelegraphMain'));
-            this.bossTelegraphWindowText.setText(this._fitBossHudTextToWidth(telegraphHud.counterWindowLabel, 112, 'bossTelegraphWindow'));
+            this.bossTelegraphText.setY(telegraphRect.y + telegraphLayout.mainYOffset);
+            this.bossTelegraphWindowText.setY(telegraphRect.y + telegraphLayout.windowYOffset);
+            this.bossTelegraphText.setText(this._fitBossHudTextToWidth(telegraphMainText, telegraphLayout.mainMaxWidth, 'bossTelegraphMain'));
+            this.bossTelegraphWindowText.setText(this._fitBossHudTextToWidth(telegraphHud.counterWindowLabel, telegraphLayout.windowMaxWidth, 'bossTelegraphWindow'));
+            this.bossTelegraphHintText.setY(telegraphRect.y + telegraphLayout.hintYOffset);
             this.bossTelegraphHintText.setText(this._fitBossHudTextToWidth(telegraphHud.hintLabel || '', telegraphRect.w, 'bossTelegraphHint'));
         } else {
+            const telegraphRect = this._bossTelegraphRect;
+            this.bossTelegraphText.setY(telegraphRect.y - 4);
+            this.bossTelegraphWindowText.setY(telegraphRect.y - 4);
+            this.bossTelegraphHintText.setY(telegraphRect.y + 16);
             this.bossTelegraphText.setText('');
             this.bossTelegraphWindowText.setText('');
             this.bossTelegraphHintText.setText('');

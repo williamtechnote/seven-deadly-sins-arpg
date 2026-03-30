@@ -2725,6 +2725,39 @@
         };
     }
 
+    function buildBossTelegraphTextLayout(options) {
+        const safe = options && typeof options === 'object' ? options : {};
+        const telegraphWidth = Number.isFinite(safe.telegraphWidth) ? Math.max(0, safe.telegraphWidth) : 0;
+        const mainText = typeof safe.mainText === 'string' ? safe.mainText.trim() : '';
+        const windowText = typeof safe.windowText === 'string' ? safe.windowText.trim() : '';
+        const hintText = typeof safe.hintText === 'string' ? safe.hintText.trim() : '';
+        const measureTextWidth = typeof safe.measureTextWidth === 'function'
+            ? safe.measureTextWidth
+            : ((text) => (typeof text === 'string' ? text.length * 8 : 0));
+        const inlineWindowMaxWidth = windowText ? Math.min(112, telegraphWidth) : 0;
+        const inlineMainMaxWidth = windowText
+            ? Math.max(0, telegraphWidth - inlineWindowMaxWidth - 8)
+            : telegraphWidth;
+        const mainWidth = mainText ? Math.max(0, measureTextWidth(mainText, 'bossTelegraphMain')) : 0;
+        const windowWidth = windowText ? Math.max(0, measureTextWidth(windowText, 'bossTelegraphWindow')) : 0;
+        const stacked = !!(
+            hintText
+            && windowText
+            && telegraphWidth > 0
+            && (mainWidth > inlineMainMaxWidth || windowWidth > inlineWindowMaxWidth)
+        );
+
+        return {
+            stacked,
+            lineCount: stacked && windowText ? 2 : 1,
+            mainMaxWidth: stacked ? telegraphWidth : (inlineMainMaxWidth || telegraphWidth),
+            windowMaxWidth: stacked ? telegraphWidth : inlineWindowMaxWidth,
+            mainYOffset: -4,
+            windowYOffset: stacked ? 8 : -4,
+            hintYOffset: stacked ? 28 : 16
+        };
+    }
+
     function buildBossPhaseHudSummary(options) {
         const safe = options && typeof options === 'object' ? options : {};
         const phases = Array.isArray(safe.phases) ? safe.phases : [];
@@ -3088,6 +3121,7 @@
         buildBossAttackCadenceArtifactBundle,
         buildBossAttackRhythmSummary,
         buildBossTelegraphHudSummary,
+        buildBossTelegraphTextLayout,
         buildBossPhaseHudSummary,
         buildBossStatusHighlightSummary,
         getRunModifierByKey,
