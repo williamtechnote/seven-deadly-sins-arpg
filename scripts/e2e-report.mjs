@@ -211,6 +211,37 @@ function buildCounterWindowClosureCueShortNote(cadenceArtifacts) {
   return `counterWindowClosureCue: \`${closureCueLabel}\``;
 }
 
+function buildCounterWindowCoverageCueShortNote(cadenceArtifacts) {
+  const snapshot = cadenceArtifacts?.telegraphSnapshot && typeof cadenceArtifacts.telegraphSnapshot === 'object'
+    ? cadenceArtifacts.telegraphSnapshot
+    : null;
+  if (!snapshot) return '';
+
+  const counterWindowMs = Number.isFinite(snapshot.counterWindowMs)
+    ? Math.max(0, Math.trunc(snapshot.counterWindowMs))
+    : null;
+  const telegraphDurationMs = Number.isFinite(snapshot.telegraphDurationMs)
+    ? Math.max(0, Math.trunc(snapshot.telegraphDurationMs))
+    : null;
+  if (counterWindowMs === null || counterWindowMs <= 0 || telegraphDurationMs === null || telegraphDurationMs <= 0) {
+    return '';
+  }
+
+  if (counterWindowMs >= telegraphDurationMs) {
+    const overflowMs = counterWindowMs - telegraphDurationMs;
+    const coverageCueLabel = overflowMs > 0
+      ? `telegraph全程 + 后${overflowMs}ms`
+      : 'telegraph全程';
+    return `counterWindowCoverageCue: \`${coverageCueLabel}\``;
+  }
+
+  const coverageRatioPercent = Math.round((counterWindowMs / telegraphDurationMs) * 1000) / 10;
+  const coverageRatioLabel = Number.isInteger(coverageRatioPercent)
+    ? `${coverageRatioPercent}%`
+    : `${coverageRatioPercent.toFixed(1)}%`;
+  return `counterWindowCoverageCue: \`telegraph后${coverageRatioLabel}\``;
+}
+
 function buildExpectedReturnDriftNote(checkpointExpectedReturnLabel, recoveryExpectedReturnLabel) {
   const checkpointLabel = typeof checkpointExpectedReturnLabel === 'string'
     ? checkpointExpectedReturnLabel.trim()
@@ -409,6 +440,7 @@ function collectCadenceDriftEntries(cadenceArtifacts) {
           counterWindowTailOffsetShortNote: buildCounterWindowTailOffsetShortNote(cadenceArtifacts),
           counterWindowTailPhaseShortNote: buildCounterWindowTailPhaseShortNote(cadenceArtifacts),
           counterWindowClosureCueShortNote: buildCounterWindowClosureCueShortNote(cadenceArtifacts),
+          counterWindowCoverageCueShortNote: buildCounterWindowCoverageCueShortNote(cadenceArtifacts),
           telegraphDurationShortNote: buildTelegraphDurationShortNote(cadenceArtifacts)
         });
       }
@@ -472,6 +504,7 @@ function buildCadenceDriftMiniChecklistLines(cadenceArtifacts) {
       counterWindowTailOffsetShortNote,
       counterWindowTailPhaseShortNote,
       counterWindowClosureCueShortNote,
+      counterWindowCoverageCueShortNote,
       telegraphDurationShortNote
     }) => {
       const parts = [line];
@@ -510,6 +543,9 @@ function buildCadenceDriftMiniChecklistLines(cadenceArtifacts) {
       }
       if (counterWindowClosureCueShortNote) {
         parts.push(counterWindowClosureCueShortNote);
+      }
+      if (counterWindowCoverageCueShortNote) {
+        parts.push(counterWindowCoverageCueShortNote);
       }
       if (telegraphDurationShortNote) {
         parts.push(telegraphDurationShortNote);
