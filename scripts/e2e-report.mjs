@@ -107,6 +107,19 @@ function buildReviewCheckpointShortNote(reviewCheckpointIndex, checkpointEntries
   return `review checkpoint #${reviewCheckpointIndex + 1}`;
 }
 
+function buildCheckpointAliasShortNote(checkpoint) {
+  const checkpointKey = typeof checkpoint?.key === 'string'
+    ? checkpoint.key.trim()
+    : '';
+  if (!checkpointKey) {
+    return '';
+  }
+  const aliasKind = checkpointKey.endsWith('->loopback')
+    ? 'loopback'
+    : 'bridge';
+  return `${aliasKind} checkpoint alias: \`${checkpointKey}\``;
+}
+
 function collectCadenceDriftEntries(cadenceArtifacts) {
   if (!cadenceArtifacts || !Array.isArray(cadenceArtifacts.checkpointLines) || cadenceArtifacts.checkpointLines.length === 0) {
     return {
@@ -164,7 +177,8 @@ function collectCadenceDriftEntries(cadenceArtifacts) {
           line,
           recoverySnapshotShortNote: buildRecoverySnapshotShortNote(cadenceArtifacts, checkpoint),
           driftNote,
-          reviewCheckpointShortNote: buildReviewCheckpointShortNote(index, checkpointEntries)
+          reviewCheckpointShortNote: buildReviewCheckpointShortNote(index, checkpointEntries),
+          checkpointAliasShortNote: buildCheckpointAliasShortNote(checkpoint)
         });
       }
     }
@@ -213,7 +227,13 @@ function buildCadenceDriftMiniChecklistLines(cadenceArtifacts) {
 
   return [
     '- Drift-only mini checklist:',
-    ...driftEntries.map(({ line, recoverySnapshotShortNote, driftNote, reviewCheckpointShortNote }) => {
+    ...driftEntries.map(({
+      line,
+      recoverySnapshotShortNote,
+      driftNote,
+      reviewCheckpointShortNote,
+      checkpointAliasShortNote
+    }) => {
       const parts = [line];
       if (recoverySnapshotShortNote) {
         parts.push(recoverySnapshotShortNote);
@@ -223,6 +243,9 @@ function buildCadenceDriftMiniChecklistLines(cadenceArtifacts) {
       }
       if (reviewCheckpointShortNote) {
         parts.push(reviewCheckpointShortNote);
+      }
+      if (checkpointAliasShortNote) {
+        parts.push(checkpointAliasShortNote);
       }
       parts.push(`证据: ${evidenceLinks}`);
       return `  - ${parts.join(' | ')}`;
