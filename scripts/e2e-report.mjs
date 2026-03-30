@@ -79,6 +79,18 @@ function getCheckpointExpectedReturnLabel(checkpoint, sharedRecoveryExpectedRetu
   return sharedRecoveryExpectedReturnLabel;
 }
 
+function buildCadenceSummaryEvidenceLinks(cadenceArtifacts) {
+  if (!cadenceArtifacts?.files || typeof cadenceArtifacts.files !== 'object') {
+    return '';
+  }
+
+  return [
+    formatMarkdownLink('review', cadenceArtifacts.files.cadenceReview),
+    formatMarkdownLink('recovery', cadenceArtifacts.files.sharedRecoverySnapshot),
+    formatMarkdownLink('telegraph', cadenceArtifacts.files.telegraphHud)
+  ].filter(Boolean).join(' ');
+}
+
 function buildCadenceCheckpointSummaryLine(cadenceArtifacts) {
   if (!cadenceArtifacts || !Array.isArray(cadenceArtifacts.checkpointLines) || cadenceArtifacts.checkpointLines.length === 0) {
     return '';
@@ -130,6 +142,10 @@ function buildCadenceCheckpointSummaryLine(cadenceArtifacts) {
   const parts = [`- Phase 3 汇总: match=${matchCount} | drift=${driftCount}`];
   if (driftCheckpointLabels.length > 0) {
     parts.push(`drift checkpoints: ${driftCheckpointLabels.join(', ')}`);
+    const evidenceLinks = buildCadenceSummaryEvidenceLinks(cadenceArtifacts);
+    if (evidenceLinks) {
+      parts.push(`证据: ${evidenceLinks}`);
+    }
   }
   return parts.join(' | ');
 }

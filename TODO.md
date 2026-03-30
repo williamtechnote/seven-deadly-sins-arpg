@@ -1,9 +1,10 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百零八：若 phase 3 汇总 header 点出 drift checkpoint 后仍要继续下滑列表找证据，再把 markdown 版 `Phase 3 录屏复盘清单` 的 drift 汇总补成直接附带 `[review] [recovery] [telegraph]` anchor 的漂移索引，继续压缩 live pacing 排查路径
+- [ ] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百零九：若 phase 3 drift 汇总已经能直跳共享证据但仍要继续下滑定位具体 checkpoint 行，再给 markdown 版 `Phase 3 录屏复盘清单` 补一段 drift-only mini checklist，只重列发生漂移的 checkpoint 行与 `[checkpoints]` anchor，继续压缩 live pacing 排查路径
 
 ## Completed
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百零八：把 markdown 版 `Phase 3 录屏复盘清单` 的 phase 3 drift 汇总补成直接附带 `[review] [recovery] [telegraph]` anchor 的漂移索引，让复盘者在 summary header 就能直跳证据，继续压缩 live pacing 排查路径（完成：2026-03-30 09:56 +08，已拆分为一百零九）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百零七：若 checkpoint 行直接内联 `回切校验` 后仍要逐条人工扫列表，给 markdown 版 `Phase 3 录屏复盘清单` 再补一段 phase 3 汇总 header，直接统计 `match/drift` 数量并点名漂移 checkpoint，继续压缩 live pacing 排查路径（完成：2026-03-30 09:49 +08，已拆分为一百零八）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百零六：把 `scripts/e2e-report.mjs` 的 markdown `Phase 3 录屏复盘清单` checkpoint 行补成直接标出 checkpoint `expectedReturnLabel` 与 `shared-recovery-snapshot.json` 的 drift/match note；README / TODO / regression checks / design-plan docs 同步，并保留一百零七为 next active（完成：2026-03-30 09:42 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百零五：若带 artifact anchor / expected-return short note 的 markdown 版 `Phase 3 录屏复盘清单` 仍要逐条点开 JSON 才能看清 recovery 快照，再把 `scripts/e2e-report.mjs` 补成直接内联 `sharedRecoveryRemainingMs` / `breatherRemaining` / `expectedReturnLabel` 的 phase 3 recovery snapshot short note，继续压缩 live pacing 排查路径（完成：2026-03-30 09:36 +08，已拆分为一百零六）

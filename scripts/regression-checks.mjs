@@ -1967,8 +1967,8 @@ function testE2eReportPhase3CadenceMarkdownIndex() {
     );
     assert.match(
         output,
-        /- Phase 3 汇总: match=1 \| drift=1 \| drift checkpoints: `混乱逆转`/,
-        'e2e report should surface a phase-3 summary header with match\/drift totals and drifting checkpoint names'
+        /- Phase 3 汇总: match=1 \| drift=1 \| drift checkpoints: `混乱逆转` \| 证据: \[review]\(artifacts\/e2e\/lust-phase3-cadence-review\/cadence-review\.json\) \[recovery]\(artifacts\/e2e\/lust-phase3-cadence-review\/shared-recovery-snapshot\.json\) \[telegraph]\(artifacts\/e2e\/lust-phase3-cadence-review\/telegraph-hud\.png\)/,
+        'e2e report should surface a phase-3 summary header with match\/drift totals, drifting checkpoint names, and direct drift evidence anchors'
     );
     assert.match(
         output,
