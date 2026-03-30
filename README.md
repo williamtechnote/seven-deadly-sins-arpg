@@ -189,7 +189,7 @@ npm run e2e:report
 新增覆盖：
 - 场景与 UI 流程（title/hub/overlay）
 - 战斗与 Boss 基础路径
-- `魅惑女妖` phase 3 cadence review：启动真实 BossScene 后，导出 `HUD telegraph -> shared recovery -> bridge/loopback -> 下一次 special` 的复盘 checkpoint，方便对齐 Playwright artifact 与录屏时间线；`dumpEvidence` 现在也会把这条复盘输出整理成 `artifacts/e2e/lust-phase3-cadence-review/cadence-review.json`、`phase3-checkpoints.txt`、`shared-recovery-snapshot.json` 与 `telegraph-hud.png`，并作为 Playwright attachment 一并挂进报告；`npm run e2e:report` 也会把这组证据编排成 markdown 版 `Phase 3 录屏复盘清单`，减少在附件目录里手动翻找
+- `魅惑女妖` phase 3 cadence review：启动真实 BossScene 后，导出 `HUD telegraph -> shared recovery -> bridge/loopback -> 下一次 special` 的复盘 checkpoint，方便对齐 Playwright artifact 与录屏时间线；`dumpEvidence` 现在也会把这条复盘输出整理成 `artifacts/e2e/lust-phase3-cadence-review/cadence-review.json`、`phase3-checkpoints.txt`、`shared-recovery-snapshot.json` 与 `telegraph-hud.png`，并作为 Playwright attachment 一并挂进报告；`npm run e2e:report` 也会把这组证据编排成 markdown 版 `Phase 3 录屏复盘清单`，每条 checkpoint 会直接附上 `回切目标` 短注记与 `[review] [checkpoints] [recovery] [telegraph]` artifact anchor，减少在报告与附件之间来回跳转
 - 稳定性矩阵、长跑与边界场景
 - 失败留证据（截图 / console / state snapshot）
 

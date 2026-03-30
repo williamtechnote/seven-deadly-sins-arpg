@@ -17,6 +17,49 @@ function safeReadText(filePath) {
   return fs.readFileSync(filePath, 'utf8');
 }
 
+function formatMarkdownLink(label, targetPath) {
+  if (!targetPath) return '';
+  return `[${label}](${targetPath})`;
+}
+
+function buildCadenceCheckpointIndexLines(cadenceArtifacts) {
+  if (!cadenceArtifacts || !Array.isArray(cadenceArtifacts.checkpointLines)) {
+    return [];
+  }
+
+  const checkpointEntries = Array.isArray(cadenceArtifacts.review?.checkpoints)
+    ? cadenceArtifacts.review.checkpoints
+    : [];
+  const sharedRecoveryExpectedReturnLabel = typeof cadenceArtifacts.sharedRecoverySnapshot?.expectedReturnLabel === 'string'
+    ? cadenceArtifacts.sharedRecoverySnapshot.expectedReturnLabel.trim()
+    : '';
+  const evidenceLinks = [
+    formatMarkdownLink('review', cadenceArtifacts.files.cadenceReview),
+    formatMarkdownLink('checkpoints', cadenceArtifacts.files.checkpointText),
+    formatMarkdownLink('recovery', cadenceArtifacts.files.sharedRecoverySnapshot),
+    formatMarkdownLink('telegraph', cadenceArtifacts.files.telegraphHud)
+  ].filter(Boolean).join(' ');
+
+  return cadenceArtifacts.checkpointLines.map((line, index) => {
+    const checkpoint = checkpointEntries[index] && typeof checkpointEntries[index] === 'object'
+      ? checkpointEntries[index]
+      : null;
+    const expectedReturnLabel = typeof checkpoint?.expectedReturnLabel === 'string' && checkpoint.expectedReturnLabel.trim()
+      ? checkpoint.expectedReturnLabel.trim()
+      : sharedRecoveryExpectedReturnLabel;
+    const parts = [line];
+
+    if (expectedReturnLabel) {
+      parts.push(`回切目标: \`${expectedReturnLabel}\``);
+    }
+    if (evidenceLinks) {
+      parts.push(`证据: ${evidenceLinks}`);
+    }
+
+    return parts.join(' | ');
+  });
+}
+
 function collectArtifactReport(rootDir) {
   const summary = {
     generatedAt: new Date().toISOString(),
@@ -40,12 +83,29 @@ function collectArtifactReport(rootDir) {
     const telegraphHudPath = path.join(testDir, 'telegraph-hud.png');
 
     const cadenceReview = safeReadJson(cadenceReviewPath);
+    const sharedRecoverySnapshot = safeReadJson(sharedRecoveryPath);
     const checkpointText = safeReadText(checkpointPath).trim();
-    const checkpointLines = Array.isArray(cadenceReview?.checkpointLines) && cadenceReview.checkpointLines.length > 0
-      ? cadenceReview.checkpointLines
-      : checkpointText
-        ? checkpointText.split('\n').map((line) => line.trim()).filter(Boolean)
-        : [];
+    const reviewCheckpointEntries = Array.isArray(cadenceReview?.review?.checkpoints)
+      ? cadenceReview.review.checkpoints
+      : [];
+    let checkpointLines = [];
+    if (Array.isArray(cadenceReview?.checkpointLines) && cadenceReview.checkpointLines.length > 0) {
+      checkpointLines = cadenceReview.checkpointLines;
+    } else if (checkpointText) {
+      checkpointLines = checkpointText.split('\n').map((line) => line.trim()).filter(Boolean);
+    } else if (reviewCheckpointEntries.length > 0) {
+      checkpointLines = reviewCheckpointEntries
+        .map((entry, index) => {
+          if (!entry || typeof entry !== 'object') return '';
+          const label = typeof entry.recordingFocusLabel === 'string' ? entry.recordingFocusLabel.trim() : '';
+          if (!label) return '';
+          const suffix = typeof entry.telegraphHint === 'string' && entry.telegraphHint.trim()
+            ? ` | ${entry.telegraphHint.trim()}`
+            : '';
+          return `${index + 1}. ${label}${suffix}`;
+        })
+        .filter(Boolean);
+    }
 
     summary.tests.push({
       testName,
@@ -56,7 +116,9 @@ function collectArtifactReport(rootDir) {
       meta: safeReadJson(metaPath),
       cadenceArtifacts: fs.existsSync(cadenceReviewPath) || fs.existsSync(checkpointPath) || fs.existsSync(sharedRecoveryPath) || fs.existsSync(telegraphHudPath)
         ? {
+            review: cadenceReview?.review || null,
             checkpointLines,
+            sharedRecoverySnapshot,
             files: {
               cadenceReview: fs.existsSync(cadenceReviewPath) ? path.relative(process.cwd(), cadenceReviewPath) : null,
               checkpointText: fs.existsSync(checkpointPath) ? path.relative(process.cwd(), checkpointPath) : null,
@@ -108,7 +170,7 @@ function renderMarkdownReport(summary) {
       );
 
       if (test.cadenceArtifacts.checkpointLines.length > 0) {
-        lines.push(...test.cadenceArtifacts.checkpointLines);
+        lines.push(...buildCadenceCheckpointIndexLines(test.cadenceArtifacts));
       } else {
         lines.push('暂无 checkpoint 文案');
       }

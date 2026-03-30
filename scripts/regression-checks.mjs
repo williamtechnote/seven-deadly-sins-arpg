@@ -1910,6 +1910,14 @@ function testE2eReportPhase3CadenceMarkdownIndex() {
     );
     fs.writeFileSync(path.join(artifactDir, 'snapshot.json'), JSON.stringify({ scene: 'BossScene' }, null, 2));
     fs.writeFileSync(path.join(artifactDir, 'cadence-review.json'), JSON.stringify({
+        review: {
+            checkpoints: [
+                {
+                    expectedReturnLabel: '幻影风暴',
+                    telegraphHint: '反制: 停止冲刺，短步修正方向'
+                }
+            ]
+        },
         checkpointLines: [
             '1. HUD telegraph 混乱逆转 -> shared recovery≈10.2s -> 13-step dash/charmBolt bridge -> 幻影风暴 | 反制: 停止冲刺，短步修正方向'
         ]
@@ -1951,8 +1959,8 @@ function testE2eReportPhase3CadenceMarkdownIndex() {
     );
     assert.match(
         output,
-        /1\. HUD telegraph 混乱逆转 -> shared recovery≈10\.2s -> 13-step dash\/charmBolt bridge -> 幻影风暴 \| 反制: 停止冲刺，短步修正方向/,
-        'e2e report should inline the phase-3 cadence checkpoint lines for faster recording review'
+        /1\. HUD telegraph 混乱逆转 -> shared recovery≈10\.2s -> 13-step dash\/charmBolt bridge -> 幻影风暴 \| 反制: 停止冲刺，短步修正方向 \| 回切目标: `幻影风暴` \| 证据: \[review]\(artifacts\/e2e\/lust-phase3-cadence-review\/cadence-review\.json\) \[checkpoints]\(artifacts\/e2e\/lust-phase3-cadence-review\/phase3-checkpoints\.txt\) \[recovery]\(artifacts\/e2e\/lust-phase3-cadence-review\/shared-recovery-snapshot\.json\) \[telegraph]\(artifacts\/e2e\/lust-phase3-cadence-review\/telegraph-hud\.png\)/,
+        'e2e report should inline cadence checkpoint lines with expected-return notes and direct artifact anchors'
     );
     assert.match(
         output,
