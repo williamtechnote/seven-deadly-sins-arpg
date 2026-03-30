@@ -55,6 +55,23 @@ function buildRecoverySnapshotShortNote(cadenceArtifacts, checkpoint) {
   return `recovery 快照: \`${parts.join(' · ')}\``;
 }
 
+function buildExpectedReturnDriftNote(checkpointExpectedReturnLabel, recoveryExpectedReturnLabel) {
+  const checkpointLabel = typeof checkpointExpectedReturnLabel === 'string'
+    ? checkpointExpectedReturnLabel.trim()
+    : '';
+  const recoveryLabel = typeof recoveryExpectedReturnLabel === 'string'
+    ? recoveryExpectedReturnLabel.trim()
+    : '';
+
+  if (!checkpointLabel || !recoveryLabel) {
+    return '';
+  }
+  if (checkpointLabel === recoveryLabel) {
+    return '回切校验: match';
+  }
+  return `回切校验: drift checkpoint=\`${checkpointLabel}\` recovery=\`${recoveryLabel}\``;
+}
+
 function buildCadenceCheckpointIndexLines(cadenceArtifacts) {
   if (!cadenceArtifacts || !Array.isArray(cadenceArtifacts.checkpointLines)) {
     return [];
@@ -88,6 +105,13 @@ function buildCadenceCheckpointIndexLines(cadenceArtifacts) {
     const recoverySnapshotShortNote = buildRecoverySnapshotShortNote(cadenceArtifacts, checkpoint);
     if (recoverySnapshotShortNote) {
       parts.push(recoverySnapshotShortNote);
+    }
+    const expectedReturnDriftNote = buildExpectedReturnDriftNote(
+      expectedReturnLabel,
+      sharedRecoveryExpectedReturnLabel
+    );
+    if (expectedReturnDriftNote) {
+      parts.push(expectedReturnDriftNote);
     }
     if (evidenceLinks) {
       parts.push(`证据: ${evidenceLinks}`);
