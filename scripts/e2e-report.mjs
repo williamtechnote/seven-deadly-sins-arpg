@@ -22,6 +22,39 @@ function formatMarkdownLink(label, targetPath) {
   return `[${label}](${targetPath})`;
 }
 
+function buildRecoverySnapshotShortNote(cadenceArtifacts, checkpoint) {
+  const snapshot = cadenceArtifacts?.sharedRecoverySnapshot && typeof cadenceArtifacts.sharedRecoverySnapshot === 'object'
+    ? cadenceArtifacts.sharedRecoverySnapshot
+    : null;
+  if (!snapshot) return '';
+
+  const parts = [];
+  const sharedRecoveryRemainingMs = Number.isFinite(snapshot.sharedRecoveryRemainingMs)
+    ? Math.max(0, Math.trunc(snapshot.sharedRecoveryRemainingMs))
+    : null;
+  const breatherRemaining = Number.isFinite(snapshot.breatherRemaining)
+    ? Math.max(0, Math.trunc(snapshot.breatherRemaining))
+    : null;
+  const expectedReturnLabel = typeof snapshot.expectedReturnLabel === 'string' && snapshot.expectedReturnLabel.trim()
+    ? snapshot.expectedReturnLabel.trim()
+    : typeof checkpoint?.expectedReturnLabel === 'string' && checkpoint.expectedReturnLabel.trim()
+      ? checkpoint.expectedReturnLabel.trim()
+      : '';
+
+  if (sharedRecoveryRemainingMs !== null) {
+    parts.push(`sharedRecoveryRemainingMs=${sharedRecoveryRemainingMs}`);
+  }
+  if (breatherRemaining !== null) {
+    parts.push(`breatherRemaining=${breatherRemaining}`);
+  }
+  if (expectedReturnLabel) {
+    parts.push(`expectedReturnLabel=${expectedReturnLabel}`);
+  }
+
+  if (parts.length === 0) return '';
+  return `recovery 快照: \`${parts.join(' · ')}\``;
+}
+
 function buildCadenceCheckpointIndexLines(cadenceArtifacts) {
   if (!cadenceArtifacts || !Array.isArray(cadenceArtifacts.checkpointLines)) {
     return [];
@@ -51,6 +84,10 @@ function buildCadenceCheckpointIndexLines(cadenceArtifacts) {
 
     if (expectedReturnLabel) {
       parts.push(`回切目标: \`${expectedReturnLabel}\``);
+    }
+    const recoverySnapshotShortNote = buildRecoverySnapshotShortNote(cadenceArtifacts, checkpoint);
+    if (recoverySnapshotShortNote) {
+      parts.push(recoverySnapshotShortNote);
     }
     if (evidenceLinks) {
       parts.push(`证据: ${evidenceLinks}`);

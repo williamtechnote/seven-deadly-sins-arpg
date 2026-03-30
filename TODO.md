@@ -1,9 +1,10 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百零五：若带 artifact anchor / expected-return short note 的 markdown 版 `Phase 3 录屏复盘清单` 仍要逐条点开 JSON 才能看清 recovery 快照，再把 `scripts/e2e-report.mjs` 补成直接内联 `sharedRecoveryRemainingMs` / `breatherRemaining` / `expectedReturnLabel` 的 phase 3 recovery snapshot short note，继续压缩 live pacing 排查路径
+- [ ] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百零六：若带 recovery snapshot short note 的 markdown 版 `Phase 3 录屏复盘清单` 仍不足以一眼看出 artifact 漂移，再把 `scripts/e2e-report.mjs` 补成直接标出 checkpoint `expectedReturnLabel` 与 `shared-recovery-snapshot.json` 的 drift/match note，继续压缩 live pacing 排查路径
 
 ## Completed
+- [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百零五：若带 artifact anchor / expected-return short note 的 markdown 版 `Phase 3 录屏复盘清单` 仍要逐条点开 JSON 才能看清 recovery 快照，再把 `scripts/e2e-report.mjs` 补成直接内联 `sharedRecoveryRemainingMs` / `breatherRemaining` / `expectedReturnLabel` 的 phase 3 recovery snapshot short note，继续压缩 live pacing 排查路径（完成：2026-03-30 09:36 +08，已拆分为一百零六）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百零四：把 markdown 版 `Phase 3 录屏复盘清单` 的 checkpoint 行补成带 artifact anchor / expected-return short note 的复盘索引，直接串起 `cadence-review.json` / `phase3-checkpoints.txt` / `shared-recovery-snapshot.json` / `telegraph-hud.png`，继续压缩 live pacing 排查路径（完成：2026-03-30 09:29 +08，已拆分为一百零五）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百零三：把 `cadence-review.json` / `phase3-checkpoints.txt` / `shared-recovery-snapshot.json` / `telegraph-hud.png` 串进 `scripts/e2e-report.mjs` 的 markdown 索引，直接生成 `Phase 3 录屏复盘清单`，并补一条可回归的 CLI 报告断言（完成：2026-03-30 09:21 +08）
 - [x] Boss 机制多样性：`魅惑女妖` phase 3 录屏护栏一百零二：补一条可回归的 cadence artifact bundle，把 `buildBossAttackCadenceReviewChecklist` 输出接进 Playwright `dumpEvidence` 附件；失败时自动落地 phase 3 checkpoint 清单、telegraph HUD 截图与 shared-recovery snapshot，缩短 live pacing 复盘路径（完成：2026-03-30 09:16 +08）
