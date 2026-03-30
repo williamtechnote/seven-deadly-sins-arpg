@@ -2747,6 +2747,9 @@
         const hintLabel = formatBossTelegraphHintLabel(counterHint, {
             counterWindowTailAfterglowActive
         });
+        const hintLabelMuted = counterWindowTailAfterglowActive
+            && hintLabel !== counterHint
+            && !!hintLabel;
 
         if (!attackLabel) {
             return {
@@ -2767,6 +2770,7 @@
                 counterWindowTailAfterglowStartRatio: 0,
                 counterWindowTailAfterglowWidthRatio: 0,
                 counterWindowLabelMuted: false,
+                hintLabelMuted: false,
                 counterWindowSpanVisible: false,
                 counterWindowSpanStartRatio: 0,
                 counterWindowSpanWidthRatio: 0
@@ -2803,6 +2807,7 @@
                 ? clampRatio(counterWindowTailAfterglowMs / telegraphDurationMs, 0)
                 : 0,
             counterWindowLabelMuted,
+            hintLabelMuted,
             counterWindowSpanVisible,
             counterWindowSpanStartRatio: counterWindowSpanVisible
                 ? clampRatio(counterWindowStartOffsetMs / telegraphDurationMs, 0)

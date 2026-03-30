@@ -1547,6 +1547,7 @@ function testBossHudReadability() {
     assert.equal(activeTailAfterglowTelegraphSummary.counterWindowLabel, '已收束提示', 'telegraph summary should swap the counter-window label once the live telegraph has already entered the dimmed tail segment');
     assert.equal(activeTailAfterglowTelegraphSummary.counterWindowLabelMuted, true, 'telegraph summary should mark the counter-window label as muted once the telegraph is already in the tail-afterglow phase');
     assert.equal(activeTailAfterglowTelegraphSummary.hintLabel, '闪避提示: 停止冲刺，短步修正方向', 'telegraph summary should relabel stale counter hints as dodge guidance once the live telegraph has already entered the dimmed tail segment');
+    assert.equal(activeTailAfterglowTelegraphSummary.hintLabelMuted, true, 'telegraph summary should mark rewritten tail-phase hint copy as muted once the live telegraph has already entered the dimmed tail segment');
 
     const activeTailAfterglowFollowupTelegraphSummary = buildBossTelegraphHudSummary({
         attackLabel: '幻影风暴',
@@ -1557,6 +1558,7 @@ function testBossHudReadability() {
         remainingMs: 400
     });
     assert.equal(activeTailAfterglowFollowupTelegraphSummary.hintLabel, '收束后处理: 先躲弹幕，再找本体', 'telegraph summary should relabel stale counter hints as post-window follow-up guidance when the remaining copy describes the recovery step');
+    assert.equal(activeTailAfterglowFollowupTelegraphSummary.hintLabelMuted, true, 'telegraph summary should keep the follow-up hint muted once the live telegraph is already in the dimmed tail segment and the copy has been rewritten');
 
     const containedTelegraphSummary = buildBossTelegraphHudSummary({
         attackLabel: '圣剑环阵',
@@ -7923,6 +7925,11 @@ function testBossHudMeasurementHooks() {
     );
     assert.match(
         source,
+        /const telegraphHintTextFill = telegraphHud\.hintLabelMuted \? '#d7b07a' : '#ffdcb3';[\s\S]*?this\.bossTelegraphHintText\.setStyle\(\{\s*fill:\s*telegraphHintTextFill\s*\}\);[\s\S]*?this\.bossTelegraphHintText\.setText\(this\._fitBossHudTextToWidth\(telegraphHud\.hintLabel \|\| '',\s*telegraphRect\.w,\s*'bossTelegraphHint'\)\);/,
+        'Boss telegraph should mute rewritten tail-phase hint copy to a softer amber once the live telegraph has already entered the tail-afterglow segment'
+    );
+    assert.match(
+        source,
         /this\.bossTelegraphTailMarker\.clear\(\);[\s\S]*?if \(telegraphHud\.counterWindowTailMarkerVisible\) \{[\s\S]*?const tailMarkerX = telegraphRect\.x \+ telegraphRect\.w - 1;[\s\S]*?this\.bossTelegraphTailMarker\.fillRoundedRect\(\s*tailMarkerX,\s*telegraphRect\.y - 1,\s*6,\s*telegraphRect\.h \+ 2,\s*2\s*\);/,
         'Boss telegraph should draw a dedicated end-of-bar tail marker when the counter window outlasts the telegraph body'
     );
@@ -8208,6 +8215,11 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /第三行 hint 则会把原本的 `反制:` \/ `反制提示:` 前缀改写成更明确的 `收束后处理:` 或 `闪避提示:`/,
         'README should document that the telegraph hint switches from counter phrasing to post-window guidance once the live telegraph is already in the tail-afterglow phase'
+    );
+    assert.match(
+        source,
+        /第三行 hint 则会把原本的 `反制:` \/ `反制提示:` 前缀改写成更明确的 `收束后处理:` 或 `闪避提示:`，并同步降成更柔和的琥珀色/,
+        'README should document that rewritten tail-phase hint copy also shifts to a softer amber once the live telegraph has already entered the tail-afterglow phase'
     );
     assert.match(
         source,
@@ -9352,6 +9364,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /第三行 hint 则会把原本的“反制:”\/“反制提示:”前缀改写成更明确的“收束后处理:”或“闪避提示:”/,
         'help overlay should document that the telegraph hint switches from counter phrasing to post-window guidance once the live telegraph is already inside the tail-afterglow segment'
+    );
+    assert.match(
+        source,
+        /第三行 hint 则会把原本的“反制:”\/“反制提示:”前缀改写成更明确的“收束后处理:”或“闪避提示:”，并同步降成更柔和的琥珀色/,
+        'help overlay should document that rewritten tail-phase hint copy also shifts to a softer amber once the live telegraph is already inside the tail-afterglow segment'
     );
     assert.match(
         source,
