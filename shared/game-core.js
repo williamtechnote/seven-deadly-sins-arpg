@@ -2702,6 +2702,9 @@
         const counterWindowStartOffsetMs = Math.max(0, clampInt(safe.counterWindowStartOffsetMs, 0, Number.MAX_SAFE_INTEGER, 0));
         const telegraphDurationMs = Math.max(1, clampInt(safe.telegraphDurationMs, 1, Number.MAX_SAFE_INTEGER, 1));
         const remainingMs = Math.max(0, clampInt(safe.remainingMs, 0, Number.MAX_SAFE_INTEGER, 0));
+        const counterWindowStartMarkerVisible = counterWindowMs > 0
+            && counterWindowStartOffsetMs > 0
+            && counterWindowStartOffsetMs < telegraphDurationMs;
         const counterWindowOverflowMs = Math.max(0, counterWindowStartOffsetMs + counterWindowMs - telegraphDurationMs);
 
         if (!attackLabel) {
@@ -2712,6 +2715,8 @@
                 counterWindowLabel: '',
                 hintLabel: '',
                 progressRatio: 0,
+                counterWindowStartMarkerVisible: false,
+                counterWindowStartMarkerRatio: 0,
                 counterWindowTailMarkerVisible: false,
                 counterWindowOverflowMs: 0
             };
@@ -2726,6 +2731,10 @@
                 : '',
             hintLabel: counterHint,
             progressRatio: clampRatio(remainingMs / telegraphDurationMs, 0),
+            counterWindowStartMarkerVisible,
+            counterWindowStartMarkerRatio: counterWindowStartMarkerVisible
+                ? clampRatio(counterWindowStartOffsetMs / telegraphDurationMs, 0)
+                : 0,
             counterWindowTailMarkerVisible: counterWindowOverflowMs > 0,
             counterWindowOverflowMs
         };

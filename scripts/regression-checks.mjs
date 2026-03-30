@@ -1504,6 +1504,8 @@ function testBossHudReadability() {
     assert.equal(telegraphSummary.counterWindowLabel, '反制窗口 1.7s', 'telegraph summary should format the counter window in seconds');
     assert.equal(telegraphSummary.hintLabel, '反制: 先躲弹幕，再找本体', 'telegraph summary should keep the counter hint');
     assert.equal(telegraphSummary.progressRatio, 0.5, 'telegraph progress should report the remaining telegraph time ratio');
+    assert.equal(telegraphSummary.counterWindowStartMarkerVisible, false, 'telegraph summary should stay quiet when the counter window opens from the first frame');
+    assert.equal(telegraphSummary.counterWindowStartMarkerRatio, 0, 'telegraph summary should not offset the start marker when the counter window starts immediately');
     assert.equal(telegraphSummary.counterWindowTailMarkerVisible, true, 'telegraph summary should flag when the counter window extends beyond the telegraph bar');
     assert.equal(telegraphSummary.counterWindowOverflowMs, 400, 'telegraph summary should expose how much the counter window outlasts the telegraph');
 
@@ -1516,6 +1518,8 @@ function testBossHudReadability() {
         telegraphDurationMs: 1300,
         remainingMs: 650
     });
+    assert.equal(containedTelegraphSummary.counterWindowStartMarkerVisible, true, 'telegraph summary should flag when the counter window starts after the bar begins');
+    assert.equal(containedTelegraphSummary.counterWindowStartMarkerRatio, 200 / 1300, 'telegraph summary should expose the delayed counter-window entry as a bar ratio');
     assert.equal(containedTelegraphSummary.counterWindowTailMarkerVisible, false, 'telegraph summary should stay quiet when the counter window ends before the telegraph bar');
     assert.equal(containedTelegraphSummary.counterWindowOverflowMs, 0, 'telegraph summary should report no overflow when the counter window stays inside the telegraph');
 
@@ -7840,6 +7844,11 @@ function testBossHudMeasurementHooks() {
     );
     assert.match(
         source,
+        /this\.bossTelegraphTailMarker\.clear\(\);[\s\S]*?this\.bossTelegraphStartMarker\.clear\(\);[\s\S]*?if \(telegraphHud\.counterWindowStartMarkerVisible\) \{[\s\S]*?const startMarkerX = telegraphRect\.x \+ telegraphRect\.w \* telegraphHud\.counterWindowStartMarkerRatio;[\s\S]*?this\.bossTelegraphStartMarker\.fillRoundedRect\(\s*startMarkerX - 2,\s*telegraphRect\.y - 1,\s*4,\s*telegraphRect\.h \+ 2,\s*2\s*\);/,
+        'Boss telegraph should draw a dedicated in-bar start marker when the counter window opens after the telegraph begins'
+    );
+    assert.match(
+        source,
         /this\.bossTelegraphTailMarker\.clear\(\);[\s\S]*?if \(telegraphHud\.counterWindowTailMarkerVisible\) \{[\s\S]*?const tailMarkerX = telegraphRect\.x \+ telegraphRect\.w - 1;[\s\S]*?this\.bossTelegraphTailMarker\.fillRoundedRect\(\s*tailMarkerX,\s*telegraphRect\.y - 1,\s*6,\s*telegraphRect\.h \+ 2,\s*2\s*\);/,
         'Boss telegraph should draw a dedicated end-of-bar tail marker when the counter window outlasts the telegraph body'
     );
@@ -8100,6 +8109,11 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /若 `反制窗口` 实际会拖到进度条终点之后，条尾还会补一枚 `超出尾标`/,
         'README should document the telegraph tail marker for counter windows that outlast the bar body'
+    );
+    assert.match(
+        source,
+        /若 `反制窗口` 起点实际晚于进度条开头，条内还会补一枚 `起跳刻度`/,
+        'README should document the telegraph start marker for delayed counter-window entry'
     );
     assert.match(
         source,
@@ -9214,6 +9228,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若前缀去重后的正文回退为“未知挑战”但当前 challenge 仍有奖励短句，则 regular 三行摘要会继续保留“未知挑战”正文，并沿用“进度:12\/30  奖励:\+90金”\/“进度:30\/30  奖励:\+90金”这条 reward-bearing 第三行语义，不额外插入新的中间短句/,
         'help overlay should document the unknown-label reward-bearing regular fallback without introducing extra intermediate copy'
+    );
+    assert.match(
+        source,
+        /若 Boss 的“反制窗口”起点实际晚于 telegraph 进度条开头，条内还会补一枚“起跳刻度”，避免把整段条体误读成从第一帧起就能反制/,
+        'help overlay should document the telegraph start marker for delayed counter-window entry'
     );
     assert.match(
         source,
