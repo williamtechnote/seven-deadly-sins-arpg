@@ -1674,6 +1674,7 @@ function testBossHudReadability() {
     assert.equal(finalCountdownHeadShellAlphaTrimTelegraphSummary.currentCountdownHeadMarkerShellCapTrimmed, true, 'telegraph summary should keep the countdown-head shell caps trimmed during the final shell-alpha beat');
     assert.equal(finalCountdownHeadShellAlphaTrimTelegraphSummary.currentCountdownHeadMarkerShellAlphaMuted, true, 'telegraph summary should lower the countdown-head shell alpha once the remaining tail countdown drops under the final 5ms alpha-trim threshold');
     assert.equal(finalCountdownHeadShellAlphaTrimTelegraphSummary.currentCountdownHeadMarkerFinalWidthTrimmed, false, 'telegraph summary should keep the countdown-head shell and inner core at their normal focused width until the remaining tail countdown falls into the final sub-millisecond trim beat');
+    assert.equal(finalCountdownHeadShellAlphaTrimTelegraphSummary.currentCountdownHeadMarkerLateGlowInnerHeightTrimmed, false, 'telegraph summary should keep the residual inner late glow at full height until the remaining tail countdown falls into the final sub-millisecond trim beat');
     assert.equal(finalCountdownHeadShellAlphaTrimTelegraphSummary.currentCountdownHeadMarkerLateGlowInnerAlphaMuted, false, 'telegraph summary should keep the residual inner late glow alpha at full strength until the remaining tail countdown falls into the final sub-millisecond trim beat');
 
     const finalCountdownHeadInnerCoreAlphaTrimTelegraphSummary = buildBossTelegraphHudSummary({
@@ -1692,6 +1693,7 @@ function testBossHudReadability() {
     assert.equal(finalCountdownHeadInnerCoreAlphaTrimTelegraphSummary.currentCountdownHeadMarkerShellAlphaMuted, true, 'telegraph summary should keep the countdown-head shell alpha muted during the final inner-core alpha beat');
     assert.equal(finalCountdownHeadInnerCoreAlphaTrimTelegraphSummary.currentCountdownHeadMarkerFinalWidthTrimmed, true, 'telegraph summary should narrow both the countdown-head shell and inner core together during the final sub-millisecond trim beat');
     assert.equal(finalCountdownHeadInnerCoreAlphaTrimTelegraphSummary.currentCountdownHeadMarkerLateGlowFinalWidthTrimmed, true, 'telegraph summary should also narrow the residual outer late glow during the final sub-millisecond trim beat');
+    assert.equal(finalCountdownHeadInnerCoreAlphaTrimTelegraphSummary.currentCountdownHeadMarkerLateGlowInnerHeightTrimmed, true, 'telegraph summary should also shorten the residual inner late glow height during the final sub-millisecond trim beat');
     assert.equal(finalCountdownHeadInnerCoreAlphaTrimTelegraphSummary.currentCountdownHeadMarkerLateGlowInnerAlphaMuted, true, 'telegraph summary should also lower the residual inner late glow alpha during the final sub-millisecond trim beat');
 
     const activeTailAfterglowFollowupTelegraphSummary = buildBossTelegraphHudSummary({
@@ -9697,6 +9699,11 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
+        /const lateGlowInnerY = telegraphHud\.currentCountdownHeadMarkerLateGlowInnerHeightTrimmed \? telegraphRect\.y - 1 : telegraphRect\.y - 2;[\s\S]*?const lateGlowInnerHeight = telegraphHud\.currentCountdownHeadMarkerLateGlowInnerHeightTrimmed \? telegraphRect\.h \+ 2 : telegraphRect\.h \+ 4;[\s\S]*?this\.bossTelegraphCountdownHeadFlash\.fillRoundedRect\(lateGlowInnerX,\s*lateGlowInnerY,\s*lateGlowInnerWidth,\s*lateGlowInnerHeight,\s*3\);/,
+        'boss telegraph rendering should also shorten the residual inner late glow height during the final sub-millisecond trim beat'
+    );
+    assert.match(
+        source,
         /const lateGlowInnerAlpha = telegraphHud\.currentCountdownHeadMarkerLateGlowInnerAlphaMuted \? 0\.08 : 0\.12;[\s\S]*?this\.bossTelegraphCountdownHeadFlash\.fillStyle\(0xFFD27A,\s*lateGlowInnerAlpha\);/,
         'boss telegraph rendering should also lower the residual inner late glow alpha during the final sub-millisecond trim beat'
     );
@@ -9749,6 +9756,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”外侧残余暖辉也同步压成更贴边的极细收尾/,
         'help overlay should document that the residual outer late glow also narrows during the final sub-millisecond trim beat'
+    );
+    assert.match(
+        source,
+        /若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”内层残余暖辉的上下高度也同步压短半拍/,
+        'help overlay should document that the residual inner late glow height also shortens during the final sub-millisecond trim beat'
     );
     assert.match(
         source,
