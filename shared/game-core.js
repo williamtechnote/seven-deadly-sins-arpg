@@ -470,39 +470,7 @@
         };
     }
 
-    function buildCombatActionReadiness(input) {
-        const safe = input && typeof input === 'object' ? input : {};
-        if (safe.isDodging) {
-            return {
-                attack: false,
-                special: false,
-                dodge: false
-            };
-        }
-
-        return {
-            attack: resolveCombatActionReadyState(
-                safe.attackCooldownMs,
-                safe.stamina,
-                safe.attackStaminaCost,
-                safe.staminaRegenPerSecond
-            ).isReady,
-            special: resolveCombatActionReadyState(
-                safe.specialCooldownMs,
-                safe.stamina,
-                safe.specialStaminaCost,
-                safe.staminaRegenPerSecond
-            ).isReady,
-            dodge: resolveCombatActionReadyState(
-                safe.dodgeCooldownMs,
-                safe.stamina,
-                safe.dodgeStaminaCost,
-                safe.staminaRegenPerSecond
-            ).isReady
-        };
-    }
-
-    function buildCombatActionHudSummary(input) {
+    function buildCombatActionHudSegments(input) {
         const safe = input && typeof input === 'object' ? input : {};
         if (safe.isDodging) {
             const remainingDodgeLockoutMs = Math.max(0, Number(safe.dodgeLockoutMs) || 0);
@@ -524,8 +492,13 @@
                 safe.dodgeStaminaCost,
                 safe.staminaRegenPerSecond
             );
-            return `普攻 U: 翻滚中 -> ${attackPreviewState.label}  特攻 O: 翻滚中 -> ${specialPreviewState.label}  闪避 Space: 翻滚中 -> ${dodgePreviewState.label}`;
+            return [
+                { key: 'attack', text: `普攻 U: 翻滚中 -> ${attackPreviewState.label}`, isReady: false },
+                { key: 'special', text: `特攻 O: 翻滚中 -> ${specialPreviewState.label}`, isReady: false },
+                { key: 'dodge', text: `闪避 Space: 翻滚中 -> ${dodgePreviewState.label}`, isReady: false }
+            ];
         }
+
         const attackState = resolveCombatActionReadyState(
             safe.attackCooldownMs,
             safe.stamina,
@@ -544,7 +517,22 @@
             safe.dodgeStaminaCost,
             safe.staminaRegenPerSecond
         );
-        return `普攻 U: ${attackState.label}  特攻 O: ${specialState.label}  闪避 Space: ${dodgeState.label}`;
+        return [
+            { key: 'attack', text: `普攻 U: ${attackState.label}`, isReady: attackState.isReady },
+            { key: 'special', text: `特攻 O: ${specialState.label}`, isReady: specialState.isReady },
+            { key: 'dodge', text: `闪避 Space: ${dodgeState.label}`, isReady: dodgeState.isReady }
+        ];
+    }
+
+    function buildCombatActionReadiness(input) {
+        return buildCombatActionHudSegments(input).reduce((result, segment) => {
+            result[segment.key] = !!segment.isReady;
+            return result;
+        }, {});
+    }
+
+    function buildCombatActionHudSummary(input) {
+        return buildCombatActionHudSegments(input).map(segment => segment.text).join('  ');
     }
 
     function getHudSidebarViewportTier(viewportWidth, viewportHeight) {
@@ -2987,6 +2975,7 @@
         resolveKeyboardAimState,
         formatAimDirectionLabel,
         buildCombatActionReadiness,
+        buildCombatActionHudSegments,
         buildCombatActionHudSummary,
         formatRunChallengeRewardShortLabel,
         buildRunChallengeCompletedFeedbackText,

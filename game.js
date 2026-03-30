@@ -50,6 +50,7 @@ const {
     resolveKeyboardAimState,
     formatAimDirectionLabel,
     buildCombatActionReadiness,
+    buildCombatActionHudSegments,
     buildCombatActionHudSummary,
     buildQuickSlotItemLabel,
     buildQuickSlotAutoAssignNotice,
@@ -5779,11 +5780,25 @@ class UIScene extends Phaser.Scene {
             fontSize: '14px',
             fill: '#ffffff'
         }).setScrollFactor(0);
-        this.actionText = this.add.text(pad, height - 36, '普攻 U: 就绪  特攻 O: 就绪  闪避 Space: 就绪', {
-            fontSize: '13px',
-            fill: '#cfd8e6'
-        }).setScrollFactor(0);
-        this.actionTextReadyFlashUntil = 0;
+        this.actionText = {
+            attack: this.add.text(pad, height - 36, '普攻 U: 就绪', {
+                fontSize: '13px',
+                fill: '#cfd8e6'
+            }).setScrollFactor(0),
+            special: this.add.text(pad, height - 36, '特攻 O: 就绪', {
+                fontSize: '13px',
+                fill: '#cfd8e6'
+            }).setScrollFactor(0),
+            dodge: this.add.text(pad, height - 36, '闪避 Space: 就绪', {
+                fontSize: '13px',
+                fill: '#cfd8e6'
+            }).setScrollFactor(0)
+        };
+        this.actionTextReadyFlashUntil = {
+            attack: 0,
+            special: 0,
+            dodge: 0
+        };
         this._lastCombatActionReadiness = null;
         this.savedWeaponDebugText = this.add.text(pad, height - 102, '', {
             fontSize: '12px',
@@ -6266,16 +6281,27 @@ class UIScene extends Phaser.Scene {
             specialStaminaCost: weapon ? weapon.specialStaminaCost : 0,
             dodgeStaminaCost: GAME_CONFIG.PLAYER.dodgeStaminaCost
         };
+        const actionHudSegments = buildCombatActionHudSegments(actionHudState);
         const actionHudReadiness = buildCombatActionReadiness(actionHudState);
         const previousActionReadiness = this._lastCombatActionReadiness;
-        const hasNewlyReadyAction = previousActionReadiness && Object.keys(actionHudReadiness).some(key => actionHudReadiness[key] && !previousActionReadiness[key]);
-        if (hasNewlyReadyAction) {
-            this.actionTextReadyFlashUntil = this.time.now + 220;
+        if (previousActionReadiness) {
+            Object.keys(actionHudReadiness).forEach(key => {
+                if (actionHudReadiness[key] && !previousActionReadiness[key]) {
+                    this.actionTextReadyFlashUntil[key] = this.time.now + 220;
+                }
+            });
         }
         this._lastCombatActionReadiness = actionHudReadiness;
-        const actionHighlightActive = this.actionTextReadyFlashUntil > this.time.now;
-        this.actionText.setStyle({ fill: actionHighlightActive ? '#fff4b3' : '#cfd8e6' });
-        this.actionText.setText(buildCombatActionHudSummary(actionHudState));
+        let actionTextX = layout.pad;
+        const actionTextY = this.cameras.main.height - 36;
+        actionHudSegments.forEach(segment => {
+            const actionTextNode = this.actionText[segment.key];
+            const actionHighlightActive = this.actionTextReadyFlashUntil[segment.key] > this.time.now;
+            actionTextNode.setStyle({ fill: actionHighlightActive ? '#fff4b3' : '#cfd8e6' });
+            actionTextNode.setText(segment.text);
+            actionTextNode.setPosition(actionTextX, actionTextY);
+            actionTextX += actionTextNode.width + 18;
+        });
         if (UI_DEBUG_FLAGS.showSavedWeaponInHUD) {
             const savedWeaponKey = GameState.ensureSelectedWeapon();
             const savedWeapon = WEAPONS[savedWeaponKey];
@@ -6528,7 +6554,7 @@ class HelpScene extends Phaser.Scene {
         const sections = [
             { title: '移动', items: ['WASD  —  八方向移动'] },
             { title: '瞄准', items: ['I / J / K / L  —  键盘双轴瞄准（保留上次朝向）', '当前瞄准会显示在 HUD 左下角'] },
-            { title: '战斗', items: ['U / 鼠标左键  —  普通攻击', 'O / 鼠标右键  —  特殊攻击', '左下角行动行会显示冷却；若只差体力，则会显示“差2体/0.1s”这类自然回复 ETA；若冷却转好后仍差体力，则会预告“0.3s后差8体/0.5s”；若正处于翻滚锁定，则会继续预告“翻滚中 -> 就绪”这类翻滚后的下一状态；当任一动作刚切进“就绪”时，行动行还会短促闪亮一下'] },
+            { title: '战斗', items: ['U / 鼠标左键  —  普通攻击', 'O / 鼠标右键  —  特殊攻击', '左下角行动行会显示冷却；若只差体力，则会显示“差2体/0.1s”这类自然回复 ETA；若冷却转好后仍差体力，则会预告“0.3s后差8体/0.5s”；若正处于翻滚锁定，则会继续预告“翻滚中 -> 就绪”这类翻滚后的下一状态；当任一动作刚切进“就绪”时，只有对应那一项会短促闪亮一下'] },
             { title: '防御', items: ['Space  —  闪避翻滚（无敌帧）'] },
             { title: '武器', items: ['Q / E  —  切换武器'] },
             { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位，并提示“快捷栏N：+<短名>”；若临时拿不到显式短名则会沿用道具名生成“快捷栏N：+生命”这类短句；提示现在会优先按 Phaser 文本实际宽度钳制，因此“快捷栏N：+HP恢复”这类混排会尽量保留更多有效信息；若当前环境拿不到真实测量结果则回退为宽度权重估算；若道具名词干过长则会截成“快捷栏N：+圣疗秘…”这类省略短句；快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”；若拿不到显式短名则改用“快捷栏1：狂战→净化”这类道具名短句；若这些道具名过长则同样会截成“快捷栏1：古代狂…→神圣净…”这类省略短句', '背包悬停说明也会按实际文本宽度贴边，因此靠近屏幕右缘时不会继续沿用固定 200px 估算', '净化药剂/狂战油可在铁匠制作'] },

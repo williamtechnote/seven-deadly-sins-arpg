@@ -94,6 +94,7 @@ const {
     buildRunEventRoomPromptLabel,
     formatAimDirectionLabel,
     buildCombatActionReadiness,
+    buildCombatActionHudSegments,
     buildCombatActionHudSummary,
     buildQuickSlotItemLabel,
     buildQuickSlotAutoAssignNotice,
@@ -2698,7 +2699,7 @@ function testKeyboardControlReadabilityHooks() {
     );
     assert.match(
         source,
-        /若正处于翻滚锁定，则会继续预告“翻滚中 -> 就绪”这类翻滚后的下一状态；当任一动作刚切进“就绪”时，行动行还会短促闪亮一下/,
+        /若正处于翻滚锁定，则会继续预告“翻滚中 -> 就绪”这类翻滚后的下一状态；当任一动作刚切进“就绪”时，只有对应那一项会短促闪亮一下/,
         'help overlay should explain the post-roll readiness preview during dodge lockout'
     );
     assert.match(
@@ -3015,6 +3016,28 @@ function testCombatActionReadiness() {
     );
 }
 
+function testCombatActionHudSegments() {
+    assert.equal(typeof buildCombatActionHudSegments, 'function', 'combat action HUD segment helper should be exported');
+    assert.deepEqual(
+        buildCombatActionHudSegments({
+            attackCooldownMs: 0,
+            specialCooldownMs: 300,
+            dodgeCooldownMs: 0,
+            stamina: 10,
+            staminaRegenPerSecond: 15,
+            attackStaminaCost: 10,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 25
+        }),
+        [
+            { key: 'attack', text: '普攻 U: 就绪', isReady: true },
+            { key: 'special', text: '特攻 O: 0.3s后差6体/0.4s', isReady: false },
+            { key: 'dodge', text: '闪避 Space: 差15体/1.0s', isReady: false }
+        ],
+        'combat action HUD segment helper should keep per-action labels aligned with readiness state so the UI can flash only newly ready actions'
+    );
+}
+
 function testQuickSlotItemLabel() {
     assert.equal(typeof buildQuickSlotItemLabel, 'function', 'quick-slot item label helper should be exported');
     assert.equal(buildQuickSlotItemLabel(null, 0), '-', 'empty quick slot should render a stable placeholder');
@@ -3028,23 +3051,23 @@ function testKeyboardHudQolHooks() {
     const source = loadGameSource();
     assert.match(
         source,
-        /this\.actionText = this\.add\.text\(/,
-        'HUD should allocate a dedicated combat-action cooldown line'
+        /this\.actionText = \{\s*attack:\s*this\.add\.text\([\s\S]*?special:\s*this\.add\.text\([\s\S]*?dodge:\s*this\.add\.text\(/,
+        'HUD should allocate dedicated per-action combat-action text nodes'
     );
     assert.match(
         source,
-        /const runEffects = GameState\.runEffects \|\| DEFAULT_RUN_EFFECTS;[\s\S]*?const staminaRegenPerSecond = GAME_CONFIG\.PLAYER\.staminaRegen \* \(runEffects\.playerStaminaRegenMultiplier \|\| 1\);[\s\S]*?const actionHudState = \{[\s\S]*?isDodging:\s*player\.isDodging,[\s\S]*?dodgeLockoutMs:\s*player\.dodgeLockoutMsRemaining,[\s\S]*?dodgePostLockoutCooldownMs:\s*GAME_CONFIG\.PLAYER\.dodgeCooldown,[\s\S]*?attackCooldownMs:\s*player\.attackCooldown,[\s\S]*?specialCooldownMs:\s*player\.specialCooldown,[\s\S]*?dodgeCooldownMs:\s*player\.dodgeCooldownTimer,[\s\S]*?stamina:\s*player\.stamina,[\s\S]*?staminaRegenPerSecond,[\s\S]*?attackStaminaCost:\s*weapon\s*\?\s*weapon\.staminaCost\s*:\s*0,[\s\S]*?specialStaminaCost:\s*weapon\s*\?\s*weapon\.specialStaminaCost\s*:\s*0,[\s\S]*?dodgeStaminaCost:\s*GAME_CONFIG\.PLAYER\.dodgeStaminaCost[\s\S]*?\};[\s\S]*?this\.actionText\.setText\(buildCombatActionHudSummary\(actionHudState\)\);/,
+        /const runEffects = GameState\.runEffects \|\| DEFAULT_RUN_EFFECTS;[\s\S]*?const staminaRegenPerSecond = GAME_CONFIG\.PLAYER\.staminaRegen \* \(runEffects\.playerStaminaRegenMultiplier \|\| 1\);[\s\S]*?const actionHudState = \{[\s\S]*?isDodging:\s*player\.isDodging,[\s\S]*?dodgeLockoutMs:\s*player\.dodgeLockoutMsRemaining,[\s\S]*?dodgePostLockoutCooldownMs:\s*GAME_CONFIG\.PLAYER\.dodgeCooldown,[\s\S]*?attackCooldownMs:\s*player\.attackCooldown,[\s\S]*?specialCooldownMs:\s*player\.specialCooldown,[\s\S]*?dodgeCooldownMs:\s*player\.dodgeCooldownTimer,[\s\S]*?stamina:\s*player\.stamina,[\s\S]*?staminaRegenPerSecond,[\s\S]*?attackStaminaCost:\s*weapon\s*\?\s*weapon\.staminaCost\s*:\s*0,[\s\S]*?specialStaminaCost:\s*weapon\s*\?\s*weapon\.specialStaminaCost\s*:\s*0,[\s\S]*?dodgeStaminaCost:\s*GAME_CONFIG\.PLAYER\.dodgeStaminaCost[\s\S]*?\};[\s\S]*?const actionHudSegments = buildCombatActionHudSegments\(actionHudState\);/,
         'HUD should derive dodge lockout, cooldown, stamina gaps, and stamina-recovery ETA from the shared combat-action helper'
     );
     assert.match(
         source,
-        /this\.actionTextReadyFlashUntil = 0;[\s\S]*?this\._lastCombatActionReadiness = null;/,
-        'HUD should initialize action readiness flash state alongside the combat action text'
+        /this\.actionTextReadyFlashUntil = \{\s*attack:\s*0,\s*special:\s*0,\s*dodge:\s*0\s*\};[\s\S]*?this\._lastCombatActionReadiness = null;/,
+        'HUD should initialize per-action readiness flash state alongside the combat action text'
     );
     assert.match(
         source,
-        /const actionHudState = \{[\s\S]*?isDodging:\s*player\.isDodging,[\s\S]*?dodgeStaminaCost:\s*GAME_CONFIG\.PLAYER\.dodgeStaminaCost[\s\S]*?\};[\s\S]*?const actionHudReadiness = buildCombatActionReadiness\(actionHudState\);[\s\S]*?const previousActionReadiness = this\._lastCombatActionReadiness;[\s\S]*?const hasNewlyReadyAction = previousActionReadiness && Object\.keys\(actionHudReadiness\)\.some\(key => actionHudReadiness\[key\] && !previousActionReadiness\[key\]\);[\s\S]*?if \(hasNewlyReadyAction\) \{[\s\S]*?this\.actionTextReadyFlashUntil = this\.time\.now \+ 220;[\s\S]*?\}[\s\S]*?this\._lastCombatActionReadiness = actionHudReadiness;[\s\S]*?const actionHighlightActive = this\.actionTextReadyFlashUntil > this\.time\.now;[\s\S]*?this\.actionText\.setStyle\(\{ fill: actionHighlightActive \? '#fff4b3' : '#cfd8e6' \}\);[\s\S]*?this\.actionText\.setText\(buildCombatActionHudSummary\(actionHudState\)\);/,
-        'HUD should derive a short readiness flash from the shared combat-action readiness helper when an action newly becomes ready'
+        /const actionHudState = \{[\s\S]*?isDodging:\s*player\.isDodging,[\s\S]*?dodgeStaminaCost:\s*GAME_CONFIG\.PLAYER\.dodgeStaminaCost[\s\S]*?\};[\s\S]*?const actionHudSegments = buildCombatActionHudSegments\(actionHudState\);[\s\S]*?const actionHudReadiness = buildCombatActionReadiness\(actionHudState\);[\s\S]*?const previousActionReadiness = this\._lastCombatActionReadiness;[\s\S]*?if \(previousActionReadiness\) \{[\s\S]*?Object\.keys\(actionHudReadiness\)\.forEach\(key => \{[\s\S]*?this\.actionTextReadyFlashUntil\[key\] = this\.time\.now \+ 220;[\s\S]*?\}\);[\s\S]*?\}[\s\S]*?actionHudSegments\.forEach\(segment => \{[\s\S]*?const actionHighlightActive = this\.actionTextReadyFlashUntil\[segment\.key\] > this\.time\.now;[\s\S]*?actionTextNode\.setStyle\(\{ fill: actionHighlightActive \? '#fff4b3' : '#cfd8e6' \}\);[\s\S]*?actionTextNode\.setText\(segment\.text\);/,
+        'HUD should derive per-action readiness flashes from the shared combat-action readiness helper when individual actions newly become ready'
     );
     assert.match(
         source,
@@ -7925,8 +7948,8 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /翻滚锁定期间则会继续预告 `翻滚中 -> 就绪`、`翻滚中 -> 0\.2s`、`翻滚中 -> 差15体\/1\.0s` 这类翻滚后的下一状态；当任一动作刚切进 `就绪` 时，行动行还会短促闪亮一下/,
-        'README should document the post-roll readiness preview on the action HUD during dodge lockout'
+        /翻滚锁定期间则会继续预告 `翻滚中 -> 就绪`、`翻滚中 -> 0\.2s`、`翻滚中 -> 差15体\/1\.0s` 这类翻滚后的下一状态；当任一动作刚切进 `就绪` 时，只有对应那一项会短促闪亮一下/,
+        'README should document the per-action readiness flash on the action HUD during dodge lockout'
     );
     assert.match(
         source,
@@ -9573,6 +9596,7 @@ function main() {
     runTest('README lust cadence report checklist', testReadmeLustCadenceReportChecklist);
     runTest('combat action HUD summary helper', testCombatActionHudSummary);
     runTest('combat action readiness helper', testCombatActionReadiness);
+    runTest('combat action HUD segments helper', testCombatActionHudSegments);
     runTest('quick-slot item label helper', testQuickSlotItemLabel);
     runTest('keyboard HUD QoL hooks', testKeyboardHudQolHooks);
     runTest('README keyboard inventory loop', testReadmeKeyboardInventoryLoop);
