@@ -1972,8 +1972,8 @@ function testE2eReportPhase3CadenceMarkdownIndex() {
     );
     assert.match(
         output,
-        /- Drift-only mini checklist:\n  - 2\. HUD telegraph 魅影连舞 -> shared recovery≈10\.2s -> 28-step dash\/charmBolt loopback -> 混乱逆转 \| 反制: 观察真身换位节奏，留翻滚躲最后逆转波 \| recovery 快照: `sharedRecoveryRemainingMs=10200 · breatherRemaining=8 · expectedReturnLabel=幻影风暴` \| 回切校验: drift checkpoint=`混乱逆转` recovery=`幻影风暴` \| 证据: \[review]\(artifacts\/e2e\/lust-phase3-cadence-review\/cadence-review\.json\) \[recovery]\(artifacts\/e2e\/lust-phase3-cadence-review\/shared-recovery-snapshot\.json\) \[telegraph]\(artifacts\/e2e\/lust-phase3-cadence-review\/telegraph-hud\.png\) \[checkpoints]\(artifacts\/e2e\/lust-phase3-cadence-review\/phase3-checkpoints\.txt\)/,
-        'e2e report should add a drift-only mini checklist that relists each drifting checkpoint line with inline recovery/drift notes and direct artifact anchors'
+        /- Drift-only mini checklist:\n  - 2\. HUD telegraph 魅影连舞 -> shared recovery≈10\.2s -> 28-step dash\/charmBolt loopback -> 混乱逆转 \| 反制: 观察真身换位节奏，留翻滚躲最后逆转波 \| recovery 快照: `sharedRecoveryRemainingMs=10200 · breatherRemaining=8 · expectedReturnLabel=幻影风暴` \| 回切校验: drift checkpoint=`混乱逆转` recovery=`幻影风暴` \| review checkpoint #2 \| 证据: \[review]\(artifacts\/e2e\/lust-phase3-cadence-review\/cadence-review\.json\) \[recovery]\(artifacts\/e2e\/lust-phase3-cadence-review\/shared-recovery-snapshot\.json\) \[telegraph]\(artifacts\/e2e\/lust-phase3-cadence-review\/telegraph-hud\.png\) \[checkpoints]\(artifacts\/e2e\/lust-phase3-cadence-review\/phase3-checkpoints\.txt\)/,
+        'e2e report should add a drift-only mini checklist that relists each drifting checkpoint line with inline recovery/drift notes, a review checkpoint index, and direct artifact anchors'
     );
     assert.match(
         output,

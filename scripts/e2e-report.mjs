@@ -97,6 +97,16 @@ function buildCadenceChecklistEvidenceLinks(cadenceArtifacts) {
   return [summaryLinks, checkpointLink].filter(Boolean).join(' ');
 }
 
+function buildReviewCheckpointShortNote(reviewCheckpointIndex, checkpointEntries) {
+  if (!Number.isInteger(reviewCheckpointIndex) || reviewCheckpointIndex < 0) {
+    return '';
+  }
+  if (!Array.isArray(checkpointEntries) || !checkpointEntries[reviewCheckpointIndex]) {
+    return '';
+  }
+  return `review checkpoint #${reviewCheckpointIndex + 1}`;
+}
+
 function collectCadenceDriftEntries(cadenceArtifacts) {
   if (!cadenceArtifacts || !Array.isArray(cadenceArtifacts.checkpointLines) || cadenceArtifacts.checkpointLines.length === 0) {
     return {
@@ -153,7 +163,8 @@ function collectCadenceDriftEntries(cadenceArtifacts) {
         driftEntries.push({
           line,
           recoverySnapshotShortNote: buildRecoverySnapshotShortNote(cadenceArtifacts, checkpoint),
-          driftNote
+          driftNote,
+          reviewCheckpointShortNote: buildReviewCheckpointShortNote(index, checkpointEntries)
         });
       }
     }
@@ -202,13 +213,16 @@ function buildCadenceDriftMiniChecklistLines(cadenceArtifacts) {
 
   return [
     '- Drift-only mini checklist:',
-    ...driftEntries.map(({ line, recoverySnapshotShortNote, driftNote }) => {
+    ...driftEntries.map(({ line, recoverySnapshotShortNote, driftNote, reviewCheckpointShortNote }) => {
       const parts = [line];
       if (recoverySnapshotShortNote) {
         parts.push(recoverySnapshotShortNote);
       }
       if (driftNote) {
         parts.push(driftNote);
+      }
+      if (reviewCheckpointShortNote) {
+        parts.push(reviewCheckpointShortNote);
       }
       parts.push(`证据: ${evidenceLinks}`);
       return `  - ${parts.join(' | ')}`;
