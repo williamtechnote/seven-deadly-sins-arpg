@@ -462,49 +462,89 @@
         return '就绪';
     }
 
+    function resolveCombatActionReadyState(cooldownMs, stamina, staminaCost, staminaRegenPerSecond) {
+        const label = formatCombatActionReadyLabel(cooldownMs, stamina, staminaCost, staminaRegenPerSecond);
+        return {
+            label,
+            isReady: label === '就绪'
+        };
+    }
+
+    function buildCombatActionReadiness(input) {
+        const safe = input && typeof input === 'object' ? input : {};
+        if (safe.isDodging) {
+            return {
+                attack: false,
+                special: false,
+                dodge: false
+            };
+        }
+
+        return {
+            attack: resolveCombatActionReadyState(
+                safe.attackCooldownMs,
+                safe.stamina,
+                safe.attackStaminaCost,
+                safe.staminaRegenPerSecond
+            ).isReady,
+            special: resolveCombatActionReadyState(
+                safe.specialCooldownMs,
+                safe.stamina,
+                safe.specialStaminaCost,
+                safe.staminaRegenPerSecond
+            ).isReady,
+            dodge: resolveCombatActionReadyState(
+                safe.dodgeCooldownMs,
+                safe.stamina,
+                safe.dodgeStaminaCost,
+                safe.staminaRegenPerSecond
+            ).isReady
+        };
+    }
+
     function buildCombatActionHudSummary(input) {
         const safe = input && typeof input === 'object' ? input : {};
         if (safe.isDodging) {
             const remainingDodgeLockoutMs = Math.max(0, Number(safe.dodgeLockoutMs) || 0);
-            const attackPreviewLabel = formatCombatActionReadyLabel(
+            const attackPreviewState = resolveCombatActionReadyState(
                 Math.max(0, (Number(safe.attackCooldownMs) || 0) - remainingDodgeLockoutMs),
                 safe.stamina,
                 safe.attackStaminaCost,
                 safe.staminaRegenPerSecond
             );
-            const specialPreviewLabel = formatCombatActionReadyLabel(
+            const specialPreviewState = resolveCombatActionReadyState(
                 Math.max(0, (Number(safe.specialCooldownMs) || 0) - remainingDodgeLockoutMs),
                 safe.stamina,
                 safe.specialStaminaCost,
                 safe.staminaRegenPerSecond
             );
-            const dodgePreviewLabel = formatCombatActionReadyLabel(
+            const dodgePreviewState = resolveCombatActionReadyState(
                 safe.dodgePostLockoutCooldownMs,
                 safe.stamina,
                 safe.dodgeStaminaCost,
                 safe.staminaRegenPerSecond
             );
-            return `普攻 U: 翻滚中 -> ${attackPreviewLabel}  特攻 O: 翻滚中 -> ${specialPreviewLabel}  闪避 Space: 翻滚中 -> ${dodgePreviewLabel}`;
+            return `普攻 U: 翻滚中 -> ${attackPreviewState.label}  特攻 O: 翻滚中 -> ${specialPreviewState.label}  闪避 Space: 翻滚中 -> ${dodgePreviewState.label}`;
         }
-        const attackLabel = formatCombatActionReadyLabel(
+        const attackState = resolveCombatActionReadyState(
             safe.attackCooldownMs,
             safe.stamina,
             safe.attackStaminaCost,
             safe.staminaRegenPerSecond
         );
-        const specialLabel = formatCombatActionReadyLabel(
+        const specialState = resolveCombatActionReadyState(
             safe.specialCooldownMs,
             safe.stamina,
             safe.specialStaminaCost,
             safe.staminaRegenPerSecond
         );
-        const dodgeLabel = formatCombatActionReadyLabel(
+        const dodgeState = resolveCombatActionReadyState(
             safe.dodgeCooldownMs,
             safe.stamina,
             safe.dodgeStaminaCost,
             safe.staminaRegenPerSecond
         );
-        return `普攻 U: ${attackLabel}  特攻 O: ${specialLabel}  闪避 Space: ${dodgeLabel}`;
+        return `普攻 U: ${attackState.label}  特攻 O: ${specialState.label}  闪避 Space: ${dodgeState.label}`;
     }
 
     function getHudSidebarViewportTier(viewportWidth, viewportHeight) {
@@ -2946,6 +2986,7 @@
         audioSettingsToGain,
         resolveKeyboardAimState,
         formatAimDirectionLabel,
+        buildCombatActionReadiness,
         buildCombatActionHudSummary,
         formatRunChallengeRewardShortLabel,
         buildRunChallengeCompletedFeedbackText,

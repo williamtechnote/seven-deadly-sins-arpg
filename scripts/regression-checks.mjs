@@ -93,6 +93,7 @@ const {
     buildRunEventRoomWorldLabel,
     buildRunEventRoomPromptLabel,
     formatAimDirectionLabel,
+    buildCombatActionReadiness,
     buildCombatActionHudSummary,
     buildQuickSlotItemLabel,
     buildQuickSlotAutoAssignNotice,
@@ -2697,7 +2698,7 @@ function testKeyboardControlReadabilityHooks() {
     );
     assert.match(
         source,
-        /若正处于翻滚锁定，则会继续预告“翻滚中 -> 就绪”这类翻滚后的下一状态/,
+        /若正处于翻滚锁定，则会继续预告“翻滚中 -> 就绪”这类翻滚后的下一状态；当任一动作刚切进“就绪”时，行动行还会短促闪亮一下/,
         'help overlay should explain the post-roll readiness preview during dodge lockout'
     );
     assert.match(
@@ -2979,6 +2980,41 @@ function testCombatActionHudSummary() {
     );
 }
 
+function testCombatActionReadiness() {
+    assert.equal(typeof buildCombatActionReadiness, 'function', 'combat action readiness helper should be exported');
+    assert.deepEqual(
+        buildCombatActionReadiness({
+            isDodging: true,
+            dodgeLockoutMs: 300,
+            dodgePostLockoutCooldownMs: 700,
+            attackCooldownMs: 0,
+            specialCooldownMs: 0,
+            dodgeCooldownMs: 0,
+            stamina: 60,
+            staminaRegenPerSecond: 15,
+            attackStaminaCost: 10,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 25
+        }),
+        { attack: false, special: false, dodge: false },
+        'combat action readiness helper should keep all actions blocked while dodge lockout is active'
+    );
+    assert.deepEqual(
+        buildCombatActionReadiness({
+            attackCooldownMs: 0,
+            specialCooldownMs: 300,
+            dodgeCooldownMs: 0,
+            stamina: 10,
+            staminaRegenPerSecond: 15,
+            attackStaminaCost: 10,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 25
+        }),
+        { attack: true, special: false, dodge: false },
+        'combat action readiness helper should distinguish currently ready actions from cooldown- or stamina-blocked actions'
+    );
+}
+
 function testQuickSlotItemLabel() {
     assert.equal(typeof buildQuickSlotItemLabel, 'function', 'quick-slot item label helper should be exported');
     assert.equal(buildQuickSlotItemLabel(null, 0), '-', 'empty quick slot should render a stable placeholder');
@@ -2997,8 +3033,18 @@ function testKeyboardHudQolHooks() {
     );
     assert.match(
         source,
-        /const runEffects = GameState\.runEffects \|\| DEFAULT_RUN_EFFECTS;[\s\S]*?const staminaRegenPerSecond = GAME_CONFIG\.PLAYER\.staminaRegen \* \(runEffects\.playerStaminaRegenMultiplier \|\| 1\);[\s\S]*?this\.actionText\.setText\(buildCombatActionHudSummary\(\{[\s\S]*?isDodging:\s*player\.isDodging,[\s\S]*?dodgeLockoutMs:\s*player\.dodgeLockoutMsRemaining,[\s\S]*?dodgePostLockoutCooldownMs:\s*GAME_CONFIG\.PLAYER\.dodgeCooldown,[\s\S]*?attackCooldownMs:\s*player\.attackCooldown,[\s\S]*?specialCooldownMs:\s*player\.specialCooldown,[\s\S]*?dodgeCooldownMs:\s*player\.dodgeCooldownTimer,[\s\S]*?stamina:\s*player\.stamina,[\s\S]*?staminaRegenPerSecond,[\s\S]*?attackStaminaCost:\s*weapon\s*\?\s*weapon\.staminaCost\s*:\s*0,[\s\S]*?specialStaminaCost:\s*weapon\s*\?\s*weapon\.specialStaminaCost\s*:\s*0,[\s\S]*?dodgeStaminaCost:\s*GAME_CONFIG\.PLAYER\.dodgeStaminaCost[\s\S]*?\}\)\);/,
+        /const runEffects = GameState\.runEffects \|\| DEFAULT_RUN_EFFECTS;[\s\S]*?const staminaRegenPerSecond = GAME_CONFIG\.PLAYER\.staminaRegen \* \(runEffects\.playerStaminaRegenMultiplier \|\| 1\);[\s\S]*?const actionHudState = \{[\s\S]*?isDodging:\s*player\.isDodging,[\s\S]*?dodgeLockoutMs:\s*player\.dodgeLockoutMsRemaining,[\s\S]*?dodgePostLockoutCooldownMs:\s*GAME_CONFIG\.PLAYER\.dodgeCooldown,[\s\S]*?attackCooldownMs:\s*player\.attackCooldown,[\s\S]*?specialCooldownMs:\s*player\.specialCooldown,[\s\S]*?dodgeCooldownMs:\s*player\.dodgeCooldownTimer,[\s\S]*?stamina:\s*player\.stamina,[\s\S]*?staminaRegenPerSecond,[\s\S]*?attackStaminaCost:\s*weapon\s*\?\s*weapon\.staminaCost\s*:\s*0,[\s\S]*?specialStaminaCost:\s*weapon\s*\?\s*weapon\.specialStaminaCost\s*:\s*0,[\s\S]*?dodgeStaminaCost:\s*GAME_CONFIG\.PLAYER\.dodgeStaminaCost[\s\S]*?\};[\s\S]*?this\.actionText\.setText\(buildCombatActionHudSummary\(actionHudState\)\);/,
         'HUD should derive dodge lockout, cooldown, stamina gaps, and stamina-recovery ETA from the shared combat-action helper'
+    );
+    assert.match(
+        source,
+        /this\.actionTextReadyFlashUntil = 0;[\s\S]*?this\._lastCombatActionReadiness = null;/,
+        'HUD should initialize action readiness flash state alongside the combat action text'
+    );
+    assert.match(
+        source,
+        /const actionHudState = \{[\s\S]*?isDodging:\s*player\.isDodging,[\s\S]*?dodgeStaminaCost:\s*GAME_CONFIG\.PLAYER\.dodgeStaminaCost[\s\S]*?\};[\s\S]*?const actionHudReadiness = buildCombatActionReadiness\(actionHudState\);[\s\S]*?const previousActionReadiness = this\._lastCombatActionReadiness;[\s\S]*?const hasNewlyReadyAction = previousActionReadiness && Object\.keys\(actionHudReadiness\)\.some\(key => actionHudReadiness\[key\] && !previousActionReadiness\[key\]\);[\s\S]*?if \(hasNewlyReadyAction\) \{[\s\S]*?this\.actionTextReadyFlashUntil = this\.time\.now \+ 220;[\s\S]*?\}[\s\S]*?this\._lastCombatActionReadiness = actionHudReadiness;[\s\S]*?const actionHighlightActive = this\.actionTextReadyFlashUntil > this\.time\.now;[\s\S]*?this\.actionText\.setStyle\(\{ fill: actionHighlightActive \? '#fff4b3' : '#cfd8e6' \}\);[\s\S]*?this\.actionText\.setText\(buildCombatActionHudSummary\(actionHudState\)\);/,
+        'HUD should derive a short readiness flash from the shared combat-action readiness helper when an action newly becomes ready'
     );
     assert.match(
         source,
@@ -7879,7 +7925,7 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /翻滚锁定期间则会继续预告 `翻滚中 -> 就绪`、`翻滚中 -> 0\.2s`、`翻滚中 -> 差15体\/1\.0s` 这类翻滚后的下一状态/,
+        /翻滚锁定期间则会继续预告 `翻滚中 -> 就绪`、`翻滚中 -> 0\.2s`、`翻滚中 -> 差15体\/1\.0s` 这类翻滚后的下一状态；当任一动作刚切进 `就绪` 时，行动行还会短促闪亮一下/,
         'README should document the post-roll readiness preview on the action HUD during dodge lockout'
     );
     assert.match(
@@ -9526,6 +9572,7 @@ function main() {
     runTest('README lust shared major recovery', testReadmeLustSharedMajorRecovery);
     runTest('README lust cadence report checklist', testReadmeLustCadenceReportChecklist);
     runTest('combat action HUD summary helper', testCombatActionHudSummary);
+    runTest('combat action readiness helper', testCombatActionReadiness);
     runTest('quick-slot item label helper', testQuickSlotItemLabel);
     runTest('keyboard HUD QoL hooks', testKeyboardHudQolHooks);
     runTest('README keyboard inventory loop', testReadmeKeyboardInventoryLoop);
