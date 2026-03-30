@@ -2754,6 +2754,10 @@
         const progressFillAlpha = attackLabelMuted && counterWindowLabelMuted && hintLabelMuted
             ? 0.62
             : 0.9;
+        const progressRatio = clampRatio(remainingMs / telegraphDurationMs, 0);
+        const currentCountdownHeadMarkerVisible = counterWindowTailAfterglowActive
+            && progressFillAlpha < 0.9
+            && progressRatio > 0;
 
         if (!attackLabel) {
             return {
@@ -2764,6 +2768,8 @@
                 hintLabel: '',
                 progressRatio: 0,
                 progressFillAlpha: 0.9,
+                currentCountdownHeadMarkerVisible: false,
+                currentCountdownHeadMarkerRatio: 0,
                 counterWindowStartMarkerVisible: false,
                 counterWindowStartMarkerRatio: 0,
                 counterWindowTailMarkerVisible: false,
@@ -2793,8 +2799,10 @@
                     : `反制窗口 ${Math.max(1, Math.round(counterWindowMs / 100) / 10)}s`)
                 : '',
             hintLabel,
-            progressRatio: clampRatio(remainingMs / telegraphDurationMs, 0),
+            progressRatio,
             progressFillAlpha,
+            currentCountdownHeadMarkerVisible,
+            currentCountdownHeadMarkerRatio: currentCountdownHeadMarkerVisible ? progressRatio : 0,
             counterWindowStartMarkerVisible,
             counterWindowStartMarkerRatio: counterWindowStartMarkerVisible
                 ? clampRatio(counterWindowStartOffsetMs / telegraphDurationMs, 0)

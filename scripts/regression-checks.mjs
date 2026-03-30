@@ -1534,6 +1534,8 @@ function testBossHudReadability() {
     assert.equal(earlyClosureTelegraphSummary.attackLabelMuted, false, 'telegraph summary should keep the attack title bright until the telegraph actually reaches the dimmed tail segment');
     assert.equal(earlyClosureTelegraphSummary.counterWindowLabelMuted, false, 'telegraph summary should keep the counter-window row highlighted until the tail segment becomes active');
     assert.equal(earlyClosureTelegraphSummary.progressFillAlpha, 0.9, 'telegraph summary should keep the main telegraph fill alpha at its normal strength before every warning row has settled');
+    assert.equal(earlyClosureTelegraphSummary.currentCountdownHeadMarkerVisible, false, 'telegraph summary should keep the live countdown head marker hidden before the dimmed tail segment actually becomes active');
+    assert.equal(earlyClosureTelegraphSummary.currentCountdownHeadMarkerRatio, 0, 'telegraph summary should not expose a live countdown head ratio before the dimmed tail segment becomes active');
     assert.equal(earlyClosureTelegraphSummary.counterWindowSpanVisible, false, 'telegraph summary should avoid drawing a contained span when the counter window starts at the first frame');
 
     const activeTailAfterglowTelegraphSummary = buildBossTelegraphHudSummary({
@@ -1552,6 +1554,8 @@ function testBossHudReadability() {
     assert.equal(activeTailAfterglowTelegraphSummary.hintLabel, '闪避提示: 停止冲刺，短步修正方向', 'telegraph summary should relabel stale counter hints as dodge guidance once the live telegraph has already entered the dimmed tail segment');
     assert.equal(activeTailAfterglowTelegraphSummary.hintLabelMuted, true, 'telegraph summary should mark rewritten tail-phase hint copy as muted once the live telegraph has already entered the dimmed tail segment');
     assert.equal(activeTailAfterglowTelegraphSummary.progressFillAlpha, 0.62, 'telegraph summary should lower the surviving main telegraph fill alpha once the live warning has fully settled into the tail-afterglow state');
+    assert.equal(activeTailAfterglowTelegraphSummary.currentCountdownHeadMarkerVisible, true, 'telegraph summary should expose a dedicated live countdown head marker once the dimmed tail segment is active and the surviving fill has settled');
+    assert.equal(activeTailAfterglowTelegraphSummary.currentCountdownHeadMarkerRatio, activeTailAfterglowTelegraphSummary.progressRatio, 'telegraph summary should anchor the live countdown head marker to the current telegraph progress edge');
 
     const activeTailAfterglowFollowupTelegraphSummary = buildBossTelegraphHudSummary({
         attackLabel: '幻影风暴',
@@ -7889,8 +7893,18 @@ function testBossHudMeasurementHooks() {
     const source = loadGameSource();
     assert.match(
         source,
+        /this\.bossTelegraphCountdownHeadMarker = this\.add\.graphics\(\);[\s\S]*?this\.bossTelegraphCountdownHeadMarker\.setScrollFactor\(0\);/,
+        'BossScene should allocate a dedicated graphics node for the live countdown head marker'
+    );
+    assert.match(
+        source,
         /_fitBossHudTextToWidth\(text,\s*maxWidth,\s*styleKey\)/,
         'BossScene should fit telegraph strings through a dedicated Boss HUD measurement helper'
+    );
+    assert.match(
+        source,
+        /this\.bossTelegraphCountdownHeadMarker\.clear\(\);[\s\S]*?if \(telegraphHud\.currentCountdownHeadMarkerVisible\) \{[\s\S]*?const countdownHeadMarkerX = telegraphRect\.x \+ telegraphRect\.w \* telegraphHud\.currentCountdownHeadMarkerRatio;[\s\S]*?this\.bossTelegraphCountdownHeadMarker\.fillRoundedRect\(\s*countdownHeadMarkerX - 1,\s*telegraphRect\.y \+ 1,\s*2,\s*telegraphRect\.h - 2,\s*1\s*\);/,
+        'Boss telegraph should draw a thin dedicated live countdown head marker once the dimmed tail segment becomes active'
     );
     assert.match(
         source,
@@ -8244,6 +8258,11 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /若第一、二、三行都已切进收束态，进度条左侧仍存活的主色填充也会同步降一档 alpha/,
         'README should document that the surviving telegraph fill also dims once every warning row has settled into the tail-afterglow state'
+    );
+    assert.match(
+        source,
+        /若 Boss telegraph 已进入 `尾段残影` 区间且主色填充已同步降档 alpha，再给进度头部补一枚更细的暖色 `当前倒计时头标`/,
+        'README should document the dedicated live countdown head marker for the dimmed tail-afterglow phase'
     );
     assert.match(
         source,
@@ -9403,6 +9422,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若第一、二、三行都已切进收束态，进度条左侧仍存活的主色填充也会同步降一档 alpha/,
         'help overlay should document that the surviving telegraph fill also dims once every warning row has settled into the tail-afterglow state'
+    );
+    assert.match(
+        source,
+        /若 Boss telegraph 已进入“尾段残影”区间且主色填充已同步降档 alpha，还会在进度头部补一枚更细的暖色“当前倒计时头标”/,
+        'help overlay should document the dedicated live countdown head marker for the dimmed tail-afterglow phase'
     );
     assert.match(
         source,
