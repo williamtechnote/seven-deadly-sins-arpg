@@ -77,6 +77,10 @@ test('lust cadence: phase-3 review checkpoints align telegraph and shared recove
   expect(reviewState.review.checkpoints[0].recordingFocusLabel).toBe(
     'HUD telegraph 混乱逆转 -> shared recovery≈10.2s -> 13-step dash/charmBolt bridge -> 幻影风暴'
   );
+  expect(reviewState.review.checkpoints[2].bridgeAttackCounts).toEqual({
+    dash: 14,
+    charmBolt: 14
+  });
 
   const recoveryState = await page.evaluate(() => {
     const scene = window.__SDS_GAME__.scene.getScene('BossScene');
@@ -147,6 +151,10 @@ test('lust cadence: phase-3 review checkpoints align telegraph and shared recove
   expect(cadenceArtifact.checkpointLines[0]).toBe(
     '1. HUD telegraph 混乱逆转 -> shared recovery≈10.2s -> 13-step dash/charmBolt bridge -> 幻影风暴 | 反制: 停止冲刺，短步修正方向'
   );
+  expect(cadenceArtifact.review.checkpoints[2].bridgeAttackCounts).toEqual({
+    dash: 14,
+    charmBolt: 14
+  });
   expect(cadenceArtifact.sharedRecoverySnapshot.sharedRecoveryLabel).toBe('shared recovery≈10.2s');
 
   await dumpEvidence(page, testInfo, 'lust-phase3-cadence-review', {

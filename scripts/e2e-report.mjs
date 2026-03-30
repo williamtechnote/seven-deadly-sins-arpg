@@ -157,6 +157,35 @@ function buildBridgeTimelineIndexShortNote(checkpoint) {
   return `bridgeTimeline index: \`${safeStartIndex}-${safeEndIndex}${spanDescriptor}\``;
 }
 
+function buildBridgeAttackCountShortNote(checkpoint) {
+  const bridgeCount = Number.isInteger(checkpoint?.bridgeCount)
+    ? Math.max(0, checkpoint.bridgeCount)
+    : null;
+  const bridgeAttackCounts = checkpoint?.bridgeAttackCounts && typeof checkpoint.bridgeAttackCounts === 'object'
+    ? checkpoint.bridgeAttackCounts
+    : null;
+  if (!bridgeAttackCounts) {
+    return '';
+  }
+
+  const dashCount = Number.isInteger(bridgeAttackCounts.dash)
+    ? Math.max(0, bridgeAttackCounts.dash)
+    : null;
+  const charmBoltCount = Number.isInteger(bridgeAttackCounts.charmBolt)
+    ? Math.max(0, bridgeAttackCounts.charmBolt)
+    : null;
+  if (dashCount === null && charmBoltCount === null) {
+    return '';
+  }
+
+  const countParts = [
+    dashCount !== null ? `${dashCount}` : '?',
+    charmBoltCount !== null ? `${charmBoltCount}` : '?'
+  ];
+  const totalSuffix = bridgeCount !== null ? ` (${bridgeCount} total)` : '';
+  return `dash/charmBolt count: \`${countParts.join('/')}${totalSuffix}\``;
+}
+
 function collectCadenceDriftEntries(cadenceArtifacts) {
   if (!cadenceArtifacts || !Array.isArray(cadenceArtifacts.checkpointLines) || cadenceArtifacts.checkpointLines.length === 0) {
     return {
@@ -216,6 +245,7 @@ function collectCadenceDriftEntries(cadenceArtifacts) {
           driftNote,
           reviewCheckpointShortNote: buildReviewCheckpointShortNote(index, checkpointEntries),
           checkpointAliasShortNote: buildCheckpointAliasShortNote(checkpoint),
+          bridgeAttackCountShortNote: buildBridgeAttackCountShortNote(checkpoint),
           bridgeTimelineIndexShortNote: buildBridgeTimelineIndexShortNote(checkpoint)
         });
       }
@@ -271,6 +301,7 @@ function buildCadenceDriftMiniChecklistLines(cadenceArtifacts) {
       driftNote,
       reviewCheckpointShortNote,
       checkpointAliasShortNote,
+      bridgeAttackCountShortNote,
       bridgeTimelineIndexShortNote
     }) => {
       const parts = [line];
@@ -285,6 +316,9 @@ function buildCadenceDriftMiniChecklistLines(cadenceArtifacts) {
       }
       if (checkpointAliasShortNote) {
         parts.push(checkpointAliasShortNote);
+      }
+      if (bridgeAttackCountShortNote) {
+        parts.push(bridgeAttackCountShortNote);
       }
       if (bridgeTimelineIndexShortNote) {
         parts.push(bridgeTimelineIndexShortNote);

@@ -2395,6 +2395,14 @@
             const telegraphHint = counterHints[telegraphAttack] || '';
             const bridgeDescriptor = bridgePaletteLabel ? `${bridgePaletteLabel} ` : '';
             const spacingLabel = `${entry.bridgeCount}-step ${bridgeDescriptor}${entry.toAttack === 'loopback' ? 'loopback' : 'bridge'}`;
+            const bridgeAttackCounts = entry.bridgeAttacks.reduce((counts, attack) => {
+                if (typeof attack !== 'string' || !attack.trim()) {
+                    return counts;
+                }
+                const normalizedAttack = attack.trim();
+                counts[normalizedAttack] = (counts[normalizedAttack] || 0) + 1;
+                return counts;
+            }, {});
             const recordingFocusParts = [`HUD telegraph ${telegraphLabel}`];
             if (sharedRecoveryLabel) recordingFocusParts.push(sharedRecoveryLabel);
             recordingFocusParts.push(spacingLabel);
@@ -2411,6 +2419,7 @@
                 sharedRecoveryMs,
                 sharedRecoveryLabel,
                 bridgeCount: entry.bridgeCount,
+                bridgeAttackCounts,
                 bridgeStartIndex: entry.bridgeStartIndex,
                 bridgeEndIndex: entry.bridgeEndIndex,
                 bridgeTimeline: entry.bridgeTimeline.slice(),
