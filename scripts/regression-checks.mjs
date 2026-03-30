@@ -1936,8 +1936,8 @@ function testLustMirageDanceExecutorHooks() {
     );
     assert.match(
         source,
-        /this\.attackData\.finisherRecoveryMs\s*=\s*680/,
-        'mirageDance should lengthen its explicit post-collapse recovery window again after the shared-recovery return follow-up still leaves the loopback too eager'
+        /this\.attackData\.finisherRecoveryMs\s*=\s*760/,
+        'mirageDance should lengthen its explicit post-collapse recovery window again after the longer loopback bridge, shared recovery, illusion recovery, and reverseControl recovery follow-ups still leave the next reverseControl too eager'
     );
     assert.match(
         source,
@@ -1973,6 +1973,16 @@ function testLustMirageDanceExecutorHooks() {
         source,
         /player\.applyReverseControl\(1800\)/,
         'mirageDance finisher should apply a short reverse-control punish on hit'
+    );
+}
+
+function testLustMirageRecoveryWindowFollowup() {
+    const source = loadGameSource();
+
+    assert.match(
+        source,
+        /this\.attackData\.finisherRecoveryMs\s*=\s*760/,
+        'mirageDance follow-up tuning should lock the newest 760ms post-collapse recovery window'
     );
 }
 
@@ -2056,8 +2066,8 @@ function testReadmeLustPostMirageSpacing() {
     );
     assert.match(
         source,
-        /逆转波收尾后的 recovery 空档这轮也会在更长的共享 `majorSpecial` recovery window`? 与更长的 `mirageDance -> reverseControl` 定向轻压过桥都落地后继续再拉长一档，让下一轮 `reverseControl` 仍再晚半拍回切/,
-        'README should document the newest mirageDance recovery tuning pass after the shared-recovery return and longer loopback bridge follow-ups'
+        /逆转波收尾后的 recovery 空档这轮也会在更长的 `mirageDance -> reverseControl` 定向轻压过桥、更长的共享 `majorSpecial` recovery window、更长的 `illusion` recovery 空档与更长的 `reverseControl` recovery 空档都落地后继续再拉长一档，让下一轮 `reverseControl` 仍再晚半拍回切/,
+        'README should document the newest mirageDance recovery tuning pass after the loopback-bridge, shared-recovery, illusion-recovery, and reverseControl-recovery follow-ups'
     );
 }
 
@@ -8928,6 +8938,7 @@ function main() {
     runTest('lust eight breather chain hooks', testLustEightBreatherChainHooks);
     runTest('lust mirage dance executor hooks', testLustMirageDanceExecutorHooks);
     runTest('lust special recovery hooks', testLustSpecialRecoveryHooks);
+    runTest('lust mirage recovery follow-up', testLustMirageRecoveryWindowFollowup);
     runTest('lust illusion recovery follow-up', testLustIllusionRecoveryWindowFollowup);
     runTest('lust illusion-mirage bridge follow-up', testLustIllusionMirageBridgeFollowup);
     runTest('lust mirage loopback bridge follow-up', testLustMirageLoopbackBridgeFollowup);

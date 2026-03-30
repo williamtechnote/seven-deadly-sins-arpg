@@ -117,7 +117,7 @@ npx serve .
 - **战斗反馈增强（Phase 2）**：快捷栏治疗/体力消耗品现在会显示实际恢复量，资源已满时不会白白消耗；底部状态 HUD 拆分为“负面/增益”双行，并按剩余时间优先排序，更容易临场读状态。
 - **Boss HUD 可读性增强（Phase 3）**：Boss 血条现在带受击残影、转阶段警戒闪烁、`Phase x/y` 标签与后续阶段阈值刻度；关键大招预警条会贴近血条显示攻击类型、反制窗口与提示，并会按 Phaser 文本实际测量压缩长攻击名 / 长反制提示，避免挤出顶部 HUD；当 Boss 被特攻打断进入短暂`破招`，或处于减速等受控状态时，血条上会叠加高亮段，能更直观地判断压血进度、读招窗口与反打时机。`炎魔将军` 在后两阶段会追加 `熔火围城` 收缩火环，持续压缩安全带并在擦环时附带灼烧；`堕天骑士` 末阶段会追加 `圣剑环阵`，先让飞剑环绕本体再分批外射，逼迫玩家围绕 Boss 小步换位；`魅惑女妖` 末阶段会将 `reverseControl` / `illusion` / `魅影连舞` 拆进交错的 phase 3 序列，先用 `charmBolt` / `dash` 留出呼吸段，再让 `魅影连舞` 以拉开的三拍幻身换位围绕玩家切角，并在短暂收招后朝收尾瞬间锁定的位置回卷逆转波，让整段压迫继续可读、可躲。
   `魅惑女妖` 末阶段还会继续拉高 `reverseControl`、`illusion` 与 `mirageDance` 的 phase-local 冷却，让完整循环后的第二轮 special 间隔更稳；`mirageDance` 的 phase-local 冷却这轮也会继续再拉长一档，让完整循环后的下一轮 `reverseControl` 更晚回切；`魅惑女妖` 末阶段在 `mirageDance` 收尾后若仍有 `charmBolt` / `dash` 可选，会先插入额外呼吸段，再回到 `reverseControl` / `illusion` / `mirageDance` 这组 major special；`reverseControl` / `illusion` 结束后若仍有 `charmBolt` / `dash` 可选，也会先插入额外呼吸段，再回到 `reverseControl` / `illusion` / `mirageDance` 这组 major special；phase 3 的 `reverseControl` / `illusion` / `mirageDance` 之间还会追加一段共享 recovery guard，让其中任一大招收尾后的一小段时间继续优先让 `charmBolt` / `dash` 接棒，共享 `majorSpecial` recovery window 这轮也会在更长的 `mirageDance` phase-local cooldown 落地后继续再拉长一档，让下一段 `reverseControl` / `illusion` / `mirageDance` 再继续晚半拍回切；任一 major special 收尾后若仍有 `charmBolt` / `dash` 可选，则至少串入八段轻压后才允许回到 `reverseControl` / `illusion` / `mirageDance`；phase 3 攻击池里的 `charmBolt` / `dash` 权重再往上抬，`charmBolt` / `dash` 的占比也会继续再往上抬一档，让三段 major special 之间更常穿插轻压 breather；共享 recovery 与八轻压守卫之外也会继续提高 `charmBolt` / `dash` 的占比，把 `reverseControl` 与 `illusion` 之间的 phase 3 空拍再拉宽一点；在更长的 `reverseControl` recovery 之后，`reverseControl` 与 `illusion` 之间会继续再补一小段 `charmBolt` / `dash` 定向轻压过桥，在 `illusion` 与 `mirageDance` 之间也会继续再补更长的一整段 `charmBolt` / `dash` 定向轻压过桥，并再多压一组 `charmBolt` / `dash`，让 `mirageDance` 再继续晚半拍回切，在 `mirageDance` 与下一轮 `reverseControl` 之间也会继续再补更长的一整段 `charmBolt` / `dash` 定向轻压过桥，并再多压四组 `dash` / `charmBolt`，让共享 recovery 结束后的循环回卷继续先由轻压接棒。
-  `魅影连舞` 第三拍后也会保留更长的 settle 窗口，逆转波也会用更长的收束时长回卷，逆转波收尾后也会多留一小段 recovery 空档，逆转波收尾后的 recovery 空档这轮也会在更长的共享 `majorSpecial` recovery window 与更长的 `mirageDance -> reverseControl` 定向轻压过桥都落地后继续再拉长一档，让下一轮 `reverseControl` 仍再晚半拍回切。`reverseControl` 回卷收束后也会多留一小段 recovery 空档，`reverseControl` 的 recovery 空档这轮会在更长的 `mirageDance` recovery 空档、共享 `majorSpecial` recovery window 与更长的 `mirageDance -> reverseControl` 定向轻压过桥都落地后继续再拉长一档，让下一段 `illusion` 再继续晚半拍回切；`illusion` 幻身散场后也会多留一小段 recovery 空档，`illusion` 的 recovery 空档这轮会在更长的 `reverseControl` recovery 空档、更长的 `mirageDance` recovery 空档、共享 `majorSpecial` recovery window 与更长的 `mirageDance -> reverseControl` 定向轻压过桥都落地后继续再拉长一档，让下一段 `mirageDance` 再继续晚半拍回切；共享 `majorSpecial` recovery window 这轮也会在更长的 `mirageDance` recovery 空档落地后继续再拉长一档，让下一段 `reverseControl` / `illusion` / `mirageDance` 再继续晚半拍回切；共享 `majorSpecial` recovery window 这轮也会在更长的 `mirageDance -> reverseControl` 定向轻压过桥落地后继续再拉长一档，让下一段 `reverseControl` / `illusion` / `mirageDance` 再继续晚半拍回切；共享 `majorSpecial` recovery window 这轮也会在更长的 `illusion` recovery 空档、更长的 `reverseControl` recovery 空档与更长的 `mirageDance` recovery 空档都落地后继续再拉长一档，让下一段 `reverseControl` / `illusion` / `mirageDance` 再继续晚半拍回切。
+  `魅影连舞` 第三拍后也会保留更长的 settle 窗口，逆转波也会用更长的收束时长回卷，逆转波收尾后也会多留一小段 recovery 空档，逆转波收尾后的 recovery 空档这轮也会在更长的 `mirageDance -> reverseControl` 定向轻压过桥、更长的共享 `majorSpecial` recovery window、更长的 `illusion` recovery 空档与更长的 `reverseControl` recovery 空档都落地后继续再拉长一档，让下一轮 `reverseControl` 仍再晚半拍回切。`reverseControl` 回卷收束后也会多留一小段 recovery 空档，`reverseControl` 的 recovery 空档这轮会在更长的 `mirageDance` recovery 空档、共享 `majorSpecial` recovery window 与更长的 `mirageDance -> reverseControl` 定向轻压过桥都落地后继续再拉长一档，让下一段 `illusion` 再继续晚半拍回切；`illusion` 幻身散场后也会多留一小段 recovery 空档，`illusion` 的 recovery 空档这轮会在更长的 `reverseControl` recovery 空档、更长的 `mirageDance` recovery 空档、共享 `majorSpecial` recovery window 与更长的 `mirageDance -> reverseControl` 定向轻压过桥都落地后继续再拉长一档，让下一段 `mirageDance` 再继续晚半拍回切；共享 `majorSpecial` recovery window 这轮也会在更长的 `mirageDance` recovery 空档落地后继续再拉长一档，让下一段 `reverseControl` / `illusion` / `mirageDance` 再继续晚半拍回切；共享 `majorSpecial` recovery window 这轮也会在更长的 `mirageDance -> reverseControl` 定向轻压过桥落地后继续再拉长一档，让下一段 `reverseControl` / `illusion` / `mirageDance` 再继续晚半拍回切；共享 `majorSpecial` recovery window 这轮也会在更长的 `illusion` recovery 空档、更长的 `reverseControl` recovery 空档与更长的 `mirageDance` recovery 空档都落地后继续再拉长一档，让下一段 `reverseControl` / `illusion` / `mirageDance` 再继续晚半拍回切。
 
 ## 游戏流程
 
@@ -137,7 +137,7 @@ npx serve .
 ├── shared/
 │   └── game-core.js    # 纯逻辑共享模块（浏览器 + CLI）
 ├── scripts/
-│   └── regression-checks.mjs  # 轻量回归检查脚本（66 项）
+│   └── regression-checks.mjs  # 轻量回归检查脚本
 ├── assets/
 │   ├── sprites/        # 角色、敌人、NPC、武器、道具精灵图
 │   ├── portraits/      # NPC / Boss 对话立绘
@@ -160,7 +160,7 @@ npx serve .
 node scripts/regression-checks.mjs
 ```
 
-69 项检查覆盖：
+当前回归检查覆盖：
 
 - 武器属性成长单调性与绑定材料校验
 - 战斗数值基线（长剑攻击范围、小怪移速、玩家死亡冻结）

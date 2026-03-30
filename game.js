@@ -3837,7 +3837,7 @@ class Boss {
                 this.attackData.lastHitBeat = -1;
                 this.attackData.finisherStartedAt = 0;
                 this.attackData.finisherDelayMs = 320;
-                this.attackData.finisherRecoveryMs = 680;
+                this.attackData.finisherRecoveryMs = 760;
                 this.attackData.finisherQueuedAt = 0;
                 this.attackData.finisherCleanupDone = false;
                 this.attackData.projectiles = [];
