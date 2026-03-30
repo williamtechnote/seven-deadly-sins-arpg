@@ -2776,6 +2776,7 @@
         const currentCountdownHeadMarkerLateGlowFinalWidthTrimmed = currentCountdownHeadMarkerLateGlowContained
             && currentCountdownHeadMarkerFinalWidthTrimmed;
         const currentCountdownHeadMarkerLateGlowOuterHeightTrimmed = currentCountdownHeadMarkerLateGlowFinalWidthTrimmed;
+        const currentCountdownHeadMarkerLateGlowOuterRadiusTrimmed = currentCountdownHeadMarkerLateGlowFinalWidthTrimmed;
         const currentCountdownHeadMarkerLateGlowInnerWidthTrimmed = currentCountdownHeadMarkerLateGlowFinalWidthTrimmed;
         const currentCountdownHeadMarkerLateGlowInnerHeightTrimmed = currentCountdownHeadMarkerLateGlowFinalWidthTrimmed;
         const currentCountdownHeadMarkerLateGlowInnerAlphaMuted = currentCountdownHeadMarkerLateGlowFinalWidthTrimmed;
@@ -2802,6 +2803,7 @@
                 currentCountdownHeadMarkerLateGlowContained: false,
                 currentCountdownHeadMarkerLateGlowFinalWidthTrimmed: false,
                 currentCountdownHeadMarkerLateGlowOuterHeightTrimmed: false,
+                currentCountdownHeadMarkerLateGlowOuterRadiusTrimmed: false,
                 currentCountdownHeadMarkerLateGlowInnerWidthTrimmed: false,
                 currentCountdownHeadMarkerLateGlowInnerHeightTrimmed: false,
                 currentCountdownHeadMarkerLateGlowInnerAlphaMuted: false,
@@ -2851,6 +2853,7 @@
             currentCountdownHeadMarkerLateGlowContained,
             currentCountdownHeadMarkerLateGlowFinalWidthTrimmed,
             currentCountdownHeadMarkerLateGlowOuterHeightTrimmed,
+            currentCountdownHeadMarkerLateGlowOuterRadiusTrimmed,
             currentCountdownHeadMarkerLateGlowInnerWidthTrimmed,
             currentCountdownHeadMarkerLateGlowInnerHeightTrimmed,
             currentCountdownHeadMarkerLateGlowInnerAlphaMuted,
