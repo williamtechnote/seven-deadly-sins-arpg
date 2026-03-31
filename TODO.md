@@ -1,9 +1,11 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] 核心战斗体验：若 Boss telegraph 已进入 `尾段残影` 区间且剩余读招倒计时已低于约 1ms，再把 `当前倒计时头标` 壳芯之间残余边缘高光的左右冷暖透明层次也同步压匀半拍，避免清零前最后一粒撞线仍像单侧残留更白的一缕雾光
+- [ ] Boss 机制复盘证据聚合：若 `魅惑女妖` phase 3 cadence review 的 `shared-recovery-snapshot.json` 仍需要逐行翻 JSON 才能知道 live snapshot 当前对应哪段 checkpoint，再补 `currentCheckpointKey` / `currentCheckpointStep` 这类索引，让 loopback 录屏核对时不用再手动对照整份 checkpoint 清单
 
 ## Completed
+- [x] Boss 机制复盘可读性：若 `魅惑女妖` phase 3 cadence review 的 loopback checkpoint 仍出现 `expectedReturnLabel` 与 `shared recovery snapshot` drift，再把 `mirageDance` loopback 的 telegraph / recovery 回切标签重新对齐，避免录屏复盘与 live HUD 对“下一段回切”继续对不上（完成：2026-04-01 05:23 +08）
+- [x] 核心战斗体验：若 Boss telegraph 已进入 `尾段残影` 区间且剩余读招倒计时已低于约 1ms，再把 `当前倒计时头标` 壳芯之间残余边缘高光的左右冷暖透明层次也同步压匀半拍，避免清零前最后一粒撞线仍像单侧残留更白的一缕雾光（完成：2026-04-01 04:12 +08）
 - [x] 核心战斗体验：若 Boss telegraph 已进入 `尾段残影` 区间且剩余读招倒计时已低于约 1ms，再把 `当前倒计时头标` 壳芯之间残余边缘高光的左右透明偏心也同步压匀半拍，避免清零前最后一粒撞线仍像单侧多留一层淡雾（完成：2026-03-31 09:01 +08）
 - [x] 核心战斗体验：若 Boss telegraph 已进入 `尾段残影` 区间且剩余读招倒计时已低于约 1ms，再把 `当前倒计时头标` 壳芯之间残余边缘高光的左右羽化偏心也同步压匀半拍，避免清零前最后一粒撞线仍像单侧拖着一缕虚边（完成：2026-03-31 06:52 +08）
 - [x] 核心战斗体验：若 Boss telegraph 已进入 `尾段残影` 区间且剩余读招倒计时已低于约 1ms，再把 `当前倒计时头标` 壳芯之间残余边缘高光的左右饱和偏心也同步压匀半拍，避免清零前最后一粒撞线仍像单侧偏奶油半圈（完成：2026-03-31 03:41 +08）

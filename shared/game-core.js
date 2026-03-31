@@ -2620,6 +2620,35 @@
         const sharedRecoverySource = safe.sharedRecoverySnapshot && typeof safe.sharedRecoverySnapshot === 'object'
             ? safe.sharedRecoverySnapshot
             : {};
+        const checkpointExpectedReturns = review.checkpoints.reduce((result, entry) => {
+            if (!entry || typeof entry !== 'object') {
+                return result;
+            }
+            const checkpointKey = typeof entry.key === 'string' ? entry.key.trim() : '';
+            if (!checkpointKey) {
+                return result;
+            }
+            result[checkpointKey] = {
+                attack: typeof entry.expectedReturnAttack === 'string' ? entry.expectedReturnAttack.trim() : '',
+                label: typeof entry.expectedReturnLabel === 'string' ? entry.expectedReturnLabel.trim() : ''
+            };
+            return result;
+        }, {});
+        if (
+            sharedRecoverySource.checkpointExpectedReturns
+            && typeof sharedRecoverySource.checkpointExpectedReturns === 'object'
+        ) {
+            Object.entries(sharedRecoverySource.checkpointExpectedReturns).forEach(([checkpointKey, target]) => {
+                const normalizedCheckpointKey = typeof checkpointKey === 'string' ? checkpointKey.trim() : '';
+                if (!normalizedCheckpointKey || !target || typeof target !== 'object') {
+                    return;
+                }
+                checkpointExpectedReturns[normalizedCheckpointKey] = {
+                    attack: typeof target.attack === 'string' ? target.attack.trim() : '',
+                    label: typeof target.label === 'string' ? target.label.trim() : ''
+                };
+            });
+        }
 
         return {
             review,
@@ -2655,7 +2684,8 @@
                 sharedRecoveryLabel: typeof sharedRecoverySource.sharedRecoveryLabel === 'string'
                     && sharedRecoverySource.sharedRecoveryLabel.trim()
                     ? sharedRecoverySource.sharedRecoveryLabel.trim()
-                    : review.sharedRecoveryLabel
+                    : review.sharedRecoveryLabel,
+                checkpointExpectedReturns
             }
         };
     }
@@ -2784,6 +2814,7 @@
         const currentCountdownHeadMarkerShellCoreEdgeHighlightSaturationBalanced = currentCountdownHeadMarkerFinalWidthTrimmed;
         const currentCountdownHeadMarkerShellCoreEdgeHighlightFeatherBalanced = currentCountdownHeadMarkerFinalWidthTrimmed;
         const currentCountdownHeadMarkerShellCoreEdgeHighlightAlphaBalanced = currentCountdownHeadMarkerFinalWidthTrimmed;
+        const currentCountdownHeadMarkerShellCoreEdgeHighlightWarmCoolAlphaBalanced = currentCountdownHeadMarkerFinalWidthTrimmed;
         const currentCountdownHeadMarkerLateGlowFinalWidthTrimmed = currentCountdownHeadMarkerLateGlowContained
             && currentCountdownHeadMarkerFinalWidthTrimmed;
         const currentCountdownHeadMarkerLateGlowOuterAlphaMuted = currentCountdownHeadMarkerLateGlowFinalWidthTrimmed;
@@ -2840,6 +2871,7 @@
                 currentCountdownHeadMarkerShellCoreEdgeHighlightSaturationBalanced: false,
                 currentCountdownHeadMarkerShellCoreEdgeHighlightFeatherBalanced: false,
                 currentCountdownHeadMarkerShellCoreEdgeHighlightAlphaBalanced: false,
+                currentCountdownHeadMarkerShellCoreEdgeHighlightWarmCoolAlphaBalanced: false,
                 currentCountdownHeadMarkerShellCapTrimmed: false,
                 currentCountdownHeadMarkerShellAlphaMuted: false,
                 currentCountdownHeadMarkerWarmFlashDurationMs: 0,
@@ -2904,6 +2936,7 @@
             currentCountdownHeadMarkerShellCoreEdgeHighlightSaturationBalanced,
             currentCountdownHeadMarkerShellCoreEdgeHighlightFeatherBalanced,
             currentCountdownHeadMarkerShellCoreEdgeHighlightAlphaBalanced,
+            currentCountdownHeadMarkerShellCoreEdgeHighlightWarmCoolAlphaBalanced,
             currentCountdownHeadMarkerShellCapTrimmed,
             currentCountdownHeadMarkerShellAlphaMuted,
             currentCountdownHeadMarkerWarmFlashDurationMs,

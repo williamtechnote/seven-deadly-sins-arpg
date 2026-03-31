@@ -22,6 +22,33 @@ function formatMarkdownLink(label, targetPath) {
   return `[${label}](${targetPath})`;
 }
 
+function getCheckpointRecoveryExpectedReturnLabel(cadenceArtifacts, checkpoint) {
+  const snapshot = cadenceArtifacts?.sharedRecoverySnapshot && typeof cadenceArtifacts.sharedRecoverySnapshot === 'object'
+    ? cadenceArtifacts.sharedRecoverySnapshot
+    : null;
+  if (!snapshot) return '';
+
+  const checkpointKey = typeof checkpoint?.key === 'string' ? checkpoint.key.trim() : '';
+  const checkpointExpectedReturns = snapshot.checkpointExpectedReturns && typeof snapshot.checkpointExpectedReturns === 'object'
+    ? snapshot.checkpointExpectedReturns
+    : null;
+  if (checkpointKey && checkpointExpectedReturns) {
+    const checkpointTarget = checkpointExpectedReturns[checkpointKey];
+    if (
+      checkpointTarget
+      && typeof checkpointTarget === 'object'
+      && typeof checkpointTarget.label === 'string'
+      && checkpointTarget.label.trim()
+    ) {
+      return checkpointTarget.label.trim();
+    }
+  }
+
+  return typeof snapshot.expectedReturnLabel === 'string' && snapshot.expectedReturnLabel.trim()
+    ? snapshot.expectedReturnLabel.trim()
+    : '';
+}
+
 function buildRecoverySnapshotShortNote(cadenceArtifacts, checkpoint) {
   const snapshot = cadenceArtifacts?.sharedRecoverySnapshot && typeof cadenceArtifacts.sharedRecoverySnapshot === 'object'
     ? cadenceArtifacts.sharedRecoverySnapshot
@@ -35,11 +62,7 @@ function buildRecoverySnapshotShortNote(cadenceArtifacts, checkpoint) {
   const breatherRemaining = Number.isFinite(snapshot.breatherRemaining)
     ? Math.max(0, Math.trunc(snapshot.breatherRemaining))
     : null;
-  const expectedReturnLabel = typeof snapshot.expectedReturnLabel === 'string' && snapshot.expectedReturnLabel.trim()
-    ? snapshot.expectedReturnLabel.trim()
-    : typeof checkpoint?.expectedReturnLabel === 'string' && checkpoint.expectedReturnLabel.trim()
-      ? checkpoint.expectedReturnLabel.trim()
-      : '';
+  const expectedReturnLabel = getCheckpointRecoveryExpectedReturnLabel(cadenceArtifacts, checkpoint);
 
   if (sharedRecoveryRemainingMs !== null) {
     parts.push(`sharedRecoveryRemainingMs=${sharedRecoveryRemainingMs}`);
@@ -454,17 +477,6 @@ function collectCadenceDriftEntries(cadenceArtifacts) {
   const checkpointEntries = Array.isArray(cadenceArtifacts.review?.checkpoints)
     ? cadenceArtifacts.review.checkpoints
     : [];
-  const sharedRecoveryExpectedReturnLabel = typeof cadenceArtifacts.sharedRecoverySnapshot?.expectedReturnLabel === 'string'
-    ? cadenceArtifacts.sharedRecoverySnapshot.expectedReturnLabel.trim()
-    : '';
-  if (!sharedRecoveryExpectedReturnLabel) {
-    return {
-      matchCount: 0,
-      driftCount: 0,
-      driftCheckpointLabels: [],
-      driftEntries: []
-    };
-  }
 
   let matchCount = 0;
   let driftCount = 0;
@@ -477,11 +489,15 @@ function collectCadenceDriftEntries(cadenceArtifacts) {
       : null;
     const expectedReturnLabel = getCheckpointExpectedReturnLabel(
       checkpoint,
-      sharedRecoveryExpectedReturnLabel
+      getCheckpointRecoveryExpectedReturnLabel(cadenceArtifacts, checkpoint)
     );
+    const recoveryExpectedReturnLabel = getCheckpointRecoveryExpectedReturnLabel(cadenceArtifacts, checkpoint);
+    if (!recoveryExpectedReturnLabel) {
+      return;
+    }
     const driftNote = buildExpectedReturnDriftNote(
       expectedReturnLabel,
-      sharedRecoveryExpectedReturnLabel
+      recoveryExpectedReturnLabel
     );
 
     if (driftNote === '回切校验: match') {
@@ -642,9 +658,6 @@ function buildCadenceCheckpointIndexLines(cadenceArtifacts) {
   const checkpointEntries = Array.isArray(cadenceArtifacts.review?.checkpoints)
     ? cadenceArtifacts.review.checkpoints
     : [];
-  const sharedRecoveryExpectedReturnLabel = typeof cadenceArtifacts.sharedRecoverySnapshot?.expectedReturnLabel === 'string'
-    ? cadenceArtifacts.sharedRecoverySnapshot.expectedReturnLabel.trim()
-    : '';
   const evidenceLinks = [
     formatMarkdownLink('review', cadenceArtifacts.files.cadenceReview),
     formatMarkdownLink('checkpoints', cadenceArtifacts.files.checkpointText),
@@ -656,7 +669,8 @@ function buildCadenceCheckpointIndexLines(cadenceArtifacts) {
     const checkpoint = checkpointEntries[index] && typeof checkpointEntries[index] === 'object'
       ? checkpointEntries[index]
       : null;
-    const expectedReturnLabel = getCheckpointExpectedReturnLabel(checkpoint, sharedRecoveryExpectedReturnLabel);
+    const recoveryExpectedReturnLabel = getCheckpointRecoveryExpectedReturnLabel(cadenceArtifacts, checkpoint);
+    const expectedReturnLabel = getCheckpointExpectedReturnLabel(checkpoint, recoveryExpectedReturnLabel);
     const parts = [line];
 
     if (expectedReturnLabel) {
@@ -668,7 +682,7 @@ function buildCadenceCheckpointIndexLines(cadenceArtifacts) {
     }
     const expectedReturnDriftNote = buildExpectedReturnDriftNote(
       expectedReturnLabel,
-      sharedRecoveryExpectedReturnLabel
+      recoveryExpectedReturnLabel
     );
     if (expectedReturnDriftNote) {
       parts.push(expectedReturnDriftNote);

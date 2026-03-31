@@ -160,6 +160,10 @@ test('lust cadence: phase-3 review checkpoints align telegraph and shared recove
   });
   expect(cadenceArtifact.telegraphSnapshot.counterWindowMs).toBe(1700);
   expect(cadenceArtifact.sharedRecoverySnapshot.sharedRecoveryLabel).toBe('shared recovery≈10.2s');
+  expect(cadenceArtifact.sharedRecoverySnapshot.checkpointExpectedReturns['mirageDance->loopback']).toEqual({
+    attack: 'reverseControl',
+    label: '混乱逆转'
+  });
 
   await dumpEvidence(page, testInfo, 'lust-phase3-cadence-review', {
     consoleErrors,
