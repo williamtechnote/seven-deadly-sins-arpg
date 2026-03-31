@@ -2649,6 +2649,54 @@
                 };
             });
         }
+        const explicitCurrentCheckpointKey = typeof sharedRecoverySource.currentCheckpointKey === 'string'
+            ? sharedRecoverySource.currentCheckpointKey.trim()
+            : '';
+        const explicitCurrentCheckpointStep = Number.isFinite(sharedRecoverySource.currentCheckpointStep)
+            ? clampInt(sharedRecoverySource.currentCheckpointStep, 1, review.checkpoints.length, 0)
+            : 0;
+        const expectedReturnAttack = typeof sharedRecoverySource.expectedReturnAttack === 'string'
+            ? sharedRecoverySource.expectedReturnAttack.trim()
+            : '';
+        const expectedReturnLabel = typeof sharedRecoverySource.expectedReturnLabel === 'string'
+            ? sharedRecoverySource.expectedReturnLabel.trim()
+            : '';
+        const currentCheckpoint = (() => {
+            if (review.checkpoints.length === 0) {
+                return null;
+            }
+
+            const byKey = explicitCurrentCheckpointKey
+                ? review.checkpoints.find(entry => entry && entry.key === explicitCurrentCheckpointKey)
+                : null;
+            const byStep = explicitCurrentCheckpointStep > 0
+                ? review.checkpoints[explicitCurrentCheckpointStep - 1] || null
+                : null;
+
+            if (byKey && byStep && byKey === byStep) {
+                return byKey;
+            }
+            if (byKey) {
+                return byKey;
+            }
+            if (byStep) {
+                return byStep;
+            }
+
+            const inferredMatches = review.checkpoints.filter((entry) => {
+                if (!entry || typeof entry !== 'object') {
+                    return false;
+                }
+                if (expectedReturnAttack && entry.expectedReturnAttack !== expectedReturnAttack) {
+                    return false;
+                }
+                if (expectedReturnLabel && entry.expectedReturnLabel !== expectedReturnLabel) {
+                    return false;
+                }
+                return Boolean(expectedReturnAttack || expectedReturnLabel);
+            });
+            return inferredMatches.length === 1 ? inferredMatches[0] : null;
+        })();
 
         return {
             review,
@@ -2675,12 +2723,14 @@
                     0,
                     clampInt(sharedRecoverySource.breatherRemaining, 0, Number.MAX_SAFE_INTEGER, 0)
                 ),
-                expectedReturnAttack: typeof sharedRecoverySource.expectedReturnAttack === 'string'
-                    ? sharedRecoverySource.expectedReturnAttack.trim()
+                expectedReturnAttack,
+                expectedReturnLabel,
+                currentCheckpointKey: currentCheckpoint && typeof currentCheckpoint.key === 'string'
+                    ? currentCheckpoint.key.trim()
                     : '',
-                expectedReturnLabel: typeof sharedRecoverySource.expectedReturnLabel === 'string'
-                    ? sharedRecoverySource.expectedReturnLabel.trim()
-                    : '',
+                currentCheckpointStep: currentCheckpoint && Number.isInteger(currentCheckpoint.step)
+                    ? Math.max(1, currentCheckpoint.step)
+                    : 0,
                 sharedRecoveryLabel: typeof sharedRecoverySource.sharedRecoveryLabel === 'string'
                     && sharedRecoverySource.sharedRecoveryLabel.trim()
                     ? sharedRecoverySource.sharedRecoveryLabel.trim()

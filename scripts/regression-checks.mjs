@@ -2215,6 +2215,8 @@ function testLustPhase3CadenceArtifactBundle() {
             breatherRemaining: 8,
             expectedReturnAttack: 'illusion',
             expectedReturnLabel: '幻影风暴',
+            currentCheckpointKey: 'reverseControl->illusion',
+            currentCheckpointStep: 1,
             sharedRecoveryLabel: 'shared recovery≈10.2s',
             checkpointExpectedReturns: {
                 'reverseControl->illusion': {
@@ -2307,6 +2309,8 @@ function testE2eReportPhase3CadenceMarkdownIndex() {
             sharedRecoveryRemainingMs: 10200,
             breatherRemaining: 8,
             expectedReturnLabel: '幻影风暴',
+            currentCheckpointKey: 'reverseControl->illusion',
+            currentCheckpointStep: 1,
             sharedRecoveryLabel: 'shared recovery≈10.2s',
             checkpointExpectedReturns: {
                 'reverseControl->illusion': {

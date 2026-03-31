@@ -1,9 +1,10 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 机制复盘证据聚合：若 `魅惑女妖` phase 3 cadence review 的 `shared-recovery-snapshot.json` 仍需要逐行翻 JSON 才能知道 live snapshot 当前对应哪段 checkpoint，再补 `currentCheckpointKey` / `currentCheckpointStep` 这类索引，让 loopback 录屏核对时不用再手动对照整份 checkpoint 清单
+- [ ] Boss 机制复盘可读性：若 `魅惑女妖` phase 3 cadence review 的 `shared-recovery-snapshot.json` 已补 `currentCheckpointKey` / `currentCheckpointStep`，但 `npm run e2e:report` 的 `Phase 3 录屏复盘清单` 里仍要手动翻 JSON 才看得出 live snapshot 正落在哪条 review checkpoint，再把 `current recovery checkpoint` 直接编进 report 的 recovery 短句与 summary，减少录屏复盘时在报告与快照之间来回跳转
 
 ## Completed
+- [x] Boss 机制复盘证据聚合：若 `魅惑女妖` phase 3 cadence review 的 `shared-recovery-snapshot.json` 仍需要逐行翻 JSON 才能知道 live snapshot 当前对应哪段 checkpoint，再补 `currentCheckpointKey` / `currentCheckpointStep` 这类索引，让 loopback 录屏核对时不用再手动对照整份 checkpoint 清单（完成：2026-04-01 06:27 +08）
 - [x] Boss 机制复盘可读性：若 `魅惑女妖` phase 3 cadence review 的 loopback checkpoint 仍出现 `expectedReturnLabel` 与 `shared recovery snapshot` drift，再把 `mirageDance` loopback 的 telegraph / recovery 回切标签重新对齐，避免录屏复盘与 live HUD 对“下一段回切”继续对不上（完成：2026-04-01 05:23 +08）
 - [x] 核心战斗体验：若 Boss telegraph 已进入 `尾段残影` 区间且剩余读招倒计时已低于约 1ms，再把 `当前倒计时头标` 壳芯之间残余边缘高光的左右冷暖透明层次也同步压匀半拍，避免清零前最后一粒撞线仍像单侧残留更白的一缕雾光（完成：2026-04-01 04:12 +08）
 - [x] 核心战斗体验：若 Boss telegraph 已进入 `尾段残影` 区间且剩余读招倒计时已低于约 1ms，再把 `当前倒计时头标` 壳芯之间残余边缘高光的左右透明偏心也同步压匀半拍，避免清零前最后一粒撞线仍像单侧多留一层淡雾（完成：2026-03-31 09:01 +08）
