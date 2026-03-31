@@ -49,6 +49,66 @@ function getCheckpointRecoveryExpectedReturnLabel(cadenceArtifacts, checkpoint) 
     : '';
 }
 
+function resolveCurrentRecoveryCheckpoint(cadenceArtifacts) {
+  const snapshot = cadenceArtifacts?.sharedRecoverySnapshot && typeof cadenceArtifacts.sharedRecoverySnapshot === 'object'
+    ? cadenceArtifacts.sharedRecoverySnapshot
+    : null;
+  const checkpointEntries = Array.isArray(cadenceArtifacts?.review?.checkpoints)
+    ? cadenceArtifacts.review.checkpoints
+    : [];
+  if (!snapshot || checkpointEntries.length === 0) {
+    return null;
+  }
+
+  const explicitKey = typeof snapshot.currentCheckpointKey === 'string'
+    ? snapshot.currentCheckpointKey.trim()
+    : '';
+  const explicitStep = Number.isInteger(snapshot.currentCheckpointStep) && snapshot.currentCheckpointStep > 0
+    ? snapshot.currentCheckpointStep
+    : 0;
+  const byKey = explicitKey
+    ? checkpointEntries.find((entry) => entry && typeof entry === 'object' && entry.key === explicitKey) || null
+    : null;
+  const byStep = explicitStep > 0
+    ? checkpointEntries[explicitStep - 1] || null
+    : null;
+  const checkpoint = byKey || byStep;
+  if (!checkpoint || typeof checkpoint !== 'object') {
+    return null;
+  }
+
+  const resolvedKey = typeof checkpoint.key === 'string' && checkpoint.key.trim()
+    ? checkpoint.key.trim()
+    : explicitKey;
+  const resolvedStep = Number.isInteger(checkpoint.step) && checkpoint.step > 0
+    ? checkpoint.step
+    : explicitStep;
+  if (!resolvedKey && resolvedStep <= 0) {
+    return null;
+  }
+
+  return {
+    key: resolvedKey,
+    step: resolvedStep
+  };
+}
+
+function buildCurrentRecoveryCheckpointLabel(cadenceArtifacts) {
+  const currentCheckpoint = resolveCurrentRecoveryCheckpoint(cadenceArtifacts);
+  if (!currentCheckpoint) {
+    return '';
+  }
+
+  const parts = [];
+  if (currentCheckpoint.step > 0) {
+    parts.push(`review checkpoint #${currentCheckpoint.step}`);
+  }
+  if (currentCheckpoint.key) {
+    parts.push(currentCheckpoint.key);
+  }
+  return parts.join(' ');
+}
+
 function buildRecoverySnapshotShortNote(cadenceArtifacts, checkpoint) {
   const snapshot = cadenceArtifacts?.sharedRecoverySnapshot && typeof cadenceArtifacts.sharedRecoverySnapshot === 'object'
     ? cadenceArtifacts.sharedRecoverySnapshot
@@ -63,6 +123,7 @@ function buildRecoverySnapshotShortNote(cadenceArtifacts, checkpoint) {
     ? Math.max(0, Math.trunc(snapshot.breatherRemaining))
     : null;
   const expectedReturnLabel = getCheckpointRecoveryExpectedReturnLabel(cadenceArtifacts, checkpoint);
+  const currentCheckpointLabel = buildCurrentRecoveryCheckpointLabel(cadenceArtifacts);
 
   if (sharedRecoveryRemainingMs !== null) {
     parts.push(`sharedRecoveryRemainingMs=${sharedRecoveryRemainingMs}`);
@@ -72,6 +133,9 @@ function buildRecoverySnapshotShortNote(cadenceArtifacts, checkpoint) {
   }
   if (expectedReturnLabel) {
     parts.push(`expectedReturnLabel=${expectedReturnLabel}`);
+  }
+  if (currentCheckpointLabel) {
+    parts.push(`currentCheckpoint=${currentCheckpointLabel}`);
   }
 
   if (parts.length === 0) return '';
@@ -553,6 +617,10 @@ function buildCadenceCheckpointSummaryLine(cadenceArtifacts) {
   }
 
   const parts = [`- Phase 3 汇总: match=${matchCount} | drift=${driftCount}`];
+  const currentCheckpointLabel = buildCurrentRecoveryCheckpointLabel(cadenceArtifacts);
+  if (currentCheckpointLabel) {
+    parts.push(`current recovery checkpoint: \`${currentCheckpointLabel}\``);
+  }
   if (driftCheckpointLabels.length > 0) {
     parts.push(`drift checkpoints: ${driftCheckpointLabels.join(', ')}`);
     const evidenceLinks = buildCadenceSummaryEvidenceLinks(cadenceArtifacts);
