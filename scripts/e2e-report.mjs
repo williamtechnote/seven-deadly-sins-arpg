@@ -716,15 +716,14 @@ function buildCadenceSummaryEvidenceLinks(cadenceArtifacts) {
 
   return [
     formatMarkdownLink('review', cadenceArtifacts.files.cadenceReview),
+    formatMarkdownLink('checkpoints', cadenceArtifacts.files.checkpointText),
     formatMarkdownLink('recovery', cadenceArtifacts.files.sharedRecoverySnapshot),
     formatMarkdownLink('telegraph', cadenceArtifacts.files.telegraphHud)
   ].filter(Boolean).join(' ');
 }
 
 function buildCadenceChecklistEvidenceLinks(cadenceArtifacts) {
-  const summaryLinks = buildCadenceSummaryEvidenceLinks(cadenceArtifacts);
-  const checkpointLink = formatMarkdownLink('checkpoints', cadenceArtifacts?.files?.checkpointText);
-  return [summaryLinks, checkpointLink].filter(Boolean).join(' ');
+  return buildCadenceSummaryEvidenceLinks(cadenceArtifacts);
 }
 
 function buildReviewCheckpointShortNote(reviewCheckpointIndex, checkpointEntries) {
