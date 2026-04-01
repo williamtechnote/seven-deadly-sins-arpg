@@ -1,10 +1,10 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 机制复盘可读性：若 `Phase 3 汇总` 已拆成 `recovery` / `telegraph` 两组短句，但在 `match=0 drift=0` 之外的全 match 场景里仍要往下翻完整 checkpoint 清单才能点进 artifact，再把 `[review] [recovery] [telegraph]` 证据入口补成独立 `evidence` 短句，让无 drift 录屏也能首屏直达附件
+- [ ] Boss 机制复盘可读性：若 `Phase 3 汇总` 已拆成 `recovery` / `telegraph` 两组短句，但在全 match / 无 drift 场景里仍要往下翻完整 checkpoint 清单才能点进 artifact，再把 `[review] [recovery] [telegraph]` 证据入口补成独立 `evidence` 短句，让无 drift 录屏也能首屏直达附件
 
 ## Completed
-- [x] Boss 机制复盘可读性：若 `Phase 3 汇总` 现在已把 `current recovery checkpoint` 到 `当前尾差相位` 一次性全塞进同一行，但在窄终端 / PR diff 里仍容易横向滚动漏看关键 live cue，再把 summary 拆成 `recovery` / `telegraph` 两组短句，继续压缩录屏排查路径（完成：2026-04-01 22:15 +08）
+- [x] Boss 机制复盘可读性：若 `Phase 3 汇总` 现在已把 `current recovery checkpoint` 到 `当前尾差相位` 一次性全塞进同一行，但在窄终端 / PR diff 里仍容易横向滚动漏看关键 live cue，再把 summary 拆成 `recovery` / `telegraph` 两组短句，继续压缩录屏排查路径（完成：2026-04-01 22:16 +08）
 - [x] Boss 机制复盘可读性：若 `Phase 3 汇总` 已直接显示 `当前窗口尾差`，但仍要盯 `+/-` 号才看得出当前 live `反制窗口` 究竟是在 telegraph 内收束、刚好卡在 telegraph 尾端，还是拖到 telegraph 之后，再补一段 `当前尾差相位` 短句，把 `counterWindowTailPhase` 直接钉进 summary，继续压缩录屏排查路径（完成：2026-04-01 21:01 +08）
 - [x] Boss 机制复盘可读性：若 `Phase 3 汇总` 已直接显示 `当前 telegraph 时长` 与 `当前窗口覆盖`，但仍要翻 drift short note 才看得出当前 live `反制窗口` 比 telegraph 本体究竟多拖了多少、或少了多少，再补一段 `当前窗口尾差` 短句，把 `counterWindowDeltaMs` 直接钉进 summary，继续压缩录屏排查路径（完成：2026-04-01 19:46 +08）
 - [x] Boss 机制复盘可读性：若 `Phase 3 汇总` 已直接显示 `当前窗口覆盖`，但仍要翻 drift short note 才看得出当前 live telegraph 总共持续多久，再补一段 `当前 telegraph 时长` 短句，把 `telegraphDurationMs` 直接钉进 summary，继续压缩录屏排查路径（完成：2026-04-01 18:33 +08）
