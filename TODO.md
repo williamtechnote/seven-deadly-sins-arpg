@@ -1,9 +1,10 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 机制复盘可读性：若 `Phase 3 汇总` 已直接显示 `当前窗口起跳` 与 `当前窗口收束`，但仍要在脑内拼接两段提示才看得出整段 live telegraph 的 `反制窗口` 横跨哪一段 telegraph，再补一段 `当前窗口跨度` 短句，把 `counterWindowSpanCue` 直接钉进 summary，继续压缩录屏排查路径
+- [ ] Boss 机制复盘可读性：若 `Phase 3 汇总` 已直接显示 `当前窗口跨度`，但仍要翻 drift short note 才看得出整段 live telegraph 的 `反制窗口` 究竟是完整覆盖 telegraph、只落在中段、还是会拖到 telegraph 之后，再补一段 `当前窗口覆盖` 短句，把 `counterWindowCoverageCue` 直接钉进 summary，继续压缩录屏排查路径
 
 ## Completed
+- [x] Boss 机制复盘可读性：若 `Phase 3 汇总` 已直接显示 `当前窗口起跳` 与 `当前窗口收束`，但仍要在脑内拼接两段提示才看得出整段 live telegraph 的 `反制窗口` 横跨哪一段 telegraph，再补一段 `当前窗口跨度` 短句，把 `counterWindowSpanCue` 直接钉进 summary，继续压缩录屏排查路径（完成：2026-04-01 14:56 +08）
 - [x] Boss 机制复盘可读性：若 `Phase 3 汇总` 已直接显示 `当前窗口起跳`，但仍要翻完整 checkpoint 才看得出这段 live telegraph 的 `反制窗口` 是在 telegraph 内提前收束，还是会拖到 telegraph 结束后才收束，再补一段 `当前窗口收束` 短句，把 `counterWindowClosureCue` 直接钉进 summary，继续压缩录屏排查路径（完成：2026-04-01 13:46 +08）
 - [x] Boss 机制复盘可读性：若 `Phase 3 汇总` 已直接显示 `当前反制窗口`，但仍要翻完整 checkpoint 才看得出这段 live telegraph 的 `反制窗口` 是起手即开还是晚几拍起跳，再补一段 `当前窗口起跳` 短句，把 `counterWindowEntryCue` 直接钉进 summary，继续压缩录屏排查路径（完成：2026-04-01 12:31 +08）
 - [x] Boss 机制复盘可读性：若 `Phase 3 汇总` 已直接显示 `当前反制提示`，但仍要翻完整 checkpoint 才看得出当前 live telegraph 的 `反制窗口` 长短，再补一段 `当前反制窗口` 短句，把 `counterWindowMs` / `counterWindowRatio` 直接钉进 summary，继续压缩录屏排查路径（完成：2026-04-01 11:00 +08）

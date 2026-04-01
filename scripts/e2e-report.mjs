@@ -185,6 +185,28 @@ function formatCounterWindowClosureCueLabel(tailOffsetMs) {
   return 'telegraph尾端 0ms 收尾';
 }
 
+function formatCounterWindowSpanCueLabel(startOffsetMs, tailOffsetMs) {
+  if (!Number.isFinite(startOffsetMs) || !Number.isFinite(tailOffsetMs)) {
+    return '';
+  }
+
+  let entrySpanLabel = 'telegraph开头';
+  if (startOffsetMs > 0) {
+    entrySpanLabel = `telegraph后 +${Math.trunc(startOffsetMs)}ms`;
+  } else if (startOffsetMs < 0) {
+    entrySpanLabel = `telegraph前 ${Math.trunc(startOffsetMs)}ms`;
+  }
+
+  let closureSpanLabel = 'telegraph尾端';
+  if (tailOffsetMs > 0) {
+    closureSpanLabel = `telegraph后 +${Math.trunc(tailOffsetMs)}ms`;
+  } else if (tailOffsetMs < 0) {
+    closureSpanLabel = `telegraph内 ${Math.trunc(tailOffsetMs)}ms`;
+  }
+
+  return `${entrySpanLabel} -> ${closureSpanLabel}`;
+}
+
 function buildCurrentCounterWindowLabel(cadenceArtifacts) {
   const snapshot = cadenceArtifacts?.telegraphSnapshot && typeof cadenceArtifacts.telegraphSnapshot === 'object'
     ? cadenceArtifacts.telegraphSnapshot
@@ -250,6 +272,36 @@ function buildCurrentCounterWindowClosureCueLabel(cadenceArtifacts) {
   }
 
   return formatCounterWindowClosureCueLabel(counterWindowMs - telegraphDurationMs);
+}
+
+function buildCurrentCounterWindowSpanCueLabel(cadenceArtifacts) {
+  const snapshot = cadenceArtifacts?.telegraphSnapshot && typeof cadenceArtifacts.telegraphSnapshot === 'object'
+    ? cadenceArtifacts.telegraphSnapshot
+    : null;
+  if (!snapshot) {
+    return '';
+  }
+
+  const counterWindowMs = Number.isFinite(snapshot.counterWindowMs)
+    ? Math.max(0, Math.trunc(snapshot.counterWindowMs))
+    : null;
+  const startOffsetMs = Number.isFinite(snapshot.counterWindowStartOffsetMs)
+    ? snapshot.counterWindowStartOffsetMs
+    : null;
+  const telegraphDurationMs = Number.isFinite(snapshot.telegraphDurationMs)
+    ? Math.max(0, Math.trunc(snapshot.telegraphDurationMs))
+    : null;
+  if (
+    counterWindowMs === null
+    || counterWindowMs <= 0
+    || startOffsetMs === null
+    || telegraphDurationMs === null
+    || telegraphDurationMs <= 0
+  ) {
+    return '';
+  }
+
+  return formatCounterWindowSpanCueLabel(startOffsetMs, counterWindowMs - telegraphDurationMs);
 }
 
 function buildRecoverySnapshotShortNote(cadenceArtifacts, checkpoint) {
@@ -411,22 +463,12 @@ function buildCounterWindowSpanCueShortNote(cadenceArtifacts) {
     return '';
   }
 
-  let entrySpanLabel = 'telegraph开头';
-  if (startOffsetMs > 0) {
-    entrySpanLabel = `telegraph后 +${startOffsetMs}ms`;
-  } else if (startOffsetMs < 0) {
-    entrySpanLabel = `telegraph前 ${startOffsetMs}ms`;
+  const spanCueLabel = formatCounterWindowSpanCueLabel(startOffsetMs, counterWindowMs - telegraphDurationMs);
+  if (!spanCueLabel) {
+    return '';
   }
 
-  const tailOffsetMs = counterWindowMs - telegraphDurationMs;
-  let closureSpanLabel = 'telegraph尾端';
-  if (tailOffsetMs > 0) {
-    closureSpanLabel = `telegraph后 +${tailOffsetMs}ms`;
-  } else if (tailOffsetMs < 0) {
-    closureSpanLabel = `telegraph内 ${tailOffsetMs}ms`;
-  }
-
-  return `counterWindowSpanCue: \`${entrySpanLabel} -> ${closureSpanLabel}\``;
+  return `counterWindowSpanCue: \`${spanCueLabel}\``;
 }
 
 function buildCounterWindowTailOffsetShortNote(cadenceArtifacts) {
@@ -778,6 +820,10 @@ function buildCadenceCheckpointSummaryLine(cadenceArtifacts) {
   const currentCounterWindowClosureCueLabel = buildCurrentCounterWindowClosureCueLabel(cadenceArtifacts);
   if (currentCounterWindowClosureCueLabel) {
     parts.push(`当前窗口收束: \`${currentCounterWindowClosureCueLabel}\``);
+  }
+  const currentCounterWindowSpanCueLabel = buildCurrentCounterWindowSpanCueLabel(cadenceArtifacts);
+  if (currentCounterWindowSpanCueLabel) {
+    parts.push(`当前窗口跨度: \`${currentCounterWindowSpanCueLabel}\``);
   }
   if (driftCheckpointLabels.length > 0) {
     parts.push(`drift checkpoints: ${driftCheckpointLabels.join(', ')}`);

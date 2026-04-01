@@ -2348,8 +2348,8 @@ function testE2eReportPhase3CadenceMarkdownIndex() {
     );
     assert.match(
         output,
-        /- Phase 3 汇总: match=2 \| drift=0 \| current recovery checkpoint: `review checkpoint #1 reverseControl->illusion` \| 当前复盘锚点: `魅影连舞 -> 幻影风暴` \| 当前反制提示: `反制: 观察真身换位节奏，留翻滚躲最后逆转波` \| 当前反制窗口: `1\.7s \(130\.8% telegraph\)` \| 当前窗口起跳: `telegraph开头 0ms 开放` \| 当前窗口收束: `telegraph后 \+400ms 收尾`/,
-        'e2e report should surface a phase-3 summary header with the live recovery checkpoint, telegraph-to-return anchor, current counter hint, current counter window, current counter-window entry cue, and current counter-window closure cue inline'
+        /- Phase 3 汇总: match=2 \| drift=0 \| current recovery checkpoint: `review checkpoint #1 reverseControl->illusion` \| 当前复盘锚点: `魅影连舞 -> 幻影风暴` \| 当前反制提示: `反制: 观察真身换位节奏，留翻滚躲最后逆转波` \| 当前反制窗口: `1\.7s \(130\.8% telegraph\)` \| 当前窗口起跳: `telegraph开头 0ms 开放` \| 当前窗口收束: `telegraph后 \+400ms 收尾` \| 当前窗口跨度: `telegraph开头 -> telegraph后 \+400ms`/,
+        'e2e report should surface a phase-3 summary header with the live recovery checkpoint, telegraph-to-return anchor, current counter hint, current counter window, current counter-window entry cue, current counter-window closure cue, and current counter-window span cue inline'
     );
     assert.doesNotMatch(
         output,
@@ -2917,8 +2917,8 @@ function testReadmeLustCadenceReportChecklist() {
 
     assert.match(
         source,
-        /`current recovery checkpoint` 直接编进 report 的 recovery 短句与 summary，并补一段 `当前复盘锚点`、`当前反制提示`、`当前反制窗口`、`当前窗口起跳`、`当前窗口收束`/,
-        'README should document that the phase-3 report now inlines the current recovery checkpoint, telegraph-to-return anchor, live counter hint, live counter window, current counter-window entry cue, and current counter-window closure cue in the summary'
+        /`current recovery checkpoint` 直接编进 report 的 recovery 短句与 summary，并补一段 `当前复盘锚点`、`当前反制提示`、`当前反制窗口`、`当前窗口起跳`、`当前窗口收束`、`当前窗口跨度`/,
+        'README should document that the phase-3 report now inlines the current recovery checkpoint, telegraph-to-return anchor, live counter hint, live counter window, current counter-window entry cue, current counter-window closure cue, and current counter-window span cue in the summary'
     );
     assert.match(
         source,
