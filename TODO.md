@@ -1,9 +1,16 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 机制复盘可读性：若 `魅惑女妖` phase 3 cadence review 的 `shared-recovery-snapshot.json` 已补 `currentCheckpointKey` / `currentCheckpointStep`，但 `npm run e2e:report` 的 `Phase 3 录屏复盘清单` 里仍要手动翻 JSON 才看得出 live snapshot 正落在哪条 review checkpoint，再把 `current recovery checkpoint` 直接编进 report 的 recovery 短句与 summary，减少录屏复盘时在报告与快照之间来回跳转
+- [ ] Boss 机制复盘可读性：若 `Phase 3 汇总` 已直接显示 `当前窗口跨度`，但仍要翻 drift short note 才看得出整段 live telegraph 的 `反制窗口` 究竟是完整覆盖 telegraph、只落在中段、还是会拖到 telegraph 之后，再补一段 `当前窗口覆盖` 短句，把 `counterWindowCoverageCue` 直接钉进 summary，继续压缩录屏排查路径
 
 ## Completed
+- [x] Boss 机制复盘可读性：若 `Phase 3 汇总` 已直接显示 `当前窗口起跳` 与 `当前窗口收束`，但仍要在脑内拼接两段提示才看得出整段 live telegraph 的 `反制窗口` 横跨哪一段 telegraph，再补一段 `当前窗口跨度` 短句，把 `counterWindowSpanCue` 直接钉进 summary，继续压缩录屏排查路径（完成：2026-04-01 14:56 +08）
+- [x] Boss 机制复盘可读性：若 `Phase 3 汇总` 已直接显示 `当前窗口起跳`，但仍要翻完整 checkpoint 才看得出这段 live telegraph 的 `反制窗口` 是在 telegraph 内提前收束，还是会拖到 telegraph 结束后才收束，再补一段 `当前窗口收束` 短句，把 `counterWindowClosureCue` 直接钉进 summary，继续压缩录屏排查路径（完成：2026-04-01 13:46 +08）
+- [x] Boss 机制复盘可读性：若 `Phase 3 汇总` 已直接显示 `当前反制窗口`，但仍要翻完整 checkpoint 才看得出这段 live telegraph 的 `反制窗口` 是起手即开还是晚几拍起跳，再补一段 `当前窗口起跳` 短句，把 `counterWindowEntryCue` 直接钉进 summary，继续压缩录屏排查路径（完成：2026-04-01 12:31 +08）
+- [x] Boss 机制复盘可读性：若 `Phase 3 汇总` 已直接显示 `当前反制提示`，但仍要翻完整 checkpoint 才看得出当前 live telegraph 的 `反制窗口` 长短，再补一段 `当前反制窗口` 短句，把 `counterWindowMs` / `counterWindowRatio` 直接钉进 summary，继续压缩录屏排查路径（完成：2026-04-01 11:00 +08）
+- [x] Boss 机制复盘可读性：若 `Phase 3 汇总` 已直接显示 `当前复盘锚点`，但仍要翻完整 checkpoint 才看得出当前 live telegraph 的 `反制提示`，再补一段 `当前反制提示` 短句，把 `telegraphHint` 直接钉进 summary，继续压缩录屏排查路径（完成：2026-04-01 10:12 +08）
+- [x] Boss 机制复盘可读性：若 `Phase 3 录屏复盘清单` 已直接显示 current recovery checkpoint，但汇总段仍要对照完整 checkpoint 索引才看得出当前 live telegraph 对的是哪招 major special，再补一段 `当前复盘锚点` 短句，把 `telegraphLabel -> expectedReturnLabel` 直接钉进 summary，继续压缩录屏排查路径（完成：2026-04-01 09:05 +08）
+- [x] Boss 机制复盘可读性：若 `魅惑女妖` phase 3 cadence review 的 `shared-recovery-snapshot.json` 已补 `currentCheckpointKey` / `currentCheckpointStep`，但 `npm run e2e:report` 的 `Phase 3 录屏复盘清单` 里仍要手动翻 JSON 才看得出 live snapshot 正落在哪条 review checkpoint，再把 `current recovery checkpoint` 直接编进 report 的 recovery 短句与 summary，减少录屏复盘时在报告与快照之间来回跳转（完成：2026-04-01 07:38 +08）
 - [x] Boss 机制复盘证据聚合：若 `魅惑女妖` phase 3 cadence review 的 `shared-recovery-snapshot.json` 仍需要逐行翻 JSON 才能知道 live snapshot 当前对应哪段 checkpoint，再补 `currentCheckpointKey` / `currentCheckpointStep` 这类索引，让 loopback 录屏核对时不用再手动对照整份 checkpoint 清单（完成：2026-04-01 06:27 +08）
 - [x] Boss 机制复盘可读性：若 `魅惑女妖` phase 3 cadence review 的 loopback checkpoint 仍出现 `expectedReturnLabel` 与 `shared recovery snapshot` drift，再把 `mirageDance` loopback 的 telegraph / recovery 回切标签重新对齐，避免录屏复盘与 live HUD 对“下一段回切”继续对不上（完成：2026-04-01 05:23 +08）
 - [x] 核心战斗体验：若 Boss telegraph 已进入 `尾段残影` 区间且剩余读招倒计时已低于约 1ms，再把 `当前倒计时头标` 壳芯之间残余边缘高光的左右冷暖透明层次也同步压匀半拍，避免清零前最后一粒撞线仍像单侧残留更白的一缕雾光（完成：2026-04-01 04:12 +08）

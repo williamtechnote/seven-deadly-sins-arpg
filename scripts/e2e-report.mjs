@@ -49,6 +49,261 @@ function getCheckpointRecoveryExpectedReturnLabel(cadenceArtifacts, checkpoint) 
     : '';
 }
 
+function resolveCurrentRecoveryCheckpoint(cadenceArtifacts) {
+  const snapshot = cadenceArtifacts?.sharedRecoverySnapshot && typeof cadenceArtifacts.sharedRecoverySnapshot === 'object'
+    ? cadenceArtifacts.sharedRecoverySnapshot
+    : null;
+  const checkpointEntries = Array.isArray(cadenceArtifacts?.review?.checkpoints)
+    ? cadenceArtifacts.review.checkpoints
+    : [];
+  if (!snapshot || checkpointEntries.length === 0) {
+    return null;
+  }
+
+  const explicitKey = typeof snapshot.currentCheckpointKey === 'string'
+    ? snapshot.currentCheckpointKey.trim()
+    : '';
+  const explicitStep = Number.isInteger(snapshot.currentCheckpointStep) && snapshot.currentCheckpointStep > 0
+    ? snapshot.currentCheckpointStep
+    : 0;
+  const byKey = explicitKey
+    ? checkpointEntries.find((entry) => entry && typeof entry === 'object' && entry.key === explicitKey) || null
+    : null;
+  const byStep = explicitStep > 0
+    ? checkpointEntries[explicitStep - 1] || null
+    : null;
+  const checkpoint = byKey || byStep;
+  if (!checkpoint || typeof checkpoint !== 'object') {
+    return null;
+  }
+
+  const resolvedKey = typeof checkpoint.key === 'string' && checkpoint.key.trim()
+    ? checkpoint.key.trim()
+    : explicitKey;
+  const resolvedStep = Number.isInteger(checkpoint.step) && checkpoint.step > 0
+    ? checkpoint.step
+    : explicitStep;
+  if (!resolvedKey && resolvedStep <= 0) {
+    return null;
+  }
+
+  return {
+    key: resolvedKey,
+    step: resolvedStep
+  };
+}
+
+function buildCurrentRecoveryCheckpointLabel(cadenceArtifacts) {
+  const currentCheckpoint = resolveCurrentRecoveryCheckpoint(cadenceArtifacts);
+  if (!currentCheckpoint) {
+    return '';
+  }
+
+  const parts = [];
+  if (currentCheckpoint.step > 0) {
+    parts.push(`review checkpoint #${currentCheckpoint.step}`);
+  }
+  if (currentCheckpoint.key) {
+    parts.push(currentCheckpoint.key);
+  }
+  return parts.join(' ');
+}
+
+function buildCurrentCadenceAnchorLabel(cadenceArtifacts) {
+  const telegraphSnapshot = cadenceArtifacts?.telegraphSnapshot && typeof cadenceArtifacts.telegraphSnapshot === 'object'
+    ? cadenceArtifacts.telegraphSnapshot
+    : null;
+  const telegraphLabel = typeof telegraphSnapshot?.attackLabel === 'string'
+    ? telegraphSnapshot.attackLabel.trim()
+    : '';
+  if (!telegraphLabel) {
+    return '';
+  }
+
+  const currentCheckpoint = resolveCurrentRecoveryCheckpoint(cadenceArtifacts);
+  const checkpointEntries = Array.isArray(cadenceArtifacts?.review?.checkpoints)
+    ? cadenceArtifacts.review.checkpoints
+    : [];
+  const checkpoint = currentCheckpoint && currentCheckpoint.step > 0
+    ? checkpointEntries[currentCheckpoint.step - 1] || null
+    : currentCheckpoint?.key
+      ? checkpointEntries.find((entry) => entry && typeof entry === 'object' && entry.key === currentCheckpoint.key) || null
+      : null;
+  const expectedReturnLabel = getCheckpointExpectedReturnLabel(
+    checkpoint,
+    getCheckpointRecoveryExpectedReturnLabel(cadenceArtifacts, checkpoint)
+  );
+  if (!expectedReturnLabel) {
+    return '';
+  }
+
+  return `${telegraphLabel} -> ${expectedReturnLabel}`;
+}
+
+function buildCurrentTelegraphHintLabel(cadenceArtifacts) {
+  const telegraphSnapshot = cadenceArtifacts?.telegraphSnapshot && typeof cadenceArtifacts.telegraphSnapshot === 'object'
+    ? cadenceArtifacts.telegraphSnapshot
+    : null;
+  return typeof telegraphSnapshot?.counterHint === 'string' && telegraphSnapshot.counterHint.trim()
+    ? telegraphSnapshot.counterHint.trim()
+    : '';
+}
+
+function formatDurationSecondsLabel(durationMs) {
+  if (!Number.isFinite(durationMs)) {
+    return '';
+  }
+  const seconds = Math.max(0, durationMs) / 1000;
+  return seconds >= 10
+    ? `${seconds.toFixed(0)}s`
+    : `${seconds.toFixed(1)}s`;
+}
+
+function formatCounterWindowEntryCueLabel(startOffsetMs) {
+  if (!Number.isFinite(startOffsetMs)) {
+    return '';
+  }
+  if (startOffsetMs > 0) {
+    return `telegraph后 +${Math.trunc(startOffsetMs)}ms 开放`;
+  }
+  if (startOffsetMs < 0) {
+    return `telegraph前 ${Math.trunc(startOffsetMs)}ms 预开`;
+  }
+  return 'telegraph开头 0ms 开放';
+}
+
+function formatCounterWindowClosureCueLabel(tailOffsetMs) {
+  if (!Number.isFinite(tailOffsetMs)) {
+    return '';
+  }
+  if (tailOffsetMs > 0) {
+    return `telegraph后 +${Math.trunc(tailOffsetMs)}ms 收尾`;
+  }
+  if (tailOffsetMs < 0) {
+    return `telegraph内 ${Math.trunc(tailOffsetMs)}ms 收尾`;
+  }
+  return 'telegraph尾端 0ms 收尾';
+}
+
+function formatCounterWindowSpanCueLabel(startOffsetMs, tailOffsetMs) {
+  if (!Number.isFinite(startOffsetMs) || !Number.isFinite(tailOffsetMs)) {
+    return '';
+  }
+
+  let entrySpanLabel = 'telegraph开头';
+  if (startOffsetMs > 0) {
+    entrySpanLabel = `telegraph后 +${Math.trunc(startOffsetMs)}ms`;
+  } else if (startOffsetMs < 0) {
+    entrySpanLabel = `telegraph前 ${Math.trunc(startOffsetMs)}ms`;
+  }
+
+  let closureSpanLabel = 'telegraph尾端';
+  if (tailOffsetMs > 0) {
+    closureSpanLabel = `telegraph后 +${Math.trunc(tailOffsetMs)}ms`;
+  } else if (tailOffsetMs < 0) {
+    closureSpanLabel = `telegraph内 ${Math.trunc(tailOffsetMs)}ms`;
+  }
+
+  return `${entrySpanLabel} -> ${closureSpanLabel}`;
+}
+
+function buildCurrentCounterWindowLabel(cadenceArtifacts) {
+  const snapshot = cadenceArtifacts?.telegraphSnapshot && typeof cadenceArtifacts.telegraphSnapshot === 'object'
+    ? cadenceArtifacts.telegraphSnapshot
+    : null;
+  if (!snapshot) {
+    return '';
+  }
+
+  const counterWindowMs = Number.isFinite(snapshot.counterWindowMs)
+    ? Math.max(0, Math.trunc(snapshot.counterWindowMs))
+    : null;
+  const telegraphDurationMs = Number.isFinite(snapshot.telegraphDurationMs)
+    ? Math.max(0, Math.trunc(snapshot.telegraphDurationMs))
+    : null;
+  if (counterWindowMs === null || counterWindowMs <= 0 || telegraphDurationMs === null || telegraphDurationMs <= 0) {
+    return '';
+  }
+
+  const ratioPercent = Math.round((counterWindowMs / telegraphDurationMs) * 1000) / 10;
+  const ratioLabel = Number.isInteger(ratioPercent)
+    ? `${ratioPercent}%`
+    : `${ratioPercent.toFixed(1)}%`;
+  return `${formatDurationSecondsLabel(counterWindowMs)} (${ratioLabel} telegraph)`;
+}
+
+function buildCurrentCounterWindowEntryCueLabel(cadenceArtifacts) {
+  const snapshot = cadenceArtifacts?.telegraphSnapshot && typeof cadenceArtifacts.telegraphSnapshot === 'object'
+    ? cadenceArtifacts.telegraphSnapshot
+    : null;
+  if (!snapshot) {
+    return '';
+  }
+
+  const counterWindowMs = Number.isFinite(snapshot.counterWindowMs)
+    ? Math.max(0, Math.trunc(snapshot.counterWindowMs))
+    : null;
+  const startOffsetMs = Number.isFinite(snapshot.counterWindowStartOffsetMs)
+    ? snapshot.counterWindowStartOffsetMs
+    : null;
+  if (counterWindowMs === null || counterWindowMs <= 0 || startOffsetMs === null) {
+    return '';
+  }
+
+  return formatCounterWindowEntryCueLabel(startOffsetMs);
+}
+
+function buildCurrentCounterWindowClosureCueLabel(cadenceArtifacts) {
+  const snapshot = cadenceArtifacts?.telegraphSnapshot && typeof cadenceArtifacts.telegraphSnapshot === 'object'
+    ? cadenceArtifacts.telegraphSnapshot
+    : null;
+  if (!snapshot) {
+    return '';
+  }
+
+  const counterWindowMs = Number.isFinite(snapshot.counterWindowMs)
+    ? Math.max(0, Math.trunc(snapshot.counterWindowMs))
+    : null;
+  const telegraphDurationMs = Number.isFinite(snapshot.telegraphDurationMs)
+    ? Math.max(0, Math.trunc(snapshot.telegraphDurationMs))
+    : null;
+  if (counterWindowMs === null || counterWindowMs <= 0 || telegraphDurationMs === null || telegraphDurationMs <= 0) {
+    return '';
+  }
+
+  return formatCounterWindowClosureCueLabel(counterWindowMs - telegraphDurationMs);
+}
+
+function buildCurrentCounterWindowSpanCueLabel(cadenceArtifacts) {
+  const snapshot = cadenceArtifacts?.telegraphSnapshot && typeof cadenceArtifacts.telegraphSnapshot === 'object'
+    ? cadenceArtifacts.telegraphSnapshot
+    : null;
+  if (!snapshot) {
+    return '';
+  }
+
+  const counterWindowMs = Number.isFinite(snapshot.counterWindowMs)
+    ? Math.max(0, Math.trunc(snapshot.counterWindowMs))
+    : null;
+  const startOffsetMs = Number.isFinite(snapshot.counterWindowStartOffsetMs)
+    ? snapshot.counterWindowStartOffsetMs
+    : null;
+  const telegraphDurationMs = Number.isFinite(snapshot.telegraphDurationMs)
+    ? Math.max(0, Math.trunc(snapshot.telegraphDurationMs))
+    : null;
+  if (
+    counterWindowMs === null
+    || counterWindowMs <= 0
+    || startOffsetMs === null
+    || telegraphDurationMs === null
+    || telegraphDurationMs <= 0
+  ) {
+    return '';
+  }
+
+  return formatCounterWindowSpanCueLabel(startOffsetMs, counterWindowMs - telegraphDurationMs);
+}
+
 function buildRecoverySnapshotShortNote(cadenceArtifacts, checkpoint) {
   const snapshot = cadenceArtifacts?.sharedRecoverySnapshot && typeof cadenceArtifacts.sharedRecoverySnapshot === 'object'
     ? cadenceArtifacts.sharedRecoverySnapshot
@@ -63,6 +318,7 @@ function buildRecoverySnapshotShortNote(cadenceArtifacts, checkpoint) {
     ? Math.max(0, Math.trunc(snapshot.breatherRemaining))
     : null;
   const expectedReturnLabel = getCheckpointRecoveryExpectedReturnLabel(cadenceArtifacts, checkpoint);
+  const currentCheckpointLabel = buildCurrentRecoveryCheckpointLabel(cadenceArtifacts);
 
   if (sharedRecoveryRemainingMs !== null) {
     parts.push(`sharedRecoveryRemainingMs=${sharedRecoveryRemainingMs}`);
@@ -72,6 +328,9 @@ function buildRecoverySnapshotShortNote(cadenceArtifacts, checkpoint) {
   }
   if (expectedReturnLabel) {
     parts.push(`expectedReturnLabel=${expectedReturnLabel}`);
+  }
+  if (currentCheckpointLabel) {
+    parts.push(`currentCheckpoint=${currentCheckpointLabel}`);
   }
 
   if (parts.length === 0) return '';
@@ -172,11 +431,9 @@ function buildCounterWindowEntryCueShortNote(cadenceArtifacts) {
     return '';
   }
 
-  let entryCueLabel = 'telegraph开头 0ms 开放';
-  if (startOffsetMs > 0) {
-    entryCueLabel = `telegraph后 +${startOffsetMs}ms 开放`;
-  } else if (startOffsetMs < 0) {
-    entryCueLabel = `telegraph前 ${startOffsetMs}ms 预开`;
+  const entryCueLabel = formatCounterWindowEntryCueLabel(startOffsetMs);
+  if (!entryCueLabel) {
+    return '';
   }
   return `counterWindowEntryCue: \`${entryCueLabel}\``;
 }
@@ -206,22 +463,12 @@ function buildCounterWindowSpanCueShortNote(cadenceArtifacts) {
     return '';
   }
 
-  let entrySpanLabel = 'telegraph开头';
-  if (startOffsetMs > 0) {
-    entrySpanLabel = `telegraph后 +${startOffsetMs}ms`;
-  } else if (startOffsetMs < 0) {
-    entrySpanLabel = `telegraph前 ${startOffsetMs}ms`;
+  const spanCueLabel = formatCounterWindowSpanCueLabel(startOffsetMs, counterWindowMs - telegraphDurationMs);
+  if (!spanCueLabel) {
+    return '';
   }
 
-  const tailOffsetMs = counterWindowMs - telegraphDurationMs;
-  let closureSpanLabel = 'telegraph尾端';
-  if (tailOffsetMs > 0) {
-    closureSpanLabel = `telegraph后 +${tailOffsetMs}ms`;
-  } else if (tailOffsetMs < 0) {
-    closureSpanLabel = `telegraph内 ${tailOffsetMs}ms`;
-  }
-
-  return `counterWindowSpanCue: \`${entrySpanLabel} -> ${closureSpanLabel}\``;
+  return `counterWindowSpanCue: \`${spanCueLabel}\``;
 }
 
 function buildCounterWindowTailOffsetShortNote(cadenceArtifacts) {
@@ -292,12 +539,9 @@ function buildCounterWindowClosureCueShortNote(cadenceArtifacts) {
     return '';
   }
 
-  const tailOffsetMs = counterWindowMs - telegraphDurationMs;
-  let closureCueLabel = 'telegraph尾端 0ms 收尾';
-  if (tailOffsetMs > 0) {
-    closureCueLabel = `telegraph后 +${tailOffsetMs}ms 收尾`;
-  } else if (tailOffsetMs < 0) {
-    closureCueLabel = `telegraph内 ${tailOffsetMs}ms 收尾`;
+  const closureCueLabel = formatCounterWindowClosureCueLabel(counterWindowMs - telegraphDurationMs);
+  if (!closureCueLabel) {
+    return '';
   }
   return `counterWindowClosureCue: \`${closureCueLabel}\``;
 }
@@ -553,6 +797,34 @@ function buildCadenceCheckpointSummaryLine(cadenceArtifacts) {
   }
 
   const parts = [`- Phase 3 汇总: match=${matchCount} | drift=${driftCount}`];
+  const currentCheckpointLabel = buildCurrentRecoveryCheckpointLabel(cadenceArtifacts);
+  if (currentCheckpointLabel) {
+    parts.push(`current recovery checkpoint: \`${currentCheckpointLabel}\``);
+  }
+  const currentCadenceAnchorLabel = buildCurrentCadenceAnchorLabel(cadenceArtifacts);
+  if (currentCadenceAnchorLabel) {
+    parts.push(`当前复盘锚点: \`${currentCadenceAnchorLabel}\``);
+  }
+  const currentTelegraphHintLabel = buildCurrentTelegraphHintLabel(cadenceArtifacts);
+  if (currentTelegraphHintLabel) {
+    parts.push(`当前反制提示: \`${currentTelegraphHintLabel}\``);
+  }
+  const currentCounterWindowLabel = buildCurrentCounterWindowLabel(cadenceArtifacts);
+  if (currentCounterWindowLabel) {
+    parts.push(`当前反制窗口: \`${currentCounterWindowLabel}\``);
+  }
+  const currentCounterWindowEntryCueLabel = buildCurrentCounterWindowEntryCueLabel(cadenceArtifacts);
+  if (currentCounterWindowEntryCueLabel) {
+    parts.push(`当前窗口起跳: \`${currentCounterWindowEntryCueLabel}\``);
+  }
+  const currentCounterWindowClosureCueLabel = buildCurrentCounterWindowClosureCueLabel(cadenceArtifacts);
+  if (currentCounterWindowClosureCueLabel) {
+    parts.push(`当前窗口收束: \`${currentCounterWindowClosureCueLabel}\``);
+  }
+  const currentCounterWindowSpanCueLabel = buildCurrentCounterWindowSpanCueLabel(cadenceArtifacts);
+  if (currentCounterWindowSpanCueLabel) {
+    parts.push(`当前窗口跨度: \`${currentCounterWindowSpanCueLabel}\``);
+  }
   if (driftCheckpointLabels.length > 0) {
     parts.push(`drift checkpoints: ${driftCheckpointLabels.join(', ')}`);
     const evidenceLinks = buildCadenceSummaryEvidenceLinks(cadenceArtifacts);
