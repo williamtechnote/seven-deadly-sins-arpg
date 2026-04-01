@@ -2348,8 +2348,8 @@ function testE2eReportPhase3CadenceMarkdownIndex() {
     );
     assert.match(
         output,
-        /- Phase 3 汇总: match=2 \| drift=0\n  - recovery: checkpoint `review checkpoint #1 reverseControl->illusion` \| 锚点 `魅影连舞 -> 幻影风暴`\n  - telegraph: 提示 `反制: 观察真身换位节奏，留翻滚躲最后逆转波` \| 窗口 `1\.7s \(130\.8% telegraph\)` \| 起跳 `telegraph开头 0ms 开放` \| 收束 `telegraph后 \+400ms 收尾` \| 跨度 `telegraph开头 -> telegraph后 \+400ms` \| 覆盖 `telegraph全程 \+ 后400ms` \| 时长 `1\.3s \(1300ms\)` \| 尾差 `\+400ms` \| 相位 `telegraph后收束`\n  - evidence: \[review]\(artifacts\/e2e\/lust-phase3-cadence-review\/cadence-review\.json\) \[checkpoints]\(artifacts\/e2e\/lust-phase3-cadence-review\/phase3-checkpoints\.txt\) \[recovery]\(artifacts\/e2e\/lust-phase3-cadence-review\/shared-recovery-snapshot\.json\) \[telegraph]\(artifacts\/e2e\/lust-phase3-cadence-review\/telegraph-hud\.png\)/,
-        'e2e report should keep the full first-screen evidence shortcut set visible even when the phase-3 summary has no drift'
+        /- Phase 3 汇总: match=2 \| drift=0\n  - recovery: checkpoint `review checkpoint #1 reverseControl->illusion` \| 锚点 `魅影连舞 -> 幻影风暴`\n  - telegraph: 提示 `反制: 观察真身换位节奏，留翻滚躲最后逆转波` \| 窗口 `1\.7s \(130\.8% telegraph\)` \| 起跳 `telegraph开头 0ms 开放` \| 收束 `telegraph后 \+400ms 收尾` \| 跨度 `telegraph开头 -> telegraph后 \+400ms` \| 覆盖 `telegraph全程 \+ 后400ms` \| 时长 `1\.3s \(1300ms\)` \| 尾差 `\+400ms` \| 相位 `telegraph后收束`\n  - artifact count: `4 artifacts ready`\n  - evidence: \[review]\(artifacts\/e2e\/lust-phase3-cadence-review\/cadence-review\.json\) \[checkpoints]\(artifacts\/e2e\/lust-phase3-cadence-review\/phase3-checkpoints\.txt\) \[recovery]\(artifacts\/e2e\/lust-phase3-cadence-review\/shared-recovery-snapshot\.json\) \[telegraph]\(artifacts\/e2e\/lust-phase3-cadence-review\/telegraph-hud\.png\)/,
+        'e2e report should keep the full first-screen evidence shortcut set visible and confirm all four artifacts are ready even when the phase-3 summary has no drift'
     );
     assert.doesNotMatch(
         output,
@@ -2370,6 +2370,70 @@ function testE2eReportPhase3CadenceMarkdownIndex() {
         output,
         /shared-recovery-snapshot\.json/,
         'e2e report should index the shared recovery snapshot artifact path'
+    );
+}
+
+function testE2eReportPhase3CadenceMissingArtifactsSummary() {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sds-e2e-report-missing-artifacts-'));
+    const artifactDir = path.join(tempRoot, 'artifacts', 'e2e', 'lust-phase3-cadence-review');
+    fs.mkdirSync(artifactDir, { recursive: true });
+
+    fs.writeFileSync(
+        path.join(artifactDir, 'cadence-review.json'),
+        JSON.stringify({
+            checkpoints: [
+                {
+                    key: 'reverseControl->illusion',
+                    step: 1,
+                    telegraphLabel: '混乱逆转',
+                    telegraphHint: '反制: 停止冲刺，短步修正方向',
+                    sharedRecoveryRemainingMs: 10200,
+                    bridgeCount: 13,
+                    bridgeLabel: '13-step dash/charmBolt bridge',
+                    expectedReturnAttack: 'illusion',
+                    expectedReturnLabel: '幻影风暴'
+                }
+            ]
+        }, null, 2)
+    );
+    fs.writeFileSync(
+        path.join(artifactDir, 'phase3-checkpoints.txt'),
+        [
+            '1. HUD telegraph 混乱逆转 -> shared recovery≈10.2s -> 13-step dash/charmBolt bridge -> 幻影风暴'
+        ].join('\n')
+    );
+    fs.writeFileSync(
+        path.join(artifactDir, 'shared-recovery-snapshot.json'),
+        JSON.stringify({
+            sharedRecoveryRemainingMs: 10200,
+            breatherRemaining: 8,
+            expectedReturnAttack: 'illusion',
+            expectedReturnLabel: '幻影风暴',
+            currentCheckpointKey: 'reverseControl->illusion',
+            currentCheckpointStep: 1,
+            checkpointExpectedReturns: {
+                'reverseControl->illusion': {
+                    attack: 'illusion',
+                    label: '幻影风暴'
+                }
+            }
+        }, null, 2)
+    );
+
+    const output = execFileSync('node', [path.join(repoRoot, 'scripts', 'e2e-report.mjs')], {
+        cwd: tempRoot,
+        encoding: 'utf8'
+    });
+
+    assert.match(
+        output,
+        /- Phase 3 汇总: match=1 \| drift=0[\s\S]*?\n  - artifact count: `3 artifacts ready`\n  - missing artifacts: `telegraph`\n  - evidence: \[review]\(artifacts\/e2e\/lust-phase3-cadence-review\/cadence-review\.json\) \[checkpoints]\(artifacts\/e2e\/lust-phase3-cadence-review\/phase3-checkpoints\.txt\) \[recovery]\(artifacts\/e2e\/lust-phase3-cadence-review\/shared-recovery-snapshot\.json\)/,
+        'e2e report should surface a dedicated missing-artifacts summary line when one cadence artifact is absent'
+    );
+    assert.doesNotMatch(
+        output,
+        /\[telegraph]\(artifacts\/e2e\/lust-phase3-cadence-review\/telegraph-hud\.png\)/,
+        'e2e report should not render a telegraph evidence link when the telegraph artifact is missing'
     );
 }
 
@@ -2924,6 +2988,16 @@ function testReadmeLustCadenceReportChecklist() {
         source,
         /`current recovery checkpoint` 与 `telegraphLabel -> expectedReturnLabel` 改写成单独的 `recovery` 短句，并把 live `telegraphHint`、`counterWindowMs` \/ `counterWindowRatio`、`counterWindowEntryCue`、`counterWindowClosureCue`、`counterWindowSpanCue`、`counterWindowCoverageCue`、`telegraphDurationMs`、`counterWindowDeltaMs` 与 `counterWindowTailPhase` 压进独立 `telegraph` 短句/,
         'README should document that the phase-3 report now splits the summary into dedicated recovery and telegraph short lines'
+    );
+    assert.match(
+        source,
+        /再补一段 `artifact count` 短句，把 `4 artifacts ready` 直接钉进 summary，减少录屏排查前先逐个点开附件确认的往返/,
+        'README should document the dedicated artifact count short line for phase-3 summary evidence readiness'
+    );
+    assert.match(
+        source,
+        /若有附件缺失，还会再补一段 `missing artifacts` 短句，把缺失的 `\[review] \[checkpoints] \[recovery] \[telegraph]` 名称直接钉进 summary/,
+        'README should document the dedicated missing-artifacts short line for degraded phase-3 bundles'
     );
     assert.match(
         source,
@@ -10639,6 +10713,7 @@ function main() {
     runTest('lust phase 3 cadence review checklist', testLustPhase3CadenceReviewChecklist);
     runTest('lust phase 3 cadence artifact bundle', testLustPhase3CadenceArtifactBundle);
     runTest('e2e report phase-3 cadence markdown index', testE2eReportPhase3CadenceMarkdownIndex);
+    runTest('e2e report phase-3 cadence missing artifacts summary', testE2eReportPhase3CadenceMissingArtifactsSummary);
     runTest('lust mirage dance hooks', testLustMirageDanceHooks);
     runTest('boss major attack breather hooks', testBossMajorAttackBreatherHooks);
     runTest('lust phase-local cooldown hooks', testLustPhaseLocalCooldownHooks);

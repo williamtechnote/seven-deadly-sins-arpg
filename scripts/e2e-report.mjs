@@ -709,17 +709,46 @@ function getCheckpointExpectedReturnLabel(checkpoint, sharedRecoveryExpectedRetu
   return sharedRecoveryExpectedReturnLabel;
 }
 
-function buildCadenceSummaryEvidenceLinks(cadenceArtifacts) {
+function collectCadenceArtifactEntries(cadenceArtifacts) {
   if (!cadenceArtifacts?.files || typeof cadenceArtifacts.files !== 'object') {
-    return '';
+    return [];
   }
 
   return [
-    formatMarkdownLink('review', cadenceArtifacts.files.cadenceReview),
-    formatMarkdownLink('checkpoints', cadenceArtifacts.files.checkpointText),
-    formatMarkdownLink('recovery', cadenceArtifacts.files.sharedRecoverySnapshot),
-    formatMarkdownLink('telegraph', cadenceArtifacts.files.telegraphHud)
-  ].filter(Boolean).join(' ');
+    { label: 'review', path: cadenceArtifacts.files.cadenceReview },
+    { label: 'checkpoints', path: cadenceArtifacts.files.checkpointText },
+    { label: 'recovery', path: cadenceArtifacts.files.sharedRecoverySnapshot },
+    { label: 'telegraph', path: cadenceArtifacts.files.telegraphHud }
+  ];
+}
+
+function buildCadenceSummaryEvidenceLinks(cadenceArtifacts) {
+  return collectCadenceArtifactEntries(cadenceArtifacts)
+    .map(({ label, path }) => formatMarkdownLink(label, path))
+    .filter(Boolean)
+    .join(' ');
+}
+
+function buildCadenceSummaryArtifactCountLabel(cadenceArtifacts) {
+  const artifactCount = collectCadenceArtifactEntries(cadenceArtifacts)
+    .filter(({ path }) => typeof path === 'string' && path.trim())
+    .length;
+  if (artifactCount <= 0) {
+    return '';
+  }
+
+  return `${artifactCount} artifact${artifactCount === 1 ? '' : 's'} ready`;
+}
+
+function buildCadenceSummaryMissingArtifactsLabel(cadenceArtifacts) {
+  const missingArtifacts = collectCadenceArtifactEntries(cadenceArtifacts)
+    .filter(({ path }) => !(typeof path === 'string' && path.trim()))
+    .map(({ label }) => label);
+  if (missingArtifacts.length === 0) {
+    return '';
+  }
+
+  return missingArtifacts.join(', ');
 }
 
 function buildCadenceChecklistEvidenceLinks(cadenceArtifacts) {
@@ -961,6 +990,14 @@ function buildCadenceCheckpointSummaryLines(cadenceArtifacts) {
   }
   if (telegraphParts.length > 0) {
     lines.push(`  - telegraph: ${telegraphParts.join(' | ')}`);
+  }
+  const artifactCountLabel = buildCadenceSummaryArtifactCountLabel(cadenceArtifacts);
+  if (artifactCountLabel) {
+    lines.push(`  - artifact count: \`${artifactCountLabel}\``);
+  }
+  const missingArtifactsLabel = buildCadenceSummaryMissingArtifactsLabel(cadenceArtifacts);
+  if (missingArtifactsLabel) {
+    lines.push(`  - missing artifacts: \`${missingArtifactsLabel}\``);
   }
   if (evidenceLinks) {
     lines.push(`  - evidence: ${evidenceLinks}`);
