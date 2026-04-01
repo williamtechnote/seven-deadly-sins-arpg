@@ -907,6 +907,7 @@ function buildCadenceCheckpointSummaryLines(cadenceArtifacts) {
   const summaryLine = [`- Phase 3 汇总: match=${matchCount} | drift=${driftCount}`];
   const recoveryParts = [];
   const telegraphParts = [];
+  const evidenceLinks = buildCadenceSummaryEvidenceLinks(cadenceArtifacts);
   const currentCheckpointLabel = buildCurrentRecoveryCheckpointLabel(cadenceArtifacts);
   if (currentCheckpointLabel) {
     recoveryParts.push(`checkpoint \`${currentCheckpointLabel}\``);
@@ -953,10 +954,6 @@ function buildCadenceCheckpointSummaryLines(cadenceArtifacts) {
   }
   if (driftCheckpointLabels.length > 0) {
     summaryLine.push(`drift checkpoints: ${driftCheckpointLabels.join(', ')}`);
-    const evidenceLinks = buildCadenceSummaryEvidenceLinks(cadenceArtifacts);
-    if (evidenceLinks) {
-      summaryLine.push(`证据: ${evidenceLinks}`);
-    }
   }
 
   const lines = [summaryLine.join(' | ')];
@@ -965,6 +962,9 @@ function buildCadenceCheckpointSummaryLines(cadenceArtifacts) {
   }
   if (telegraphParts.length > 0) {
     lines.push(`  - telegraph: ${telegraphParts.join(' | ')}`);
+  }
+  if (evidenceLinks) {
+    lines.push(`  - evidence: ${evidenceLinks}`);
   }
   return lines;
 }

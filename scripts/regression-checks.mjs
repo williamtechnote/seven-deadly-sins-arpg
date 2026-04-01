@@ -2348,8 +2348,8 @@ function testE2eReportPhase3CadenceMarkdownIndex() {
     );
     assert.match(
         output,
-        /- Phase 3 汇总: match=2 \| drift=0\n  - recovery: checkpoint `review checkpoint #1 reverseControl->illusion` \| 锚点 `魅影连舞 -> 幻影风暴`\n  - telegraph: 提示 `反制: 观察真身换位节奏，留翻滚躲最后逆转波` \| 窗口 `1\.7s \(130\.8% telegraph\)` \| 起跳 `telegraph开头 0ms 开放` \| 收束 `telegraph后 \+400ms 收尾` \| 跨度 `telegraph开头 -> telegraph后 \+400ms` \| 覆盖 `telegraph全程 \+ 后400ms` \| 时长 `1\.3s \(1300ms\)` \| 尾差 `\+400ms` \| 相位 `telegraph后收束`/,
-        'e2e report should split the phase-3 summary into a short header plus recovery and telegraph summary lines for narrow terminals'
+        /- Phase 3 汇总: match=2 \| drift=0\n  - recovery: checkpoint `review checkpoint #1 reverseControl->illusion` \| 锚点 `魅影连舞 -> 幻影风暴`\n  - telegraph: 提示 `反制: 观察真身换位节奏，留翻滚躲最后逆转波` \| 窗口 `1\.7s \(130\.8% telegraph\)` \| 起跳 `telegraph开头 0ms 开放` \| 收束 `telegraph后 \+400ms 收尾` \| 跨度 `telegraph开头 -> telegraph后 \+400ms` \| 覆盖 `telegraph全程 \+ 后400ms` \| 时长 `1\.3s \(1300ms\)` \| 尾差 `\+400ms` \| 相位 `telegraph后收束`\n  - evidence: \[review]\(artifacts\/e2e\/lust-phase3-cadence-review\/cadence-review\.json\) \[recovery]\(artifacts\/e2e\/lust-phase3-cadence-review\/shared-recovery-snapshot\.json\) \[telegraph]\(artifacts\/e2e\/lust-phase3-cadence-review\/telegraph-hud\.png\)/,
+        'e2e report should keep first-screen evidence shortcuts visible even when the phase-3 summary has no drift'
     );
     assert.doesNotMatch(
         output,
@@ -2915,6 +2915,11 @@ function testReadmeLustSharedMajorRecovery() {
 function testReadmeLustCadenceReportChecklist() {
     const source = loadReadmeSource();
 
+    assert.match(
+        source,
+        /`evidence` 短句，让无 drift 录屏也能首屏直达附件/,
+        'README should document the dedicated evidence short line for no-drift phase-3 summaries'
+    );
     assert.match(
         source,
         /`current recovery checkpoint` 与 `telegraphLabel -> expectedReturnLabel` 改写成单独的 `recovery` 短句，并把 live `telegraphHint`、`counterWindowMs` \/ `counterWindowRatio`、`counterWindowEntryCue`、`counterWindowClosureCue`、`counterWindowSpanCue`、`counterWindowCoverageCue`、`telegraphDurationMs`、`counterWindowDeltaMs` 与 `counterWindowTailPhase` 压进独立 `telegraph` 短句/,
