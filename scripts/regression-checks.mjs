@@ -2348,8 +2348,8 @@ function testE2eReportPhase3CadenceMarkdownIndex() {
     );
     assert.match(
         output,
-        /- Phase 3 汇总: match=2 \| drift=0/,
-        'e2e report should surface a phase-3 summary header with the checkpoint-local recovery labels fully aligned'
+        /- Phase 3 汇总: match=2 \| drift=0 \| current recovery checkpoint: `review checkpoint #1 reverseControl->illusion` \| 当前复盘锚点: `魅影连舞 -> 幻影风暴` \| 当前反制提示: `反制: 观察真身换位节奏，留翻滚躲最后逆转波` \| 当前反制窗口: `1\.7s \(130\.8% telegraph\)` \| 当前窗口起跳: `telegraph开头 0ms 开放` \| 当前窗口收束: `telegraph后 \+400ms 收尾` \| 当前窗口跨度: `telegraph开头 -> telegraph后 \+400ms` \| 当前窗口覆盖: `telegraph全程 \+ 后400ms` \| 当前 telegraph 时长: `1\.3s \(1300ms\)` \| 当前窗口尾差: `\+400ms` \| 当前尾差相位: `telegraph后收束`/,
+        'e2e report should surface a phase-3 summary header with the live recovery checkpoint, telegraph-to-return anchor, current counter hint, current counter window, current counter-window entry cue, current counter-window closure cue, current counter-window span cue, current counter-window coverage cue, current telegraph duration, current counter-window delta, and current counter-window tail phase inline'
     );
     assert.doesNotMatch(
         output,
@@ -2358,13 +2358,13 @@ function testE2eReportPhase3CadenceMarkdownIndex() {
     );
     assert.match(
         output,
-        /1\. HUD telegraph 混乱逆转 -> shared recovery≈10\.2s -> 13-step dash\/charmBolt bridge -> 幻影风暴 \| 反制: 停止冲刺，短步修正方向 \| 回切目标: `幻影风暴` \| recovery 快照: `sharedRecoveryRemainingMs=10200 · breatherRemaining=8 · expectedReturnLabel=幻影风暴` \| 回切校验: match \| 证据: \[review]\(artifacts\/e2e\/lust-phase3-cadence-review\/cadence-review\.json\) \[checkpoints]\(artifacts\/e2e\/lust-phase3-cadence-review\/phase3-checkpoints\.txt\) \[recovery]\(artifacts\/e2e\/lust-phase3-cadence-review\/shared-recovery-snapshot\.json\) \[telegraph]\(artifacts\/e2e\/lust-phase3-cadence-review\/telegraph-hud\.png\)/,
-        'e2e report should inline cadence checkpoint lines with recovery snapshot notes, a match note, and direct artifact anchors'
+        /1\. HUD telegraph 混乱逆转 -> shared recovery≈10\.2s -> 13-step dash\/charmBolt bridge -> 幻影风暴 \| 反制: 停止冲刺，短步修正方向 \| 回切目标: `幻影风暴` \| recovery 快照: `sharedRecoveryRemainingMs=10200 · breatherRemaining=8 · expectedReturnLabel=幻影风暴 · currentCheckpoint=review checkpoint #1 reverseControl->illusion` \| 回切校验: match \| 证据: \[review]\(artifacts\/e2e\/lust-phase3-cadence-review\/cadence-review\.json\) \[checkpoints]\(artifacts\/e2e\/lust-phase3-cadence-review\/phase3-checkpoints\.txt\) \[recovery]\(artifacts\/e2e\/lust-phase3-cadence-review\/shared-recovery-snapshot\.json\) \[telegraph]\(artifacts\/e2e\/lust-phase3-cadence-review\/telegraph-hud\.png\)/,
+        'e2e report should inline cadence checkpoint lines with recovery snapshot notes, the current recovery checkpoint, a match note, and direct artifact anchors'
     );
     assert.match(
         output,
-        /2\. HUD telegraph 魅影连舞 -> shared recovery≈10\.2s -> 28-step dash\/charmBolt loopback -> 混乱逆转 \| 反制: 观察真身换位节奏，留翻滚躲最后逆转波 \| 回切目标: `混乱逆转` \| recovery 快照: `sharedRecoveryRemainingMs=10200 · breatherRemaining=8 · expectedReturnLabel=混乱逆转` \| 回切校验: match \| 证据: \[review]\(artifacts\/e2e\/lust-phase3-cadence-review\/cadence-review\.json\) \[checkpoints]\(artifacts\/e2e\/lust-phase3-cadence-review\/phase3-checkpoints\.txt\) \[recovery]\(artifacts\/e2e\/lust-phase3-cadence-review\/shared-recovery-snapshot\.json\) \[telegraph]\(artifacts\/e2e\/lust-phase3-cadence-review\/telegraph-hud\.png\)/,
-        'e2e report should keep the loopback checkpoint aligned with the recovery snapshot return label once checkpoint-local recovery targets are exported'
+        /2\. HUD telegraph 魅影连舞 -> shared recovery≈10\.2s -> 28-step dash\/charmBolt loopback -> 混乱逆转 \| 反制: 观察真身换位节奏，留翻滚躲最后逆转波 \| 回切目标: `混乱逆转` \| recovery 快照: `sharedRecoveryRemainingMs=10200 · breatherRemaining=8 · expectedReturnLabel=混乱逆转 · currentCheckpoint=review checkpoint #1 reverseControl->illusion` \| 回切校验: match \| 证据: \[review]\(artifacts\/e2e\/lust-phase3-cadence-review\/cadence-review\.json\) \[checkpoints]\(artifacts\/e2e\/lust-phase3-cadence-review\/phase3-checkpoints\.txt\) \[recovery]\(artifacts\/e2e\/lust-phase3-cadence-review\/shared-recovery-snapshot\.json\) \[telegraph]\(artifacts\/e2e\/lust-phase3-cadence-review\/telegraph-hud\.png\)/,
+        'e2e report should keep the loopback checkpoint aligned with the recovery snapshot return label while still exposing the current live checkpoint'
     );
     assert.match(
         output,
@@ -2915,6 +2915,11 @@ function testReadmeLustSharedMajorRecovery() {
 function testReadmeLustCadenceReportChecklist() {
     const source = loadReadmeSource();
 
+    assert.match(
+        source,
+        /`current recovery checkpoint` 直接编进 report 的 recovery 短句与 summary，并补一段 `当前复盘锚点`、`当前反制提示`、`当前反制窗口`、`当前窗口起跳`、`当前窗口收束`、`当前窗口跨度`、`当前窗口覆盖`、`当前 telegraph 时长`、`当前窗口尾差`、`当前尾差相位`/,
+        'README should document that the phase-3 report now inlines the current recovery checkpoint, telegraph-to-return anchor, live counter hint, live counter window, current counter-window entry cue, current counter-window closure cue, current counter-window span cue, current counter-window coverage cue, current telegraph duration, current counter-window delta, and current counter-window tail phase in the summary'
+    );
     assert.match(
         source,
         /drift-only mini checklist；完整 checkpoint 索引则继续逐条附上/,
