@@ -166,7 +166,6 @@ function buildCurrentTelegraphDurationLabel(cadenceArtifacts) {
 
   return `${formatDurationSecondsLabel(telegraphDurationMs)} (${telegraphDurationMs}ms)`;
 }
-
 function formatDurationSecondsLabel(durationMs) {
   if (!Number.isFinite(durationMs)) {
     return '';
