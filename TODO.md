@@ -1,9 +1,10 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 机制复盘可读性：若 `Phase 3 汇总` 已直接显示 `当前 telegraph 时长` 与 `当前窗口覆盖`，但仍要翻 drift short note 才看得出当前 live `反制窗口` 比 telegraph 本体究竟多拖了多少、或少了多少，再补一段 `当前窗口尾差` 短句，把 `counterWindowDeltaMs` 直接钉进 summary，继续压缩录屏排查路径
+- [ ] Boss 机制复盘可读性：若 `Phase 3 汇总` 已直接显示 `当前窗口尾差`，但仍要盯 `+/-` 号才看得出当前 live `反制窗口` 究竟是在 telegraph 内收束、刚好卡在 telegraph 尾端，还是拖到 telegraph 之后，再补一段 `当前尾差相位` 短句，把 `counterWindowTailPhase` 直接钉进 summary，继续压缩录屏排查路径
 
 ## Completed
+- [x] Boss 机制复盘可读性：若 `Phase 3 汇总` 已直接显示 `当前 telegraph 时长` 与 `当前窗口覆盖`，但仍要翻 drift short note 才看得出当前 live `反制窗口` 比 telegraph 本体究竟多拖了多少、或少了多少，再补一段 `当前窗口尾差` 短句，把 `counterWindowDeltaMs` 直接钉进 summary，继续压缩录屏排查路径（完成：2026-04-01 19:46 +08）
 - [x] Boss 机制复盘可读性：若 `Phase 3 汇总` 已直接显示 `当前窗口覆盖`，但仍要翻 drift short note 才看得出当前 live telegraph 总共持续多久，再补一段 `当前 telegraph 时长` 短句，把 `telegraphDurationMs` 直接钉进 summary，继续压缩录屏排查路径（完成：2026-04-01 18:33 +08）
 - [x] Boss 机制复盘可读性：若 `Phase 3 汇总` 已直接显示 `当前窗口跨度`，但仍要翻 drift short note 才看得出整段 live telegraph 的 `反制窗口` 究竟是完整覆盖 telegraph、只落在中段、还是会拖到 telegraph 之后，再补一段 `当前窗口覆盖` 短句，把 `counterWindowCoverageCue` 直接钉进 summary，继续压缩录屏排查路径（完成：2026-04-01 17:10 +08）
 - [x] Boss 机制复盘可读性：若 `Phase 3 汇总` 已直接显示 `当前窗口起跳` 与 `当前窗口收束`，但仍要在脑内拼接两段提示才看得出整段 live telegraph 的 `反制窗口` 横跨哪一段 telegraph，再补一段 `当前窗口跨度` 短句，把 `counterWindowSpanCue` 直接钉进 summary，继续压缩录屏排查路径（完成：2026-04-01 14:56 +08）
