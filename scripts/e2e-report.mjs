@@ -225,7 +225,6 @@ function formatCounterWindowCoverageCueLabel(counterWindowMs, telegraphDurationM
     : `${coverageRatioPercent.toFixed(1)}%`;
   return `telegraph后${coverageRatioLabel}`;
 }
-
 function buildCurrentCounterWindowLabel(cadenceArtifacts) {
   const snapshot = cadenceArtifacts?.telegraphSnapshot && typeof cadenceArtifacts.telegraphSnapshot === 'object'
     ? cadenceArtifacts.telegraphSnapshot
@@ -343,7 +342,6 @@ function buildCurrentCounterWindowCoverageCueLabel(cadenceArtifacts) {
 
   return formatCounterWindowCoverageCueLabel(counterWindowMs, telegraphDurationMs);
 }
-
 function buildRecoverySnapshotShortNote(cadenceArtifacts, checkpoint) {
   const snapshot = cadenceArtifacts?.sharedRecoverySnapshot && typeof cadenceArtifacts.sharedRecoverySnapshot === 'object'
     ? cadenceArtifacts.sharedRecoverySnapshot
