@@ -131,7 +131,10 @@
         goldDropMultiplier: 1,
         extraDropRateMultiplier: 1,
         playerStaminaRegenMultiplier: 1,
-        playerSpecialCooldownMultiplier: 1
+        playerSpecialCooldownMultiplier: 1,
+        playerAttackCooldownMultiplier: 1,
+        playerDodgeCooldownMultiplier: 1,
+        playerDodgeStaminaCostMultiplier: 1
     };
 
     const CRAFTING_RECIPES = {
@@ -308,6 +311,37 @@
                         type: 'runEffectBuff',
                         runEffects: {
                             playerSpecialCooldownMultiplier: 0.78
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            key: 'combatDisciplineShrine',
+            name: '战技圣坛',
+            description: '选择更凶狠的普攻节奏，或更轻快的闪避经济',
+            type: 'blessing',
+            choices: [
+                {
+                    key: 'flurryLesson',
+                    label: '连斩修习',
+                    description: '本局普攻冷却 -18%',
+                    effect: {
+                        type: 'runEffectBuff',
+                        runEffects: {
+                            playerAttackCooldownMultiplier: 0.82
+                        }
+                    }
+                },
+                {
+                    key: 'ghostStepLesson',
+                    label: '游步修习',
+                    description: '本局闪避冷却 -20%，闪避体力消耗 -18%',
+                    effect: {
+                        type: 'runEffectBuff',
+                        runEffects: {
+                            playerDodgeCooldownMultiplier: 0.8,
+                            playerDodgeStaminaCostMultiplier: 0.82
                         }
                     }
                 }
@@ -1942,7 +1976,10 @@
                 ['goldDropMultiplier', '金币掉落'],
                 ['extraDropRateMultiplier', '额外掉落率'],
                 ['playerStaminaRegenMultiplier', '体力恢复'],
+                ['playerAttackCooldownMultiplier', '普攻冷却'],
                 ['playerSpecialCooldownMultiplier', '特攻冷却'],
+                ['playerDodgeCooldownMultiplier', '闪避冷却'],
+                ['playerDodgeStaminaCostMultiplier', '闪避体力消耗'],
                 ['enemySpeedMultiplier', '敌人速度'],
                 ['enemyHpMultiplier', '敌人生命']
             ];
@@ -2271,7 +2308,10 @@
             ['goldDropMultiplier', '金币掉落'],
             ['extraDropRateMultiplier', '额外掉落率'],
             ['playerStaminaRegenMultiplier', '体力恢复'],
+            ['playerAttackCooldownMultiplier', '普攻冷却'],
             ['playerSpecialCooldownMultiplier', '特攻冷却'],
+            ['playerDodgeCooldownMultiplier', '闪避冷却'],
+            ['playerDodgeStaminaCostMultiplier', '闪避体力消耗'],
             ['enemySpeedMultiplier', '敌人速度'],
             ['enemyHpMultiplier', '敌人生命']
         ];

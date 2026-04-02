@@ -622,6 +622,75 @@ function testRunEventRoomSelection() {
     assert.match(prayerSettlement.eventRoom.resolutionText, /冷却/, 'prayer shrine summary should mention the cooldown buff');
 }
 
+function testCombatDisciplineEventRoom() {
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerAttackCooldownMultiplier,
+        1,
+        'default run effects should keep normal-attack cadence neutral'
+    );
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerDodgeCooldownMultiplier,
+        1,
+        'default run effects should keep dodge cooldown neutral'
+    );
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerDodgeStaminaCostMultiplier,
+        1,
+        'default run effects should keep dodge stamina cost neutral'
+    );
+
+    const combatChoices = getRunEventRoomChoices('combatDisciplineShrine');
+    assert.deepEqual(
+        combatChoices.map(choice => choice.key),
+        ['flurryLesson', 'ghostStepLesson'],
+        'combat discipline shrine should expose both combat-style routes'
+    );
+
+    const flurrySettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 84,
+        playerMaxHp: 120
+    }, {
+        key: 'combatDisciplineShrine',
+        discovered: true,
+        resolved: false
+    }, 'flurryLesson');
+    assert.equal(flurrySettlement.ok, true, 'combat discipline shrine attack route should resolve');
+    const flurryEffects = buildRunEventRoomEffects(flurrySettlement.eventRoom);
+    assert.equal(flurryEffects.playerAttackCooldownMultiplier, 0.82, 'flurry lesson should accelerate normal attacks');
+    assert.match(flurrySettlement.eventRoom.resolutionText, /普攻冷却 -18%/, 'attack route summary should mention faster normal attacks');
+
+    const ghostStepSettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 84,
+        playerMaxHp: 120
+    }, {
+        key: 'combatDisciplineShrine',
+        discovered: true,
+        resolved: false
+    }, 'ghostStepLesson');
+    assert.equal(ghostStepSettlement.ok, true, 'combat discipline shrine dodge route should resolve');
+    const ghostStepEffects = buildRunEventRoomEffects(ghostStepSettlement.eventRoom);
+    assert.equal(ghostStepEffects.playerDodgeCooldownMultiplier, 0.8, 'ghost step lesson should shorten dodge cooldown');
+    assert.equal(ghostStepEffects.playerDodgeStaminaCostMultiplier, 0.82, 'ghost step lesson should reduce dodge stamina cost');
+    assert.match(ghostStepSettlement.eventRoom.resolutionText, /闪避冷却 -20%/, 'dodge route summary should mention faster dodge recovery');
+    assert.match(ghostStepSettlement.eventRoom.resolutionText, /闪避体力消耗 -18%/, 'dodge route summary should mention cheaper dodges');
+
+    const unresolvedSummary = buildRunEventRoomHudSummary({
+        key: 'combatDisciplineShrine',
+        discovered: true,
+        resolved: false
+    });
+    assert.deepEqual(
+        unresolvedSummary.routeLines,
+        [
+            '连斩修习: 普攻冷却-18%',
+            '游步修习: 闪避冷却-20%, 闪避体力消耗-18%'
+        ],
+        'combat discipline shrine HUD summary should surface both style routes compactly'
+    );
+}
+
 function testRunEventRoomChoiceHelpers() {
     assert.equal(typeof buildRunEventRoomChoicePreview, 'function', 'event room choice preview helper should be exported');
     assert.equal(typeof getRunEventRoomChoiceFailureMessage, 'function', 'event room choice failure helper should be exported');
@@ -2348,8 +2417,8 @@ function testE2eReportPhase3CadenceMarkdownIndex() {
     );
     assert.match(
         output,
-        /- Phase 3 汇总: match=2 \| drift=0/,
-        'e2e report should surface a phase-3 summary header with the checkpoint-local recovery labels fully aligned'
+        /- Phase 3 汇总: match=2 \| drift=0\n  - recovery: checkpoint `review checkpoint #1 reverseControl->illusion` \| 锚点 `魅影连舞 -> 幻影风暴`\n  - telegraph: 提示 `反制: 观察真身换位节奏，留翻滚躲最后逆转波` \| 窗口 `1\.7s \(130\.8% telegraph\)` \| 起跳 `telegraph开头 0ms 开放` \| 收束 `telegraph后 \+400ms 收尾` \| 跨度 `telegraph开头 -> telegraph后 \+400ms` \| 覆盖 `telegraph全程 \+ 后400ms` \| 时长 `1\.3s \(1300ms\)` \| 尾差 `\+400ms` \| 相位 `telegraph后收束`\n  - artifact count: `4 artifacts ready`\n  - evidence: \[review]\(artifacts\/e2e\/lust-phase3-cadence-review\/cadence-review\.json\) \[checkpoints]\(artifacts\/e2e\/lust-phase3-cadence-review\/phase3-checkpoints\.txt\) \[recovery]\(artifacts\/e2e\/lust-phase3-cadence-review\/shared-recovery-snapshot\.json\) \[telegraph]\(artifacts\/e2e\/lust-phase3-cadence-review\/telegraph-hud\.png\)/,
+        'e2e report should keep the full first-screen evidence shortcut set visible and confirm all four artifacts are ready even when the phase-3 summary has no drift'
     );
     assert.doesNotMatch(
         output,
@@ -2358,18 +2427,82 @@ function testE2eReportPhase3CadenceMarkdownIndex() {
     );
     assert.match(
         output,
-        /1\. HUD telegraph 混乱逆转 -> shared recovery≈10\.2s -> 13-step dash\/charmBolt bridge -> 幻影风暴 \| 反制: 停止冲刺，短步修正方向 \| 回切目标: `幻影风暴` \| recovery 快照: `sharedRecoveryRemainingMs=10200 · breatherRemaining=8 · expectedReturnLabel=幻影风暴` \| 回切校验: match \| 证据: \[review]\(artifacts\/e2e\/lust-phase3-cadence-review\/cadence-review\.json\) \[checkpoints]\(artifacts\/e2e\/lust-phase3-cadence-review\/phase3-checkpoints\.txt\) \[recovery]\(artifacts\/e2e\/lust-phase3-cadence-review\/shared-recovery-snapshot\.json\) \[telegraph]\(artifacts\/e2e\/lust-phase3-cadence-review\/telegraph-hud\.png\)/,
-        'e2e report should inline cadence checkpoint lines with recovery snapshot notes, a match note, and direct artifact anchors'
+        /1\. HUD telegraph 混乱逆转 -> shared recovery≈10\.2s -> 13-step dash\/charmBolt bridge -> 幻影风暴 \| 反制: 停止冲刺，短步修正方向 \| 回切目标: `幻影风暴` \| recovery 快照: `sharedRecoveryRemainingMs=10200 · breatherRemaining=8 · expectedReturnLabel=幻影风暴 · currentCheckpoint=review checkpoint #1 reverseControl->illusion` \| 回切校验: match \| 证据: \[review]\(artifacts\/e2e\/lust-phase3-cadence-review\/cadence-review\.json\) \[checkpoints]\(artifacts\/e2e\/lust-phase3-cadence-review\/phase3-checkpoints\.txt\) \[recovery]\(artifacts\/e2e\/lust-phase3-cadence-review\/shared-recovery-snapshot\.json\) \[telegraph]\(artifacts\/e2e\/lust-phase3-cadence-review\/telegraph-hud\.png\)/,
+        'e2e report should inline cadence checkpoint lines with recovery snapshot notes, the current recovery checkpoint, a match note, and direct artifact anchors'
     );
     assert.match(
         output,
-        /2\. HUD telegraph 魅影连舞 -> shared recovery≈10\.2s -> 28-step dash\/charmBolt loopback -> 混乱逆转 \| 反制: 观察真身换位节奏，留翻滚躲最后逆转波 \| 回切目标: `混乱逆转` \| recovery 快照: `sharedRecoveryRemainingMs=10200 · breatherRemaining=8 · expectedReturnLabel=混乱逆转` \| 回切校验: match \| 证据: \[review]\(artifacts\/e2e\/lust-phase3-cadence-review\/cadence-review\.json\) \[checkpoints]\(artifacts\/e2e\/lust-phase3-cadence-review\/phase3-checkpoints\.txt\) \[recovery]\(artifacts\/e2e\/lust-phase3-cadence-review\/shared-recovery-snapshot\.json\) \[telegraph]\(artifacts\/e2e\/lust-phase3-cadence-review\/telegraph-hud\.png\)/,
-        'e2e report should keep the loopback checkpoint aligned with the recovery snapshot return label once checkpoint-local recovery targets are exported'
+        /2\. HUD telegraph 魅影连舞 -> shared recovery≈10\.2s -> 28-step dash\/charmBolt loopback -> 混乱逆转 \| 反制: 观察真身换位节奏，留翻滚躲最后逆转波 \| 回切目标: `混乱逆转` \| recovery 快照: `sharedRecoveryRemainingMs=10200 · breatherRemaining=8 · expectedReturnLabel=混乱逆转 · currentCheckpoint=review checkpoint #1 reverseControl->illusion` \| 回切校验: match \| 证据: \[review]\(artifacts\/e2e\/lust-phase3-cadence-review\/cadence-review\.json\) \[checkpoints]\(artifacts\/e2e\/lust-phase3-cadence-review\/phase3-checkpoints\.txt\) \[recovery]\(artifacts\/e2e\/lust-phase3-cadence-review\/shared-recovery-snapshot\.json\) \[telegraph]\(artifacts\/e2e\/lust-phase3-cadence-review\/telegraph-hud\.png\)/,
+        'e2e report should keep the loopback checkpoint aligned with the recovery snapshot return label while still exposing the current live checkpoint'
     );
     assert.match(
         output,
         /shared-recovery-snapshot\.json/,
         'e2e report should index the shared recovery snapshot artifact path'
+    );
+}
+
+function testE2eReportPhase3CadenceMissingArtifactsSummary() {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sds-e2e-report-missing-artifacts-'));
+    const artifactDir = path.join(tempRoot, 'artifacts', 'e2e', 'lust-phase3-cadence-review');
+    fs.mkdirSync(artifactDir, { recursive: true });
+
+    fs.writeFileSync(
+        path.join(artifactDir, 'cadence-review.json'),
+        JSON.stringify({
+            checkpoints: [
+                {
+                    key: 'reverseControl->illusion',
+                    step: 1,
+                    telegraphLabel: '混乱逆转',
+                    telegraphHint: '反制: 停止冲刺，短步修正方向',
+                    sharedRecoveryRemainingMs: 10200,
+                    bridgeCount: 13,
+                    bridgeLabel: '13-step dash/charmBolt bridge',
+                    expectedReturnAttack: 'illusion',
+                    expectedReturnLabel: '幻影风暴'
+                }
+            ]
+        }, null, 2)
+    );
+    fs.writeFileSync(
+        path.join(artifactDir, 'phase3-checkpoints.txt'),
+        [
+            '1. HUD telegraph 混乱逆转 -> shared recovery≈10.2s -> 13-step dash/charmBolt bridge -> 幻影风暴'
+        ].join('\n')
+    );
+    fs.writeFileSync(
+        path.join(artifactDir, 'shared-recovery-snapshot.json'),
+        JSON.stringify({
+            sharedRecoveryRemainingMs: 10200,
+            breatherRemaining: 8,
+            expectedReturnAttack: 'illusion',
+            expectedReturnLabel: '幻影风暴',
+            currentCheckpointKey: 'reverseControl->illusion',
+            currentCheckpointStep: 1,
+            checkpointExpectedReturns: {
+                'reverseControl->illusion': {
+                    attack: 'illusion',
+                    label: '幻影风暴'
+                }
+            }
+        }, null, 2)
+    );
+
+    const output = execFileSync('node', [path.join(repoRoot, 'scripts', 'e2e-report.mjs')], {
+        cwd: tempRoot,
+        encoding: 'utf8'
+    });
+
+    assert.match(
+        output,
+        /- Phase 3 汇总: match=1 \| drift=0[\s\S]*?\n  - artifact count: `3 artifacts ready`\n  - missing artifacts: `telegraph`\n  - evidence: \[review]\(artifacts\/e2e\/lust-phase3-cadence-review\/cadence-review\.json\) \[checkpoints]\(artifacts\/e2e\/lust-phase3-cadence-review\/phase3-checkpoints\.txt\) \[recovery]\(artifacts\/e2e\/lust-phase3-cadence-review\/shared-recovery-snapshot\.json\)/,
+        'e2e report should surface a dedicated missing-artifacts summary line when one cadence artifact is absent'
+    );
+    assert.doesNotMatch(
+        output,
+        /\[telegraph]\(artifacts\/e2e\/lust-phase3-cadence-review\/telegraph-hud\.png\)/,
+        'e2e report should not render a telegraph evidence link when the telegraph artifact is missing'
     );
 }
 
@@ -2917,6 +3050,26 @@ function testReadmeLustCadenceReportChecklist() {
 
     assert.match(
         source,
+        /`evidence` 短句，并把 `\[review] \[checkpoints] \[recovery] \[telegraph]` 四组入口一起钉在首屏，让无 drift 录屏也能直接点开完整附件集合/,
+        'README should document the dedicated evidence short line for no-drift phase-3 summaries'
+    );
+    assert.match(
+        source,
+        /`current recovery checkpoint` 与 `telegraphLabel -> expectedReturnLabel` 改写成单独的 `recovery` 短句，并把 live `telegraphHint`、`counterWindowMs` \/ `counterWindowRatio`、`counterWindowEntryCue`、`counterWindowClosureCue`、`counterWindowSpanCue`、`counterWindowCoverageCue`、`telegraphDurationMs`、`counterWindowDeltaMs` 与 `counterWindowTailPhase` 压进独立 `telegraph` 短句/,
+        'README should document that the phase-3 report now splits the summary into dedicated recovery and telegraph short lines'
+    );
+    assert.match(
+        source,
+        /再补一段 `artifact count` 短句，把 `4 artifacts ready` 直接钉进 summary，减少录屏排查前先逐个点开附件确认的往返/,
+        'README should document the dedicated artifact count short line for phase-3 summary evidence readiness'
+    );
+    assert.match(
+        source,
+        /若有附件缺失，还会再补一段 `missing artifacts` 短句，把缺失的 `\[review] \[checkpoints] \[recovery] \[telegraph]` 名称直接钉进 summary/,
+        'README should document the dedicated missing-artifacts short line for degraded phase-3 bundles'
+    );
+    assert.match(
+        source,
         /drift-only mini checklist；完整 checkpoint 索引则继续逐条附上/,
         'README should continue documenting the dedicated drift-only mini checklist section'
     );
@@ -3451,7 +3604,7 @@ function testKeyboardHudQolHooks() {
     );
     assert.match(
         source,
-        /const runEffects = GameState\.runEffects \|\| DEFAULT_RUN_EFFECTS;[\s\S]*?const staminaRegenPerSecond = GAME_CONFIG\.PLAYER\.staminaRegen \* \(runEffects\.playerStaminaRegenMultiplier \|\| 1\);[\s\S]*?const actionHudState = \{[\s\S]*?isDodging:\s*player\.isDodging,[\s\S]*?dodgeLockoutMs:\s*player\.dodgeLockoutMsRemaining,[\s\S]*?dodgePostLockoutCooldownMs:\s*GAME_CONFIG\.PLAYER\.dodgeCooldown,[\s\S]*?attackCooldownMs:\s*player\.attackCooldown,[\s\S]*?specialCooldownMs:\s*player\.specialCooldown,[\s\S]*?dodgeCooldownMs:\s*player\.dodgeCooldownTimer,[\s\S]*?stamina:\s*player\.stamina,[\s\S]*?staminaRegenPerSecond,[\s\S]*?attackStaminaCost:\s*weapon\s*\?\s*weapon\.staminaCost\s*:\s*0,[\s\S]*?specialStaminaCost:\s*weapon\s*\?\s*weapon\.specialStaminaCost\s*:\s*0,[\s\S]*?dodgeStaminaCost:\s*GAME_CONFIG\.PLAYER\.dodgeStaminaCost[\s\S]*?\};[\s\S]*?const actionHudSegments = buildCombatActionHudSegments\(actionHudState\);/,
+        /const runEffects = GameState\.runEffects \|\| DEFAULT_RUN_EFFECTS;[\s\S]*?const staminaRegenPerSecond = GAME_CONFIG\.PLAYER\.staminaRegen \* \(runEffects\.playerStaminaRegenMultiplier \|\| 1\);[\s\S]*?const actionHudState = \{[\s\S]*?isDodging:\s*player\.isDodging,[\s\S]*?dodgeLockoutMs:\s*player\.dodgeLockoutMsRemaining,[\s\S]*?dodgePostLockoutCooldownMs:\s*Math\.max\(200,\s*Math\.round\(GAME_CONFIG\.PLAYER\.dodgeCooldown \* \(runEffects\.playerDodgeCooldownMultiplier \|\| 1\)\)\),[\s\S]*?attackCooldownMs:\s*player\.attackCooldown,[\s\S]*?specialCooldownMs:\s*player\.specialCooldown,[\s\S]*?dodgeCooldownMs:\s*player\.dodgeCooldownTimer,[\s\S]*?stamina:\s*player\.stamina,[\s\S]*?staminaRegenPerSecond,[\s\S]*?attackStaminaCost:\s*weapon\s*\?\s*weapon\.staminaCost\s*:\s*0,[\s\S]*?specialStaminaCost:\s*weapon\s*\?\s*weapon\.specialStaminaCost\s*:\s*0,[\s\S]*?dodgeStaminaCost:\s*Math\.max\(1,\s*Math\.round\(GAME_CONFIG\.PLAYER\.dodgeStaminaCost \* \(runEffects\.playerDodgeStaminaCostMultiplier \|\| 1\)\)\)[\s\S]*?\};[\s\S]*?const actionHudSegments = buildCombatActionHudSegments\(actionHudState\);/,
         'HUD should derive dodge lockout, cooldown, stamina gaps, and stamina-recovery ETA from the shared combat-action helper'
     );
     assert.match(
@@ -3461,7 +3614,7 @@ function testKeyboardHudQolHooks() {
     );
     assert.match(
         source,
-        /const actionHudState = \{[\s\S]*?isDodging:\s*player\.isDodging,[\s\S]*?dodgeStaminaCost:\s*GAME_CONFIG\.PLAYER\.dodgeStaminaCost[\s\S]*?\};[\s\S]*?const actionHudSegments = buildCombatActionHudSegments\(actionHudState\);[\s\S]*?const actionHudReadiness = buildCombatActionReadiness\(actionHudState\);[\s\S]*?const previousActionReadiness = this\._lastCombatActionReadiness;[\s\S]*?if \(previousActionReadiness\) \{[\s\S]*?Object\.keys\(actionHudReadiness\)\.forEach\(key => \{[\s\S]*?this\.actionTextReadyFlashUntil\[key\] = this\.time\.now \+ 220;[\s\S]*?\}\);[\s\S]*?\}[\s\S]*?actionHudSegments\.forEach\(segment => \{[\s\S]*?const actionHighlightActive = this\.actionTextReadyFlashUntil\[segment\.key\] > this\.time\.now;[\s\S]*?actionTextNode\.setStyle\(\{ fill: actionHighlightActive \? '#fff4b3' : '#cfd8e6' \}\);[\s\S]*?actionTextNode\.setText\(segment\.text\);/,
+        /const actionHudState = \{[\s\S]*?isDodging:\s*player\.isDodging,[\s\S]*?dodgeStaminaCost:\s*Math\.max\(1,\s*Math\.round\(GAME_CONFIG\.PLAYER\.dodgeStaminaCost \* \(runEffects\.playerDodgeStaminaCostMultiplier \|\| 1\)\)\)[\s\S]*?\};[\s\S]*?const actionHudSegments = buildCombatActionHudSegments\(actionHudState\);[\s\S]*?const actionHudReadiness = buildCombatActionReadiness\(actionHudState\);[\s\S]*?const previousActionReadiness = this\._lastCombatActionReadiness;[\s\S]*?if \(previousActionReadiness\) \{[\s\S]*?Object\.keys\(actionHudReadiness\)\.forEach\(key => \{[\s\S]*?this\.actionTextReadyFlashUntil\[key\] = this\.time\.now \+ 220;[\s\S]*?\}\);[\s\S]*?\}[\s\S]*?actionHudSegments\.forEach\(segment => \{[\s\S]*?const actionHighlightActive = this\.actionTextReadyFlashUntil\[segment\.key\] > this\.time\.now;[\s\S]*?actionTextNode\.setStyle\(\{ fill: actionHighlightActive \? '#fff4b3' : '#cfd8e6' \}\);[\s\S]*?actionTextNode\.setText\(segment\.text\);/,
         'HUD should derive per-action readiness flashes from the shared combat-action readiness helper when individual actions newly become ready'
     );
     assert.match(
@@ -3528,6 +3681,50 @@ function testKeyboardHudQolHooks() {
         source,
         /_showTooltip\(text,\s*anchorX,\s*anchorY\)\s*{[\s\S]*?this\.tooltip\.setText\(text\);[\s\S]*?getInventoryTooltipClampX\(anchorX,\s*this\.tooltip\.width,\s*this\.cameras\.main\.width\)/,
         'InventoryScene should clamp tooltip placement from the real rendered tooltip width via the shared helper'
+    );
+}
+
+function testCombatDisciplineRunEffectHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /const attackCooldownScale = runEffects\.playerAttackCooldownMultiplier \|\| 1;/,
+        'player attack runtime should read the normal-attack cadence multiplier from run effects'
+    );
+    assert.match(
+        source,
+        /this\.attackCooldown = Math\.max\(120,\s*Math\.round\(weapon\.attackSpeed \* attackCooldownScale\)\);/,
+        'player attack runtime should apply the cadence multiplier when starting a normal attack'
+    );
+    assert.match(
+        source,
+        /const dodgeCooldownScale = runEffects\.playerDodgeCooldownMultiplier \|\| 1;/,
+        'player dodge runtime should read the dodge cooldown multiplier from run effects'
+    );
+    assert.match(
+        source,
+        /const dodgeStaminaCostScale = runEffects\.playerDodgeStaminaCostMultiplier \|\| 1;/,
+        'player dodge runtime should read the dodge stamina multiplier from run effects'
+    );
+    assert.match(
+        source,
+        /const dodgeStaminaCost = Math\.max\(1,\s*Math\.round\(cfg\.dodgeStaminaCost \* dodgeStaminaCostScale\)\);/,
+        'player dodge runtime should derive a scaled dodge stamina cost'
+    );
+    assert.match(
+        source,
+        /this\.dodgeCooldownTimer = Math\.max\(200,\s*Math\.round\(cfg\.dodgeCooldown \* dodgeCooldownScale\)\);/,
+        'player dodge runtime should derive a scaled dodge cooldown'
+    );
+    assert.match(
+        source,
+        /dodgePostLockoutCooldownMs:\s*Math\.max\(200,\s*Math\.round\(GAME_CONFIG\.PLAYER\.dodgeCooldown \* \(runEffects\.playerDodgeCooldownMultiplier \|\| 1\)\)\)/,
+        'combat action HUD state should preview the scaled dodge cooldown while rolling'
+    );
+    assert.match(
+        source,
+        /dodgeStaminaCost:\s*Math\.max\(1,\s*Math\.round\(GAME_CONFIG\.PLAYER\.dodgeStaminaCost \* \(runEffects\.playerDodgeStaminaCostMultiplier \|\| 1\)\)\)/,
+        'combat action HUD state should preview the scaled dodge stamina cost'
     );
 }
 
@@ -10611,6 +10808,7 @@ function main() {
     runTest('status effect logic', testStatusEffectLogic);
     runTest('run modifier selection/effects', testRunModifierSelectionAndEffects);
     runTest('run event room selection', testRunEventRoomSelection);
+    runTest('combat discipline event room', testCombatDisciplineEventRoom);
     runTest('run event room choice helpers', testRunEventRoomChoiceHelpers);
     runTest('run event room choice panel preview', testRunEventRoomChoicePanelPreview);
     runTest('run event room choice affordability label', testRunEventRoomChoiceAffordabilityLabel);
@@ -10629,6 +10827,7 @@ function main() {
     runTest('lust phase 3 cadence review checklist', testLustPhase3CadenceReviewChecklist);
     runTest('lust phase 3 cadence artifact bundle', testLustPhase3CadenceArtifactBundle);
     runTest('e2e report phase-3 cadence markdown index', testE2eReportPhase3CadenceMarkdownIndex);
+    runTest('e2e report phase-3 cadence missing artifacts summary', testE2eReportPhase3CadenceMissingArtifactsSummary);
     runTest('lust mirage dance hooks', testLustMirageDanceHooks);
     runTest('boss major attack breather hooks', testBossMajorAttackBreatherHooks);
     runTest('lust phase-local cooldown hooks', testLustPhaseLocalCooldownHooks);
@@ -10667,6 +10866,7 @@ function main() {
     runTest('combat action HUD layout helper', testCombatActionHudLayout);
     runTest('quick-slot item label helper', testQuickSlotItemLabel);
     runTest('keyboard HUD QoL hooks', testKeyboardHudQolHooks);
+    runTest('combat discipline run-effect hooks', testCombatDisciplineRunEffectHooks);
     runTest('boss action HUD bottom-layout guard', testBossActionHudBottomLayoutGuard);
     runTest('README keyboard inventory loop', testReadmeKeyboardInventoryLoop);
     runTest('help overlay quick-slot loop', testHelpOverlayQuickSlotLoop);

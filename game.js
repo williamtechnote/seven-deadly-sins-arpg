@@ -800,7 +800,10 @@ function getTestRunEffectOverrides() {
         goldDropMultiplier: getTestFlagValue('goldDropMultiplier', 1),
         extraDropRateMultiplier: getTestFlagValue('extraDropRateMultiplier', 1),
         playerStaminaRegenMultiplier: getTestFlagValue('playerStaminaRegenMultiplier', 1),
-        playerSpecialCooldownMultiplier: getTestFlagValue('playerSpecialCooldownMultiplier', 1)
+        playerSpecialCooldownMultiplier: getTestFlagValue('playerSpecialCooldownMultiplier', 1),
+        playerAttackCooldownMultiplier: getTestFlagValue('playerAttackCooldownMultiplier', 1),
+        playerDodgeCooldownMultiplier: getTestFlagValue('playerDodgeCooldownMultiplier', 1),
+        playerDodgeStaminaCostMultiplier: getTestFlagValue('playerDodgeStaminaCostMultiplier', 1)
     };
 }
 
@@ -1346,8 +1349,12 @@ class Player extends Phaser.Physics.Arcade.Sprite {
 
     tryDodge() {
         const cfg = GAME_CONFIG.PLAYER;
-        if (this.isDodging || this.dodgeCooldownTimer > 0 || this.stamina < cfg.dodgeStaminaCost) return;
-        this.stamina -= cfg.dodgeStaminaCost;
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        const dodgeCooldownScale = runEffects.playerDodgeCooldownMultiplier || 1;
+        const dodgeStaminaCostScale = runEffects.playerDodgeStaminaCostMultiplier || 1;
+        const dodgeStaminaCost = Math.max(1, Math.round(cfg.dodgeStaminaCost * dodgeStaminaCostScale));
+        if (this.isDodging || this.dodgeCooldownTimer > 0 || this.stamina < dodgeStaminaCost) return;
+        this.stamina -= dodgeStaminaCost;
         AudioSystem.playUi('dodge');
         this.isDodging = true;
         this.dodgeLockoutMsRemaining = cfg.dodgeDuration;
@@ -1364,7 +1371,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             this.dodgeLockoutMsRemaining = 0;
             this.setAlpha(1);
             this.setVelocity(0, 0);
-            this.dodgeCooldownTimer = cfg.dodgeCooldown;
+            this.dodgeCooldownTimer = Math.max(200, Math.round(cfg.dodgeCooldown * dodgeCooldownScale));
         });
     }
 
@@ -1405,8 +1412,10 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         const weapon = this.currentWeapon;
         if (!weapon) return null;
         if (this.attackCooldown > 0 || this.stamina < weapon.staminaCost || this.isDodging) return null;
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        const attackCooldownScale = runEffects.playerAttackCooldownMultiplier || 1;
         this.stamina -= weapon.staminaCost;
-        this.attackCooldown = weapon.attackSpeed;
+        this.attackCooldown = Math.max(120, Math.round(weapon.attackSpeed * attackCooldownScale));
         this.isAttacking = true;
         const dir = this._getDirection();
         this._playAnim('attack', dir);
@@ -6481,7 +6490,7 @@ class UIScene extends Phaser.Scene {
         const actionHudState = {
             isDodging: player.isDodging,
             dodgeLockoutMs: player.dodgeLockoutMsRemaining,
-            dodgePostLockoutCooldownMs: GAME_CONFIG.PLAYER.dodgeCooldown,
+            dodgePostLockoutCooldownMs: Math.max(200, Math.round(GAME_CONFIG.PLAYER.dodgeCooldown * (runEffects.playerDodgeCooldownMultiplier || 1))),
             attackCooldownMs: player.attackCooldown,
             specialCooldownMs: player.specialCooldown,
             dodgeCooldownMs: player.dodgeCooldownTimer,
@@ -6489,7 +6498,7 @@ class UIScene extends Phaser.Scene {
             staminaRegenPerSecond,
             attackStaminaCost: weapon ? weapon.staminaCost : 0,
             specialStaminaCost: weapon ? weapon.specialStaminaCost : 0,
-            dodgeStaminaCost: GAME_CONFIG.PLAYER.dodgeStaminaCost
+            dodgeStaminaCost: Math.max(1, Math.round(GAME_CONFIG.PLAYER.dodgeStaminaCost * (runEffects.playerDodgeStaminaCostMultiplier || 1)))
         };
         const actionHudSegments = buildCombatActionHudSegments(actionHudState);
         const actionHudReadiness = buildCombatActionReadiness(actionHudState);
