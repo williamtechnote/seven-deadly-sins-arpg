@@ -779,12 +779,17 @@ function getRunModifierHelpLines() {
 
 function combineRunEffects(...effectGroups) {
     const combined = { ...DEFAULT_RUN_EFFECTS };
+    const additiveRunEffectKeys = new Set(['playerAttackHitStaminaGain', 'playerPostDodgeSpecialWindowMs']);
     effectGroups.forEach((group) => {
         if (!group || typeof group !== 'object') return;
         Object.keys(combined).forEach((effectKey) => {
             const value = Number(group[effectKey]);
             if (!Number.isFinite(value) || value <= 0) return;
-            combined[effectKey] *= value;
+            if (additiveRunEffectKeys.has(effectKey)) {
+                combined[effectKey] += value;
+            } else {
+                combined[effectKey] *= value;
+            }
         });
     });
     return combined;
@@ -803,7 +808,10 @@ function getTestRunEffectOverrides() {
         playerSpecialCooldownMultiplier: getTestFlagValue('playerSpecialCooldownMultiplier', 1),
         playerAttackCooldownMultiplier: getTestFlagValue('playerAttackCooldownMultiplier', 1),
         playerDodgeCooldownMultiplier: getTestFlagValue('playerDodgeCooldownMultiplier', 1),
-        playerDodgeStaminaCostMultiplier: getTestFlagValue('playerDodgeStaminaCostMultiplier', 1)
+        playerDodgeStaminaCostMultiplier: getTestFlagValue('playerDodgeStaminaCostMultiplier', 1),
+        playerAttackHitStaminaGain: getTestFlagValue('playerAttackHitStaminaGain', 0),
+        playerPostDodgeSpecialDamageMultiplier: getTestFlagValue('playerPostDodgeSpecialDamageMultiplier', 1),
+        playerPostDodgeSpecialWindowMs: getTestFlagValue('playerPostDodgeSpecialWindowMs', 0)
     };
 }
 
@@ -1159,6 +1167,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.statusResistanceUntil = 0;
         this.damageBuffUntil = 0;
         this.damageBuffMultiplier = 1;
+        this.postDodgeSpecialEmpowerUntil = 0;
         this._animDir = 'down';
         this._animState = 'idle';
         this._weaponVisualDirty = true;
@@ -1270,6 +1279,40 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         return 'side';
     }
 
+    grantAttackHitStamina(isSpecial) {
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        const staminaGain = Math.max(0, Math.round(runEffects.playerAttackHitStaminaGain || 0));
+        if (isSpecial || staminaGain <= 0) return 0;
+        const previousStamina = this.stamina;
+        this.stamina = Math.min(this.maxStamina, this.stamina + staminaGain);
+        return Math.max(0, Math.round(this.stamina - previousStamina));
+    }
+
+    armPostDodgeSpecialWindow() {
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        const windowMs = Math.max(0, Math.round(runEffects.playerPostDodgeSpecialWindowMs || 0));
+        if (windowMs <= 0 || (runEffects.playerPostDodgeSpecialDamageMultiplier || 1) <= 1) return 0;
+        this.postDodgeSpecialEmpowerUntil = this.scene.time.now + windowMs;
+        return windowMs;
+    }
+
+    consumePostDodgeSpecialMultiplier(now) {
+        const activeUntil = Number(this.postDodgeSpecialEmpowerUntil) || 0;
+        const safeNow = Number(now) || 0;
+        if (safeNow >= activeUntil) {
+            this.postDodgeSpecialEmpowerUntil = 0;
+            return 1;
+        }
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        const multiplier = Math.max(1, Number(runEffects.playerPostDodgeSpecialDamageMultiplier) || 1);
+        this.postDodgeSpecialEmpowerUntil = 0;
+        return multiplier;
+    }
+
+    getCombatSpecialStatusLabel(now) {
+        return (Number(now) || 0) < (Number(this.postDodgeSpecialEmpowerUntil) || 0) ? '借势' : '';
+    }
+
     update(time, delta) {
         const cfg = GAME_CONFIG.PLAYER;
         const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
@@ -1372,6 +1415,10 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             this.setAlpha(1);
             this.setVelocity(0, 0);
             this.dodgeCooldownTimer = Math.max(200, Math.round(cfg.dodgeCooldown * dodgeCooldownScale));
+            const armedWindowMs = this.armPostDodgeSpecialWindow();
+            if (armedWindowMs > 0) {
+                showFloatingCombatText(this.scene, this.x, this.y - 42, '借势', '#ffd27a', 520);
+            }
         });
     }
 
@@ -1438,7 +1485,8 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this._playAnim('attack', dir);
         this.scene.time.delayedCall(250, () => { this.isAttacking = false; });
         AudioSystem.playAttack(true);
-        const damage = Math.round(weapon.damage * 2 * this.getDamageMultiplier());
+        const specialDamageMultiplier = this.consumePostDodgeSpecialMultiplier(this.scene.time.now);
+        const damage = Math.round(weapon.damage * 2 * this.getDamageMultiplier() * specialDamageMultiplier);
         return this._spawnHitbox(damage, 2, true);
     }
 
@@ -3102,6 +3150,10 @@ class LevelScene extends Phaser.Scene {
                             sourceDamage: hb.statusEffect.sourceDamage || hitDamage
                         });
                     }
+                    const staminaRefund = this.player.grantAttackHitStamina(hb.isSpecial);
+                    if (staminaRefund > 0) {
+                        showFloatingCombatText(this, this.player.x, this.player.y - 42, '回体+' + staminaRefund, '#a7ffd9', 480);
+                    }
                     if (canPierce) hb._pierceHits.push(enemy);
                     else hb.damage = 0;
                     if (hb.isSpecial) {
@@ -4625,6 +4677,10 @@ class BossScene extends Phaser.Scene {
                 const d = Phaser.Math.Distance.Between(hb.x, hb.y, this.boss.sprite.x, this.boss.sprite.y);
                 if (d < hbRadius + 30 && hb.damage) {
                     this.boss.takeDamage(hb.damage);
+                    const staminaRefund = this.player.grantAttackHitStamina(hb.isSpecial);
+                    if (staminaRefund > 0) {
+                        showFloatingCombatText(this, this.player.x, this.player.y - 42, '回体+' + staminaRefund, '#a7ffd9', 480);
+                    }
                     if (hb.isSpecial) {
                         const counterBroken = this.boss.tryCounterBreak(BOSS_COUNTER_BREAK_STAGGER_MS);
                         showHitImpactPulse(
@@ -6498,6 +6554,7 @@ class UIScene extends Phaser.Scene {
             staminaRegenPerSecond,
             attackStaminaCost: weapon ? weapon.staminaCost : 0,
             specialStaminaCost: weapon ? weapon.specialStaminaCost : 0,
+            specialStatusLabel: typeof player.getCombatSpecialStatusLabel === 'function' ? player.getCombatSpecialStatusLabel(this.time.now) : '',
             dodgeStaminaCost: Math.max(1, Math.round(GAME_CONFIG.PLAYER.dodgeStaminaCost * (runEffects.playerDodgeStaminaCostMultiplier || 1)))
         };
         const actionHudSegments = buildCombatActionHudSegments(actionHudState);

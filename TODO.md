@@ -1,10 +1,11 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] 核心战斗体验：若 `战技圣坛` 的 `连斩修习 / 游步修习` 两路在 live 里仍不足以形成强烈 run identity，再评估追加第三条“命中回体 / 闪避后短时强化特攻”修习路线，继续把事件房推进到动词级选择，而非只加数值
+- [ ] 核心战斗体验：若 `战势圣坛` 的 `回息修习 / 借势修习` 在 live 里仍不足以让玩家一眼读出“命中转续航 / 闪避转爆发”的差异，再评估把 `回体+N` 或 `借势` 剩余窗口进一步钉进 HUD 常驻提示，继续强化 run identity 可读性
 - [ ] 仓库交付闭环：heartbeat 现阶段的首要 blocker 已从单纯的 GitHub non-fast-forward 收敛为“源仓库自带未提交修改 + 未跟踪 plan 文件，会在整合 `origin/main` 时阻塞 merge”；下一步需先定义这些本地改动/草稿文件的去留或归档策略，再恢复主线同步
 
 ## Completed
+- [x] 核心战斗体验：新增事件房 `战势圣坛`，提供 `回息修习`（普攻命中回体 +4）与 `借势修习`（闪避后 1.6s 内特攻伤害 +35%）两条 follow-up 修习路线，并让行动 HUD / 战斗浮字直接暴露 `借势` 与 `回体+4` 的实时反馈，继续把 run identity 从冷却数值推进到命中确认与闪避转爆发（完成：2026-04-03 05:40 +08）
 - [x] 核心战斗体验：为事件房新增 `战技圣坛`，在 `连斩修习`（普攻节奏）与 `游步修习`（闪避经济）之间二选一，并让 run-level 选择第一次直接改变核心战斗循环，而不再只集中在 phase-3 报告与 README 文案（完成：2026-04-03 04:53 +08）
 - [x] 仓库交付闭环：尝试在 temp clone 中显式整合 `origin/main` 以清掉 GitHub main 分叉 blocker；执行后确认真正卡点不是 merge 冲突本身，而是源仓库自带的未提交修改（`scripts/regression-checks.mjs`）与未跟踪 plan 文件 / 草稿目录会先阻止 merge 开始，因此需要先处理本地工作树卫生，再谈主线同步（完成：2026-04-02 12:08 +08）
 - [x] Boss 机制复盘可读性：已确认 `Phase 3 汇总` 同时受两条 guard 约束——无 drift 首屏必须保持 `artifact count -> evidence` 顺序，缺件场景的 `missing artifacts` 现有文本也被回归断言固定；下一步改为只在 docs / plans 中沉淀这组 contract，并转向 phase-3 cadence artifact 之外的可读性改进，避免继续在同一 summary 入口做无效试探（完成：2026-04-02 09:05 +08，策略收敛：冻结该 summary hotspot，避免 heartbeat 继续重复低 ROI 试探）

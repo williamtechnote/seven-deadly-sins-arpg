@@ -691,6 +691,74 @@ function testCombatDisciplineEventRoom() {
     );
 }
 
+function testCombatFlowEventRoom() {
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerAttackHitStaminaGain,
+        0,
+        'default run effects should keep attack-hit stamina refunds disabled'
+    );
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerPostDodgeSpecialDamageMultiplier,
+        1,
+        'default run effects should keep post-dodge special damage neutral'
+    );
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerPostDodgeSpecialWindowMs,
+        0,
+        'default run effects should keep post-dodge special windows disabled'
+    );
+
+    const flowChoices = getRunEventRoomChoices('combatFlowShrine');
+    assert.deepEqual(
+        flowChoices.map(choice => choice.key),
+        ['breathingLesson', 'momentumLesson'],
+        'combat flow shrine should expose both hit-confirm and dodge-conversion routes'
+    );
+
+    const breathingSettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 84,
+        playerMaxHp: 120
+    }, {
+        key: 'combatFlowShrine',
+        discovered: true,
+        resolved: false
+    }, 'breathingLesson');
+    assert.equal(breathingSettlement.ok, true, 'combat flow shrine stamina route should resolve');
+    const breathingEffects = buildRunEventRoomEffects(breathingSettlement.eventRoom);
+    assert.equal(breathingEffects.playerAttackHitStaminaGain, 4, 'breathing lesson should refund stamina on landed normal attacks');
+    assert.match(breathingSettlement.eventRoom.resolutionText, /普攻命中回体 \+4/, 'stamina route summary should mention hit-confirm stamina flow');
+
+    const momentumSettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 84,
+        playerMaxHp: 120
+    }, {
+        key: 'combatFlowShrine',
+        discovered: true,
+        resolved: false
+    }, 'momentumLesson');
+    assert.equal(momentumSettlement.ok, true, 'combat flow shrine dodge-conversion route should resolve');
+    const momentumEffects = buildRunEventRoomEffects(momentumSettlement.eventRoom);
+    assert.equal(momentumEffects.playerPostDodgeSpecialDamageMultiplier, 1.35, 'momentum lesson should empower the next special after a dodge');
+    assert.equal(momentumEffects.playerPostDodgeSpecialWindowMs, 1600, 'momentum lesson should define a short post-dodge special window');
+    assert.match(momentumSettlement.eventRoom.resolutionText, /闪避后 1\.6s 内特攻伤害 \+35%/, 'momentum route summary should mention the short empowered special window');
+
+    const unresolvedSummary = buildRunEventRoomHudSummary({
+        key: 'combatFlowShrine',
+        discovered: true,
+        resolved: false
+    });
+    assert.deepEqual(
+        unresolvedSummary.routeLines,
+        [
+            '回息修习: 普攻命中回体+4',
+            '借势修习: 闪避后1.6s内特攻伤害+35%'
+        ],
+        'combat flow shrine HUD summary should surface both route identities compactly'
+    );
+}
+
 function testRunEventRoomChoiceHelpers() {
     assert.equal(typeof buildRunEventRoomChoicePreview, 'function', 'event room choice preview helper should be exported');
     assert.equal(typeof getRunEventRoomChoiceFailureMessage, 'function', 'event room choice failure helper should be exported');
@@ -3478,6 +3546,20 @@ function testCombatActionHudSummary() {
         '普攻 U: 就绪  特攻 O: 0.3s后差10体  闪避 Space: 差15体',
         'combat action HUD helper should keep a no-ETA fallback when cooldown ends before enough stamina is available and regen timing is unknown'
     );
+    assert.equal(
+        buildCombatActionHudSummary({
+            attackCooldownMs: 0,
+            specialCooldownMs: 0,
+            dodgeCooldownMs: 0,
+            stamina: 60,
+            attackStaminaCost: 10,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 25,
+            specialStatusLabel: '借势'
+        }),
+        '普攻 U: 就绪  特攻 O: 借势 就绪  闪避 Space: 就绪',
+        'combat action HUD helper should surface a short special-status label when a temporary combat buff is active'
+    );
 }
 
 function testCombatActionReadiness() {
@@ -3725,6 +3807,45 @@ function testCombatDisciplineRunEffectHooks() {
         source,
         /dodgeStaminaCost:\s*Math\.max\(1,\s*Math\.round\(GAME_CONFIG\.PLAYER\.dodgeStaminaCost \* \(runEffects\.playerDodgeStaminaCostMultiplier \|\| 1\)\)\)/,
         'combat action HUD state should preview the scaled dodge stamina cost'
+    );
+}
+
+function testCombatFlowRunEffectHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /function combineRunEffects\(\.\.\.effectGroups\)\s*{[\s\S]*?const additiveRunEffectKeys = new Set\(\['playerAttackHitStaminaGain', 'playerPostDodgeSpecialWindowMs'\]\);[\s\S]*?if \(additiveRunEffectKeys\.has\(effectKey\)\) \{[\s\S]*?combined\[effectKey\] \+= value;[\s\S]*?\}[\s\S]*?combined\[effectKey\] \*= value;/,
+        'run-effect composition should add fixed stamina refunds and window durations instead of multiplying them away'
+    );
+    assert.match(
+        source,
+        /grantAttackHitStamina\(isSpecial\)\s*{[\s\S]*?const staminaGain = Math\.max\(0,\s*Math\.round\(runEffects\.playerAttackHitStaminaGain \|\| 0\)\);[\s\S]*?if \(isSpecial \|\| staminaGain <= 0\) return 0;[\s\S]*?this\.stamina = Math\.min\(this\.maxStamina,\s*this\.stamina \+ staminaGain\);/,
+        'player runtime should expose a helper that refunds stamina only on landed normal attacks'
+    );
+    assert.match(
+        source,
+        /armPostDodgeSpecialWindow\(\)\s*{[\s\S]*?const windowMs = Math\.max\(0,\s*Math\.round\(runEffects\.playerPostDodgeSpecialWindowMs \|\| 0\)\);[\s\S]*?this\.postDodgeSpecialEmpowerUntil = this\.scene\.time\.now \+ windowMs;/,
+        'player runtime should arm a timed post-dodge special window from run effects'
+    );
+    assert.match(
+        source,
+        /const specialDamageMultiplier = this\.consumePostDodgeSpecialMultiplier\(this\.scene\.time\.now\);[\s\S]*?const damage = Math\.round\(weapon\.damage \* 2 \* this\.getDamageMultiplier\(\) \* specialDamageMultiplier\);/,
+        'special attacks should consume the post-dodge empower multiplier when computing burst damage'
+    );
+    assert.match(
+        source,
+        /const staminaRefund = this\.player\.grantAttackHitStamina\(hb\.isSpecial\);[\s\S]*?if \(staminaRefund > 0\) \{[\s\S]*?showFloatingCombatText\([\s\S]*?'回体\+'\s*\+\s*staminaRefund/,
+        'enemy-hit processing should apply the stamina refund feedback when normal attacks land'
+    );
+    assert.match(
+        source,
+        /const staminaRefund = this\.player\.grantAttackHitStamina\(hb\.isSpecial\);[\s\S]*?if \(staminaRefund > 0\) \{[\s\S]*?showFloatingCombatText\([\s\S]*?'回体\+'\s*\+\s*staminaRefund/,
+        'boss-hit processing should reuse the same stamina refund hook and feedback'
+    );
+    assert.match(
+        source,
+        /specialStatusLabel:\s*typeof player\.getCombatSpecialStatusLabel === 'function'\s*\?\s*player\.getCombatSpecialStatusLabel\(this\.time\.now\)\s*:\s*''/,
+        'combat HUD state should surface the temporary post-dodge special label'
     );
 }
 
@@ -10809,6 +10930,7 @@ function main() {
     runTest('run modifier selection/effects', testRunModifierSelectionAndEffects);
     runTest('run event room selection', testRunEventRoomSelection);
     runTest('combat discipline event room', testCombatDisciplineEventRoom);
+    runTest('combat flow event room', testCombatFlowEventRoom);
     runTest('run event room choice helpers', testRunEventRoomChoiceHelpers);
     runTest('run event room choice panel preview', testRunEventRoomChoicePanelPreview);
     runTest('run event room choice affordability label', testRunEventRoomChoiceAffordabilityLabel);
@@ -10867,6 +10989,7 @@ function main() {
     runTest('quick-slot item label helper', testQuickSlotItemLabel);
     runTest('keyboard HUD QoL hooks', testKeyboardHudQolHooks);
     runTest('combat discipline run-effect hooks', testCombatDisciplineRunEffectHooks);
+    runTest('combat flow run-effect hooks', testCombatFlowRunEffectHooks);
     runTest('boss action HUD bottom-layout guard', testBossActionHudBottomLayoutGuard);
     runTest('README keyboard inventory loop', testReadmeKeyboardInventoryLoop);
     runTest('help overlay quick-slot loop', testHelpOverlayQuickSlotLoop);

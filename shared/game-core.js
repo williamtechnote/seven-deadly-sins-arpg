@@ -134,8 +134,16 @@
         playerSpecialCooldownMultiplier: 1,
         playerAttackCooldownMultiplier: 1,
         playerDodgeCooldownMultiplier: 1,
-        playerDodgeStaminaCostMultiplier: 1
+        playerDodgeStaminaCostMultiplier: 1,
+        playerAttackHitStaminaGain: 0,
+        playerPostDodgeSpecialDamageMultiplier: 1,
+        playerPostDodgeSpecialWindowMs: 0
     };
+
+    const ADDITIVE_RUN_EFFECT_KEYS = new Set([
+        'playerAttackHitStaminaGain',
+        'playerPostDodgeSpecialWindowMs'
+    ]);
 
     const CRAFTING_RECIPES = {
         cleanseTonic: {
@@ -346,6 +354,41 @@
                     }
                 }
             ]
+        },
+        {
+            key: 'combatFlowShrine',
+            name: '战势圣坛',
+            description: '选择把命中转成续航，或把闪避转成短时爆发',
+            type: 'blessing',
+            choices: [
+                {
+                    key: 'breathingLesson',
+                    label: '回息修习',
+                    description: '本局普攻命中回体 +4',
+                    effect: {
+                        type: 'runEffectBuff',
+                        routeSummary: '普攻命中回体+4',
+                        resolutionText: '普攻命中回体 +4',
+                        runEffects: {
+                            playerAttackHitStaminaGain: 4
+                        }
+                    }
+                },
+                {
+                    key: 'momentumLesson',
+                    label: '借势修习',
+                    description: '本局闪避后 1.6s 内特攻伤害 +35%',
+                    effect: {
+                        type: 'runEffectBuff',
+                        routeSummary: '闪避后1.6s内特攻伤害+35%',
+                        resolutionText: '闪避后 1.6s 内特攻伤害 +35%',
+                        runEffects: {
+                            playerPostDodgeSpecialDamageMultiplier: 1.35,
+                            playerPostDodgeSpecialWindowMs: 1600
+                        }
+                    }
+                }
+            ]
         }
     ];
 
@@ -506,6 +549,9 @@
 
     function buildCombatActionHudSegments(input) {
         const safe = input && typeof input === 'object' ? input : {};
+        const specialStatusPrefix = typeof safe.specialStatusLabel === 'string' && safe.specialStatusLabel.trim()
+            ? `${safe.specialStatusLabel.trim()} `
+            : '';
         if (safe.isDodging) {
             const remainingDodgeLockoutMs = Math.max(0, Number(safe.dodgeLockoutMs) || 0);
             const attackPreviewState = resolveCombatActionReadyState(
@@ -528,7 +574,7 @@
             );
             return [
                 { key: 'attack', text: `普攻 U: 翻滚中 -> ${attackPreviewState.label}`, isReady: false },
-                { key: 'special', text: `特攻 O: 翻滚中 -> ${specialPreviewState.label}`, isReady: false },
+                { key: 'special', text: `特攻 O: 翻滚中 -> ${specialStatusPrefix}${specialPreviewState.label}`, isReady: false },
                 { key: 'dodge', text: `闪避 Space: 翻滚中 -> ${dodgePreviewState.label}`, isReady: false }
             ];
         }
@@ -553,7 +599,7 @@
         );
         return [
             { key: 'attack', text: `普攻 U: ${attackState.label}`, isReady: attackState.isReady },
-            { key: 'special', text: `特攻 O: ${specialState.label}`, isReady: specialState.isReady },
+            { key: 'special', text: `特攻 O: ${specialStatusPrefix}${specialState.label}`, isReady: specialState.isReady },
             { key: 'dodge', text: `闪避 Space: ${dodgeState.label}`, isReady: dodgeState.isReady }
         ];
     }
@@ -1884,7 +1930,9 @@
             resolutionText = `支付 ${Math.abs(goldGain)} 金币，获得 ${itemSummary}`;
         } else if (effect.type === 'runEffectBuff') {
             const runEffects = effect.runEffects && typeof effect.runEffects === 'object' ? effect.runEffects : {};
-            resolutionText = describeRunEffectSummary(runEffects);
+            resolutionText = typeof effect.resolutionText === 'string' && effect.resolutionText.trim()
+                ? effect.resolutionText.trim()
+                : describeRunEffectSummary(runEffects);
         }
 
         return {
@@ -1919,6 +1967,10 @@
         Object.entries(runEffects).forEach(([effectKey, value]) => {
             const n = Number(value);
             if (!Number.isFinite(n) || n <= 0 || effects[effectKey] == null) return;
+            if (ADDITIVE_RUN_EFFECT_KEYS.has(effectKey)) {
+                effects[effectKey] += n;
+                return;
+            }
             effects[effectKey] *= n;
         });
         return effects;
@@ -1969,6 +2021,9 @@
         }
 
         if (effect.type === 'runEffectBuff') {
+            if (typeof effect.routeSummary === 'string' && effect.routeSummary.trim()) {
+                return effect.routeSummary.trim();
+            }
             const runEffects = effect.runEffects && typeof effect.runEffects === 'object' ? effect.runEffects : {};
             const defs = [
                 ['playerDamageMultiplier', '伤害'],
@@ -2276,6 +2331,10 @@
                 const n = Number(value);
                 if (!Number.isFinite(n) || n <= 0) return;
                 if (effects[effectKey] == null) effects[effectKey] = 1;
+                if (ADDITIVE_RUN_EFFECT_KEYS.has(effectKey)) {
+                    effects[effectKey] += n;
+                    return;
+                }
                 effects[effectKey] *= n;
             });
         });
