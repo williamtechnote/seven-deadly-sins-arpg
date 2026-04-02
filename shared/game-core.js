@@ -1955,11 +1955,68 @@
         return typeof safeChoice.description === 'string' ? safeChoice.description : '';
     }
 
+    function getRunEventRoomChoiceIntentTags(choice) {
+        const safeChoice = choice && typeof choice === 'object' ? choice : {};
+        const effect = safeChoice.effect && typeof safeChoice.effect === 'object' ? safeChoice.effect : {};
+
+        if (effect.type === 'hpForGold') {
+            const hpCostRatio = Math.max(0, Number(effect.hpCostRatio) || 0);
+            return ['经济', hpCostRatio >= 0.2 ? '冒险' : '稳健'];
+        }
+
+        if (effect.type === 'restoreHpAndCleanse') {
+            return ['续航', '净化'];
+        }
+
+        if (effect.type === 'restoreHp') {
+            return ['续航', '稳健'];
+        }
+
+        if (effect.type === 'goldForItems') {
+            const items = normalizeEffectItemChanges(effect);
+            if (items.some(({ itemKey }) => itemKey === 'cleanseTonic')) {
+                return ['补给', '净化'];
+            }
+            if (items.some(({ itemKey }) => itemKey === 'berserkerOil')) {
+                return ['补给', '爆发'];
+            }
+            return ['补给'];
+        }
+
+        if (effect.type === 'runEffectBuff') {
+            const runEffects = effect.runEffects && typeof effect.runEffects === 'object' ? effect.runEffects : {};
+            const playerDamageMultiplier = Number(runEffects.playerDamageMultiplier) || 1;
+            const playerDamageTakenMultiplier = Number(runEffects.playerDamageTakenMultiplier) || 1;
+            const playerSpecialCooldownMultiplier = Number(runEffects.playerSpecialCooldownMultiplier) || 1;
+            const playerStaminaRegenMultiplier = Number(runEffects.playerStaminaRegenMultiplier) || 1;
+
+            if (playerDamageMultiplier > 1) {
+                return ['爆发', playerDamageTakenMultiplier > 1.1 ? '冒险' : '稳健'];
+            }
+            if (playerSpecialCooldownMultiplier > 0 && playerSpecialCooldownMultiplier < 1) {
+                return ['节奏', '爆发'];
+            }
+            if (playerStaminaRegenMultiplier > 1) {
+                return ['节奏', '续航'];
+            }
+        }
+
+        return [];
+    }
+
+    function formatRunEventRoomChoiceIntentTags(choice) {
+        const tags = getRunEventRoomChoiceIntentTags(choice)
+            .filter(tag => typeof tag === 'string' && tag.trim())
+            .slice(0, 2);
+        return tags.length > 0 ? ` [${tags.join('/')}]` : '';
+    }
+
     function buildRunEventRoomChoicePreview(choice) {
         const safeChoice = choice && typeof choice === 'object' ? choice : {};
         const label = typeof safeChoice.label === 'string' ? safeChoice.label.trim() : '';
         const route = describeRunEventChoiceRoute(safeChoice).trim();
-        if (label && route) return `${label}: ${route}`;
+        const intentTags = formatRunEventRoomChoiceIntentTags(safeChoice);
+        if (label && route) return `${label}${intentTags}: ${route}`;
         return label || route || '';
     }
 
@@ -2114,7 +2171,7 @@
                     ? [`${resolvedPrefix}: ${resolvedChoiceLabel}`.trim()]
                     : []
             )
-            : visibleChoices.map((choice) => `${choice.label}: ${describeRunEventChoiceRoute(choice)}`.trim());
+            : visibleChoices.map(choice => buildRunEventRoomChoicePreview(choice));
         const routeSummary = routeLines.join('\n');
         const resolutionText = normalizedRoom.resolved
             ? (

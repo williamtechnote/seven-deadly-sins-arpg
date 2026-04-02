@@ -724,8 +724,7 @@ function collectCadenceArtifactEntries(cadenceArtifacts) {
 
 function buildCadenceSummaryEvidenceLinks(cadenceArtifacts) {
   return collectCadenceArtifactEntries(cadenceArtifacts)
-    .map(({ label, path }) => formatMarkdownLink(label, path))
-    .filter(Boolean)
+    .map(({ label, path }) => formatMarkdownLink(label, path) || `${label}: missing`)
     .join(' ');
 }
 

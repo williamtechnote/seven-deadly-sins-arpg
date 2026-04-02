@@ -1,9 +1,19 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 机制复盘可读性：若 `Phase 3 汇总` 已会单列 `missing artifacts: telegraph` 这类缺件提示，但 `evidence` 短句仍只保留现存链接，一眼还看不出 `[telegraph]` 是真的缺失还是被折叠省掉，再把缺失项也补成 `telegraph: missing` 这类占位，减少坏包排查时在 summary 与 evidence 之间来回对照
+- [ ] 事件房策略读图：既然未结算路线现在会直接暴露 `[续航/净化]`、`[经济/冒险]`、`[补给/爆发]` 这类战术意图标签，下一步就该把玩家当前状态也折进路线预览，例如满血时弱化纯治疗优先级、没有负面状态时降低净化权重、金币不足时把交易路线的阻塞感做得更明确，避免静态标签在不同局面里误导决策
+
+## Blocked
+- [ ] 仓库交付闭环：heartbeat 现阶段的首要 blocker 已从单纯的 GitHub non-fast-forward 收敛为“源仓库自带未提交修改 + 未跟踪 plan 文件，会在整合 `origin/main` 时阻塞 merge”；下一步需先定义这些本地改动/草稿文件的去留或归档策略，再恢复主线同步
 
 ## Completed
+- [x] 事件房策略读图：为未结算路线补上 `[续航/净化]` / `[经济/冒险]` / `[补给/爆发]` 这类战术意图标签，并让抉择面板与右侧 HUD 摘要共用同一套短句，先帮玩家判断这条路线偏续航、偏经济还是偏爆发，再看具体数值（完成：2026-04-02 18:20 +08）
+- [x] 仓库交付闭环：尝试在 temp clone 中显式整合 `origin/main` 以清掉 GitHub main 分叉 blocker；执行后确认真正卡点不是 merge 冲突本身，而是源仓库自带的未提交修改（`scripts/regression-checks.mjs`）与未跟踪 plan 文件 / 草稿目录会先阻止 merge 开始，因此需要先处理本地工作树卫生，再谈主线同步（完成：2026-04-02 12:08 +08）
+- [x] Boss 机制复盘可读性：已确认 `Phase 3 汇总` 同时受两条 guard 约束——无 drift 首屏必须保持 `artifact count -> evidence` 顺序，缺件场景的 `missing artifacts` 现有文本也被回归断言固定；下一步改为只在 docs / plans 中沉淀这组 contract，并转向 phase-3 cadence artifact 之外的可读性改进，避免继续在同一 summary 入口做无效试探（完成：2026-04-02 09:05 +08，策略收敛：冻结该 summary hotspot，避免 heartbeat 继续重复低 ROI 试探）
+- [x] Boss 机制复盘可读性：已确认 `Phase 3 汇总` 的首屏 contract 不能在 `artifact count` 与 `evidence` 之间插入新短句；若仍要缩短坏包排查路径，下一步改为把逐槽位 `link/missing` 状态压进现有 `missing artifacts` 文案或 evidence token 本身，而不新增 summary 行，避免再次打破首屏断言（完成：2026-04-02 07:21 +08，追加结论：缺件场景的 `missing artifacts: telegraph` 现有文本也被回归断言固定）
+- [x] Boss 机制复盘可读性：若 `Phase 3 汇总` 的 `evidence` 短句已经会用 `telegraph: missing` 这类占位保留缺件位置，但坏包场景里仍要人工逐个读完整 markdown 才能看出哪几个槽位是 live link、哪几个只是 missing placeholder，再补一段 `evidence state` 短句，把 `review=link / telegraph=missing` 这类逐槽位状态直接钉进 summary，同时保持首屏 evidence 快捷入口断言稳定（完成：2026-04-02 06:20 +08，尝试后回退：现有回归断言要求 `artifact count` 后立刻进入 `evidence`，新增 summary 行不可行）
+- [x] Boss 机制复盘可读性：若 `Phase 3 汇总` 的 `evidence` 短句已经会补 `telegraph: missing` 这类缺件占位，但首屏仍要人工对照 `artifact count` 与 `missing artifacts` 才能确认 evidence 短句里是否恰好保留了 4 个槽位，再补一段 `evidence slots` 短句，把 `4 slots / 1 missing` 这类槽位状态直接钉进 summary，减少坏包排查时的往返比对（完成：2026-04-02 05:18 +08，尝试后回退：当前回归断言要求 `artifact count -> evidence` 首屏顺序稳定，改将该方向收敛为更细的逐槽位状态 follow-up）
+- [x] Boss 机制复盘可读性：若 `Phase 3 汇总` 已会单列 `missing artifacts: telegraph` 这类缺件提示，但 `evidence` 短句仍只保留现存链接，一眼还看不出 `[telegraph]` 是真的缺失还是被折叠省掉，再把缺失项也补成 `telegraph: missing` 这类占位，减少坏包排查时在 summary 与 evidence 之间来回对照（完成：2026-04-02 04:05 +08）
 - [x] Boss 机制复盘可读性：若 `Phase 3 汇总` 已直接显示 `artifact count: 4 artifacts ready`，但一旦附件缺失仍要逐个比对 `[review] [checkpoints] [recovery] [telegraph]` 才知道少了哪份，再补一段 `missing artifacts` 短句，把缺失附件名直接钉进 summary，减少坏包排查往返（完成：2026-04-02 03:00 +08）
 - [x] Boss 机制复盘可读性：若 `Phase 3 汇总` 已把 `[review] [checkpoints] [recovery] [telegraph]` 固定在独立 `evidence` 短句里，但首屏仍看不出本轮 cadence review 是否真的把四份附件都产齐，再补一段 `artifact count` 短句，把 `4 artifacts ready` 直接钉进 summary，减少录屏排查前先逐个点开附件确认的往返（完成：2026-04-02 01:53 +08）
 - [x] Boss 机制复盘可读性：若 `Phase 3 汇总` 已把 `[review] [recovery] [telegraph]` 固定在独立 `evidence` 短句里，但无 drift 场景首屏仍缺 `phase3-checkpoints.txt` 直达入口，再把 `[checkpoints]` 也补进 `evidence` 短句，让完整附件集合都能首屏直达（完成：2026-04-02 10:27 +08）

@@ -629,15 +629,22 @@ function testRunEventRoomChoiceHelpers() {
     const healingChoice = getRunEventRoomChoices('healingFountain').find(choice => choice.key === 'purifyingSip');
     assert.equal(
         buildRunEventRoomChoicePreview(healingChoice),
-        '净泉啜饮: 生命+30%, 净化',
-        'choice preview helper should reuse the compact healing route copy'
+        '净泉啜饮 [续航/净化]: 生命+30%, 净化',
+        'choice preview helper should surface tactical intent tags for cleanse-healing routes'
     );
 
     const tradeChoice = getRunEventRoomChoices('supplyCache').find(choice => choice.key === 'fieldTonic');
     assert.equal(
         buildRunEventRoomChoicePreview(tradeChoice),
-        '战地净化包: 金币-45, 净化药剂x1',
-        'choice preview helper should reuse the compact trade route copy'
+        '战地净化包 [补给/净化]: 金币-45, 净化药剂x1',
+        'choice preview helper should surface tactical intent tags for support consumable routes'
+    );
+
+    const riskChoice = getRunEventRoomChoices('bloodContract').find(choice => choice.key === 'crimsonEdge');
+    assert.equal(
+        buildRunEventRoomChoicePreview(riskChoice),
+        '猩红锋契 [爆发/冒险]: 伤害+35%, 承伤+18%',
+        'choice preview helper should surface tactical intent tags for high-risk burst routes'
     );
 
     assert.equal(
@@ -666,8 +673,8 @@ function testRunEventRoomChoicePanelPreview() {
             playerHp: 84,
             playerMaxHp: 120
         }),
-        '净泉啜饮: 生命+30%, 净化 · 预估生命+36',
-        'panel preview should append projected healing when the route restores HP'
+        '净泉啜饮 [续航/净化]: 生命+30%, 净化 · 预估生命+36',
+        'panel preview should keep tactical intent tags while appending projected healing'
     );
 
     const gambleChoice = getRunEventRoomChoices('gamblersShrine').find(choice => choice.key === 'highStakeWager');
@@ -676,8 +683,8 @@ function testRunEventRoomChoicePanelPreview() {
             playerHp: 100,
             playerMaxHp: 120
         }),
-        '豪赌: 生命-30%, 金币+120 · 预估生命-30',
-        'panel preview should append projected HP loss when the route trades HP for gold'
+        '豪赌 [经济/冒险]: 生命-30%, 金币+120 · 预估生命-30',
+        'panel preview should surface tactical intent tags for risky economy routes while appending projected HP loss'
     );
 }
 
@@ -736,10 +743,10 @@ function testRunEventRoomHudSummary() {
     assert.deepEqual(
         unresolvedSummary.routeLines,
         [
-            '战地净化包: 金币-45, 净化药剂x1',
-            '狂战补给: 金币-60, 狂战油x1'
+            '战地净化包 [补给/净化]: 金币-45, 净化药剂x1',
+            '狂战补给 [补给/爆发]: 金币-60, 狂战油x1'
         ],
-        'HUD summary should split unresolved routes into one compact line per choice'
+        'HUD summary should split unresolved routes into one compact line per choice and expose tactical intent tags'
     );
 
     const resolvedSummary = buildRunEventRoomHudSummary({
@@ -995,10 +1002,10 @@ function testRunEventRoomHudLines() {
         [
             '事件房: 战备商柜',
             '交易 · 已发现',
-            '战地净化包: 金币-45, 净化药剂x1',
-            '狂战补给: 金币-60, 狂战油x1'
+            '战地净化包 [补给/净化]: 金币-45, 净化药剂x1',
+            '狂战补给 [补给/爆发]: 金币-60, 狂战油x1'
         ],
-        'unresolved event rooms should keep one line per available route'
+        'unresolved event rooms should keep one line per available route and surface tactical intent tags'
     );
 
     const resolvedLines = buildRunEventRoomHudLines({
