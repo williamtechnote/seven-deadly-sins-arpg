@@ -2419,6 +2419,26 @@
             notes.push(negativeStatuses.length > 0 ? `可净化${negativeStatuses.length}层` : '无负面可净化');
         }
 
+        if (effect.type === 'runEffectBuff') {
+            const runEffects = effect.runEffects && typeof effect.runEffects === 'object' ? effect.runEffects : {};
+            const lowHpThresholdRatio = Number(runEffects.playerLowHpThresholdRatio);
+            const highHpThresholdRatio = Number(runEffects.playerHighHpThresholdRatio);
+            if (Number.isFinite(lowHpThresholdRatio) && lowHpThresholdRatio > 0) {
+                if (currentHpRatio <= lowHpThresholdRatio) {
+                    notes.push('已处绝境线');
+                } else if (currentHpRatio <= (lowHpThresholdRatio + 0.1)) {
+                    notes.push('已临近绝境');
+                }
+            }
+            if (Number.isFinite(highHpThresholdRatio) && highHpThresholdRatio > 0) {
+                if (currentHpRatio >= highHpThresholdRatio) {
+                    notes.push('高血稳定');
+                } else if (currentHpRatio >= (highHpThresholdRatio - 0.1)) {
+                    notes.push('接近守心线');
+                }
+            }
+        }
+
         if (notes.length === 0) return basePreview;
         return `${basePreview} · ${notes.join(' · ')}`;
     }
