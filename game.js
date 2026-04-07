@@ -1616,6 +1616,10 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         }
         const damageVsSlowedTag = formatRunEffectIncreaseTag(runEffects.playerDamageVsSlowedMultiplier);
         if (damageVsSlowedTag) {
+            const finisherReadyUntil = Number(this.controlFinisherReadyUntil) || 0;
+            if ((Number(now) || 0) < finisherReadyUntil) {
+                return '破势终结';
+            }
             return `破势${damageVsSlowedTag}`;
         }
         const rangedSpecialCooldownTag = formatRunEffectReductionTag(runEffects.playerRangedSpecialCooldownMultiplier);
@@ -3786,6 +3790,7 @@ class Boss {
         this._statusSpeedMultiplier = 1;
         this.phaseAlertUntil = 0;
         this.breakHighlightUntil = 0;
+        this.controlFinisherReadyUntil = 0;
         this.staggerUntil = 0;
         this.activeTelegraph = null;
         this.statusAura = scene.add.graphics();
@@ -3861,7 +3866,8 @@ class Boss {
         return buildBossStatusHighlightSummary({
             hpRatio: this.maxHp > 0 ? (this.hp / this.maxHp) : 0,
             breakMs: Math.max(0, (this.breakHighlightUntil || 0) - now),
-            activeStatuses: Object.keys(this.activeStatusEffects || {})
+            activeStatuses: Object.keys(this.activeStatusEffects || {}),
+            finisherArmed: Math.max(0, (this.controlFinisherReadyUntil || 0) - now) > 0
         });
     }
 
@@ -5230,7 +5236,13 @@ class BossScene extends Phaser.Scene {
                             hb._slowBonusApplied = true;
                         }
                     }
-                    if (bossHadSlow && hb._slowBonusApplied) {
+                    const finisherArmed = bossHadSlow && hb._slowBonusApplied && (this.boss.breakHighlightUntil || 0) > this.time.now;
+                    if (finisherArmed) {
+                        hb.damage = Math.max(1, Math.round(hb.damage * 1.2));
+                        this.boss.controlFinisherReadyUntil = Math.max(this.boss.controlFinisherReadyUntil || 0, this.time.now + 650);
+                        showHitImpactPulse(this, this.boss.sprite.x, this.boss.sprite.y, 0x9FE3FF, 22);
+                        showFloatingCombatText(this, this.boss.sprite.x, this.boss.sprite.y - 104, '破势终结', '#9fe3ff', 700);
+                    } else if (bossHadSlow && hb._slowBonusApplied) {
                         showHitImpactPulse(this, this.boss.sprite.x, this.boss.sprite.y, 0x9FE3FF, 18);
                         showFloatingCombatText(this, this.boss.sprite.x, this.boss.sprite.y - 92, '破势', '#9fe3ff', 600);
                     }
