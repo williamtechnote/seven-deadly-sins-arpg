@@ -1210,6 +1210,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.comboSpecialReadyCueUntil = 0;
         this.comboDodgeReadyCueUntil = 0;
         this.prayerSpecialReadyCueUntil = 0;
+        this.controlPayoffCueUntil = 0;
         this.prayerDodgeReadyCueUntil = 0;
         this.disciplineDodgeReadyCueUntil = 0;
         this.attackSequenceId = 0;
@@ -1619,6 +1620,10 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             const finisherReadyUntil = Number(this.controlFinisherReadyUntil) || 0;
             if ((Number(now) || 0) < finisherReadyUntil) {
                 return '破势终结';
+            }
+            const controlPayoffCueUntil = Number(this.controlPayoffCueUntil) || 0;
+            if ((Number(now) || 0) < controlPayoffCueUntil) {
+                return '破势命中';
             }
             const weaponSupportsSlow = weaponStatus && weaponStatus.key === 'slow';
             return weaponSupportsSlow ? `破势${damageVsSlowedTag}` : '破势切减速';
@@ -3571,6 +3576,7 @@ class LevelScene extends Phaser.Scene {
                     const hitDamage = hb.damage;
                     const drops = enemy.takeDamage(hitDamage);
                     if (targetHasSlow && hb._slowBonusApplied) {
+                        this.controlPayoffCueUntil = Math.max(Number(this.controlPayoffCueUntil) || 0, this.time.now + 420);
                         showHitImpactPulse(this, enemy.x, enemy.y, 0x9FE3FF, 16);
                         showFloatingCombatText(this, enemy.x, enemy.y - 82, '破势', '#9fe3ff', 560);
                     }
