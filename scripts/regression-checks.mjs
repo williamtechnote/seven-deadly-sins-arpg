@@ -1241,6 +1241,28 @@ function testRunEventRoomChoicePanelPreview() {
         '战地净化包 [补给/净化]: 金币-45, 净化药剂x1 · 仅差25金',
         'panel preview should quantify near-miss affordability for supply routes before the hard blocker footer'
     );
+
+    const emberChoice = getRunEventRoomChoices('statusRoutingShrine').find(choice => choice.key === 'emberLesson');
+    assert.equal(
+        buildRunEventRoomChoicePanelPreview(emberChoice, {
+            playerHp: 100,
+            playerMaxHp: 120,
+            selectedWeaponKey: 'staff'
+        }),
+        '余烬修习: 灼烧持续时间+45%, 灼烧伤害+30% · 当前武器可触发',
+        'panel preview should surface when the current loadout already supports the burn route'
+    );
+
+    const executionChoice = getRunEventRoomChoices('controlRoutingShrine').find(choice => choice.key === 'executionLesson');
+    assert.equal(
+        buildRunEventRoomChoicePanelPreview(executionChoice, {
+            playerHp: 100,
+            playerMaxHp: 120,
+            selectedWeaponKey: 'staff'
+        }),
+        '破势修习: 对减速目标伤害+28%, Boss破招窗口终结 · 需切至减速武器',
+        'panel preview should warn when the current loadout cannot directly trigger the slow/control payoff route'
+    );
     assert.equal(
         buildRunEventRoomChoicePanelPreview(tradeChoice, {
             gold: 0,
