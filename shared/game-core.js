@@ -2389,6 +2389,7 @@
         const playerMaxHp = Math.max(1, clampInt(safeState.playerMaxHp, 1, Number.MAX_SAFE_INTEGER, 100));
         const currentHp = clampInt(safeState.playerHp, 1, playerMaxHp, playerMaxHp);
         const currentHpRatio = playerMaxHp > 0 ? (currentHp / playerMaxHp) : 1;
+        const currentGold = clampInt(safeState.gold, 0, Number.MAX_SAFE_INTEGER, 0);
         const negativeStatuses = Array.isArray(safeState.negativeStatuses) ? safeState.negativeStatuses : [];
 
         let hpDelta = 0;
@@ -2417,6 +2418,14 @@
         }
         if (effect.type === 'restoreHpAndCleanse') {
             notes.push(negativeStatuses.length > 0 ? `可净化${negativeStatuses.length}层` : '无负面可净化');
+        }
+
+        if (effect.type === 'goldForItems') {
+            const goldCost = clampInt(effect.goldCost, 0, Number.MAX_SAFE_INTEGER, 0);
+            const shortfall = Math.max(0, goldCost - currentGold);
+            if (shortfall > 0) {
+                notes.push(shortfall <= 25 ? `仅差${shortfall}金` : '金币紧张');
+            }
         }
 
         if (effect.type === 'runEffectBuff') {

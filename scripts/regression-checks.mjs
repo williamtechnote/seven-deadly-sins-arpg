@@ -1231,6 +1231,26 @@ function testRunEventRoomChoicePanelPreview() {
         'panel preview should surface tactical intent tags for risky economy routes while appending projected HP loss'
     );
 
+    const tradeChoice = getRunEventRoomChoices('supplyCache').find(choice => choice.key === 'fieldTonic');
+    assert.equal(
+        buildRunEventRoomChoicePanelPreview(tradeChoice, {
+            gold: 20,
+            playerHp: 100,
+            playerMaxHp: 120
+        }),
+        '战地净化包 [补给/净化]: 金币-45, 净化药剂x1 · 仅差25金',
+        'panel preview should quantify near-miss affordability for supply routes before the hard blocker footer'
+    );
+    assert.equal(
+        buildRunEventRoomChoicePanelPreview(tradeChoice, {
+            gold: 0,
+            playerHp: 100,
+            playerMaxHp: 120
+        }),
+        '战地净化包 [补给/净化]: 金币-45, 净化药剂x1 · 金币紧张',
+        'panel preview should de-emphasize supply routes when the player is far from affording them'
+    );
+
     const desperationChoice = getRunEventRoomChoices('riskRewardShrine').find(choice => choice.key === 'desperationLesson');
     assert.equal(
         buildRunEventRoomChoicePanelPreview(desperationChoice, {
