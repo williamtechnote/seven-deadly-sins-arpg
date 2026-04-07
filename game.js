@@ -1648,7 +1648,12 @@ class Player extends Phaser.Physics.Arcade.Sprite {
                 return '破势命中';
             }
             const weaponSupportsSlow = weaponStatus && weaponStatus.key === 'slow';
-            return weaponSupportsSlow ? `破势${damageVsSlowedTag}` : '破势切减速';
+            if (!weaponSupportsSlow) {
+                return '破势切减速';
+            }
+            return statusSummaryText && /减速/.test(statusSummaryText)
+                ? `破势${damageVsSlowedTag}`
+                : '破势待命中';
         }
         const rangedSpecialCooldownTag = formatRunEffectReductionTag(runEffects.playerRangedSpecialCooldownMultiplier);
         if (rangedSpecialCooldownTag) {
