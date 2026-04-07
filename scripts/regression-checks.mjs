@@ -1272,6 +1272,16 @@ function testRunEventRoomChoicePanelPreview() {
         '战地净化包 [补给/净化]: 金币-45, 净化药剂x1 · 金币紧张',
         'panel preview should de-emphasize supply routes when the player is far from affording them'
     );
+    assert.equal(
+        buildRunEventRoomChoicePanelPreview(tradeChoice, {
+            gold: 60,
+            playerHp: 100,
+            playerMaxHp: 120,
+            inventory: { cleanseTonic: 2 }
+        }),
+        '战地净化包 [补给/净化]: 金币-45, 净化药剂x1 · 背包已有2',
+        'panel preview should surface duplicate-supply context when the player already carries the granted item'
+    );
 
     const desperationChoice = getRunEventRoomChoices('riskRewardShrine').find(choice => choice.key === 'desperationLesson');
     assert.equal(
