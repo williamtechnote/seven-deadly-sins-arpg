@@ -98,6 +98,7 @@ const {
     buildCombatActionHudLayout,
     buildCombatActionHudSegments,
     buildCombatActionHudSummary,
+    getStaminaPayoffPulsePresentation,
     buildQuickSlotItemLabel,
     buildQuickSlotAutoAssignNotice,
     getViewportTextClampX,
@@ -620,6 +621,547 @@ function testRunEventRoomSelection() {
     const prayerEffects = buildRunEventRoomEffects(prayerSettlement.eventRoom);
     assert.equal(prayerEffects.playerSpecialCooldownMultiplier, 0.78, 'tempo prayer should shorten special cooldowns');
     assert.match(prayerSettlement.eventRoom.resolutionText, /冷却/, 'prayer shrine summary should mention the cooldown buff');
+}
+
+function testCombatDisciplineEventRoom() {
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerAttackCooldownMultiplier,
+        1,
+        'default run effects should keep normal-attack cadence neutral'
+    );
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerDodgeCooldownMultiplier,
+        1,
+        'default run effects should keep dodge cooldown neutral'
+    );
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerDodgeStaminaCostMultiplier,
+        1,
+        'default run effects should keep dodge stamina cost neutral'
+    );
+
+    const combatChoices = getRunEventRoomChoices('combatDisciplineShrine');
+    assert.deepEqual(
+        combatChoices.map(choice => choice.key),
+        ['flurryLesson', 'ghostStepLesson'],
+        'combat discipline shrine should expose both combat-style routes'
+    );
+
+    const flurrySettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 84,
+        playerMaxHp: 120
+    }, {
+        key: 'combatDisciplineShrine',
+        discovered: true,
+        resolved: false
+    }, 'flurryLesson');
+    assert.equal(flurrySettlement.ok, true, 'combat discipline shrine attack route should resolve');
+    const flurryEffects = buildRunEventRoomEffects(flurrySettlement.eventRoom);
+    assert.equal(flurryEffects.playerAttackCooldownMultiplier, 0.82, 'flurry lesson should accelerate normal attacks');
+    assert.match(flurrySettlement.eventRoom.resolutionText, /普攻冷却 -18%/, 'attack route summary should mention faster normal attacks');
+
+    const ghostStepSettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 84,
+        playerMaxHp: 120
+    }, {
+        key: 'combatDisciplineShrine',
+        discovered: true,
+        resolved: false
+    }, 'ghostStepLesson');
+    assert.equal(ghostStepSettlement.ok, true, 'combat discipline shrine dodge route should resolve');
+    const ghostStepEffects = buildRunEventRoomEffects(ghostStepSettlement.eventRoom);
+    assert.equal(ghostStepEffects.playerDodgeCooldownMultiplier, 0.8, 'ghost step lesson should shorten dodge cooldown');
+    assert.equal(ghostStepEffects.playerDodgeStaminaCostMultiplier, 0.82, 'ghost step lesson should reduce dodge stamina cost');
+    assert.match(ghostStepSettlement.eventRoom.resolutionText, /闪避冷却 -20%/, 'dodge route summary should mention faster dodge recovery');
+    assert.match(ghostStepSettlement.eventRoom.resolutionText, /闪避体力消耗 -18%/, 'dodge route summary should mention cheaper dodges');
+
+    const unresolvedSummary = buildRunEventRoomHudSummary({
+        key: 'combatDisciplineShrine',
+        discovered: true,
+        resolved: false
+    });
+    assert.deepEqual(
+        unresolvedSummary.routeLines,
+        [
+            '连斩修习: 普攻冷却-18%',
+            '游步修习: 闪避冷却-20%, 闪避体力消耗-18%'
+        ],
+        'combat discipline shrine HUD summary should surface both style routes compactly'
+    );
+}
+
+function testCombatFlowEventRoom() {
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerAttackHitStaminaGain,
+        0,
+        'default run effects should keep attack-hit stamina refunds disabled'
+    );
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerPostDodgeSpecialDamageMultiplier,
+        1,
+        'default run effects should keep post-dodge special damage neutral'
+    );
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerPostDodgeSpecialWindowMs,
+        0,
+        'default run effects should keep post-dodge special windows disabled'
+    );
+
+    const flowChoices = getRunEventRoomChoices('combatFlowShrine');
+    assert.deepEqual(
+        flowChoices.map(choice => choice.key),
+        ['breathingLesson', 'momentumLesson'],
+        'combat flow shrine should expose both hit-confirm and dodge-conversion routes'
+    );
+
+    const breathingSettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 84,
+        playerMaxHp: 120
+    }, {
+        key: 'combatFlowShrine',
+        discovered: true,
+        resolved: false
+    }, 'breathingLesson');
+    assert.equal(breathingSettlement.ok, true, 'combat flow shrine stamina route should resolve');
+    const breathingEffects = buildRunEventRoomEffects(breathingSettlement.eventRoom);
+    assert.equal(breathingEffects.playerAttackHitStaminaGain, 4, 'breathing lesson should refund stamina on landed normal attacks');
+    assert.match(breathingSettlement.eventRoom.resolutionText, /普攻命中回体 \+4/, 'stamina route summary should mention hit-confirm stamina flow');
+
+    const momentumSettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 84,
+        playerMaxHp: 120
+    }, {
+        key: 'combatFlowShrine',
+        discovered: true,
+        resolved: false
+    }, 'momentumLesson');
+    assert.equal(momentumSettlement.ok, true, 'combat flow shrine dodge-conversion route should resolve');
+    const momentumEffects = buildRunEventRoomEffects(momentumSettlement.eventRoom);
+    assert.equal(momentumEffects.playerPostDodgeSpecialDamageMultiplier, 1.35, 'momentum lesson should empower the next special after a dodge');
+    assert.equal(momentumEffects.playerPostDodgeSpecialWindowMs, 1600, 'momentum lesson should define a short post-dodge special window');
+    assert.match(momentumSettlement.eventRoom.resolutionText, /闪避后 1\.6s 内特攻伤害 \+35%/, 'momentum route summary should mention the short empowered special window');
+
+    const unresolvedSummary = buildRunEventRoomHudSummary({
+        key: 'combatFlowShrine',
+        discovered: true,
+        resolved: false
+    });
+    assert.deepEqual(
+        unresolvedSummary.routeLines,
+        [
+            '回息修习: 普攻命中回体+4',
+            '借势修习: 闪避后1.6s内特攻伤害+35%'
+        ],
+        'combat flow shrine HUD summary should surface both route identities compactly'
+    );
+}
+
+function testComboLinkEventRoom() {
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerAttackHitSpecialCooldownReductionMs,
+        0,
+        'default run effects should keep attack-hit special cooldown refunds disabled'
+    );
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerSpecialHitDodgeCooldownReductionMs,
+        0,
+        'default run effects should keep special-hit dodge cooldown refunds disabled'
+    );
+
+    const comboChoices = getRunEventRoomChoices('comboLinkShrine');
+    assert.deepEqual(
+        comboChoices.map(choice => choice.key),
+        ['sharpeningLesson', 'reversalStepLesson'],
+        'combo link shrine should expose both combo-routing choices'
+    );
+
+    const sharpeningSettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 84,
+        playerMaxHp: 120
+    }, {
+        key: 'comboLinkShrine',
+        discovered: true,
+        resolved: false
+    }, 'sharpeningLesson');
+    assert.equal(sharpeningSettlement.ok, true, 'combo link shrine attack-to-special route should resolve');
+    const sharpeningEffects = buildRunEventRoomEffects(sharpeningSettlement.eventRoom);
+    assert.equal(sharpeningEffects.playerAttackHitSpecialCooldownReductionMs, 200, 'sharpening lesson should refund special cooldown on landed normal attacks');
+    assert.match(sharpeningSettlement.eventRoom.resolutionText, /普攻命中特攻冷却 -200ms/, 'attack-to-special route summary should mention the fixed special cooldown refund');
+
+    const reversalSettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 84,
+        playerMaxHp: 120
+    }, {
+        key: 'comboLinkShrine',
+        discovered: true,
+        resolved: false
+    }, 'reversalStepLesson');
+    assert.equal(reversalSettlement.ok, true, 'combo link shrine special-to-dodge route should resolve');
+    const reversalEffects = buildRunEventRoomEffects(reversalSettlement.eventRoom);
+    assert.equal(reversalEffects.playerSpecialHitDodgeCooldownReductionMs, 300, 'reversal step lesson should refund dodge cooldown on landed specials');
+    assert.match(reversalSettlement.eventRoom.resolutionText, /特攻命中闪避冷却 -300ms/, 'special-to-dodge route summary should mention the fixed dodge cooldown refund');
+
+    const unresolvedSummary = buildRunEventRoomHudSummary({
+        key: 'comboLinkShrine',
+        discovered: true,
+        resolved: false
+    });
+    assert.deepEqual(
+        unresolvedSummary.routeLines,
+        [
+            '催锋修习: 普攻命中特攻冷却-200ms',
+            '回身修习: 特攻命中闪避冷却-300ms'
+        ],
+        'combo link shrine HUD summary should surface both combo-routing identities compactly'
+    );
+}
+
+function testCounterattackEventRoom() {
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerPostDodgeAttackDamageMultiplier,
+        1,
+        'default run effects should keep post-dodge attack damage neutral'
+    );
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerPostDodgeAttackWindowMs,
+        0,
+        'default run effects should keep post-dodge attack windows disabled'
+    );
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerSpecialHitStaminaGain,
+        0,
+        'default run effects should keep special-hit stamina refunds disabled'
+    );
+
+    const counterChoices = getRunEventRoomChoices('counterattackShrine');
+    assert.deepEqual(
+        counterChoices.map(choice => choice.key),
+        ['pursuitLesson', 'focusLesson'],
+        'counterattack shrine should expose both dodge-attack and special-sustain routes'
+    );
+
+    const pursuitSettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 84,
+        playerMaxHp: 120
+    }, {
+        key: 'counterattackShrine',
+        discovered: true,
+        resolved: false
+    }, 'pursuitLesson');
+    assert.equal(pursuitSettlement.ok, true, 'counterattack shrine dodge-attack route should resolve');
+    const pursuitEffects = buildRunEventRoomEffects(pursuitSettlement.eventRoom);
+    assert.equal(pursuitEffects.playerPostDodgeAttackDamageMultiplier, 1.28, 'pursuit lesson should empower the next normal attack after a dodge');
+    assert.equal(pursuitEffects.playerPostDodgeAttackWindowMs, 1400, 'pursuit lesson should define a short post-dodge normal-attack window');
+    assert.match(pursuitSettlement.eventRoom.resolutionText, /闪避后 1\.4s 内普攻伤害 \+28%/, 'dodge-attack route summary should mention the short empowered normal-attack window');
+
+    const focusSettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 84,
+        playerMaxHp: 120
+    }, {
+        key: 'counterattackShrine',
+        discovered: true,
+        resolved: false
+    }, 'focusLesson');
+    assert.equal(focusSettlement.ok, true, 'counterattack shrine special-sustain route should resolve');
+    const focusEffects = buildRunEventRoomEffects(focusSettlement.eventRoom);
+    assert.equal(focusEffects.playerSpecialHitStaminaGain, 6, 'focus lesson should refund stamina on landed specials');
+    assert.match(focusSettlement.eventRoom.resolutionText, /特攻命中回体 \+6/, 'special-sustain route summary should mention the fixed stamina refund');
+
+    const unresolvedSummary = buildRunEventRoomHudSummary({
+        key: 'counterattackShrine',
+        discovered: true,
+        resolved: false
+    });
+    assert.deepEqual(
+        unresolvedSummary.routeLines,
+        [
+            '追猎修习: 闪避后1.4s内普攻伤害+28%',
+            '调息修习: 特攻命中回体+6'
+        ],
+        'counterattack shrine HUD summary should surface both follow-up identities compactly'
+    );
+}
+
+function testWeaponRoutingEventRoom() {
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerMeleeAttackCooldownMultiplier,
+        1,
+        'default run effects should keep melee-weapon attack cadence neutral'
+    );
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerRangedSpecialCooldownMultiplier,
+        1,
+        'default run effects should keep ranged-weapon special cadence neutral'
+    );
+
+    const routingChoices = getRunEventRoomChoices('weaponRoutingShrine');
+    assert.deepEqual(
+        routingChoices.map(choice => choice.key),
+        ['vanguardLesson', 'longshotLesson'],
+        'weapon-routing shrine should expose both melee and ranged routing choices'
+    );
+
+    const vanguardSettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 84,
+        playerMaxHp: 120
+    }, {
+        key: 'weaponRoutingShrine',
+        discovered: true,
+        resolved: false
+    }, 'vanguardLesson');
+    assert.equal(vanguardSettlement.ok, true, 'weapon-routing shrine melee route should resolve');
+    const vanguardEffects = buildRunEventRoomEffects(vanguardSettlement.eventRoom);
+    assert.equal(vanguardEffects.playerMeleeAttackCooldownMultiplier, 0.82, 'vanguard lesson should only speed up melee normal attacks');
+    assert.match(vanguardSettlement.eventRoom.resolutionText, /近战武器普攻冷却 -18%/, 'melee routing summary should mention melee-only attack cadence');
+
+    const longshotSettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 84,
+        playerMaxHp: 120
+    }, {
+        key: 'weaponRoutingShrine',
+        discovered: true,
+        resolved: false
+    }, 'longshotLesson');
+    assert.equal(longshotSettlement.ok, true, 'weapon-routing shrine ranged route should resolve');
+    const longshotEffects = buildRunEventRoomEffects(longshotSettlement.eventRoom);
+    assert.equal(longshotEffects.playerRangedSpecialCooldownMultiplier, 0.78, 'longshot lesson should only speed up ranged specials');
+    assert.match(longshotSettlement.eventRoom.resolutionText, /远程武器特攻冷却 -22%/, 'ranged routing summary should mention ranged-only special cadence');
+
+    const unresolvedSummary = buildRunEventRoomHudSummary({
+        key: 'weaponRoutingShrine',
+        discovered: true,
+        resolved: false
+    });
+    assert.deepEqual(
+        unresolvedSummary.routeLines,
+        [
+            '压阵修习: 近战武器普攻冷却-18%',
+            '离弦修习: 远程武器特攻冷却-22%'
+        ],
+        'weapon-routing shrine HUD summary should surface both weapon-routing identities compactly'
+    );
+}
+
+function testRiskRewardEventRoom() {
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerLowHpDamageMultiplier,
+        1,
+        'default run effects should keep low-HP damage neutral'
+    );
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerLowHpThresholdRatio,
+        0,
+        'default run effects should keep low-HP threshold routing disabled'
+    );
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerHighHpDamageTakenMultiplier,
+        1,
+        'default run effects should keep high-HP mitigation neutral'
+    );
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerHighHpThresholdRatio,
+        0,
+        'default run effects should keep high-HP threshold routing disabled'
+    );
+
+    const riskRewardChoices = getRunEventRoomChoices('riskRewardShrine');
+    assert.deepEqual(
+        riskRewardChoices.map(choice => choice.key),
+        ['desperationLesson', 'composureLesson'],
+        'risk/reward shrine should expose both low-HP burst and high-HP guard routes'
+    );
+
+    const desperationSettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 84,
+        playerMaxHp: 120
+    }, {
+        key: 'riskRewardShrine',
+        discovered: true,
+        resolved: false
+    }, 'desperationLesson');
+    assert.equal(desperationSettlement.ok, true, 'risk/reward shrine low-HP route should resolve');
+    const desperationEffects = buildRunEventRoomEffects(desperationSettlement.eventRoom);
+    assert.equal(desperationEffects.playerLowHpDamageMultiplier, 1.4, 'desperation lesson should boost damage once HP falls into the danger threshold');
+    assert.equal(desperationEffects.playerLowHpThresholdRatio, 0.45, 'desperation lesson should persist the low-HP threshold ratio');
+    assert.match(desperationSettlement.eventRoom.resolutionText, /生命低于 45% 时伤害 \+40%/, 'low-HP route summary should mention the threshold-gated damage burst');
+
+    const composureSettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 84,
+        playerMaxHp: 120
+    }, {
+        key: 'riskRewardShrine',
+        discovered: true,
+        resolved: false
+    }, 'composureLesson');
+    assert.equal(composureSettlement.ok, true, 'risk/reward shrine high-HP route should resolve');
+    const composureEffects = buildRunEventRoomEffects(composureSettlement.eventRoom);
+    assert.equal(composureEffects.playerHighHpDamageTakenMultiplier, 0.82, 'composure lesson should reduce incoming damage while HP stays above the guard threshold');
+    assert.equal(composureEffects.playerHighHpThresholdRatio, 0.7, 'composure lesson should persist the high-HP threshold ratio');
+    assert.match(composureSettlement.eventRoom.resolutionText, /生命高于 70% 时承伤 -18%/, 'high-HP route summary should mention the threshold-gated mitigation');
+
+    const unresolvedSummary = buildRunEventRoomHudSummary({
+        key: 'riskRewardShrine',
+        discovered: true,
+        resolved: false
+    });
+    assert.deepEqual(
+        unresolvedSummary.routeLines,
+        [
+            '绝境修习: 生命<45%时伤害+40%',
+            '守心修习: 生命>70%时承伤-18%'
+        ],
+        'risk/reward shrine HUD summary should surface both HP-threshold identities compactly'
+    );
+}
+
+function testStatusRoutingEventRoom() {
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerBurnStatusDurationMultiplier,
+        1,
+        'default run effects should keep burn duration neutral'
+    );
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerBurnStatusDamageMultiplier,
+        1,
+        'default run effects should keep burn damage neutral'
+    );
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerBleedStatusDurationMultiplier,
+        1,
+        'default run effects should keep bleed duration neutral'
+    );
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerBleedStatusDamageMultiplier,
+        1,
+        'default run effects should keep bleed damage neutral'
+    );
+
+    const statusChoices = getRunEventRoomChoices('statusRoutingShrine');
+    assert.deepEqual(
+        statusChoices.map(choice => choice.key),
+        ['emberLesson', 'bloodtraceLesson'],
+        'status-routing shrine should expose both burn and bleed routing choices'
+    );
+
+    const emberSettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 84,
+        playerMaxHp: 120
+    }, {
+        key: 'statusRoutingShrine',
+        discovered: true,
+        resolved: false
+    }, 'emberLesson');
+    assert.equal(emberSettlement.ok, true, 'status-routing shrine burn route should resolve');
+    const emberEffects = buildRunEventRoomEffects(emberSettlement.eventRoom);
+    assert.equal(emberEffects.playerBurnStatusDurationMultiplier, 1.45, 'ember lesson should extend burn duration');
+    assert.equal(emberEffects.playerBurnStatusDamageMultiplier, 1.3, 'ember lesson should boost burn damage');
+    assert.match(emberSettlement.eventRoom.resolutionText, /灼烧持续时间 \+45%/, 'burn route summary should mention longer burn duration');
+    assert.match(emberSettlement.eventRoom.resolutionText, /灼烧伤害 \+30%/, 'burn route summary should mention stronger burn damage');
+
+    const bloodtraceSettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 84,
+        playerMaxHp: 120
+    }, {
+        key: 'statusRoutingShrine',
+        discovered: true,
+        resolved: false
+    }, 'bloodtraceLesson');
+    assert.equal(bloodtraceSettlement.ok, true, 'status-routing shrine bleed route should resolve');
+    const bloodtraceEffects = buildRunEventRoomEffects(bloodtraceSettlement.eventRoom);
+    assert.equal(bloodtraceEffects.playerBleedStatusDurationMultiplier, 1.4, 'bloodtrace lesson should extend bleed duration');
+    assert.equal(bloodtraceEffects.playerBleedStatusDamageMultiplier, 1.25, 'bloodtrace lesson should boost bleed damage');
+    assert.match(bloodtraceSettlement.eventRoom.resolutionText, /流血持续时间 \+40%/, 'bleed route summary should mention longer bleed duration');
+    assert.match(bloodtraceSettlement.eventRoom.resolutionText, /流血伤害 \+25%/, 'bleed route summary should mention stronger bleed damage');
+
+    const unresolvedSummary = buildRunEventRoomHudSummary({
+        key: 'statusRoutingShrine',
+        discovered: true,
+        resolved: false
+    });
+    assert.deepEqual(
+        unresolvedSummary.routeLines,
+        [
+            '余烬修习: 灼烧持续时间+45%, 灼烧伤害+30%',
+            '血痕修习: 流血持续时间+40%, 流血伤害+25%'
+        ],
+        'status-routing shrine HUD summary should surface both abnormal-status identities compactly'
+    );
+}
+
+function testControlRoutingEventRoom() {
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerSlowStatusDurationMultiplier,
+        1,
+        'default run effects should keep slow duration neutral'
+    );
+    assert.equal(
+        DEFAULT_RUN_EFFECTS.playerDamageVsSlowedMultiplier,
+        1,
+        'default run effects should keep damage-vs-slowed neutral'
+    );
+
+    const controlChoices = getRunEventRoomChoices('controlRoutingShrine');
+    assert.deepEqual(
+        controlChoices.map(choice => choice.key),
+        ['crushingLesson', 'executionLesson'],
+        'control-routing shrine should expose both slow/control routing choices'
+    );
+
+    const crushingSettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 84,
+        playerMaxHp: 120
+    }, {
+        key: 'controlRoutingShrine',
+        discovered: true,
+        resolved: false
+    }, 'crushingLesson');
+    assert.equal(crushingSettlement.ok, true, 'control-routing shrine slow route should resolve');
+    const crushingEffects = buildRunEventRoomEffects(crushingSettlement.eventRoom);
+    assert.equal(crushingEffects.playerSlowStatusDurationMultiplier, 1.45, 'crushing lesson should extend slow duration');
+    assert.match(crushingSettlement.eventRoom.resolutionText, /减速持续时间 \+45%/, 'slow route summary should mention longer slow duration');
+
+    const executionSettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 84,
+        playerMaxHp: 120
+    }, {
+        key: 'controlRoutingShrine',
+        discovered: true,
+        resolved: false
+    }, 'executionLesson');
+    assert.equal(executionSettlement.ok, true, 'control-routing shrine payoff route should resolve');
+    const executionEffects = buildRunEventRoomEffects(executionSettlement.eventRoom);
+    assert.equal(executionEffects.playerDamageVsSlowedMultiplier, 1.28, 'execution lesson should boost damage vs slowed targets');
+    assert.match(executionSettlement.eventRoom.resolutionText, /对减速目标伤害 \+28%/, 'payoff route summary should mention stronger damage vs slowed targets');
+
+    const unresolvedSummary = buildRunEventRoomHudSummary({
+        key: 'controlRoutingShrine',
+        discovered: true,
+        resolved: false
+    });
+    assert.deepEqual(
+        unresolvedSummary.routeLines,
+        [
+            '镇步修习: 减速持续时间+45%',
+            '破势修习: 对减速目标伤害+28%'
+        ],
+        'control-routing shrine HUD summary should surface both slow/control identities compactly'
+    );
 }
 
 function testRunEventRoomChoiceHelpers() {
@@ -3416,6 +3958,155 @@ function testCombatActionHudSummary() {
         '普攻 U: 就绪  特攻 O: 0.3s后差10体  闪避 Space: 差15体',
         'combat action HUD helper should keep a no-ETA fallback when cooldown ends before enough stamina is available and regen timing is unknown'
     );
+    assert.equal(
+        buildCombatActionHudSummary({
+            attackCooldownMs: 0,
+            specialCooldownMs: 0,
+            dodgeCooldownMs: 0,
+            stamina: 60,
+            attackStaminaCost: 10,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 25,
+            specialStatusLabel: '借势'
+        }),
+        '普攻 U: 就绪  特攻 O: 借势 就绪  闪避 Space: 就绪',
+        'combat action HUD helper should surface a short special-status label when a temporary combat buff is active'
+    );
+    assert.equal(
+        buildCombatActionHudSummary({
+            attackCooldownMs: 0,
+            specialCooldownMs: 0,
+            dodgeCooldownMs: 0,
+            stamina: 60,
+            attackStaminaCost: 10,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 25,
+            attackStatusLabel: '回体+4',
+            specialStatusLabel: '借势待闪'
+        }),
+        '普攻 U: 回体+4 就绪  特攻 O: 借势待闪 就绪  闪避 Space: 就绪',
+        'combat action HUD helper should keep shrine route identity visible even before the next proc window opens'
+    );
+    assert.equal(
+        buildCombatActionHudSummary({
+            attackCooldownMs: 0,
+            specialCooldownMs: 0,
+            dodgeCooldownMs: 0,
+            stamina: 60,
+            attackStaminaCost: 10,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 25,
+            attackStatusLabel: '连斩-18%',
+            dodgeStatusLabel: '游步-20%/-18%'
+        }),
+        '普攻 U: 连斩-18% 就绪  特攻 O: 就绪  闪避 Space: 游步-20%/-18% 就绪',
+        'combat action HUD helper should keep combat-discipline shrine identities visible on the attack and dodge rows'
+    );
+    assert.equal(
+        buildCombatActionHudSummary({
+            attackCooldownMs: 0,
+            specialCooldownMs: 0,
+            dodgeCooldownMs: 0,
+            stamina: 60,
+            attackStaminaCost: 10,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 25,
+            specialStatusLabel: '迅击-22%',
+            dodgeStatusLabel: '复苏+35%'
+        }),
+        '普攻 U: 就绪  特攻 O: 迅击-22% 就绪  闪避 Space: 复苏+35% 就绪',
+        'combat action HUD helper should keep prayer-shrine cooldown and stamina identities visible on the special and dodge rows'
+    );
+    assert.equal(
+        buildCombatActionHudSummary({
+            attackCooldownMs: 0,
+            specialCooldownMs: 0,
+            dodgeCooldownMs: 0,
+            stamina: 60,
+            attackStaminaCost: 10,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 25,
+            specialStatusLabel: '迅击就绪',
+            dodgeStatusLabel: '复苏+35%'
+        }),
+        '普攻 U: 就绪  特攻 O: 迅击就绪 就绪  闪避 Space: 复苏+35% 就绪',
+        'combat action HUD helper should support a brief prayer payoff label when the special row truly becomes ready'
+    );
+    assert.equal(
+        buildCombatActionHudSummary({
+            attackCooldownMs: 0,
+            specialCooldownMs: 0,
+            dodgeCooldownMs: 0,
+            stamina: 60,
+            attackStaminaCost: 10,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 25,
+            dodgeStatusLabel: '复苏就绪'
+        }),
+        '普攻 U: 就绪  特攻 O: 就绪  闪避 Space: 复苏就绪 就绪',
+        'combat action HUD helper should support a brief prayer payoff label when natural stamina regen restores dodge readiness'
+    );
+    assert.equal(
+        buildCombatActionHudSummary({
+            attackCooldownMs: 0,
+            specialCooldownMs: 0,
+            dodgeCooldownMs: 0,
+            stamina: 60,
+            attackStaminaCost: 10,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 25,
+            dodgeStatusLabel: '游步就绪'
+        }),
+        '普攻 U: 就绪  特攻 O: 就绪  闪避 Space: 游步就绪 就绪',
+        'combat action HUD helper should support a brief combat-discipline payoff label when dodge truly becomes ready'
+    );
+    assert.equal(
+        buildCombatActionHudSummary({
+            attackCooldownMs: 0,
+            specialCooldownMs: 0,
+            dodgeCooldownMs: 0,
+            stamina: 60,
+            attackStaminaCost: 10,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 25,
+            attackStatusLabel: '连斩就绪'
+        }),
+        '普攻 U: 连斩就绪 就绪  特攻 O: 就绪  闪避 Space: 就绪',
+        'combat action HUD helper should support a brief combat-discipline payoff label when attack truly becomes ready'
+    );
+    assert.equal(
+        buildCombatActionHudSummary({
+            isDodging: true,
+            dodgeLockoutMs: 300,
+            dodgePostLockoutCooldownMs: 700,
+            attackCooldownMs: 100,
+            specialCooldownMs: 500,
+            dodgeCooldownMs: 0,
+            stamina: 10,
+            staminaRegenPerSecond: 15,
+            attackStaminaCost: 10,
+            specialStaminaCost: 25,
+            dodgeStaminaCost: 25,
+            specialStatusLabel: '迅击-22%',
+            dodgeStatusLabel: '复苏+35%'
+        }),
+        '普攻 U: 翻滚中 -> 就绪  特攻 O: 翻滚中 -> 迅击-22% 0.2s后差12体/0.8s  闪避 Space: 翻滚中 -> 复苏+35% 0.7s后差5体/0.3s',
+        'combat action HUD helper should preserve prayer-shrine labels while showing the post-roll preview state'
+    );
+    assert.equal(
+        buildCombatActionHudSummary({
+            attackCooldownMs: 0,
+            specialCooldownMs: 0,
+            dodgeCooldownMs: 0,
+            stamina: 60,
+            attackStaminaCost: 10,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 25,
+            specialStatusLabel: '借势1.6s'
+        }),
+        '普攻 U: 就绪  特攻 O: 借势1.6s 就绪  闪避 Space: 就绪',
+        'combat action HUD helper should surface the remaining post-dodge empower window instead of a bare shrine tag'
+    );
 }
 
 function testCombatActionReadiness() {
@@ -3524,6 +4215,41 @@ function testCombatActionHudLayout() {
     );
 }
 
+function testStaminaPayoffPulsePresentation() {
+    assert.equal(typeof getStaminaPayoffPulsePresentation, 'function', 'stamina payoff pulse helper should be exported');
+    const earlyPulse = getStaminaPayoffPulsePresentation(1000, 1180);
+    assert.equal(earlyPulse.active, true, 'stamina payoff pulse should stay active before the pulse window expires');
+    assert.equal(earlyPulse.fillColor, 0xE8FF9A, 'stamina payoff pulse should brighten the stamina fill color while active');
+    assert.equal(earlyPulse.textColor, '#fff6c7', 'stamina payoff pulse should briefly warm the stamina text color');
+    assert.ok(earlyPulse.overlayAlpha > 0, 'stamina payoff pulse should expose a visible overlay alpha while active');
+    assert.ok(earlyPulse.overlayExtraWidth > 0, 'stamina payoff pulse should expose a short overlay width bonus while active');
+
+    const latePulse = getStaminaPayoffPulsePresentation(1160, 1180);
+    assert.equal(latePulse.active, true, 'stamina payoff pulse should remain active until the final frame of the window');
+    assert.ok(
+        latePulse.overlayAlpha < earlyPulse.overlayAlpha,
+        'stamina payoff pulse should decay its overlay alpha as the payoff window closes'
+    );
+    assert.ok(
+        latePulse.overlayExtraWidth < earlyPulse.overlayExtraWidth,
+        'stamina payoff pulse should decay its overlay width bonus as the payoff window closes'
+    );
+
+    assert.deepEqual(
+        getStaminaPayoffPulsePresentation(1180, 1180),
+        {
+            active: false,
+            fillColor: null,
+            textColor: null,
+            overlayColor: null,
+            overlayAlpha: 0,
+            overlayExtraWidth: 0,
+            overlayExtraHeight: 0
+        },
+        'stamina payoff pulse should fully reset once the payoff window expires'
+    );
+}
+
 function testQuickSlotItemLabel() {
     assert.equal(typeof buildQuickSlotItemLabel, 'function', 'quick-slot item label helper should be exported');
     assert.equal(buildQuickSlotItemLabel(null, 0), '-', 'empty quick slot should render a stable placeholder');
@@ -3542,7 +4268,7 @@ function testKeyboardHudQolHooks() {
     );
     assert.match(
         source,
-        /const runEffects = GameState\.runEffects \|\| DEFAULT_RUN_EFFECTS;[\s\S]*?const staminaRegenPerSecond = GAME_CONFIG\.PLAYER\.staminaRegen \* \(runEffects\.playerStaminaRegenMultiplier \|\| 1\);[\s\S]*?const actionHudState = \{[\s\S]*?isDodging:\s*player\.isDodging,[\s\S]*?dodgeLockoutMs:\s*player\.dodgeLockoutMsRemaining,[\s\S]*?dodgePostLockoutCooldownMs:\s*GAME_CONFIG\.PLAYER\.dodgeCooldown,[\s\S]*?attackCooldownMs:\s*player\.attackCooldown,[\s\S]*?specialCooldownMs:\s*player\.specialCooldown,[\s\S]*?dodgeCooldownMs:\s*player\.dodgeCooldownTimer,[\s\S]*?stamina:\s*player\.stamina,[\s\S]*?staminaRegenPerSecond,[\s\S]*?attackStaminaCost:\s*weapon\s*\?\s*weapon\.staminaCost\s*:\s*0,[\s\S]*?specialStaminaCost:\s*weapon\s*\?\s*weapon\.specialStaminaCost\s*:\s*0,[\s\S]*?dodgeStaminaCost:\s*GAME_CONFIG\.PLAYER\.dodgeStaminaCost[\s\S]*?\};[\s\S]*?const actionHudSegments = buildCombatActionHudSegments\(actionHudState\);/,
+        /const runEffects = GameState\.runEffects \|\| DEFAULT_RUN_EFFECTS;[\s\S]*?const staminaRegenPerSecond = GAME_CONFIG\.PLAYER\.staminaRegen \* \(runEffects\.playerStaminaRegenMultiplier \|\| 1\);[\s\S]*?const actionHudState = \{[\s\S]*?isDodging:\s*player\.isDodging,[\s\S]*?dodgeLockoutMs:\s*player\.dodgeLockoutMsRemaining,[\s\S]*?dodgePostLockoutCooldownMs:\s*Math\.max\(200,\s*Math\.round\(GAME_CONFIG\.PLAYER\.dodgeCooldown \* \(runEffects\.playerDodgeCooldownMultiplier \|\| 1\)\)\),[\s\S]*?attackCooldownMs:\s*player\.attackCooldown,[\s\S]*?specialCooldownMs:\s*player\.specialCooldown,[\s\S]*?dodgeCooldownMs:\s*player\.dodgeCooldownTimer,[\s\S]*?stamina:\s*player\.stamina,[\s\S]*?staminaRegenPerSecond,[\s\S]*?attackStaminaCost:\s*weapon\s*\?\s*weapon\.staminaCost\s*:\s*0,[\s\S]*?specialStaminaCost:\s*weapon\s*\?\s*weapon\.specialStaminaCost\s*:\s*0,[\s\S]*?dodgeStaminaCost:\s*Math\.max\(1,\s*Math\.round\(GAME_CONFIG\.PLAYER\.dodgeStaminaCost \* \(runEffects\.playerDodgeStaminaCostMultiplier \|\| 1\)\)\)[\s\S]*?\};[\s\S]*?const actionHudSegments = buildCombatActionHudSegments\(actionHudState\);/,
         'HUD should derive dodge lockout, cooldown, stamina gaps, and stamina-recovery ETA from the shared combat-action helper'
     );
     assert.match(
@@ -3552,7 +4278,7 @@ function testKeyboardHudQolHooks() {
     );
     assert.match(
         source,
-        /const actionHudState = \{[\s\S]*?isDodging:\s*player\.isDodging,[\s\S]*?dodgeStaminaCost:\s*GAME_CONFIG\.PLAYER\.dodgeStaminaCost[\s\S]*?\};[\s\S]*?const actionHudSegments = buildCombatActionHudSegments\(actionHudState\);[\s\S]*?const actionHudReadiness = buildCombatActionReadiness\(actionHudState\);[\s\S]*?const previousActionReadiness = this\._lastCombatActionReadiness;[\s\S]*?if \(previousActionReadiness\) \{[\s\S]*?Object\.keys\(actionHudReadiness\)\.forEach\(key => \{[\s\S]*?this\.actionTextReadyFlashUntil\[key\] = this\.time\.now \+ 220;[\s\S]*?\}\);[\s\S]*?\}[\s\S]*?actionHudSegments\.forEach\(segment => \{[\s\S]*?const actionHighlightActive = this\.actionTextReadyFlashUntil\[segment\.key\] > this\.time\.now;[\s\S]*?actionTextNode\.setStyle\(\{ fill: actionHighlightActive \? '#fff4b3' : '#cfd8e6' \}\);[\s\S]*?actionTextNode\.setText\(segment\.text\);/,
+        /const actionHudState = \{[\s\S]*?isDodging:\s*player\.isDodging,[\s\S]*?dodgeStaminaCost:\s*Math\.max\(1,\s*Math\.round\(GAME_CONFIG\.PLAYER\.dodgeStaminaCost \* \(runEffects\.playerDodgeStaminaCostMultiplier \|\| 1\)\)\)[\s\S]*?\};[\s\S]*?const actionHudSegments = buildCombatActionHudSegments\(actionHudState\);[\s\S]*?const actionHudReadiness = buildCombatActionReadiness\(actionHudState\);[\s\S]*?const previousActionReadiness = this\._lastCombatActionReadiness;[\s\S]*?if \(previousActionReadiness\) \{[\s\S]*?Object\.keys\(actionHudReadiness\)\.forEach\(key => \{[\s\S]*?this\.actionTextReadyFlashUntil\[key\] = this\.time\.now \+ 220;[\s\S]*?\}\);[\s\S]*?\}[\s\S]*?actionHudSegments\.forEach\(segment => \{[\s\S]*?const actionHighlightActive = this\.actionTextReadyFlashUntil\[segment\.key\] > this\.time\.now;[\s\S]*?actionTextNode\.setStyle\(\{ fill: actionHighlightActive \? '#fff4b3' : '#cfd8e6' \}\);[\s\S]*?actionTextNode\.setText\(segment\.text\);/,
         'HUD should derive per-action readiness flashes from the shared combat-action readiness helper when individual actions newly become ready'
     );
     assert.match(
@@ -3619,6 +4345,501 @@ function testKeyboardHudQolHooks() {
         source,
         /_showTooltip\(text,\s*anchorX,\s*anchorY\)\s*{[\s\S]*?this\.tooltip\.setText\(text\);[\s\S]*?getInventoryTooltipClampX\(anchorX,\s*this\.tooltip\.width,\s*this\.cameras\.main\.width\)/,
         'InventoryScene should clamp tooltip placement from the real rendered tooltip width via the shared helper'
+    );
+}
+
+function testCombatDisciplineRunEffectHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /const attackCooldownScale = runEffects\.playerAttackCooldownMultiplier \|\| 1;/,
+        'player attack runtime should read the normal-attack cadence multiplier from run effects'
+    );
+    assert.match(
+        source,
+        /const attackCooldownScale = runEffects\.playerAttackCooldownMultiplier \|\| 1;[\s\S]*?const weaponRoutingAttackCooldownScale = weapon\.type === 'melee' \? \(runEffects\.playerMeleeAttackCooldownMultiplier \|\| 1\) : 1;[\s\S]*?this\.attackCooldown = Math\.max\(120,\s*Math\.round\(weapon\.attackSpeed \* attackCooldownScale \* weaponRoutingAttackCooldownScale\)\);/,
+        'player attack runtime should apply the cadence multiplier when starting a normal attack'
+    );
+    assert.match(
+        source,
+        /const dodgeCooldownScale = runEffects\.playerDodgeCooldownMultiplier \|\| 1;/,
+        'player dodge runtime should read the dodge cooldown multiplier from run effects'
+    );
+    assert.match(
+        source,
+        /const dodgeStaminaCostScale = runEffects\.playerDodgeStaminaCostMultiplier \|\| 1;/,
+        'player dodge runtime should read the dodge stamina multiplier from run effects'
+    );
+    assert.match(
+        source,
+        /const dodgeStaminaCost = Math\.max\(1,\s*Math\.round\(cfg\.dodgeStaminaCost \* dodgeStaminaCostScale\)\);/,
+        'player dodge runtime should derive a scaled dodge stamina cost'
+    );
+    assert.match(
+        source,
+        /this\.dodgeCooldownTimer = Math\.max\(200,\s*Math\.round\(cfg\.dodgeCooldown \* dodgeCooldownScale\)\);/,
+        'player dodge runtime should derive a scaled dodge cooldown'
+    );
+    assert.match(
+        source,
+        /dodgePostLockoutCooldownMs:\s*Math\.max\(200,\s*Math\.round\(GAME_CONFIG\.PLAYER\.dodgeCooldown \* \(runEffects\.playerDodgeCooldownMultiplier \|\| 1\)\)\)/,
+        'combat action HUD state should preview the scaled dodge cooldown while rolling'
+    );
+    assert.match(
+        source,
+        /dodgeStaminaCost:\s*Math\.max\(1,\s*Math\.round\(GAME_CONFIG\.PLAYER\.dodgeStaminaCost \* \(runEffects\.playerDodgeStaminaCostMultiplier \|\| 1\)\)\)/,
+        'combat action HUD state should preview the scaled dodge stamina cost'
+    );
+}
+
+function testCombatFlowRunEffectHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /function combineRunEffects\(\.\.\.effectGroups\)\s*{[\s\S]*?const additiveRunEffectKeys = new Set\(\[[\s\S]*?'playerAttackHitStaminaGain'[\s\S]*?'playerPostDodgeSpecialWindowMs'[\s\S]*?'playerPostDodgeAttackWindowMs'[\s\S]*?'playerAttackHitSpecialCooldownReductionMs'[\s\S]*?'playerSpecialHitDodgeCooldownReductionMs'[\s\S]*?'playerSpecialHitStaminaGain'[\s\S]*?\]\);[\s\S]*?if \(additiveRunEffectKeys\.has\(effectKey\)\) \{[\s\S]*?combined\[effectKey\] \+= value;[\s\S]*?\}[\s\S]*?combined\[effectKey\] \*= value;/,
+        'run-effect composition should add fixed stamina refunds, post-dodge windows, and combo-link cooldown refunds instead of multiplying them away'
+    );
+    assert.match(
+        source,
+        /grantAttackHitStamina\(isSpecial\)\s*{[\s\S]*?const staminaGain = Math\.max\(0,\s*Math\.round\(runEffects\.playerAttackHitStaminaGain \|\| 0\)\);[\s\S]*?if \(isSpecial \|\| staminaGain <= 0\) return 0;[\s\S]*?this\.stamina = Math\.min\(this\.maxStamina,\s*this\.stamina \+ staminaGain\);/,
+        'player runtime should expose a helper that refunds stamina only on landed normal attacks'
+    );
+    assert.match(
+        source,
+        /armPostDodgeSpecialWindow\(\)\s*{[\s\S]*?const windowMs = Math\.max\(0,\s*Math\.round\(runEffects\.playerPostDodgeSpecialWindowMs \|\| 0\)\);[\s\S]*?this\.postDodgeSpecialEmpowerUntil = this\.scene\.time\.now \+ windowMs;/,
+        'player runtime should arm a timed post-dodge special window from run effects'
+    );
+    assert.match(
+        source,
+        /const specialDamageMultiplier = this\.consumePostDodgeSpecialMultiplier\(this\.scene\.time\.now\);[\s\S]*?const damage = Math\.round\(weapon\.damage \* 2 \* this\.getDamageMultiplier\(\) \* specialDamageMultiplier\);/,
+        'special attacks should consume the post-dodge empower multiplier when computing burst damage'
+    );
+    assert.match(
+        source,
+        /const specialDamageMultiplier = this\.consumePostDodgeSpecialMultiplier\(this\.scene\.time\.now\);[\s\S]*?const isEmpoweredSpecial = specialDamageMultiplier > 1;[\s\S]*?return this\._spawnHitbox\(damage,\s*2,\s*true,\s*isEmpoweredSpecial(?:,\s*[\s\S]*?)?\);/,
+        'special attacks should tag when a post-dodge empower window is actually converted into a burst cast'
+    );
+    assert.match(
+        source,
+        /const staminaRefund = this\.player\.grantAttackHitStamina\(hb\.isSpecial\);[\s\S]*?if \(staminaRefund > 0\) \{[\s\S]*?showFloatingCombatText\([\s\S]*?'回体\+'\s*\+\s*staminaRefund/,
+        'enemy-hit processing should apply the stamina refund feedback when normal attacks land'
+    );
+    assert.match(
+        source,
+        /const staminaRefund = this\.player\.grantAttackHitStamina\(hb\.isSpecial\);[\s\S]*?if \(staminaRefund > 0\) \{[\s\S]*?showFloatingCombatText\([\s\S]*?'回体\+'\s*\+\s*staminaRefund[\s\S]*?this\.armStaminaPayoffPulse\(staminaRefund\);/,
+        'enemy-hit processing should arm the stamina-bar payoff pulse only when a normal-attack refund actually lands'
+    );
+    assert.match(
+        source,
+        /if \(typeof this\.player\.consumeDisciplineAttackHitPayoff === 'function' && this\.player\.consumeDisciplineAttackHitPayoff\(hb,\s*this\.time\.now\)\) \{[\s\S]*?showHitImpactPulse\([\s\S]*?showFloatingCombatText\([\s\S]*?'连斩'/,
+        'enemy-hit processing should add a distinct combat-discipline payoff cue only when the tagged faster normal attack actually lands'
+    );
+    assert.match(
+        source,
+        /if \(hb\.isEmpoweredSpecial\) \{[\s\S]*?showHitImpactPulse\([\s\S]*?showFloatingCombatText\([\s\S]*?'借势重击'/,
+        'enemy-hit processing should give empowered specials a distinct momentum-burst payoff cue'
+    );
+    assert.match(
+        source,
+        /const staminaRefund = this\.player\.grantAttackHitStamina\(hb\.isSpecial\);[\s\S]*?if \(staminaRefund > 0\) \{[\s\S]*?showFloatingCombatText\([\s\S]*?'回体\+'\s*\+\s*staminaRefund/,
+        'boss-hit processing should reuse the same stamina refund hook and feedback'
+    );
+    assert.match(
+        source,
+        /const staminaRefund = this\.player\.grantAttackHitStamina\(hb\.isSpecial\);[\s\S]*?if \(staminaRefund > 0\) \{[\s\S]*?showFloatingCombatText\([\s\S]*?'回体\+'\s*\+\s*staminaRefund[\s\S]*?this\.armStaminaPayoffPulse\(staminaRefund\);/,
+        'boss-hit processing should mirror the stamina-bar payoff pulse when the refund lands on bosses'
+    );
+    assert.match(
+        source,
+        /if \(typeof this\.player\.consumeDisciplineAttackHitPayoff === 'function' && this\.player\.consumeDisciplineAttackHitPayoff\(hb,\s*this\.time\.now\)\) \{[\s\S]*?showHitImpactPulse\([\s\S]*?showFloatingCombatText\([\s\S]*?'连斩'/,
+        'boss-hit processing should mirror the combat-discipline faster-hit payoff cue'
+    );
+    assert.match(
+        source,
+        /if \(hb\.isEmpoweredSpecial\) \{[\s\S]*?showHitImpactPulse\([\s\S]*?showFloatingCombatText\([\s\S]*?'借势重击'/,
+        'boss-hit processing should mirror the empowered-special payoff cue against bosses'
+    );
+    assert.match(
+        source,
+        /const staminaPulsePresentation = getStaminaPayoffPulsePresentation\(this\.time\.now,\s*this\.staminaPayoffPulseUntil\);[\s\S]*?if \(staminaPulsePresentation\.active\) \{[\s\S]*?this\.staminaBarPulse\.fillStyle\(/,
+        'HUD should derive the stamina-bar payoff pulse from the shared helper before drawing the stamina resource lane'
+    );
+    assert.match(
+        source,
+        /attackStatusLabel:\s*typeof player\.getCombatAttackStatusLabel === 'function'\s*\?\s*player\.getCombatAttackStatusLabel\(this\.time\.now\)\s*:\s*''[\s\S]*?specialStatusLabel:\s*typeof player\.getCombatSpecialStatusLabel === 'function'\s*\?\s*player\.getCombatSpecialStatusLabel\(this\.time\.now\)\s*:\s*''/,
+        'combat HUD state should surface both persistent stamina-refund identity and post-dodge special state labels'
+    );
+    assert.match(
+        source,
+        /getCombatDodgeStatusLabel\(now\)\s*{[\s\S]*?playerDodgeCooldownMultiplier[\s\S]*?playerDodgeStaminaCostMultiplier[\s\S]*?游步[\s\S]*?dodgeStatusLabel:\s*typeof player\.getCombatDodgeStatusLabel === 'function'\s*\?\s*player\.getCombatDodgeStatusLabel\(this\.time\.now\)\s*:\s*''/,
+        'combat HUD state should expose the combat-discipline shrine dodge identity alongside the attack-route label'
+    );
+    assert.match(
+        source,
+        /getCombatSpecialStatusLabel\(now\)\s*{[\s\S]*?playerPostDodgeSpecialWindowMs[\s\S]*?借势[\s\S]*?playerSpecialCooldownMultiplier[\s\S]*?迅击[\s\S]*?specialStatusLabel:\s*typeof player\.getCombatSpecialStatusLabel === 'function'\s*\?\s*player\.getCombatSpecialStatusLabel\(this\.time\.now\)\s*:\s*''/,
+        'combat HUD state should expose the prayer-shrine special cooldown identity alongside the temporary post-dodge buff label'
+    );
+    assert.match(
+        source,
+        /this\.prayerSpecialReadyCueUntil = 0;[\s\S]*?armPrayerSpecialReadyCue\(now\)\s*{[\s\S]*?playerSpecialCooldownMultiplier[\s\S]*?this\.prayerSpecialReadyCueUntil = Math\.max\([\s\S]*?Number\(now\) \|\| 0[\s\S]*?\+ 320\);[\s\S]*?return this\.prayerSpecialReadyCueUntil;/,
+        'player runtime should arm a short prayer payoff cue only when the cooldown-reduction route is active'
+    );
+    assert.match(
+        source,
+        /this\.prayerDodgeReadyCueUntil = 0;[\s\S]*?armPrayerDodgeReadyCue\(now\)\s*{[\s\S]*?playerDodgeCooldownMultiplier[\s\S]*?playerDodgeStaminaCostMultiplier[\s\S]*?playerStaminaRegenMultiplier[\s\S]*?this\.prayerDodgeReadyCueUntil = Math\.max\([\s\S]*?Number\(now\) \|\| 0[\s\S]*?\+ 320\);[\s\S]*?return this\.prayerDodgeReadyCueUntil;/,
+        'player runtime should arm a short prayer dodge cue only when the stamina-regen prayer route is active without overriding dodge-economy labels'
+    );
+    assert.match(
+        source,
+        /this\.disciplineAttackReadyCueUntil = 0;[\s\S]*?armDisciplineAttackReadyCue\(now\)\s*{[\s\S]*?playerAttackCooldownMultiplier[\s\S]*?this\.disciplineAttackReadyCueUntil = Math\.max\([\s\S]*?Number\(now\) \|\| 0[\s\S]*?\+ 320\);[\s\S]*?return this\.disciplineAttackReadyCueUntil;/,
+        'player runtime should arm a short combat-discipline attack cue only when the attack-cooldown route is active'
+    );
+    assert.match(
+        source,
+        /armDisciplineAttackHitPayoff\(now\)\s*{[\s\S]*?playerAttackCooldownMultiplier[\s\S]*?const pendingUntil = Number\(this\.disciplineAttackBaseReadyAt\) \|\| 0;[\s\S]*?if \(pendingUntil <= \(Number\(now\) \|\| 0\)\) return 0;[\s\S]*?this\.disciplineAttackHitPayoffPendingUntil = Math\.max\([\s\S]*?pendingUntil[\s\S]*?\);[\s\S]*?return this\.disciplineAttackHitPayoffPendingUntil;/,
+        'player runtime should arm a one-shot combat-discipline hit-payoff window only while the faster attack is still ahead of the base cooldown'
+    );
+    assert.match(
+        source,
+        /claimDisciplineAttackHitPayoffWindow\(now\)\s*{[\s\S]*?const pendingUntil = Number\(this\.disciplineAttackHitPayoffPendingUntil\) \|\| 0;[\s\S]*?this\.disciplineAttackHitPayoffPendingUntil = 0;[\s\S]*?return pendingUntil > \(Number\(now\) \|\| 0\) \? pendingUntil : 0;/,
+        'player runtime should only let the immediate next normal attack claim the combat-discipline hit-payoff window'
+    );
+    assert.match(
+        source,
+        /consumeDisciplineAttackHitPayoff\(hitbox,\s*now\)\s*{[\s\S]*?const payoffUntil = Number\(hitbox\.disciplineAttackPayoffUntil\) \|\| 0;[\s\S]*?const attackSequenceId = Number\(hitbox\.attackSequenceId\) \|\| 0;[\s\S]*?if \(payoffUntil <= \(Number\(now\) \|\| 0\) \|\| attackSequenceId <= 0\) return false;[\s\S]*?if \(this\.disciplineAttackHitPayoffConsumedSequenceId === attackSequenceId\) return false;[\s\S]*?this\.disciplineAttackHitPayoffConsumedSequenceId = attackSequenceId;[\s\S]*?return true;/,
+        'player runtime should consume the combat-discipline hit-payoff at most once for the tagged faster attack'
+    );
+    assert.match(
+        source,
+        /getCombatAttackStatusLabel\(now\)\s*{[\s\S]*?const disciplineReadyCueUntil = Number\(this\.disciplineAttackReadyCueUntil\) \|\| 0;[\s\S]*?if \(\(Number\(now\) \|\| 0\) < disciplineReadyCueUntil[\s\S]*?return '连斩就绪';[\s\S]*?const attackCooldownTag = formatRunEffectReductionTag\(runEffects\.playerAttackCooldownMultiplier\);[\s\S]*?return attackCooldownTag \? `连斩\$\{attackCooldownTag\}` : '';/,
+        'combat HUD state should briefly upgrade the combat-discipline attack label to `连斩就绪` before falling back to the persistent route tag'
+    );
+    assert.match(
+        source,
+        /this\.disciplineDodgeReadyCueUntil = 0;[\s\S]*?armDisciplineDodgeReadyCue\(now\)\s*{[\s\S]*?playerDodgeCooldownMultiplier[\s\S]*?playerDodgeStaminaCostMultiplier[\s\S]*?this\.disciplineDodgeReadyCueUntil = Math\.max\([\s\S]*?Number\(now\) \|\| 0[\s\S]*?\+ 320\);[\s\S]*?return this\.disciplineDodgeReadyCueUntil;/,
+        'player runtime should arm a short combat-discipline dodge cue only when the dodge-economy route is active'
+    );
+    assert.match(
+        source,
+        /isDisciplineDodgeStaminaThresholdReady\(\)\s*{[\s\S]*?const dodgeStaminaCostScale = runEffects\.playerDodgeStaminaCostMultiplier \|\| 1;[\s\S]*?if \(dodgeStaminaCostScale >= 1\) return false;[\s\S]*?const baseDodgeStaminaCost = Math\.max\(1,\s*Math\.round\(GAME_CONFIG\.PLAYER\.dodgeStaminaCost\)\);[\s\S]*?const dodgeStaminaCost = Math\.max\(1,\s*Math\.round\(GAME_CONFIG\.PLAYER\.dodgeStaminaCost \* dodgeStaminaCostScale\)\);[\s\S]*?return this\.stamina >= dodgeStaminaCost && this\.stamina < baseDodgeStaminaCost;/,
+        'player runtime should expose a combat-discipline stamina-threshold helper that only turns true when reduced dodge cost makes dodge affordable'
+    );
+    assert.match(
+        source,
+        /getCombatSpecialStatusLabel\(now\)\s*{[\s\S]*?if \(remainingMs > 0\) \{[\s\S]*?return `借势\$\{seconds\.toFixed\(1\)\}s`[\s\S]*?return '借势待闪';[\s\S]*?const prayerReadyCueUntil = Number\(this\.prayerSpecialReadyCueUntil\) \|\| 0;[\s\S]*?if \(\(Number\(now\) \|\| 0\) < prayerReadyCueUntil && this\.specialCooldown <= 0\) \{[\s\S]*?return '迅击就绪';[\s\S]*?\}[\s\S]*?playerSpecialCooldownMultiplier[\s\S]*?迅击/,
+        'combat HUD state should briefly upgrade the prayer cooldown label to `迅击就绪` when the special truly becomes ready'
+    );
+    assert.match(
+        source,
+        /if \(key === 'attack'\) \{[\s\S]*?const previousAttackSegment = Array\.isArray\(previousActionHudSegments\) \? previousActionHudSegments\.find\(segment => segment\.key === 'attack'\) : null;[\s\S]*?const previousAttackText = previousAttackSegment && typeof previousAttackSegment\.text === 'string' \? previousAttackSegment\.text : '';[\s\S]*?const previousAttackWasCooldownBlocked = \/\\d\+\\.\\d\+s\/\.test\(previousAttackText\);[\s\S]*?if \(previousAttackWasCooldownBlocked && typeof player\.armDisciplineAttackReadyCue === 'function'\) \{[\s\S]*?player\.armDisciplineAttackReadyCue\(this\.time\.now\);[\s\S]*?\}[\s\S]*?\}/,
+        'combat HUD should arm the combat-discipline attack-ready cue only when the previous attack row still showed cooldown or post-roll cooldown preview'
+    );
+    assert.match(
+        source,
+        /if \(key === 'attack'\) \{[\s\S]*?const previousAttackSegment = Array\.isArray\(previousActionHudSegments\) \? previousActionHudSegments\.find\(segment => segment\.key === 'attack'\) : null;[\s\S]*?const previousAttackText = previousAttackSegment && typeof previousAttackSegment\.text === 'string' \? previousAttackSegment\.text : '';[\s\S]*?const previousAttackWasCooldownBlocked = \/\\d\+\\.\\d\+s\/\.test\(previousAttackText\);[\s\S]*?if \(previousAttackWasCooldownBlocked && typeof player\.armDisciplineAttackReadyCue === 'function'\) \{[\s\S]*?player\.armDisciplineAttackReadyCue\(this\.time\.now\);[\s\S]*?\}[\s\S]*?if \(previousAttackWasCooldownBlocked && typeof player\.armDisciplineAttackHitPayoff === 'function'\) \{[\s\S]*?player\.armDisciplineAttackHitPayoff\(this\.time\.now\);[\s\S]*?\}[\s\S]*?\}/,
+        'combat HUD should arm the combat-discipline hit-payoff window from the same early-ready edge as the HUD cue'
+    );
+    assert.match(
+        source,
+        /const baseAttackCooldown = Math\.max\(120,\s*Math\.round\(weapon\.attackSpeed\)\);[\s\S]*?this\.disciplineAttackBaseReadyAt = this\.scene\.time\.now \+ baseAttackCooldown;[\s\S]*?const disciplineAttackPayoffUntil = this\.claimDisciplineAttackHitPayoffWindow\(this\.scene\.time\.now\);[\s\S]*?return this\._spawnHitbox\(damage,\s*1,\s*false,\s*false,\s*\{[\s\S]*?attackSequenceId,[\s\S]*?disciplineAttackPayoffUntil[\s\S]*?\}\);/,
+        'normal attacks should tag only the immediate next swing with combat-discipline hit-payoff metadata'
+    );
+    assert.match(
+        source,
+        /_spawnHitbox\(damage,\s*scale,\s*isSpecial,\s*isEmpoweredSpecial,\s*meta\s*=\s*\{\}\)\s*{[\s\S]*?const attackSequenceId = Number\(meta\.attackSequenceId\) \|\| 0;[\s\S]*?const disciplineAttackPayoffUntil = Number\(meta\.disciplineAttackPayoffUntil\) \|\| 0;[\s\S]*?hitbox\.attackSequenceId = attackSequenceId;[\s\S]*?hitbox\.disciplineAttackPayoffUntil = disciplineAttackPayoffUntil;/,
+        'spawned hitboxes should carry the combat-discipline payoff metadata into the hit-resolution path'
+    );
+    assert.match(
+        source,
+        /if \(previousActionReadiness\) \{[\s\S]*?Object\.keys\(actionHudReadiness\)\.forEach\(key => \{[\s\S]*?if \(actionHudReadiness\[key\] && !previousActionReadiness\[key\]\) \{[\s\S]*?this\.actionTextReadyFlashUntil\[key\] = this\.time\.now \+ 220;[\s\S]*?if \(key === 'special' && typeof player\.armPrayerSpecialReadyCue === 'function'\) \{[\s\S]*?player\.armPrayerSpecialReadyCue\(this\.time\.now\);[\s\S]*?\}[\s\S]*?\}[\s\S]*?\}\);[\s\S]*?\}/,
+        'combat HUD should arm the prayer payoff cue from the same readiness edge that drives the generic per-row flash'
+    );
+    assert.match(
+        source,
+        /getCombatDodgeStatusLabel\(now\)\s*{[\s\S]*?const prayerReadyCueUntil = Number\(this\.prayerDodgeReadyCueUntil\) \|\| 0;[\s\S]*?if \(\(Number\(now\) \|\| 0\) < prayerReadyCueUntil && !this\.isDodging && this\.dodgeCooldownTimer <= 0 && this\.stamina >= dodgeStaminaCost\) \{[\s\S]*?return '复苏就绪';[\s\S]*?\}[\s\S]*?playerStaminaRegenMultiplier[\s\S]*?复苏/,
+        'combat HUD state should briefly upgrade the prayer stamina label to `复苏就绪` only while dodge is truly ready'
+    );
+    assert.match(
+        source,
+        /getCombatDodgeStatusLabel\(now\)\s*{[\s\S]*?const disciplineReadyCueUntil = Number\(this\.disciplineDodgeReadyCueUntil\) \|\| 0;[\s\S]*?const dodgeStaminaCost = Math\.max\(1,\s*Math\.round\(GAME_CONFIG\.PLAYER\.dodgeStaminaCost \* \(runEffects\.playerDodgeStaminaCostMultiplier \|\| 1\)\)\);[\s\S]*?if \(\(Number\(now\) \|\| 0\) < disciplineReadyCueUntil && !this\.isDodging && this\.dodgeCooldownTimer <= 0 && this\.stamina >= dodgeStaminaCost\) \{[\s\S]*?return '游步就绪';[\s\S]*?\}[\s\S]*?if \(tags\.length > 0\) \{[\s\S]*?return `游步\$\{tags\.join\('\/'\)\}`;/,
+        'combat HUD state should briefly upgrade the combat-discipline dodge label to `游步就绪` before falling back to the persistent route tag'
+    );
+    assert.match(
+        source,
+        /const previousActionHudSegments = this\._lastCombatActionHudSegments;[\s\S]*?if \(previousActionReadiness\) \{[\s\S]*?if \(key === 'dodge'\) \{[\s\S]*?const previousDodgeSegment = Array\.isArray\(previousActionHudSegments\) \? previousActionHudSegments\.find\(segment => segment\.key === 'dodge'\) : null;[\s\S]*?const previousDodgeText = previousDodgeSegment && typeof previousDodgeSegment\.text === 'string' \? previousDodgeSegment\.text : '';[\s\S]*?if \(previousDodgeText\.includes\('差'\) && typeof player\.armPrayerDodgeReadyCue === 'function'\) \{[\s\S]*?player\.armPrayerDodgeReadyCue\(this\.time\.now\);[\s\S]*?\}[\s\S]*?\}[\s\S]*?\}\);[\s\S]*?\}[\s\S]*?this\._lastCombatActionHudSegments = actionHudSegments;/,
+        'combat HUD should only arm the prayer dodge cue when the dodge row recovers from a stamina-gap state or preview'
+    );
+    assert.match(
+        source,
+        /if \(key === 'dodge'\) \{[\s\S]*?const previousDodgeSegment = Array\.isArray\(previousActionHudSegments\) \? previousActionHudSegments\.find\(segment => segment\.key === 'dodge'\) : null;[\s\S]*?const previousDodgeText = previousDodgeSegment && typeof previousDodgeSegment\.text === 'string' \? previousDodgeSegment\.text : '';[\s\S]*?const previousDodgeWasBlocked = previousDodgeText\.includes\('翻滚中 ->'\) \|\| previousDodgeText\.includes\('差'\) \|\| \/\\d\+\\.\\d\+s\/\.test\(previousDodgeText\);[\s\S]*?if \(previousDodgeWasBlocked && typeof player\.armDisciplineDodgeReadyCue === 'function'\) \{[\s\S]*?player\.armDisciplineDodgeReadyCue\(this\.time\.now\);[\s\S]*?\}[\s\S]*?\}/,
+        'combat HUD should arm the combat-discipline dodge-ready cue only when the previous dodge row was still blocked or previewing the post-roll state'
+    );
+    assert.match(
+        source,
+        /const previousActionHudSegments = this\._lastCombatActionHudSegments;[\s\S]*?if \(previousActionReadiness\) \{[\s\S]*?if \(key === 'dodge'\) \{[\s\S]*?const previousDodgeSegment = Array\.isArray\(previousActionHudSegments\) \? previousActionHudSegments\.find\(segment => segment\.key === 'dodge'\) : null;[\s\S]*?const previousDodgeText = previousDodgeSegment && typeof previousDodgeSegment\.text === 'string' \? previousDodgeSegment\.text : '';[\s\S]*?if \(previousDodgeText\.includes\('差'\) && typeof player\.armPrayerDodgeReadyCue === 'function'\) \{[\s\S]*?player\.armPrayerDodgeReadyCue\(this\.time\.now\);[\s\S]*?this\.armStaminaPayoffPulse\(1\);[\s\S]*?\}[\s\S]*?\}[\s\S]*?\}\);[\s\S]*?\}[\s\S]*?this\._lastCombatActionHudSegments = actionHudSegments;/,
+        'combat HUD should mirror the prayer dodge-ready threshold cue onto the stamina bar when natural regen crosses the dodge gate'
+    );
+    assert.match(
+        source,
+        /if \(key === 'dodge'\) \{[\s\S]*?const previousDodgeSegment = Array\.isArray\(previousActionHudSegments\) \? previousActionHudSegments\.find\(segment => segment\.key === 'dodge'\) : null;[\s\S]*?const previousDodgeText = previousDodgeSegment && typeof previousDodgeSegment\.text === 'string' \? previousDodgeSegment\.text : '';[\s\S]*?const previousDodgeShowedThresholdState = previousDodgeText\.includes\('差'\) \|\| previousDodgeText\.includes\('翻滚中 ->'\);[\s\S]*?if \(previousDodgeShowedThresholdState && typeof player\.isDisciplineDodgeStaminaThresholdReady === 'function' && player\.isDisciplineDodgeStaminaThresholdReady\(\)\) \{[\s\S]*?this\.armStaminaPayoffPulse\(1\);[\s\S]*?\}/,
+        'combat HUD should mirror the combat-discipline dodge-cost threshold cue onto the stamina bar only when reduced cost is what makes dodge ready'
+    );
+    assert.match(
+        source,
+        /getCombatDodgeStatusLabel\(now\)\s*{[\s\S]*?playerStaminaRegenMultiplier[\s\S]*?复苏[\s\S]*?dodgeStatusLabel:\s*typeof player\.getCombatDodgeStatusLabel === 'function'\s*\?\s*player\.getCombatDodgeStatusLabel\(this\.time\.now\)\s*:\s*''/,
+        'combat HUD state should expose the prayer-shrine stamina-regen identity on the dodge row when no dodge-economy shrine is active'
+    );
+}
+
+function testComboLinkRunEffectHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /function combineRunEffects\(\.\.\.effectGroups\)\s*{[\s\S]*?const additiveRunEffectKeys = new Set\(\[[\s\S]*?'playerAttackHitStaminaGain'[\s\S]*?'playerPostDodgeSpecialWindowMs'[\s\S]*?'playerPostDodgeAttackWindowMs'[\s\S]*?'playerAttackHitSpecialCooldownReductionMs'[\s\S]*?'playerSpecialHitDodgeCooldownReductionMs'[\s\S]*?'playerSpecialHitStaminaGain'[\s\S]*?\]\);[\s\S]*?if \(additiveRunEffectKeys\.has\(effectKey\)\) \{[\s\S]*?combined\[effectKey\] \+= value;/,
+        'run-effect composition should add the combo-link fixed cooldown refunds and adjacent follow-up windows instead of multiplying them'
+    );
+    assert.match(
+        source,
+        /refundSpecialCooldownFromAttackHit\(isSpecial,\s*now\)\s*{[\s\S]*?const reductionMs = Math\.max\(0,\s*Math\.round\(runEffects\.playerAttackHitSpecialCooldownReductionMs \|\| 0\)\);[\s\S]*?if \(isSpecial \|\| reductionMs <= 0 \|\| this\.specialCooldown <= 0\) return 0;[\s\S]*?this\.specialCooldown = Math\.max\(0,\s*previousCooldown - reductionMs\);/,
+        'player runtime should expose a helper that refunds special cooldown only on landed normal attacks'
+    );
+    assert.match(
+        source,
+        /refundDodgeCooldownFromSpecialHit\(isSpecial,\s*now\)\s*{[\s\S]*?const reductionMs = Math\.max\(0,\s*Math\.round\(runEffects\.playerSpecialHitDodgeCooldownReductionMs \|\| 0\)\);[\s\S]*?if \(!isSpecial \|\| reductionMs <= 0 \|\| this\.dodgeCooldownTimer <= 0\) return 0;[\s\S]*?this\.dodgeCooldownTimer = Math\.max\(0,\s*previousCooldown - reductionMs\);/,
+        'player runtime should expose a helper that refunds dodge cooldown only on landed specials'
+    );
+    assert.match(
+        source,
+        /this\.comboSpecialReadyCueUntil = 0;[\s\S]*?armComboSpecialReadyCue\(now\)\s*{[\s\S]*?playerAttackHitSpecialCooldownReductionMs[\s\S]*?this\.comboSpecialReadyCueUntil = Math\.max\([\s\S]*?Number\(now\) \|\| 0[\s\S]*?\+ 320\);[\s\S]*?return this\.comboSpecialReadyCueUntil;/,
+        'player runtime should arm a short combo-link special cue only when the attack-to-special route is active'
+    );
+    assert.match(
+        source,
+        /this\.comboDodgeReadyCueUntil = 0;[\s\S]*?armComboDodgeReadyCue\(now\)\s*{[\s\S]*?playerSpecialHitDodgeCooldownReductionMs[\s\S]*?this\.comboDodgeReadyCueUntil = Math\.max\([\s\S]*?Number\(now\) \|\| 0[\s\S]*?\+ 320\);[\s\S]*?return this\.comboDodgeReadyCueUntil;/,
+        'player runtime should arm a short combo-link dodge cue only when the special-to-dodge route is active'
+    );
+    assert.match(
+        source,
+        /getCombatSpecialStatusLabel\(now\)\s*{[\s\S]*?const comboSpecialReadyCueUntil = Number\(this\.comboSpecialReadyCueUntil\) \|\| 0;[\s\S]*?if \(\(Number\(now\) \|\| 0\) < comboSpecialReadyCueUntil && this\.specialCooldown <= 0\) \{[\s\S]*?return '催锋就绪';[\s\S]*?\}[\s\S]*?const attackHitSpecialReductionMs = Math\.max\(0,\s*Math\.round\(runEffects\.playerAttackHitSpecialCooldownReductionMs \|\| 0\)\);[\s\S]*?if \(attackHitSpecialReductionMs > 0\) \{[\s\S]*?return `催锋-\$\{\(attackHitSpecialReductionMs \/ 1000\)\.toFixed\(1\)\}s\/击`;/,
+        'combat HUD state should expose the combo-link special identity and briefly upgrade it to `催锋就绪` when the refund makes special ready'
+    );
+    assert.match(
+        source,
+        /getCombatDodgeStatusLabel\(now\)\s*{[\s\S]*?const comboDodgeReadyCueUntil = Number\(this\.comboDodgeReadyCueUntil\) \|\| 0;[\s\S]*?const dodgeCooldownRefundMs = Math\.max\(0,\s*Math\.round\(runEffects\.playerSpecialHitDodgeCooldownReductionMs \|\| 0\)\);[\s\S]*?if \(\(Number\(now\) \|\| 0\) < comboDodgeReadyCueUntil && !this\.isDodging && this\.dodgeCooldownTimer <= 0 && this\.stamina >= dodgeStaminaCost\) \{[\s\S]*?return '回身就绪';[\s\S]*?\}[\s\S]*?if \(dodgeCooldownRefundMs > 0\) \{[\s\S]*?return `回身-\$\{\(dodgeCooldownRefundMs \/ 1000\)\.toFixed\(1\)\}s\/特攻`;/,
+        'combat HUD state should expose the combo-link dodge identity and briefly upgrade it to `回身就绪` when the refund makes dodge ready'
+    );
+    assert.match(
+        source,
+        /const specialRefund = this\.player\.refundSpecialCooldownFromAttackHit\(hb\.isSpecial,\s*this\.time\.now\);[\s\S]*?if \(specialRefund > 0\) \{[\s\S]*?showFloatingCombatText\([\s\S]*?'催锋-'\s*\+\s*\(specialRefund \/ 1000\)\.toFixed\(1\)\s*\+\s*'s'/,
+        'enemy-hit processing should surface the combo-link special-cooldown refund when normal attacks land'
+    );
+    assert.match(
+        source,
+        /const dodgeRefund = this\.player\.refundDodgeCooldownFromSpecialHit\(hb\.isSpecial,\s*this\.time\.now\);[\s\S]*?if \(dodgeRefund > 0\) \{[\s\S]*?showFloatingCombatText\([\s\S]*?'回身-'\s*\+\s*\(dodgeRefund \/ 1000\)\.toFixed\(1\)\s*\+\s*'s'/,
+        'enemy-hit processing should surface the combo-link dodge-cooldown refund when specials land'
+    );
+    assert.match(
+        source,
+        /const specialRefund = this\.player\.refundSpecialCooldownFromAttackHit\(hb\.isSpecial,\s*this\.time\.now\);[\s\S]*?if \(specialRefund > 0\) \{[\s\S]*?showFloatingCombatText\(/,
+        'boss-hit processing should reuse the combo-link special-cooldown refund hook'
+    );
+    assert.match(
+        source,
+        /const dodgeRefund = this\.player\.refundDodgeCooldownFromSpecialHit\(hb\.isSpecial,\s*this\.time\.now\);[\s\S]*?if \(dodgeRefund > 0\) \{[\s\S]*?showFloatingCombatText\(/,
+        'boss-hit processing should reuse the combo-link dodge-cooldown refund hook'
+    );
+}
+
+function testCounterattackRunEffectHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /grantSpecialHitStamina\(isSpecial\)\s*{[\s\S]*?const staminaGain = Math\.max\(0,\s*Math\.round\(runEffects\.playerSpecialHitStaminaGain \|\| 0\)\);[\s\S]*?if \(!isSpecial \|\| staminaGain <= 0\) return 0;[\s\S]*?this\.stamina = Math\.min\(this\.maxStamina,\s*this\.stamina \+ staminaGain\);/,
+        'player runtime should expose a helper that refunds stamina only on landed specials'
+    );
+    assert.match(
+        source,
+        /armPostDodgeAttackWindow\(\)\s*{[\s\S]*?const windowMs = Math\.max\(0,\s*Math\.round\(runEffects\.playerPostDodgeAttackWindowMs \|\| 0\)\);[\s\S]*?this\.postDodgeAttackEmpowerUntil = this\.scene\.time\.now \+ windowMs;/,
+        'player runtime should arm a timed post-dodge normal-attack window from run effects'
+    );
+    assert.match(
+        source,
+        /const attackDamageMultiplier = this\.consumePostDodgeAttackMultiplier\(this\.scene\.time\.now\);[\s\S]*?const isEmpoweredAttack = attackDamageMultiplier > 1;[\s\S]*?const damage = Math\.round\(weapon\.damage \* this\.getDamageMultiplier\(\) \* attackDamageMultiplier\);/,
+        'normal attacks should consume the post-dodge attack multiplier when computing empowered follow-up damage'
+    );
+    assert.match(
+        source,
+        /return this\._spawnHitbox\(damage,\s*1,\s*false,\s*false,\s*\{[\s\S]*?attackSequenceId,[\s\S]*?disciplineAttackPayoffUntil,[\s\S]*?isEmpoweredAttack[\s\S]*?\}\);/,
+        'normal attacks should tag when a post-dodge attack window is actually converted into a follow-up swing'
+    );
+    assert.match(
+        source,
+        /_spawnHitbox\(damage,\s*scale,\s*isSpecial,\s*isEmpoweredSpecial,\s*meta\s*=\s*\{\}\)\s*{[\s\S]*?const isEmpoweredAttack = !!meta\.isEmpoweredAttack;[\s\S]*?hitbox\.isEmpoweredAttack = isEmpoweredAttack;/,
+        'spawned hitboxes should carry the post-dodge attack payoff metadata into the hit-resolution path'
+    );
+    assert.match(
+        source,
+        /consumePostDodgeAttackPayoff\(hitbox\)\s*{[\s\S]*?if \(!hitbox \|\| hitbox\.isSpecial \|\| !hitbox\.isEmpoweredAttack\) return false;[\s\S]*?const attackSequenceId = Number\(hitbox\.attackSequenceId\) \|\| 0;[\s\S]*?if \(attackSequenceId <= 0 \|\| this\.postDodgeAttackPayoffConsumedSequenceId === attackSequenceId\) return false;[\s\S]*?this\.postDodgeAttackPayoffConsumedSequenceId = attackSequenceId;[\s\S]*?return true;/,
+        'player runtime should consume the post-dodge attack payoff at most once for the tagged empowered swing'
+    );
+    assert.match(
+        source,
+        /const armedAttackWindowMs = this\.armPostDodgeAttackWindow\(\);[\s\S]*?if \(armedAttackWindowMs > 0\) \{[\s\S]*?showFloatingCombatText\([\s\S]*?'追猎'/,
+        'dodge recovery should surface the counterattack route when it arms the empowered normal-attack window'
+    );
+    assert.match(
+        source,
+        /const specialStaminaRefund = this\.player\.grantSpecialHitStamina\(hb\.isSpecial\);[\s\S]*?if \(specialStaminaRefund > 0\) \{[\s\S]*?showFloatingCombatText\([\s\S]*?'调息\+'\s*\+\s*specialStaminaRefund[\s\S]*?this\.armStaminaPayoffPulse\(specialStaminaRefund\);/,
+        'enemy-hit processing should surface the special-hit stamina refund only when specials actually cash it out'
+    );
+    assert.match(
+        source,
+        /const specialStaminaRefund = this\.player\.grantSpecialHitStamina\(hb\.isSpecial\);[\s\S]*?if \(specialStaminaRefund > 0\) \{[\s\S]*?showFloatingCombatText\([\s\S]*?'调息\+'\s*\+\s*specialStaminaRefund[\s\S]*?this\.armStaminaPayoffPulse\(specialStaminaRefund\);/,
+        'boss-hit processing should mirror the special-hit stamina refund feedback and pulse'
+    );
+    assert.match(
+        source,
+        /if \(typeof this\.player\.consumePostDodgeAttackPayoff === 'function' && this\.player\.consumePostDodgeAttackPayoff\(hb\)\) \{[\s\S]*?showHitImpactPulse\([\s\S]*?showFloatingCombatText\([\s\S]*?'追猎斩'/,
+        'hit processing should add a distinct counterattack payoff cue only when the tagged empowered normal attack actually lands'
+    );
+    assert.match(
+        source,
+        /getCombatAttackStatusLabel\(now\)\s*{[\s\S]*?const attackWindowMs = Math\.max\(0,\s*Math\.round\(runEffects\.playerPostDodgeAttackWindowMs \|\| 0\)\);[\s\S]*?const attackMultiplier = Math\.max\(1,\s*Number\(runEffects\.playerPostDodgeAttackDamageMultiplier\) \|\| 1\);[\s\S]*?if \(attackWindowMs > 0 && attackMultiplier > 1\) \{[\s\S]*?return `追猎\$\{seconds\.toFixed\(1\)\}s`[\s\S]*?return '追猎待闪';/,
+        'combat HUD state should expose the counterattack normal-attack identity with active-window countdown and idle waiting label'
+    );
+    assert.match(
+        source,
+        /getCombatSpecialStatusLabel\(now\)\s*{[\s\S]*?const specialStaminaGain = Math\.max\(0,\s*Math\.round\(runEffects\.playerSpecialHitStaminaGain \|\| 0\)\);[\s\S]*?if \(specialStaminaGain > 0\) \{[\s\S]*?return `调息\+\$\{specialStaminaGain\}`;/,
+        'combat HUD state should expose the special-hit stamina identity on the special row when the sustain route is active'
+    );
+}
+
+function testWeaponRoutingRunEffectHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /tryAttack\(\)\s*{[\s\S]*?const attackCooldownScale = runEffects\.playerAttackCooldownMultiplier \|\| 1;[\s\S]*?const weaponRoutingAttackCooldownScale = weapon\.type === 'melee' \? \(runEffects\.playerMeleeAttackCooldownMultiplier \|\| 1\) : 1;[\s\S]*?this\.attackCooldown = Math\.max\(120,\s*Math\.round\(weapon\.attackSpeed \* attackCooldownScale \* weaponRoutingAttackCooldownScale\)\);/,
+        'player attack runtime should apply the weapon-routing melee cadence bonus only while a melee weapon is equipped'
+    );
+    assert.match(
+        source,
+        /trySpecialAttack\(\)\s*{[\s\S]*?const specialCdScale = runEffects\.playerSpecialCooldownMultiplier \|\| 1;[\s\S]*?const weaponRoutingSpecialCdScale = weapon\.type === 'ranged' \? \(runEffects\.playerRangedSpecialCooldownMultiplier \|\| 1\) : 1;[\s\S]*?this\.specialCooldown = Math\.max\(450,\s*Math\.round\(weapon\.specialCooldown \* specialCdScale \* weaponRoutingSpecialCdScale\)\);/,
+        'player special runtime should apply the weapon-routing ranged cadence bonus only while a ranged weapon is equipped'
+    );
+    assert.match(
+        source,
+        /getCombatAttackStatusLabel\(now\)\s*{[\s\S]*?const meleeAttackCooldownTag = formatRunEffectReductionTag\(runEffects\.playerMeleeAttackCooldownMultiplier\);[\s\S]*?if \(meleeAttackCooldownTag\) \{[\s\S]*?return this\.currentWeapon && this\.currentWeapon\.type === 'melee'\s*\?\s*`压阵\$\{meleeAttackCooldownTag\}`\s*:\s*'压阵切近战';[\s\S]*?\}/,
+        'combat HUD state should expose the melee-routing shrine identity and show a switch prompt while the wrong weapon type is equipped'
+    );
+    assert.match(
+        source,
+        /getCombatSpecialStatusLabel\(now\)\s*{[\s\S]*?const rangedSpecialCooldownTag = formatRunEffectReductionTag\(runEffects\.playerRangedSpecialCooldownMultiplier\);[\s\S]*?if \(rangedSpecialCooldownTag\) \{[\s\S]*?return this\.currentWeapon && this\.currentWeapon\.type === 'ranged'\s*\?\s*`离弦\$\{rangedSpecialCooldownTag\}`\s*:\s*'离弦切远程';[\s\S]*?\}/,
+        'combat HUD state should expose the ranged-routing shrine identity and show a switch prompt while the wrong weapon type is equipped'
+    );
+    assert.match(
+        source,
+        /attackStatusLabel:\s*typeof player\.getCombatAttackStatusLabel === 'function'\s*\?\s*player\.getCombatAttackStatusLabel\(this\.time\.now\)\s*:\s*''[\s\S]*?specialStatusLabel:\s*typeof player\.getCombatSpecialStatusLabel === 'function'\s*\?\s*player\.getCombatSpecialStatusLabel\(this\.time\.now\)\s*:\s*''/,
+        'combat HUD state should forward the weapon-routing attack and special labels into the shared action HUD'
+    );
+}
+
+function testRiskRewardRunEffectHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /isLowHpDamageRouteActive\(\)\s*{[\s\S]*?const thresholdRatio = Math\.max\(0,\s*Math\.min\(1,\s*Number\(runEffects\.playerLowHpThresholdRatio\) \|\| 0\)\);[\s\S]*?const multiplier = Math\.max\(1,\s*Number\(runEffects\.playerLowHpDamageMultiplier\) \|\| 1\);[\s\S]*?return thresholdRatio > 0 && multiplier > 1 && this\.maxHp > 0 && this\.hp \/ this\.maxHp <= thresholdRatio;/,
+        'player runtime should expose a dedicated low-HP route helper keyed off the configured threshold and multiplier'
+    );
+    assert.match(
+        source,
+        /isHighHpGuardRouteActive\(\)\s*{[\s\S]*?const thresholdRatio = Math\.max\(0,\s*Math\.min\(1,\s*Number\(runEffects\.playerHighHpThresholdRatio\) \|\| 0\)\);[\s\S]*?const multiplier = Math\.max\(0,\s*Number\(runEffects\.playerHighHpDamageTakenMultiplier\) \|\| 1\);[\s\S]*?return thresholdRatio > 0 && multiplier > 0 && multiplier < 1 && this\.maxHp > 0 && this\.hp \/ this\.maxHp >= thresholdRatio;/,
+        'player runtime should expose a dedicated high-HP guard helper keyed off the configured threshold and mitigation value'
+    );
+    assert.match(
+        source,
+        /getCombatAttackStatusLabel\(now\)\s*{[\s\S]*?const lowHpDamageTag = formatRunEffectIncreaseTag\(runEffects\.playerLowHpDamageMultiplier\);[\s\S]*?const lowHpThresholdPercent = Math\.round\(Math\.max\(0,\s*Math\.min\(1,\s*Number\(runEffects\.playerLowHpThresholdRatio\) \|\| 0\)\s*\*\s*100\)\);[\s\S]*?if \(lowHpDamageTag && lowHpThresholdPercent > 0\) \{[\s\S]*?return this\.isLowHpDamageRouteActive\(\)\s*\?\s*`绝境\$\{lowHpDamageTag\}`\s*:\s*`绝境<\$\{lowHpThresholdPercent\}%`[\s\S]*?\}/,
+        'combat HUD attack row should expose the low-HP burst route as a threshold prompt when inactive and a live bonus tag when active'
+    );
+    assert.match(
+        source,
+        /getCombatDodgeStatusLabel\(now\)\s*{[\s\S]*?const highHpGuardTag = formatRunEffectReductionTag\(runEffects\.playerHighHpDamageTakenMultiplier\);[\s\S]*?const highHpThresholdPercent = Math\.round\(Math\.max\(0,\s*Math\.min\(1,\s*Number\(runEffects\.playerHighHpThresholdRatio\) \|\| 0\)\s*\*\s*100\)\);[\s\S]*?if \(highHpGuardTag && highHpThresholdPercent > 0\) \{[\s\S]*?return this\.isHighHpGuardRouteActive\(\)\s*\?\s*`守心\$\{highHpGuardTag\}`\s*:\s*`守心>\$\{highHpThresholdPercent\}%`[\s\S]*?\}/,
+        'combat HUD dodge row should expose the high-HP guard route as a threshold prompt when inactive and a live mitigation tag when active'
+    );
+    assert.match(
+        source,
+        /getDamageMultiplier\(\)\s*{[\s\S]*?let mult = runEffects\.playerDamageMultiplier \|\| 1;[\s\S]*?if \(typeof this\.isLowHpDamageRouteActive === 'function' && this\.isLowHpDamageRouteActive\(\)\) \{[\s\S]*?mult \*= Math\.max\(1,\s*Number\(runEffects\.playerLowHpDamageMultiplier\) \|\| 1\);[\s\S]*?\}[\s\S]*?return mult;/,
+        'player outgoing damage should consume the low-HP route only while the configured danger threshold is active'
+    );
+    assert.match(
+        source,
+        /takeDamage\(amount,\s*options\)\s*{[\s\S]*?const incomingScale = opts\.ignoreRunModifier \? 1 : \(runEffects\.playerDamageTakenMultiplier \|\| 1\);[\s\S]*?const highHpGuardScale = typeof this\.isHighHpGuardRouteActive === 'function' && this\.isHighHpGuardRouteActive\(\)\s*\?\s*Math\.max\(0,\s*Number\(runEffects\.playerHighHpDamageTakenMultiplier\) \|\| 1\)\s*:\s*1;[\s\S]*?const finalDamage = Math\.max\(1,\s*Math\.round\(\(Number\(amount\) \|\| 0\) \* incomingScale \* highHpGuardScale\)\);[\s\S]*?showFloatingCombatText\([\s\S]*?'-' \+ finalDamage[\s\S]*?if \(highHpGuardScale < 1 && !opts\.silent\) \{[\s\S]*?showFloatingCombatText\([\s\S]*?'守心'/,
+        'player incoming damage should consume the high-HP mitigation route only while the guard threshold is active and show a distinct defense cue'
+    );
+    assert.match(
+        source,
+        /tryAttack\(\)\s*{[\s\S]*?const isLowHpDamageEmpowered = typeof this\.isLowHpDamageRouteActive === 'function' && this\.isLowHpDamageRouteActive\(\);[\s\S]*?return this\._spawnHitbox\([\s\S]*?isLowHpDamageEmpowered[\s\S]*?\}\);/,
+        'player attack runtime should tag spawned hitboxes when the low-HP damage route is actively empowering outgoing hits'
+    );
+    assert.match(
+        source,
+        /trySpecialAttack\(\)\s*{[\s\S]*?const isLowHpDamageEmpowered = typeof this\.isLowHpDamageRouteActive === 'function' && this\.isLowHpDamageRouteActive\(\);[\s\S]*?return this\._spawnHitbox\([\s\S]*?isLowHpDamageEmpowered[\s\S]*?\);/,
+        'player special runtime should also tag spawned hitboxes when the low-HP damage route is actively empowering outgoing hits'
+    );
+    assert.match(
+        source,
+        /const isLowHpDamageEmpowered = !!meta\.isLowHpDamageEmpowered;[\s\S]*?arrow\.isLowHpDamageEmpowered = isLowHpDamageEmpowered[\s\S]*?orb\.isLowHpDamageEmpowered = isLowHpDamageEmpowered[\s\S]*?slam\.isLowHpDamageEmpowered = isLowHpDamageEmpowered[\s\S]*?hitbox\.isLowHpDamageEmpowered = isLowHpDamageEmpowered/,
+        'spawned hitboxes should carry the low-HP empowered marker across every weapon attack pattern'
+    );
+    assert.match(
+        source,
+        /if \(hb\.isLowHpDamageEmpowered\) \{[\s\S]*?showHitImpactPulse\([\s\S]*?showFloatingCombatText\([\s\S]*?'绝境'/,
+        'hit processing should add a distinct risk-route payoff cue only when the threshold-gated low-HP burst is actually active on impact'
+    );
+    assert.match(
+        source,
+        /attackStatusLabel:\s*typeof player\.getCombatAttackStatusLabel === 'function'\s*\?\s*player\.getCombatAttackStatusLabel\(this\.time\.now\)\s*:\s*''[\s\S]*?dodgeStatusLabel:\s*typeof player\.getCombatDodgeStatusLabel === 'function'\s*\?\s*player\.getCombatDodgeStatusLabel\(this\.time\.now\)\s*:\s*''/,
+        'combat HUD state should forward the risk/reward shrine threshold labels into the shared action HUD'
+    );
+}
+
+function testStatusRoutingRunEffectHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /_spawnHitbox\(damage,\s*scale,\s*isSpecial,\s*isEmpoweredSpecial,\s*meta = \{\}\)\s*{[\s\S]*?const specialStatus = isSpecial \? getWeaponSpecialStatus\(weaponKey\) : null;[\s\S]*?const burnDurationScale = specialStatus && specialStatus\.key === 'burn' \? Math\.max\(1,\s*Number\(runEffects\.playerBurnStatusDurationMultiplier\) \|\| 1\) : 1;[\s\S]*?const burnDamageScale = specialStatus && specialStatus\.key === 'burn' \? Math\.max\(1,\s*Number\(runEffects\.playerBurnStatusDamageMultiplier\) \|\| 1\) : 1;[\s\S]*?const bleedDurationScale = specialStatus && specialStatus\.key === 'bleed' \? Math\.max\(1,\s*Number\(runEffects\.playerBleedStatusDurationMultiplier\) \|\| 1\) : 1;[\s\S]*?const bleedDamageScale = specialStatus && specialStatus\.key === 'bleed' \? Math\.max\(1,\s*Number\(runEffects\.playerBleedStatusDamageMultiplier\) \|\| 1\) : 1;[\s\S]*?durationMs:\s*Math\.max\(600,\s*Math\.round\(specialStatus\.durationMs \* burnDurationScale \* bleedDurationScale\)\),[\s\S]*?sourceDamage:\s*Math\.max\(1,\s*Math\.round\(damage \* burnDamageScale \* bleedDamageScale\)\),[\s\S]*?routePayoffLabel:\s*specialStatus\.key === 'burn'\s*\?\s*'余烬'\s*:\s*\(specialStatus\.key === 'bleed' \? '血痕' : ''\)/,
+        'special hitboxes should scale burn and bleed payloads from the routed run effects and carry a route payoff label'
+    );
+    assert.match(
+        source,
+        /if \(hb\.statusEffect && enemy\.applyStatusEffect\) \{[\s\S]*?const didApplyStatus = enemy\.applyStatusEffect\([\s\S]*?if \(didApplyStatus && hb\.statusEffect\.routePayoffLabel\) \{[\s\S]*?showHitImpactPulse\([\s\S]*?showFloatingCombatText\([\s\S]*?hb\.statusEffect\.routePayoffLabel/,
+        'enemy hit processing should add a distinct payoff cue when a routed burn or bleed status is actually applied'
+    );
+    assert.match(
+        source,
+        /if \(hb\.statusEffect && this\.boss\.applyStatusEffect\) \{[\s\S]*?const didApplyStatus = this\.boss\.applyStatusEffect\([\s\S]*?if \(didApplyStatus && hb\.statusEffect\.routePayoffLabel\) \{[\s\S]*?showHitImpactPulse\([\s\S]*?showFloatingCombatText\([\s\S]*?hb\.statusEffect\.routePayoffLabel/,
+        'boss hit processing should also add the routed status payoff cue when burn or bleed is successfully applied'
+    );
+    assert.match(
+        source,
+        /getCombatSpecialStatusLabel\(now\)\s*{[\s\S]*?const slowDurationTag = formatRunEffectIncreaseTag\(runEffects\.playerSlowStatusDurationMultiplier\);[\s\S]*?if \(slowDurationTag\) \{[\s\S]*?return weaponStatus && weaponStatus\.key === 'slow'\s*\?\s*`镇步\$\{slowDurationTag\}`\s*:\s*'镇步切减速';[\s\S]*?\}[\s\S]*?const burnDurationTag = formatRunEffectIncreaseTag\(runEffects\.playerBurnStatusDurationMultiplier\);[\s\S]*?const burnDamageTag = formatRunEffectIncreaseTag\(runEffects\.playerBurnStatusDamageMultiplier\);[\s\S]*?if \(burnDurationTag && burnDamageTag\) \{[\s\S]*?return weaponStatus && weaponStatus\.key === 'burn'\s*\?\s*`余烬\$\{burnDurationTag\}\/\$\{burnDamageTag\}`\s*:\s*'余烬切灼烧';[\s\S]*?\}[\s\S]*?const bleedDurationTag = formatRunEffectIncreaseTag\(runEffects\.playerBleedStatusDurationMultiplier\);[\s\S]*?const bleedDamageTag = formatRunEffectIncreaseTag\(runEffects\.playerBleedStatusDamageMultiplier\);[\s\S]*?if \(bleedDurationTag && bleedDamageTag\) \{[\s\S]*?return weaponStatus && weaponStatus\.key === 'bleed'\s*\?\s*`血痕\$\{bleedDurationTag\}\/\$\{bleedDamageTag\}`\s*:\s*'血痕切流血';[\s\S]*?\}[\s\S]*?const damageVsSlowedTag = formatRunEffectIncreaseTag\(runEffects\.playerDamageVsSlowedMultiplier\);[\s\S]*?if \(damageVsSlowedTag\) \{[\s\S]*?return `破势\$\{damageVsSlowedTag\}`;[\s\S]*?\}/,
+        'combat HUD special row should expose the routed slow/control identity and show a switch prompt or payoff tag when applicable'
+    );
+    assert.match(
+        source,
+        /specialStatusLabel:\s*typeof player\.getCombatSpecialStatusLabel === 'function'\s*\?\s*player\.getCombatSpecialStatusLabel\(this\.time\.now\)\s*:\s*''/,
+        'combat HUD state should forward the status-routing shrine label into the shared action HUD'
+    );
+
+    const readme = loadReadmeSource();
+    assert.match(
+        readme,
+        /若已选 `镇压圣坛` 的 `镇步修习`，`特攻 O` 在持有附带减速的武器时会显示 `镇步\+45%`，切到其他武器则改成 `镇步切减速`，而当强化后的减速真正命中挂上时还会补一个 `镇步` 提示；若已选 `破势修习`，`特攻 O` 会常驻显示 `破势\+28%`，而当这段对减速目标的加伤真正命中兑现时还会补一个 `破势` 提示/,
+        'README should document the control-routing shrine HUD labels, mismatch prompts, and on-hit payoff cues'
+    );
+    assert.match(
+        readme,
+        /`镇压圣坛`（在 `镇步修习` 的减速强化与 `破势修习` 的对减速目标加伤之间二选一）/,
+        'README should list the new control-routing shrine in the event-room roster'
     );
 }
 
@@ -8611,6 +9832,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /若已选 `命途圣坛` 的 `绝境修习`，`普攻 U` 会在生命高于 45% 时显示 `绝境<45%`、压进阈值后改成 `绝境\+40%`，真正带着这段低血爆发命中时还会补一个 `绝境` 浮字；若已选 `守心修习`，`闪避 Space` 会在生命高于 70% 时显示 `守心-18%`、跌出阈值后改成 `守心>70%`，而当这段高血减伤真实挡下一击时，玩家身旁还会补一个 `守心` 提示/,
+        'README should document the risk/reward shrine threshold labels and the real combat payoff cues for both routes'
+    );
+    assert.match(
+        source,
         /若 Boss telegraph 已进入 `尾段残影` 区间且剩余读招倒计时已低于约 1ms，再把 `当前倒计时头标` 的内芯与外壳再同步收窄半拍/,
         'README should document the final synchronized width trim for the countdown-head shell and inner core'
     );
@@ -8693,6 +9919,41 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /若窄屏下三段文案合计过长，行动 HUD 也会自动改成两行左对齐，并把瞄准\/武器提示整体上提/,
         'README should document the narrow-screen two-line fallback for long action HUD labels'
+    );
+    assert.match(
+        source,
+        /若已选 `复苏祷言`，`闪避 Space` 会常驻显示 `复苏\+35%`，真正因自然回体转好时还会短促切成 `复苏就绪`[\s\S]*?若已选 `迅击祷言`，`特攻 O` 会常驻显示 `迅击-22%`，真正转好时还会短促切成 `迅击就绪`/,
+        'README should document the prayer-shrine identity label and payoff-ready cue'
+    );
+    assert.match(
+        source,
+        /若已选 `连斩修习`，`普攻 U` 会常驻显示 `连斩-18%`，而当减 CD 真正把 `普攻 U` 从 `冷却` 或翻滚后的冷却预告推回 `就绪` 时，还会短促切成 `连斩就绪`/,
+        'README should document the combat-discipline attack-ready payoff cue alongside the persistent route label'
+    );
+    assert.match(
+        source,
+        /当更短普攻 CD 真正压出更快的下一次普攻命中时，命中处还会补一个短促的 `连斩` 浮字与轻 hit pulse/,
+        'README should document the combat-discipline hit-payoff cue when the shorter cooldown cashes out into a faster hit'
+    );
+    assert.match(
+        source,
+        /若已选 `游步修习`，`闪避 Space` 会常驻显示 `游步-20%\/-18%`，而当减 CD \/ 减耗真正把翻滚从 `冷却`、`差体` 或翻滚后的下一状态推回 `就绪` 时，还会短促切成 `游步就绪`/,
+        'README should document the combat-discipline dodge-ready payoff cue alongside the persistent route label'
+    );
+    assert.match(
+        source,
+        /若已选 `复苏祷言`，`闪避 Space` 会常驻显示 `复苏\+35%`，真正因自然回体转好时还会短促切成 `复苏就绪`，并让体力条也同步短促抬亮一下/,
+        'README should document the prayer-shrine stamina-bar threshold cue alongside the dodge-ready cue'
+    );
+    assert.match(
+        source,
+        /若已选 `游步修习`，`闪避 Space` 会常驻显示 `游步-20%\/-18%`，而当减 CD \/ 减耗真正把翻滚从 `冷却`、`差体` 或翻滚后的下一状态推回 `就绪` 时，还会短促切成 `游步就绪`；当减耗真正把 `闪避 Space` 从 `差体` 或翻滚后预告推回 `就绪` 时，体力条也会同步短促抬亮一下/,
+        'README should document the combat-discipline stamina-bar threshold cue alongside the dodge-ready cue'
+    );
+    assert.match(
+        source,
+        /若已选 `追猎修习`，`普攻 U` 会先显示 `追猎待闪`，翻滚收招后改成 `追猎1\.4s` 这类剩余窗口提示，真正把这段窗口兑现成强化普攻命中时，还会补一个更亮的 `追猎斩` 浮字与 hit pulse；若已选 `调息修习`，`特攻 O` 会常驻显示 `调息\+6`，且只有在特攻命中后真的回到体力时，左上体力条才会同步短促抬亮并脉冲一下/,
+        'README should document the counterattack-shrine attack-followup window and special-hit stamina payoff cues'
     );
     assert.match(
         source,
@@ -9377,6 +10638,46 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若这些道具名过长则同样会截成“快捷栏1：古代狂…→神圣净…”这类省略短句/,
         'help overlay should explain the shared ellipsis clamp on overwrite fallback labels'
+    );
+    assert.match(
+        source,
+        /若已选“复苏祷言”，闪避行会常驻显示“复苏\+35%”，真正因自然回体转好时还会短促切成“复苏就绪”[\s\S]*?若已选“迅击祷言”，特攻行会常驻显示“迅击-22%”，真正转好时还会短促切成“迅击就绪”/,
+        'help overlay should explain the prayer-shrine identity label and payoff-ready cue'
+    );
+    assert.match(
+        source,
+        /若已选“连斩修习”，普攻行会常驻显示“连斩-18%”，而当减 CD 真正把“普攻 U”从“冷却”或翻滚后的冷却预告推回“就绪”时，还会短促切成“连斩就绪”/,
+        'help overlay should explain the combat-discipline attack-ready payoff cue alongside the persistent route label'
+    );
+    assert.match(
+        source,
+        /当更短普攻 CD 真正压出更快的下一次普攻命中时，命中处还会补一个短促的“连斩”浮字与轻 hit pulse/,
+        'help overlay should explain the combat-discipline hit-payoff cue when the shorter cooldown cashes out into a faster hit'
+    );
+    assert.match(
+        source,
+        /若已选“游步修习”，闪避行会常驻显示“游步-20%\/-18%”，而当减 CD \/ 减耗真正把翻滚从“冷却”、“差体”或翻滚后的下一状态推回“就绪”时，还会短促切成“游步就绪”/,
+        'help overlay should explain the combat-discipline dodge-ready payoff cue alongside the persistent route label'
+    );
+    assert.match(
+        source,
+        /若已选“复苏祷言”，闪避行会常驻显示“复苏\+35%”，真正因自然回体转好时还会短促切成“复苏就绪”，并让体力条也同步短促抬亮一下/,
+        'help overlay should explain that the prayer dodge-ready threshold also briefly brightens the stamina bar'
+    );
+    assert.match(
+        source,
+        /若已选“游步修习”，闪避行会常驻显示“游步-20%\/-18%”，而当减 CD \/ 减耗真正把翻滚从“冷却”、“差体”或翻滚后的下一状态推回“就绪”时，还会短促切成“游步就绪”；当减耗真正把“闪避 Space”从“差体”或翻滚后预告推回“就绪”时，体力条也会同步短促抬亮一下/,
+        'help overlay should explain that the combat-discipline dodge-cost threshold also briefly brightens the stamina bar'
+    );
+    assert.match(
+        source,
+        /若已选“追猎修习”，普攻行会先显示“追猎待闪”，翻滚收招后改成“追猎1\.4s”这类剩余窗口提示，真正把这段窗口兑现成强化普攻命中时，还会补一个更亮的“追猎斩”浮字与 hit pulse；若已选“调息修习”，特攻行会常驻显示“调息\+6”，且只有在特攻命中后真的回到体力时，体力条才会同步短促抬亮并脉冲一下/,
+        'help overlay should explain the counterattack-shrine attack-followup window and special-hit stamina payoff cues'
+    );
+    assert.match(
+        source,
+        /若已选“绝境修习”，普攻行会在生命高于 45% 时显示“绝境<45%”，压进阈值后改成“绝境\+40%”，真正带着这段低血爆发命中时还会补一个“绝境”浮字；若已选“守心修习”，闪避行会在生命高于 70% 时显示“守心-18%”，跌出阈值后改成“守心>70%”，而当这段高血减伤真实挡下一击时，玩家身旁还会补一个“守心”提示/,
+        'help overlay should explain the risk/reward shrine threshold states and both trigger-side payoff cues'
     );
     assert.match(
         source,
@@ -10702,6 +12003,14 @@ function main() {
     runTest('status effect logic', testStatusEffectLogic);
     runTest('run modifier selection/effects', testRunModifierSelectionAndEffects);
     runTest('run event room selection', testRunEventRoomSelection);
+    runTest('combat discipline event room', testCombatDisciplineEventRoom);
+    runTest('combat flow event room', testCombatFlowEventRoom);
+    runTest('combo link event room', testComboLinkEventRoom);
+    runTest('counterattack event room', testCounterattackEventRoom);
+    runTest('weapon routing event room', testWeaponRoutingEventRoom);
+    runTest('risk/reward event room', testRiskRewardEventRoom);
+    runTest('status-routing event room', testStatusRoutingEventRoom);
+    runTest('control-routing event room', testControlRoutingEventRoom);
     runTest('run event room choice helpers', testRunEventRoomChoiceHelpers);
     runTest('run event room choice panel preview', testRunEventRoomChoicePanelPreview);
     runTest('run event room choice affordability label', testRunEventRoomChoiceAffordabilityLabel);
@@ -10757,8 +12066,16 @@ function main() {
     runTest('combat action readiness helper', testCombatActionReadiness);
     runTest('combat action HUD segments helper', testCombatActionHudSegments);
     runTest('combat action HUD layout helper', testCombatActionHudLayout);
+    runTest('stamina payoff pulse helper', testStaminaPayoffPulsePresentation);
     runTest('quick-slot item label helper', testQuickSlotItemLabel);
     runTest('keyboard HUD QoL hooks', testKeyboardHudQolHooks);
+    runTest('combat discipline run-effect hooks', testCombatDisciplineRunEffectHooks);
+    runTest('combat flow run-effect hooks', testCombatFlowRunEffectHooks);
+    runTest('combo link run-effect hooks', testComboLinkRunEffectHooks);
+    runTest('counterattack run-effect hooks', testCounterattackRunEffectHooks);
+    runTest('weapon routing run-effect hooks', testWeaponRoutingRunEffectHooks);
+    runTest('risk/reward run-effect hooks', testRiskRewardRunEffectHooks);
+    runTest('status-routing run-effect hooks', testStatusRoutingRunEffectHooks);
     runTest('boss action HUD bottom-layout guard', testBossActionHudBottomLayoutGuard);
     runTest('README keyboard inventory loop', testReadmeKeyboardInventoryLoop);
     runTest('help overlay quick-slot loop', testHelpOverlayQuickSlotLoop);

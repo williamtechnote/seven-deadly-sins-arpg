@@ -128,11 +128,45 @@
         enemyHpMultiplier: 1,
         playerDamageMultiplier: 1,
         playerDamageTakenMultiplier: 1,
+        playerLowHpDamageMultiplier: 1,
+        playerLowHpThresholdRatio: 0,
+        playerHighHpDamageTakenMultiplier: 1,
+        playerHighHpThresholdRatio: 0,
+        playerBurnStatusDurationMultiplier: 1,
+        playerBurnStatusDamageMultiplier: 1,
+        playerBleedStatusDurationMultiplier: 1,
+        playerBleedStatusDamageMultiplier: 1,
+        playerSlowStatusDurationMultiplier: 1,
+        playerDamageVsSlowedMultiplier: 1,
         goldDropMultiplier: 1,
         extraDropRateMultiplier: 1,
         playerStaminaRegenMultiplier: 1,
-        playerSpecialCooldownMultiplier: 1
+        playerSpecialCooldownMultiplier: 1,
+        playerAttackCooldownMultiplier: 1,
+        playerMeleeAttackCooldownMultiplier: 1,
+        playerDodgeCooldownMultiplier: 1,
+        playerDodgeStaminaCostMultiplier: 1,
+        playerRangedSpecialCooldownMultiplier: 1,
+        playerAttackHitStaminaGain: 0,
+        playerAttackHitSpecialCooldownReductionMs: 0,
+        playerPostDodgeAttackDamageMultiplier: 1,
+        playerPostDodgeAttackWindowMs: 0,
+        playerPostDodgeSpecialDamageMultiplier: 1,
+        playerPostDodgeSpecialWindowMs: 0,
+        playerSpecialHitDodgeCooldownReductionMs: 0,
+        playerSpecialHitStaminaGain: 0
     };
+
+    const ADDITIVE_RUN_EFFECT_KEYS = new Set([
+        'playerLowHpThresholdRatio',
+        'playerHighHpThresholdRatio',
+        'playerAttackHitStaminaGain',
+        'playerPostDodgeSpecialWindowMs',
+        'playerPostDodgeAttackWindowMs',
+        'playerAttackHitSpecialCooldownReductionMs',
+        'playerSpecialHitDodgeCooldownReductionMs',
+        'playerSpecialHitStaminaGain'
+    ]);
 
     const CRAFTING_RECIPES = {
         cleanseTonic: {
@@ -312,6 +346,281 @@
                     }
                 }
             ]
+        },
+        {
+            key: 'combatDisciplineShrine',
+            name: '战技圣坛',
+            description: '选择更凶狠的普攻节奏，或更轻快的闪避经济',
+            type: 'blessing',
+            choices: [
+                {
+                    key: 'flurryLesson',
+                    label: '连斩修习',
+                    description: '本局普攻冷却 -18%',
+                    effect: {
+                        type: 'runEffectBuff',
+                        runEffects: {
+                            playerAttackCooldownMultiplier: 0.82
+                        }
+                    }
+                },
+                {
+                    key: 'ghostStepLesson',
+                    label: '游步修习',
+                    description: '本局闪避冷却 -20%，闪避体力消耗 -18%',
+                    effect: {
+                        type: 'runEffectBuff',
+                        runEffects: {
+                            playerDodgeCooldownMultiplier: 0.8,
+                            playerDodgeStaminaCostMultiplier: 0.82
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            key: 'weaponRoutingShrine',
+            name: '武备圣坛',
+            description: '选择把路线压进近战压阵，或导向远程离弦节奏',
+            type: 'blessing',
+            choices: [
+                {
+                    key: 'vanguardLesson',
+                    label: '压阵修习',
+                    description: '本局近战武器普攻冷却 -18%',
+                    effect: {
+                        type: 'runEffectBuff',
+                        routeSummary: '近战武器普攻冷却-18%',
+                        resolutionText: '近战武器普攻冷却 -18%',
+                        runEffects: {
+                            playerMeleeAttackCooldownMultiplier: 0.82
+                        }
+                    }
+                },
+                {
+                    key: 'longshotLesson',
+                    label: '离弦修习',
+                    description: '本局远程武器特攻冷却 -22%',
+                    effect: {
+                        type: 'runEffectBuff',
+                        routeSummary: '远程武器特攻冷却-22%',
+                        resolutionText: '远程武器特攻冷却 -22%',
+                        runEffects: {
+                            playerRangedSpecialCooldownMultiplier: 0.78
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            key: 'riskRewardShrine',
+            name: '命途圣坛',
+            description: '选择把血线压进绝境爆发，或守住高血量的稳态减伤',
+            type: 'blessing',
+            choices: [
+                {
+                    key: 'desperationLesson',
+                    label: '绝境修习',
+                    description: '本局生命低于 45% 时，伤害 +40%',
+                    effect: {
+                        type: 'runEffectBuff',
+                        routeSummary: '生命<45%时伤害+40%',
+                        resolutionText: '生命低于 45% 时伤害 +40%',
+                        runEffects: {
+                            playerLowHpDamageMultiplier: 1.4,
+                            playerLowHpThresholdRatio: 0.45
+                        }
+                    }
+                },
+                {
+                    key: 'composureLesson',
+                    label: '守心修习',
+                    description: '本局生命高于 70% 时，承伤 -18%',
+                    effect: {
+                        type: 'runEffectBuff',
+                        routeSummary: '生命>70%时承伤-18%',
+                        resolutionText: '生命高于 70% 时承伤 -18%',
+                        runEffects: {
+                            playerHighHpDamageTakenMultiplier: 0.82,
+                            playerHighHpThresholdRatio: 0.7
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            key: 'statusRoutingShrine',
+            name: '烙痕圣坛',
+            description: '选择把特攻压进灼烧路线，或导向流血路线的异常状态强化',
+            type: 'blessing',
+            choices: [
+                {
+                    key: 'emberLesson',
+                    label: '余烬修习',
+                    description: '本局灼烧持续时间 +45%，灼烧伤害 +30%',
+                    effect: {
+                        type: 'runEffectBuff',
+                        routeSummary: '灼烧持续时间+45%, 灼烧伤害+30%',
+                        resolutionText: '灼烧持续时间 +45%，灼烧伤害 +30%',
+                        runEffects: {
+                            playerBurnStatusDurationMultiplier: 1.45,
+                            playerBurnStatusDamageMultiplier: 1.3
+                        }
+                    }
+                },
+                {
+                    key: 'bloodtraceLesson',
+                    label: '血痕修习',
+                    description: '本局流血持续时间 +40%，流血伤害 +25%',
+                    effect: {
+                        type: 'runEffectBuff',
+                        routeSummary: '流血持续时间+40%, 流血伤害+25%',
+                        resolutionText: '流血持续时间 +40%，流血伤害 +25%',
+                        runEffects: {
+                            playerBleedStatusDurationMultiplier: 1.4,
+                            playerBleedStatusDamageMultiplier: 1.25
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            key: 'controlRoutingShrine',
+            name: '镇压圣坛',
+            description: '选择把锤类特攻压成更长减速，或把受控目标转成更强爆发兑现',
+            type: 'blessing',
+            choices: [
+                {
+                    key: 'crushingLesson',
+                    label: '镇步修习',
+                    description: '本局减速持续时间 +45%',
+                    effect: {
+                        type: 'runEffectBuff',
+                        routeSummary: '减速持续时间+45%',
+                        resolutionText: '减速持续时间 +45%',
+                        runEffects: {
+                            playerSlowStatusDurationMultiplier: 1.45
+                        }
+                    }
+                },
+                {
+                    key: 'executionLesson',
+                    label: '破势修习',
+                    description: '本局对减速目标伤害 +28%',
+                    effect: {
+                        type: 'runEffectBuff',
+                        routeSummary: '对减速目标伤害+28%',
+                        resolutionText: '对减速目标伤害 +28%',
+                        runEffects: {
+                            playerDamageVsSlowedMultiplier: 1.28
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            key: 'combatFlowShrine',
+            name: '战势圣坛',
+            description: '选择把命中转成续航，或把闪避转成短时爆发',
+            type: 'blessing',
+            choices: [
+                {
+                    key: 'breathingLesson',
+                    label: '回息修习',
+                    description: '本局普攻命中回体 +4',
+                    effect: {
+                        type: 'runEffectBuff',
+                        routeSummary: '普攻命中回体+4',
+                        resolutionText: '普攻命中回体 +4',
+                        runEffects: {
+                            playerAttackHitStaminaGain: 4
+                        }
+                    }
+                },
+                {
+                    key: 'momentumLesson',
+                    label: '借势修习',
+                    description: '本局闪避后 1.6s 内特攻伤害 +35%',
+                    effect: {
+                        type: 'runEffectBuff',
+                        routeSummary: '闪避后1.6s内特攻伤害+35%',
+                        resolutionText: '闪避后 1.6s 内特攻伤害 +35%',
+                        runEffects: {
+                            playerPostDodgeSpecialDamageMultiplier: 1.35,
+                            playerPostDodgeSpecialWindowMs: 1600
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            key: 'comboLinkShrine',
+            name: '连携圣坛',
+            description: '选择把普攻串进特攻节奏，或把特攻命中转回闪避机动',
+            type: 'blessing',
+            choices: [
+                {
+                    key: 'sharpeningLesson',
+                    label: '催锋修习',
+                    description: '本局普攻命中特攻冷却 -200ms',
+                    effect: {
+                        type: 'runEffectBuff',
+                        routeSummary: '普攻命中特攻冷却-200ms',
+                        resolutionText: '普攻命中特攻冷却 -200ms',
+                        runEffects: {
+                            playerAttackHitSpecialCooldownReductionMs: 200
+                        }
+                    }
+                },
+                {
+                    key: 'reversalStepLesson',
+                    label: '回身修习',
+                    description: '本局特攻命中闪避冷却 -300ms',
+                    effect: {
+                        type: 'runEffectBuff',
+                        routeSummary: '特攻命中闪避冷却-300ms',
+                        resolutionText: '特攻命中闪避冷却 -300ms',
+                        runEffects: {
+                            playerSpecialHitDodgeCooldownReductionMs: 300
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            key: 'counterattackShrine',
+            name: '反击圣坛',
+            description: '选择把闪避转成追猎普攻，或把特攻命中转成体力回流',
+            type: 'blessing',
+            choices: [
+                {
+                    key: 'pursuitLesson',
+                    label: '追猎修习',
+                    description: '本局闪避后 1.4s 内普攻伤害 +28%',
+                    effect: {
+                        type: 'runEffectBuff',
+                        routeSummary: '闪避后1.4s内普攻伤害+28%',
+                        resolutionText: '闪避后 1.4s 内普攻伤害 +28%',
+                        runEffects: {
+                            playerPostDodgeAttackDamageMultiplier: 1.28,
+                            playerPostDodgeAttackWindowMs: 1400
+                        }
+                    }
+                },
+                {
+                    key: 'focusLesson',
+                    label: '调息修习',
+                    description: '本局特攻命中回体 +6',
+                    effect: {
+                        type: 'runEffectBuff',
+                        routeSummary: '特攻命中回体+6',
+                        resolutionText: '特攻命中回体 +6',
+                        runEffects: {
+                            playerSpecialHitStaminaGain: 6
+                        }
+                    }
+                }
+            ]
         }
     ];
 
@@ -472,6 +781,15 @@
 
     function buildCombatActionHudSegments(input) {
         const safe = input && typeof input === 'object' ? input : {};
+        const attackStatusPrefix = typeof safe.attackStatusLabel === 'string' && safe.attackStatusLabel.trim()
+            ? `${safe.attackStatusLabel.trim()} `
+            : '';
+        const specialStatusPrefix = typeof safe.specialStatusLabel === 'string' && safe.specialStatusLabel.trim()
+            ? `${safe.specialStatusLabel.trim()} `
+            : '';
+        const dodgeStatusPrefix = typeof safe.dodgeStatusLabel === 'string' && safe.dodgeStatusLabel.trim()
+            ? `${safe.dodgeStatusLabel.trim()} `
+            : '';
         if (safe.isDodging) {
             const remainingDodgeLockoutMs = Math.max(0, Number(safe.dodgeLockoutMs) || 0);
             const attackPreviewState = resolveCombatActionReadyState(
@@ -493,9 +811,9 @@
                 safe.staminaRegenPerSecond
             );
             return [
-                { key: 'attack', text: `普攻 U: 翻滚中 -> ${attackPreviewState.label}`, isReady: false },
-                { key: 'special', text: `特攻 O: 翻滚中 -> ${specialPreviewState.label}`, isReady: false },
-                { key: 'dodge', text: `闪避 Space: 翻滚中 -> ${dodgePreviewState.label}`, isReady: false }
+                { key: 'attack', text: `普攻 U: 翻滚中 -> ${attackStatusPrefix}${attackPreviewState.label}`, isReady: false },
+                { key: 'special', text: `特攻 O: 翻滚中 -> ${specialStatusPrefix}${specialPreviewState.label}`, isReady: false },
+                { key: 'dodge', text: `闪避 Space: 翻滚中 -> ${dodgeStatusPrefix}${dodgePreviewState.label}`, isReady: false }
             ];
         }
 
@@ -518,9 +836,9 @@
             safe.staminaRegenPerSecond
         );
         return [
-            { key: 'attack', text: `普攻 U: ${attackState.label}`, isReady: attackState.isReady },
-            { key: 'special', text: `特攻 O: ${specialState.label}`, isReady: specialState.isReady },
-            { key: 'dodge', text: `闪避 Space: ${dodgeState.label}`, isReady: dodgeState.isReady }
+            { key: 'attack', text: `普攻 U: ${attackStatusPrefix}${attackState.label}`, isReady: attackState.isReady },
+            { key: 'special', text: `特攻 O: ${specialStatusPrefix}${specialState.label}`, isReady: specialState.isReady },
+            { key: 'dodge', text: `闪避 Space: ${dodgeStatusPrefix}${dodgeState.label}`, isReady: dodgeState.isReady }
         ];
     }
 
@@ -533,6 +851,35 @@
 
     function buildCombatActionHudSummary(input) {
         return buildCombatActionHudSegments(input).map(segment => segment.text).join('  ');
+    }
+
+    function getStaminaPayoffPulsePresentation(now, activeUntil) {
+        const safeNow = Number(now) || 0;
+        const safeActiveUntil = Number(activeUntil) || 0;
+        const remainingMs = Math.max(0, safeActiveUntil - safeNow);
+        if (remainingMs <= 0) {
+            return {
+                active: false,
+                fillColor: null,
+                textColor: null,
+                overlayColor: null,
+                overlayAlpha: 0,
+                overlayExtraWidth: 0,
+                overlayExtraHeight: 0
+            };
+        }
+
+        const normalizedRemaining = Math.min(1, remainingMs / 220);
+        const overlayStrength = Math.pow(normalizedRemaining, 0.72);
+        return {
+            active: true,
+            fillColor: 0xE8FF9A,
+            textColor: '#fff6c7',
+            overlayColor: 0xFFF4AE,
+            overlayAlpha: Number((0.18 + 0.42 * overlayStrength).toFixed(3)),
+            overlayExtraWidth: Math.max(2, Math.round(10 * overlayStrength)),
+            overlayExtraHeight: Math.max(1, Math.round(4 * overlayStrength))
+        };
     }
 
     function buildCombatActionHudLayout(segments, options) {
@@ -1850,7 +2197,9 @@
             resolutionText = `支付 ${Math.abs(goldGain)} 金币，获得 ${itemSummary}`;
         } else if (effect.type === 'runEffectBuff') {
             const runEffects = effect.runEffects && typeof effect.runEffects === 'object' ? effect.runEffects : {};
-            resolutionText = describeRunEffectSummary(runEffects);
+            resolutionText = typeof effect.resolutionText === 'string' && effect.resolutionText.trim()
+                ? effect.resolutionText.trim()
+                : describeRunEffectSummary(runEffects);
         }
 
         return {
@@ -1885,6 +2234,10 @@
         Object.entries(runEffects).forEach(([effectKey, value]) => {
             const n = Number(value);
             if (!Number.isFinite(n) || n <= 0 || effects[effectKey] == null) return;
+            if (ADDITIVE_RUN_EFFECT_KEYS.has(effectKey)) {
+                effects[effectKey] += n;
+                return;
+            }
             effects[effectKey] *= n;
         });
         return effects;
@@ -1935,6 +2288,9 @@
         }
 
         if (effect.type === 'runEffectBuff') {
+            if (typeof effect.routeSummary === 'string' && effect.routeSummary.trim()) {
+                return effect.routeSummary.trim();
+            }
             const runEffects = effect.runEffects && typeof effect.runEffects === 'object' ? effect.runEffects : {};
             const defs = [
                 ['playerDamageMultiplier', '伤害'],
@@ -1942,7 +2298,12 @@
                 ['goldDropMultiplier', '金币掉落'],
                 ['extraDropRateMultiplier', '额外掉落率'],
                 ['playerStaminaRegenMultiplier', '体力恢复'],
+                ['playerAttackCooldownMultiplier', '普攻冷却'],
+                ['playerMeleeAttackCooldownMultiplier', '近战武器普攻冷却'],
                 ['playerSpecialCooldownMultiplier', '特攻冷却'],
+                ['playerRangedSpecialCooldownMultiplier', '远程武器特攻冷却'],
+                ['playerDodgeCooldownMultiplier', '闪避冷却'],
+                ['playerDodgeStaminaCostMultiplier', '闪避体力消耗'],
                 ['enemySpeedMultiplier', '敌人速度'],
                 ['enemyHpMultiplier', '敌人生命']
             ];
@@ -2109,7 +2470,10 @@
                 ['goldDropMultiplier', '金币掉落'],
                 ['extraDropRateMultiplier', '额外掉落率'],
                 ['playerStaminaRegenMultiplier', '体力恢复'],
+                ['playerAttackCooldownMultiplier', '普攻冷却'],
+                ['playerMeleeAttackCooldownMultiplier', '近战武器普攻冷却'],
                 ['playerSpecialCooldownMultiplier', '特攻冷却'],
+                ['playerRangedSpecialCooldownMultiplier', '远程武器特攻冷却'],
                 ['enemySpeedMultiplier', '敌人速度'],
                 ['enemyHpMultiplier', '敌人生命']
             ];
@@ -2296,6 +2660,10 @@
                 const n = Number(value);
                 if (!Number.isFinite(n) || n <= 0) return;
                 if (effects[effectKey] == null) effects[effectKey] = 1;
+                if (ADDITIVE_RUN_EFFECT_KEYS.has(effectKey)) {
+                    effects[effectKey] += n;
+                    return;
+                }
                 effects[effectKey] *= n;
             });
         });
@@ -2328,7 +2696,15 @@
             ['goldDropMultiplier', '金币掉落'],
             ['extraDropRateMultiplier', '额外掉落率'],
             ['playerStaminaRegenMultiplier', '体力恢复'],
+            ['playerAttackCooldownMultiplier', '普攻冷却'],
+            ['playerMeleeAttackCooldownMultiplier', '近战武器普攻冷却'],
             ['playerSpecialCooldownMultiplier', '特攻冷却'],
+            ['playerRangedSpecialCooldownMultiplier', '远程武器特攻冷却'],
+            ['playerDodgeCooldownMultiplier', '闪避冷却'],
+            ['playerDodgeStaminaCostMultiplier', '闪避体力消耗'],
+            ['playerSpecialHitStaminaGain', '特攻命中回体'],
+            ['playerAttackHitSpecialCooldownReductionMs', '普攻命中特攻冷却'],
+            ['playerSpecialHitDodgeCooldownReductionMs', '特攻命中闪避冷却'],
             ['enemySpeedMultiplier', '敌人速度'],
             ['enemyHpMultiplier', '敌人生命']
         ];
@@ -3429,6 +3805,7 @@
         buildCombatActionHudLayout,
         buildCombatActionHudSegments,
         buildCombatActionHudSummary,
+        getStaminaPayoffPulsePresentation,
         formatRunChallengeRewardShortLabel,
         buildRunChallengeCompletedFeedbackText,
         getRunChallengeSafeSidebarLabel,
