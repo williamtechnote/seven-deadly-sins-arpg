@@ -20,6 +20,9 @@ Each room only offers two choices, so both branches need to communicate instantl
 - one branch should reward a clear playstyle
 - the other branch should reward a different playstyle
 - the HUD should already expose the changed resource or timing so the player can feel it without opening extra menus
+- temporary/proc routes should also confirm themselves at trigger or consume time, not only through persistent HUD labels
+- cooldown-reduction routes should preferably also confirm at the accelerated hit or cast, not only when a HUD row flips to ready
+- when possible, reuse the existing action rows (`普攻 / 特攻 / 闪避`) instead of inventing a parallel shrine-only meter
 
 That makes event rooms meaningful even in a single run.
 
@@ -32,6 +35,8 @@ Low-risk additions for this repo:
 - faster basic-attack recovery
 - cheaper or faster dodge recovery
 - stronger stamina economy
+- dodge-armed next normal attack burst
+- special-hit stamina refunds
 - clearer risk/reward routes
 
 Higher-risk additions that should be avoided unless necessary:
@@ -52,5 +57,6 @@ For this repo, a gameplay feature is not done unless the regression script prove
 - the chosen route resolves to the expected run effects
 - helper summaries stay readable
 - runtime hooks actually consume the new run effect
+- payoff feedback stays distinguishable when the route actually triggers in combat
 
 This keeps heartbeat cycles from drifting into README-only changes.

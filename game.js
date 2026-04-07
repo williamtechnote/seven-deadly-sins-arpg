@@ -54,6 +54,7 @@ const {
     buildCombatActionHudLayout,
     buildCombatActionHudSegments,
     buildCombatActionHudSummary,
+    getStaminaPayoffPulsePresentation,
     buildQuickSlotItemLabel,
     buildQuickSlotAutoAssignNotice,
     getViewportTextClampX,
@@ -779,7 +780,16 @@ function getRunModifierHelpLines() {
 
 function combineRunEffects(...effectGroups) {
     const combined = { ...DEFAULT_RUN_EFFECTS };
-    const additiveRunEffectKeys = new Set(['playerAttackHitStaminaGain', 'playerPostDodgeSpecialWindowMs']);
+    const additiveRunEffectKeys = new Set([
+        'playerLowHpThresholdRatio',
+        'playerHighHpThresholdRatio',
+        'playerAttackHitStaminaGain',
+        'playerPostDodgeSpecialWindowMs',
+        'playerPostDodgeAttackWindowMs',
+        'playerAttackHitSpecialCooldownReductionMs',
+        'playerSpecialHitDodgeCooldownReductionMs',
+        'playerSpecialHitStaminaGain'
+    ]);
     effectGroups.forEach((group) => {
         if (!group || typeof group !== 'object') return;
         Object.keys(combined).forEach((effectKey) => {
@@ -802,16 +812,27 @@ function getTestRunEffectOverrides() {
         enemyHpMultiplier: getTestFlagValue('enemyHpMultiplier', 1),
         playerDamageMultiplier: getTestFlagValue('playerDamageMultiplier', 1),
         playerDamageTakenMultiplier: getTestFlagValue('playerDamageTakenMultiplier', 1),
+        playerLowHpDamageMultiplier: getTestFlagValue('playerLowHpDamageMultiplier', 1),
+        playerLowHpThresholdRatio: getTestFlagValue('playerLowHpThresholdRatio', 0),
+        playerHighHpDamageTakenMultiplier: getTestFlagValue('playerHighHpDamageTakenMultiplier', 1),
+        playerHighHpThresholdRatio: getTestFlagValue('playerHighHpThresholdRatio', 0),
         goldDropMultiplier: getTestFlagValue('goldDropMultiplier', 1),
         extraDropRateMultiplier: getTestFlagValue('extraDropRateMultiplier', 1),
         playerStaminaRegenMultiplier: getTestFlagValue('playerStaminaRegenMultiplier', 1),
         playerSpecialCooldownMultiplier: getTestFlagValue('playerSpecialCooldownMultiplier', 1),
         playerAttackCooldownMultiplier: getTestFlagValue('playerAttackCooldownMultiplier', 1),
+        playerMeleeAttackCooldownMultiplier: getTestFlagValue('playerMeleeAttackCooldownMultiplier', 1),
         playerDodgeCooldownMultiplier: getTestFlagValue('playerDodgeCooldownMultiplier', 1),
         playerDodgeStaminaCostMultiplier: getTestFlagValue('playerDodgeStaminaCostMultiplier', 1),
+        playerRangedSpecialCooldownMultiplier: getTestFlagValue('playerRangedSpecialCooldownMultiplier', 1),
         playerAttackHitStaminaGain: getTestFlagValue('playerAttackHitStaminaGain', 0),
+        playerAttackHitSpecialCooldownReductionMs: getTestFlagValue('playerAttackHitSpecialCooldownReductionMs', 0),
+        playerPostDodgeAttackDamageMultiplier: getTestFlagValue('playerPostDodgeAttackDamageMultiplier', 1),
+        playerPostDodgeAttackWindowMs: getTestFlagValue('playerPostDodgeAttackWindowMs', 0),
         playerPostDodgeSpecialDamageMultiplier: getTestFlagValue('playerPostDodgeSpecialDamageMultiplier', 1),
-        playerPostDodgeSpecialWindowMs: getTestFlagValue('playerPostDodgeSpecialWindowMs', 0)
+        playerPostDodgeSpecialWindowMs: getTestFlagValue('playerPostDodgeSpecialWindowMs', 0),
+        playerSpecialHitDodgeCooldownReductionMs: getTestFlagValue('playerSpecialHitDodgeCooldownReductionMs', 0),
+        playerSpecialHitStaminaGain: getTestFlagValue('playerSpecialHitStaminaGain', 0)
     };
 }
 
@@ -1136,6 +1157,18 @@ class TitleScene extends Phaser.Scene {
 /**
  * Player - Character with movement, combat, dodge, and weapon system
  */
+function formatRunEffectReductionTag(multiplier) {
+    const safeMultiplier = Number(multiplier);
+    if (!Number.isFinite(safeMultiplier) || safeMultiplier >= 1) return '';
+    return `-${Math.max(1, Math.round((1 - safeMultiplier) * 100))}%`;
+}
+
+function formatRunEffectIncreaseTag(multiplier) {
+    const safeMultiplier = Number(multiplier);
+    if (!Number.isFinite(safeMultiplier) || safeMultiplier <= 1) return '';
+    return `+${Math.max(1, Math.round((safeMultiplier - 1) * 100))}%`;
+}
+
 class Player extends Phaser.Physics.Arcade.Sprite {
     constructor(scene, x, y) {
         const tex = scene.textures.exists('player_idle_down') ? 'player_idle_down' : '__DEFAULT';
@@ -1167,7 +1200,19 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.statusResistanceUntil = 0;
         this.damageBuffUntil = 0;
         this.damageBuffMultiplier = 1;
+        this.postDodgeAttackEmpowerUntil = 0;
         this.postDodgeSpecialEmpowerUntil = 0;
+        this.postDodgeAttackPayoffConsumedSequenceId = 0;
+        this.disciplineAttackReadyCueUntil = 0;
+        this.disciplineAttackBaseReadyAt = 0;
+        this.disciplineAttackHitPayoffPendingUntil = 0;
+        this.disciplineAttackHitPayoffConsumedSequenceId = 0;
+        this.comboSpecialReadyCueUntil = 0;
+        this.comboDodgeReadyCueUntil = 0;
+        this.prayerSpecialReadyCueUntil = 0;
+        this.prayerDodgeReadyCueUntil = 0;
+        this.disciplineDodgeReadyCueUntil = 0;
+        this.attackSequenceId = 0;
         this._animDir = 'down';
         this._animState = 'idle';
         this._weaponVisualDirty = true;
@@ -1288,12 +1333,173 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         return Math.max(0, Math.round(this.stamina - previousStamina));
     }
 
+    grantSpecialHitStamina(isSpecial) {
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        const staminaGain = Math.max(0, Math.round(runEffects.playerSpecialHitStaminaGain || 0));
+        if (!isSpecial || staminaGain <= 0) return 0;
+        const previousStamina = this.stamina;
+        this.stamina = Math.min(this.maxStamina, this.stamina + staminaGain);
+        return Math.max(0, Math.round(this.stamina - previousStamina));
+    }
+
+    refundSpecialCooldownFromAttackHit(isSpecial, now) {
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        const reductionMs = Math.max(0, Math.round(runEffects.playerAttackHitSpecialCooldownReductionMs || 0));
+        if (isSpecial || reductionMs <= 0 || this.specialCooldown <= 0) return 0;
+        const previousCooldown = this.specialCooldown;
+        this.specialCooldown = Math.max(0, previousCooldown - reductionMs);
+        const refundedMs = Math.max(0, Math.round(previousCooldown - this.specialCooldown));
+        if (refundedMs > 0 && this.specialCooldown <= 0) {
+            this.armComboSpecialReadyCue(now);
+        }
+        return refundedMs;
+    }
+
+    refundDodgeCooldownFromSpecialHit(isSpecial, now) {
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        const reductionMs = Math.max(0, Math.round(runEffects.playerSpecialHitDodgeCooldownReductionMs || 0));
+        if (!isSpecial || reductionMs <= 0 || this.dodgeCooldownTimer <= 0) return 0;
+        const previousCooldown = this.dodgeCooldownTimer;
+        this.dodgeCooldownTimer = Math.max(0, previousCooldown - reductionMs);
+        const refundedMs = Math.max(0, Math.round(previousCooldown - this.dodgeCooldownTimer));
+        const dodgeStaminaCost = Math.max(1, Math.round(GAME_CONFIG.PLAYER.dodgeStaminaCost * (runEffects.playerDodgeStaminaCostMultiplier || 1)));
+        if (refundedMs > 0 && !this.isDodging && this.dodgeCooldownTimer <= 0 && this.stamina >= dodgeStaminaCost) {
+            this.armComboDodgeReadyCue(now);
+        }
+        return refundedMs;
+    }
+
+    isLowHpDamageRouteActive() {
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        const thresholdRatio = Math.max(0, Math.min(1, Number(runEffects.playerLowHpThresholdRatio) || 0));
+        const multiplier = Math.max(1, Number(runEffects.playerLowHpDamageMultiplier) || 1);
+        return thresholdRatio > 0 && multiplier > 1 && this.maxHp > 0 && this.hp / this.maxHp <= thresholdRatio;
+    }
+
+    isHighHpGuardRouteActive() {
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        const thresholdRatio = Math.max(0, Math.min(1, Number(runEffects.playerHighHpThresholdRatio) || 0));
+        const multiplier = Math.max(0, Number(runEffects.playerHighHpDamageTakenMultiplier) || 1);
+        return thresholdRatio > 0 && multiplier > 0 && multiplier < 1 && this.maxHp > 0 && this.hp / this.maxHp >= thresholdRatio;
+    }
+
+    getCombatAttackStatusLabel(now) {
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        const lowHpDamageTag = formatRunEffectIncreaseTag(runEffects.playerLowHpDamageMultiplier);
+        const lowHpThresholdPercent = Math.round(Math.max(0, Math.min(1, Number(runEffects.playerLowHpThresholdRatio) || 0) * 100));
+        if (lowHpDamageTag && lowHpThresholdPercent > 0) {
+            return this.isLowHpDamageRouteActive() ? `绝境${lowHpDamageTag}` : `绝境<${lowHpThresholdPercent}%`;
+        }
+        const staminaGain = Math.max(0, Math.round(runEffects.playerAttackHitStaminaGain || 0));
+        if (staminaGain > 0) {
+            return '回体+' + staminaGain;
+        }
+        const attackWindowMs = Math.max(0, Math.round(runEffects.playerPostDodgeAttackWindowMs || 0));
+        const attackMultiplier = Math.max(1, Number(runEffects.playerPostDodgeAttackDamageMultiplier) || 1);
+        if (attackWindowMs > 0 && attackMultiplier > 1) {
+            const remainingMs = Math.max(0, (Number(this.postDodgeAttackEmpowerUntil) || 0) - (Number(now) || 0));
+            if (remainingMs > 0) {
+                const seconds = Math.max(0.1, Math.round(remainingMs / 100) / 10);
+                return `追猎${seconds.toFixed(1)}s`;
+            }
+            return '追猎待闪';
+        }
+        const meleeAttackCooldownTag = formatRunEffectReductionTag(runEffects.playerMeleeAttackCooldownMultiplier);
+        if (meleeAttackCooldownTag) {
+            return this.currentWeapon && this.currentWeapon.type === 'melee'
+                ? `压阵${meleeAttackCooldownTag}`
+                : '压阵切近战';
+        }
+        const disciplineReadyCueUntil = Number(this.disciplineAttackReadyCueUntil) || 0;
+        const attackStaminaCost = this.currentWeapon ? this.currentWeapon.staminaCost : 0;
+        if ((Number(now) || 0) < disciplineReadyCueUntil && this.attackCooldown <= 0 && this.stamina >= attackStaminaCost) {
+            return '连斩就绪';
+        }
+        const attackCooldownTag = formatRunEffectReductionTag(runEffects.playerAttackCooldownMultiplier);
+        return attackCooldownTag ? `连斩${attackCooldownTag}` : '';
+    }
+
+    armDisciplineAttackReadyCue(now) {
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        if ((runEffects.playerAttackCooldownMultiplier || 1) >= 1) return 0;
+        this.disciplineAttackReadyCueUntil = Math.max(Number(this.disciplineAttackReadyCueUntil) || 0, (Number(now) || 0) + 320);
+        return this.disciplineAttackReadyCueUntil;
+    }
+
+    armDisciplineAttackHitPayoff(now) {
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        if ((runEffects.playerAttackCooldownMultiplier || 1) >= 1) return 0;
+        const pendingUntil = Number(this.disciplineAttackBaseReadyAt) || 0;
+        if (pendingUntil <= (Number(now) || 0)) return 0;
+        this.disciplineAttackHitPayoffPendingUntil = Math.max(Number(this.disciplineAttackHitPayoffPendingUntil) || 0, pendingUntil);
+        return this.disciplineAttackHitPayoffPendingUntil;
+    }
+
+    claimDisciplineAttackHitPayoffWindow(now) {
+        const pendingUntil = Number(this.disciplineAttackHitPayoffPendingUntil) || 0;
+        this.disciplineAttackHitPayoffPendingUntil = 0;
+        return pendingUntil > (Number(now) || 0) ? pendingUntil : 0;
+    }
+
+    consumeDisciplineAttackHitPayoff(hitbox, now) {
+        if (!hitbox || hitbox.isSpecial) return false;
+        const payoffUntil = Number(hitbox.disciplineAttackPayoffUntil) || 0;
+        const attackSequenceId = Number(hitbox.attackSequenceId) || 0;
+        if (payoffUntil <= (Number(now) || 0) || attackSequenceId <= 0) return false;
+        if (this.disciplineAttackHitPayoffConsumedSequenceId === attackSequenceId) return false;
+        this.disciplineAttackHitPayoffConsumedSequenceId = attackSequenceId;
+        return true;
+    }
+
+    armPostDodgeAttackWindow() {
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        const windowMs = Math.max(0, Math.round(runEffects.playerPostDodgeAttackWindowMs || 0));
+        if (windowMs <= 0 || (runEffects.playerPostDodgeAttackDamageMultiplier || 1) <= 1) return 0;
+        this.postDodgeAttackEmpowerUntil = this.scene.time.now + windowMs;
+        return windowMs;
+    }
+
     armPostDodgeSpecialWindow() {
         const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
         const windowMs = Math.max(0, Math.round(runEffects.playerPostDodgeSpecialWindowMs || 0));
         if (windowMs <= 0 || (runEffects.playerPostDodgeSpecialDamageMultiplier || 1) <= 1) return 0;
         this.postDodgeSpecialEmpowerUntil = this.scene.time.now + windowMs;
         return windowMs;
+    }
+
+    consumePostDodgeAttackMultiplier(now) {
+        const activeUntil = Number(this.postDodgeAttackEmpowerUntil) || 0;
+        const safeNow = Number(now) || 0;
+        if (safeNow >= activeUntil) {
+            this.postDodgeAttackEmpowerUntil = 0;
+            return 1;
+        }
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        const multiplier = Math.max(1, Number(runEffects.playerPostDodgeAttackDamageMultiplier) || 1);
+        this.postDodgeAttackEmpowerUntil = 0;
+        return multiplier;
+    }
+
+    consumePostDodgeAttackPayoff(hitbox) {
+        if (!hitbox || hitbox.isSpecial || !hitbox.isEmpoweredAttack) return false;
+        const attackSequenceId = Number(hitbox.attackSequenceId) || 0;
+        if (attackSequenceId <= 0 || this.postDodgeAttackPayoffConsumedSequenceId === attackSequenceId) return false;
+        this.postDodgeAttackPayoffConsumedSequenceId = attackSequenceId;
+        return true;
+    }
+
+    armComboSpecialReadyCue(now) {
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        if ((runEffects.playerAttackHitSpecialCooldownReductionMs || 0) <= 0) return 0;
+        this.comboSpecialReadyCueUntil = Math.max(Number(this.comboSpecialReadyCueUntil) || 0, (Number(now) || 0) + 320);
+        return this.comboSpecialReadyCueUntil;
+    }
+
+    armComboDodgeReadyCue(now) {
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        if ((runEffects.playerSpecialHitDodgeCooldownReductionMs || 0) <= 0) return 0;
+        this.comboDodgeReadyCueUntil = Math.max(Number(this.comboDodgeReadyCueUntil) || 0, (Number(now) || 0) + 320);
+        return this.comboDodgeReadyCueUntil;
     }
 
     consumePostDodgeSpecialMultiplier(now) {
@@ -1309,8 +1515,133 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         return multiplier;
     }
 
+    getCombatDodgeStatusLabel(now) {
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        const highHpGuardTag = formatRunEffectReductionTag(runEffects.playerHighHpDamageTakenMultiplier);
+        const highHpThresholdPercent = Math.round(Math.max(0, Math.min(1, Number(runEffects.playerHighHpThresholdRatio) || 0) * 100));
+        if (highHpGuardTag && highHpThresholdPercent > 0) {
+            return this.isHighHpGuardRouteActive() ? `守心${highHpGuardTag}` : `守心>${highHpThresholdPercent}%`;
+        }
+        const disciplineReadyCueUntil = Number(this.disciplineDodgeReadyCueUntil) || 0;
+        const cooldownTag = formatRunEffectReductionTag(runEffects.playerDodgeCooldownMultiplier);
+        const staminaCostTag = formatRunEffectReductionTag(runEffects.playerDodgeStaminaCostMultiplier);
+        const tags = [cooldownTag, staminaCostTag].filter(Boolean);
+        const dodgeStaminaCost = Math.max(1, Math.round(GAME_CONFIG.PLAYER.dodgeStaminaCost * (runEffects.playerDodgeStaminaCostMultiplier || 1)));
+        if ((Number(now) || 0) < disciplineReadyCueUntil && !this.isDodging && this.dodgeCooldownTimer <= 0 && this.stamina >= dodgeStaminaCost) {
+            return '游步就绪';
+        }
+        if (tags.length > 0) {
+            return `游步${tags.join('/')}`;
+        }
+        const comboDodgeReadyCueUntil = Number(this.comboDodgeReadyCueUntil) || 0;
+        const dodgeCooldownRefundMs = Math.max(0, Math.round(runEffects.playerSpecialHitDodgeCooldownReductionMs || 0));
+        if ((Number(now) || 0) < comboDodgeReadyCueUntil && !this.isDodging && this.dodgeCooldownTimer <= 0 && this.stamina >= dodgeStaminaCost) {
+            return '回身就绪';
+        }
+        if (dodgeCooldownRefundMs > 0) {
+            return `回身-${(dodgeCooldownRefundMs / 1000).toFixed(1)}s/特攻`;
+        }
+        const prayerReadyCueUntil = Number(this.prayerDodgeReadyCueUntil) || 0;
+        if ((Number(now) || 0) < prayerReadyCueUntil && !this.isDodging && this.dodgeCooldownTimer <= 0 && this.stamina >= dodgeStaminaCost) {
+            return '复苏就绪';
+        }
+        const staminaRegenTag = formatRunEffectIncreaseTag(runEffects.playerStaminaRegenMultiplier);
+        return staminaRegenTag ? `复苏${staminaRegenTag}` : '';
+    }
+
+    armDisciplineDodgeReadyCue(now) {
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        if ((runEffects.playerDodgeCooldownMultiplier || 1) >= 1 && (runEffects.playerDodgeStaminaCostMultiplier || 1) >= 1) return 0;
+        this.disciplineDodgeReadyCueUntil = Math.max(Number(this.disciplineDodgeReadyCueUntil) || 0, (Number(now) || 0) + 320);
+        return this.disciplineDodgeReadyCueUntil;
+    }
+
+    isDisciplineDodgeStaminaThresholdReady() {
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        const dodgeStaminaCostScale = runEffects.playerDodgeStaminaCostMultiplier || 1;
+        if (dodgeStaminaCostScale >= 1) return false;
+        const baseDodgeStaminaCost = Math.max(1, Math.round(GAME_CONFIG.PLAYER.dodgeStaminaCost));
+        const dodgeStaminaCost = Math.max(1, Math.round(GAME_CONFIG.PLAYER.dodgeStaminaCost * dodgeStaminaCostScale));
+        return this.stamina >= dodgeStaminaCost && this.stamina < baseDodgeStaminaCost;
+    }
+
+    armPrayerDodgeReadyCue(now) {
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        if ((runEffects.playerDodgeCooldownMultiplier || 1) < 1) return 0;
+        if ((runEffects.playerDodgeStaminaCostMultiplier || 1) < 1) return 0;
+        if ((runEffects.playerStaminaRegenMultiplier || 1) <= 1) return 0;
+        this.prayerDodgeReadyCueUntil = Math.max(Number(this.prayerDodgeReadyCueUntil) || 0, (Number(now) || 0) + 320);
+        return this.prayerDodgeReadyCueUntil;
+    }
+
+    armPrayerSpecialReadyCue(now) {
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        if ((runEffects.playerSpecialCooldownMultiplier || 1) >= 1) return 0;
+        this.prayerSpecialReadyCueUntil = Math.max(Number(this.prayerSpecialReadyCueUntil) || 0, (Number(now) || 0) + 320);
+        return this.prayerSpecialReadyCueUntil;
+    }
+
     getCombatSpecialStatusLabel(now) {
-        return (Number(now) || 0) < (Number(this.postDodgeSpecialEmpowerUntil) || 0) ? '借势' : '';
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        const windowMs = Math.max(0, Math.round(runEffects.playerPostDodgeSpecialWindowMs || 0));
+        const multiplier = Math.max(1, Number(runEffects.playerPostDodgeSpecialDamageMultiplier) || 1);
+        if (windowMs > 0 && multiplier > 1) {
+            const remainingMs = Math.max(0, (Number(this.postDodgeSpecialEmpowerUntil) || 0) - (Number(now) || 0));
+            if (remainingMs > 0) {
+                const seconds = Math.max(0.1, Math.round(remainingMs / 100) / 10);
+                return `借势${seconds.toFixed(1)}s`;
+            }
+            return '借势待闪';
+        }
+        const weaponStatus = getWeaponSpecialStatus(this.currentWeaponKey || '');
+        const slowDurationTag = formatRunEffectIncreaseTag(runEffects.playerSlowStatusDurationMultiplier);
+        if (slowDurationTag) {
+            return weaponStatus && weaponStatus.key === 'slow'
+                ? `镇步${slowDurationTag}`
+                : '镇步切减速';
+        }
+        const burnDurationTag = formatRunEffectIncreaseTag(runEffects.playerBurnStatusDurationMultiplier);
+        const burnDamageTag = formatRunEffectIncreaseTag(runEffects.playerBurnStatusDamageMultiplier);
+        if (burnDurationTag && burnDamageTag) {
+            return weaponStatus && weaponStatus.key === 'burn'
+                ? `余烬${burnDurationTag}/${burnDamageTag}`
+                : '余烬切灼烧';
+        }
+        const bleedDurationTag = formatRunEffectIncreaseTag(runEffects.playerBleedStatusDurationMultiplier);
+        const bleedDamageTag = formatRunEffectIncreaseTag(runEffects.playerBleedStatusDamageMultiplier);
+        if (bleedDurationTag && bleedDamageTag) {
+            return weaponStatus && weaponStatus.key === 'bleed'
+                ? `血痕${bleedDurationTag}/${bleedDamageTag}`
+                : '血痕切流血';
+        }
+        const damageVsSlowedTag = formatRunEffectIncreaseTag(runEffects.playerDamageVsSlowedMultiplier);
+        if (damageVsSlowedTag) {
+            return `破势${damageVsSlowedTag}`;
+        }
+        const rangedSpecialCooldownTag = formatRunEffectReductionTag(runEffects.playerRangedSpecialCooldownMultiplier);
+        if (rangedSpecialCooldownTag) {
+            return this.currentWeapon && this.currentWeapon.type === 'ranged'
+                ? `离弦${rangedSpecialCooldownTag}`
+                : '离弦切远程';
+        }
+        const specialStaminaGain = Math.max(0, Math.round(runEffects.playerSpecialHitStaminaGain || 0));
+        if (specialStaminaGain > 0) {
+            return `调息+${specialStaminaGain}`;
+        }
+        const comboSpecialReadyCueUntil = Number(this.comboSpecialReadyCueUntil) || 0;
+        if ((Number(now) || 0) < comboSpecialReadyCueUntil && this.specialCooldown <= 0) {
+            return '催锋就绪';
+        }
+        const attackHitSpecialReductionMs = Math.max(0, Math.round(runEffects.playerAttackHitSpecialCooldownReductionMs || 0));
+        if (attackHitSpecialReductionMs > 0) {
+            return `催锋-${(attackHitSpecialReductionMs / 1000).toFixed(1)}s/击`;
+        }
+        const prayerReadyCueUntil = Number(this.prayerSpecialReadyCueUntil) || 0;
+        if ((Number(now) || 0) < prayerReadyCueUntil && this.specialCooldown <= 0) {
+            return '迅击就绪';
+        }
+        const cooldownTag = formatRunEffectReductionTag(runEffects.playerSpecialCooldownMultiplier);
+        return cooldownTag ? `迅击${cooldownTag}` : '';
     }
 
     update(time, delta) {
@@ -1415,6 +1746,10 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             this.setAlpha(1);
             this.setVelocity(0, 0);
             this.dodgeCooldownTimer = Math.max(200, Math.round(cfg.dodgeCooldown * dodgeCooldownScale));
+            const armedAttackWindowMs = this.armPostDodgeAttackWindow();
+            if (armedAttackWindowMs > 0) {
+                showFloatingCombatText(this.scene, this.x, this.y - 58, '追猎', '#ffdca8', 520);
+            }
             const armedWindowMs = this.armPostDodgeSpecialWindow();
             if (armedWindowMs > 0) {
                 showFloatingCombatText(this.scene, this.x, this.y - 42, '借势', '#ffd27a', 520);
@@ -1460,16 +1795,30 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         if (!weapon) return null;
         if (this.attackCooldown > 0 || this.stamina < weapon.staminaCost || this.isDodging) return null;
         const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        const baseAttackCooldown = Math.max(120, Math.round(weapon.attackSpeed));
         const attackCooldownScale = runEffects.playerAttackCooldownMultiplier || 1;
+        const weaponRoutingAttackCooldownScale = weapon.type === 'melee' ? (runEffects.playerMeleeAttackCooldownMultiplier || 1) : 1;
+        const attackSequenceId = ++this.attackSequenceId;
         this.stamina -= weapon.staminaCost;
-        this.attackCooldown = Math.max(120, Math.round(weapon.attackSpeed * attackCooldownScale));
+        this.disciplineAttackBaseReadyAt = this.scene.time.now + baseAttackCooldown;
+        this.attackCooldown = Math.max(120, Math.round(weapon.attackSpeed * attackCooldownScale * weaponRoutingAttackCooldownScale));
         this.isAttacking = true;
         const dir = this._getDirection();
         this._playAnim('attack', dir);
         this.scene.time.delayedCall(250, () => { this.isAttacking = false; });
         AudioSystem.playAttack(false);
-        const damage = Math.round(weapon.damage * this.getDamageMultiplier());
-        return this._spawnHitbox(damage, 1, false);
+        const attackDamageMultiplier = this.consumePostDodgeAttackMultiplier(this.scene.time.now);
+        const isEmpoweredAttack = attackDamageMultiplier > 1;
+        const isLowHpDamageEmpowered = typeof this.isLowHpDamageRouteActive === 'function' && this.isLowHpDamageRouteActive();
+        const damage = Math.round(weapon.damage * this.getDamageMultiplier() * attackDamageMultiplier);
+        const disciplineAttackPayoffUntil = this.claimDisciplineAttackHitPayoffWindow(this.scene.time.now);
+        return this._spawnHitbox(damage, 1, false, false, {
+            attackSequenceId,
+            disciplineAttackPayoffUntil,
+            isEmpoweredAttack,
+            isLowHpDamageEmpowered,
+            targetHasSlow: false
+        });
     }
 
     trySpecialAttack() {
@@ -1479,28 +1828,53 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.stamina -= weapon.specialStaminaCost;
         const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
         const specialCdScale = runEffects.playerSpecialCooldownMultiplier || 1;
-        this.specialCooldown = Math.max(450, Math.round(weapon.specialCooldown * specialCdScale));
+        const weaponRoutingSpecialCdScale = weapon.type === 'ranged' ? (runEffects.playerRangedSpecialCooldownMultiplier || 1) : 1;
+        this.specialCooldown = Math.max(450, Math.round(weapon.specialCooldown * specialCdScale * weaponRoutingSpecialCdScale));
         this.isAttacking = true;
         const dir = this._getDirection();
         this._playAnim('attack', dir);
         this.scene.time.delayedCall(250, () => { this.isAttacking = false; });
         AudioSystem.playAttack(true);
         const specialDamageMultiplier = this.consumePostDodgeSpecialMultiplier(this.scene.time.now);
+        const isEmpoweredSpecial = specialDamageMultiplier > 1;
+        const isLowHpDamageEmpowered = typeof this.isLowHpDamageRouteActive === 'function' && this.isLowHpDamageRouteActive();
         const damage = Math.round(weapon.damage * 2 * this.getDamageMultiplier() * specialDamageMultiplier);
-        return this._spawnHitbox(damage, 2, true);
+        return this._spawnHitbox(damage, 2, true, isEmpoweredSpecial, { isLowHpDamageEmpowered, targetHasSlow: false });
     }
 
-    _spawnHitbox(damage, scale, isSpecial) {
+    _spawnHitbox(damage, scale, isSpecial, isEmpoweredSpecial, meta = {}) {
         const weapon = this.currentWeapon;
         const weaponKey = this.currentWeaponKey || 'sword';
+        const attackSequenceId = Number(meta.attackSequenceId) || 0;
+        const disciplineAttackPayoffUntil = Number(meta.disciplineAttackPayoffUntil) || 0;
+        const isEmpoweredAttack = !!meta.isEmpoweredAttack;
+        const isLowHpDamageEmpowered = !!meta.isLowHpDamageEmpowered;
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
         const specialStatus = isSpecial ? getWeaponSpecialStatus(weaponKey) : null;
+        const burnDurationScale = specialStatus && specialStatus.key === 'burn' ? Math.max(1, Number(runEffects.playerBurnStatusDurationMultiplier) || 1) : 1;
+        const burnDamageScale = specialStatus && specialStatus.key === 'burn' ? Math.max(1, Number(runEffects.playerBurnStatusDamageMultiplier) || 1) : 1;
+        const bleedDurationScale = specialStatus && specialStatus.key === 'bleed' ? Math.max(1, Number(runEffects.playerBleedStatusDurationMultiplier) || 1) : 1;
+        const bleedDamageScale = specialStatus && specialStatus.key === 'bleed' ? Math.max(1, Number(runEffects.playerBleedStatusDamageMultiplier) || 1) : 1;
+        const slowDurationScale = specialStatus && specialStatus.key === 'slow' ? Math.max(1, Number(runEffects.playerSlowStatusDurationMultiplier) || 1) : 1;
+        const damageVsSlowedScale = Math.max(1, Number(runEffects.playerDamageVsSlowedMultiplier) || 1);
         const statusPayload = specialStatus
             ? {
                 key: specialStatus.key,
-                durationMs: specialStatus.durationMs,
-                sourceDamage: damage
+                durationMs: Math.max(600, Math.round(specialStatus.durationMs * burnDurationScale * bleedDurationScale)),
+                sourceDamage: Math.max(1, Math.round(damage * burnDamageScale * bleedDamageScale)),
+                routePayoffLabel: specialStatus.key === 'burn' ? '余烬' : (specialStatus.key === 'bleed' ? '血痕' : ''),
+                routePayoffColor: specialStatus.key === 'burn' ? '#ffcf85' : (specialStatus.key === 'bleed' ? '#ffb0b8' : '')
             }
             : null;
+        if (statusPayload && statusPayload.key === 'slow') {
+            statusPayload.durationMs = Math.max(600, Math.round(specialStatus.durationMs * slowDurationScale));
+            statusPayload.routePayoffLabel = '镇步';
+            statusPayload.routePayoffColor = '#9fe3ff';
+        }
+        const slowedDamageBonusActive = damageVsSlowedScale > 1 && !!meta.targetHasSlow;
+        if (slowedDamageBonusActive) {
+            damage = Math.max(1, Math.round(damage * damageVsSlowedScale));
+        }
         const offset = weapon.range * 0.5;
         const angle = this.facingAngle;
         const hx = this.x + Math.cos(angle) * offset;
@@ -1519,6 +1893,11 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             arrow.damage = damage;
             arrow.hitRadius = 10 * scale;
             arrow.isSpecial = !!isSpecial;
+            arrow.isEmpoweredSpecial = !!isEmpoweredSpecial;
+            arrow.isEmpoweredAttack = isEmpoweredAttack;
+            arrow.isLowHpDamageEmpowered = isLowHpDamageEmpowered;
+            arrow.attackSequenceId = attackSequenceId;
+            arrow.disciplineAttackPayoffUntil = disciplineAttackPayoffUntil;
             arrow.statusEffect = statusPayload;
             this.scene.physics.add.existing(arrow);
             arrow.body.setVelocity(Math.cos(angle) * 450, Math.sin(angle) * 450);
@@ -1537,6 +1916,11 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             orb.damage = damage;
             orb.hitRadius = 12 * orbScale;
             orb.isSpecial = !!isSpecial;
+            orb.isEmpoweredSpecial = !!isEmpoweredSpecial;
+            orb.isEmpoweredAttack = isEmpoweredAttack;
+            orb.isLowHpDamageEmpowered = isLowHpDamageEmpowered;
+            orb.attackSequenceId = attackSequenceId;
+            orb.disciplineAttackPayoffUntil = disciplineAttackPayoffUntil;
             orb._pierceHits = [];
             orb.statusEffect = statusPayload;
             this.scene.physics.add.existing(orb);
@@ -1553,6 +1937,11 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             slam.damage = damage;
             slam.hitRadius = 40 * scale;
             slam.isSpecial = !!isSpecial;
+            slam.isEmpoweredSpecial = !!isEmpoweredSpecial;
+            slam.isEmpoweredAttack = isEmpoweredAttack;
+            slam.isLowHpDamageEmpowered = isLowHpDamageEmpowered;
+            slam.attackSequenceId = attackSequenceId;
+            slam.disciplineAttackPayoffUntil = disciplineAttackPayoffUntil;
             slam.x = hx;
             slam.y = hy;
             slam.statusEffect = statusPayload;
@@ -1570,6 +1959,11 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             hitbox.damage = damage;
             hitbox.hitRadius = 14 * scale;
             hitbox.isSpecial = !!isSpecial;
+            hitbox.isEmpoweredSpecial = !!isEmpoweredSpecial;
+            hitbox.isEmpoweredAttack = isEmpoweredAttack;
+            hitbox.isLowHpDamageEmpowered = isLowHpDamageEmpowered;
+            hitbox.attackSequenceId = attackSequenceId;
+            hitbox.disciplineAttackPayoffUntil = disciplineAttackPayoffUntil;
             hitbox.x = hx;
             hitbox.y = hy;
             hitbox.statusEffect = statusPayload;
@@ -1587,6 +1981,11 @@ class Player extends Phaser.Physics.Arcade.Sprite {
                 h2.damage = Math.floor(damage * 0.6);
                 h2.hitRadius = 14 * scale;
                 h2.isSpecial = !!isSpecial;
+                h2.isEmpoweredSpecial = !!isEmpoweredSpecial;
+                h2.isEmpoweredAttack = isEmpoweredAttack;
+                h2.isLowHpDamageEmpowered = isLowHpDamageEmpowered;
+                h2.attackSequenceId = attackSequenceId;
+                h2.disciplineAttackPayoffUntil = disciplineAttackPayoffUntil;
                 h2.x = hx2;
                 h2.y = hy2;
                 h2.statusEffect = statusPayload
@@ -1602,6 +2001,11 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             hitbox.damage = damage;
             hitbox.hitRadius = 18 * scale;
             hitbox.isSpecial = !!isSpecial;
+            hitbox.isEmpoweredSpecial = !!isEmpoweredSpecial;
+            hitbox.isEmpoweredAttack = isEmpoweredAttack;
+            hitbox.isLowHpDamageEmpowered = isLowHpDamageEmpowered;
+            hitbox.attackSequenceId = attackSequenceId;
+            hitbox.disciplineAttackPayoffUntil = disciplineAttackPayoffUntil;
             hitbox.statusEffect = statusPayload;
             hitbox.setDepth(5);
             this.scene.time.delayedCall(150, () => { if (hitbox.active) hitbox.destroy(); });
@@ -1616,13 +2020,19 @@ class Player extends Phaser.Physics.Arcade.Sprite {
 
         const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
         const incomingScale = opts.ignoreRunModifier ? 1 : (runEffects.playerDamageTakenMultiplier || 1);
-        const finalDamage = Math.max(1, Math.round((Number(amount) || 0) * incomingScale));
+        const highHpGuardScale = typeof this.isHighHpGuardRouteActive === 'function' && this.isHighHpGuardRouteActive()
+            ? Math.max(0, Number(runEffects.playerHighHpDamageTakenMultiplier) || 1)
+            : 1;
+        const finalDamage = Math.max(1, Math.round((Number(amount) || 0) * incomingScale * highHpGuardScale));
         this.hp = Math.max(0, this.hp - finalDamage);
         this._damageAppliedThisHit = true;
 
         if (!opts.silent) {
             AudioSystem.playHit();
             showFloatingCombatText(this.scene, this.x, this.y - 34, '-' + finalDamage, '#ff8a8a', 520);
+            if (highHpGuardScale < 1 && !opts.silent) {
+                showFloatingCombatText(this.scene, this.x, this.y - 56, '守心', '#d8f6ff', 500);
+            }
         }
         if (!opts.noIframes && !opts.ignoreInvincibility) {
             this.isInvincible = true;
@@ -1647,6 +2057,9 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
         let mult = runEffects.playerDamageMultiplier || 1;
         if (now < this.damageBuffUntil) mult *= this.damageBuffMultiplier || 1;
+        if (typeof this.isLowHpDamageRouteActive === 'function' && this.isLowHpDamageRouteActive()) {
+            mult *= Math.max(1, Number(runEffects.playerLowHpDamageMultiplier) || 1);
+        }
         return mult;
     }
 
@@ -3142,21 +3555,74 @@ class LevelScene extends Phaser.Scene {
                 if (d < hbRadius && hb.damage) {
                     const canPierce = Array.isArray(hb._pierceHits);
                     if (canPierce && hb._pierceHits.includes(enemy)) continue;
+                    const targetHasSlow = !!(enemy.activeStatusEffects && enemy.activeStatusEffects.slow);
+                    if (targetHasSlow && !hb._slowBonusApplied) {
+                        const slowedBonusScale = Math.max(1, Number((GameState.runEffects || DEFAULT_RUN_EFFECTS).playerDamageVsSlowedMultiplier) || 1);
+                        if (slowedBonusScale > 1) {
+                            hb.damage = Math.max(1, Math.round(hb.damage * slowedBonusScale));
+                            hb._slowBonusApplied = true;
+                        }
+                    }
                     const hitDamage = hb.damage;
                     const drops = enemy.takeDamage(hitDamage);
+                    if (targetHasSlow && hb._slowBonusApplied) {
+                        showHitImpactPulse(this, enemy.x, enemy.y, 0x9FE3FF, 16);
+                        showFloatingCombatText(this, enemy.x, enemy.y - 82, '破势', '#9fe3ff', 560);
+                    }
                     if (hb.statusEffect && enemy.applyStatusEffect) {
-                        enemy.applyStatusEffect(hb.statusEffect.key, {
+                        const didApplyStatus = enemy.applyStatusEffect(hb.statusEffect.key, {
                             durationMs: hb.statusEffect.durationMs,
                             sourceDamage: hb.statusEffect.sourceDamage || hitDamage
                         });
+                        if (didApplyStatus && hb.statusEffect.routePayoffLabel) {
+                            showHitImpactPulse(this, enemy.x, enemy.y, 0xFFD39A, 14);
+                            showFloatingCombatText(
+                                this,
+                                enemy.x,
+                                enemy.y - 58,
+                                hb.statusEffect.routePayoffLabel,
+                                hb.statusEffect.routePayoffColor || '#ffd39a',
+                                540
+                            );
+                        }
                     }
                     const staminaRefund = this.player.grantAttackHitStamina(hb.isSpecial);
                     if (staminaRefund > 0) {
                         showFloatingCombatText(this, this.player.x, this.player.y - 42, '回体+' + staminaRefund, '#a7ffd9', 480);
+                        this.armStaminaPayoffPulse(staminaRefund);
+                    }
+                    const specialStaminaRefund = this.player.grantSpecialHitStamina(hb.isSpecial);
+                    if (specialStaminaRefund > 0) {
+                        showFloatingCombatText(this, this.player.x, this.player.y - 78, '调息+' + specialStaminaRefund, '#b8ffe7', 520);
+                        this.armStaminaPayoffPulse(specialStaminaRefund);
+                    }
+                    const specialRefund = this.player.refundSpecialCooldownFromAttackHit(hb.isSpecial, this.time.now);
+                    if (specialRefund > 0) {
+                        showFloatingCombatText(this, this.player.x, this.player.y - 60, '催锋-' + (specialRefund / 1000).toFixed(1) + 's', '#a9e7ff', 520);
+                    }
+                    const dodgeRefund = this.player.refundDodgeCooldownFromSpecialHit(hb.isSpecial, this.time.now);
+                    if (dodgeRefund > 0) {
+                        showFloatingCombatText(this, this.player.x, this.player.y - 24, '回身-' + (dodgeRefund / 1000).toFixed(1) + 's', '#b9ffd7', 520);
+                    }
+                    if (typeof this.player.consumeDisciplineAttackHitPayoff === 'function' && this.player.consumeDisciplineAttackHitPayoff(hb, this.time.now)) {
+                        showHitImpactPulse(this, enemy.x, enemy.y, 0xFFF0A6, 13);
+                        showFloatingCombatText(this, enemy.x, enemy.y - 14, '连斩', '#fff0a6', 520);
+                    }
+                    if (typeof this.player.consumePostDodgeAttackPayoff === 'function' && this.player.consumePostDodgeAttackPayoff(hb)) {
+                        showHitImpactPulse(this, enemy.x, enemy.y, 0xFFE1A8, 15);
+                        showFloatingCombatText(this, enemy.x, enemy.y - 30, '追猎斩', '#ffe1a8', 560);
+                    }
+                    if (hb.isLowHpDamageEmpowered) {
+                        showHitImpactPulse(this, enemy.x, enemy.y, 0xFF8A8A, 12);
+                        showFloatingCombatText(this, enemy.x, enemy.y - 44, '绝境', '#ffb3b3', 540);
                     }
                     if (canPierce) hb._pierceHits.push(enemy);
                     else hb.damage = 0;
-                    if (hb.isSpecial) {
+                    if (hb.isEmpoweredSpecial) {
+                        showHitImpactPulse(this, enemy.x, enemy.y, 0xFFE27A, 16);
+                        showFloatingCombatText(this, enemy.x, enemy.y - 16, '借势重击', '#fff0a6', 620);
+                        showFloatingCombatText(this, enemy.x, enemy.y - 36, '-' + hitDamage, '#ffd39a', 560);
+                    } else if (hb.isSpecial) {
                         showHitImpactPulse(this, enemy.x, enemy.y, 0xFF9F6A, 12);
                         showFloatingCombatText(this, enemy.x, enemy.y - 16, '重击', '#ffd27a', 500);
                         showFloatingCombatText(this, enemy.x, enemy.y - 34, '-' + hitDamage, '#ffb37a', 520);
@@ -4680,9 +5146,62 @@ class BossScene extends Phaser.Scene {
                     const staminaRefund = this.player.grantAttackHitStamina(hb.isSpecial);
                     if (staminaRefund > 0) {
                         showFloatingCombatText(this, this.player.x, this.player.y - 42, '回体+' + staminaRefund, '#a7ffd9', 480);
+                        this.armStaminaPayoffPulse(staminaRefund);
                     }
-                    if (hb.isSpecial) {
-                        const counterBroken = this.boss.tryCounterBreak(BOSS_COUNTER_BREAK_STAGGER_MS);
+                    const specialStaminaRefund = this.player.grantSpecialHitStamina(hb.isSpecial);
+                    if (specialStaminaRefund > 0) {
+                        showFloatingCombatText(this, this.player.x, this.player.y - 78, '调息+' + specialStaminaRefund, '#b8ffe7', 520);
+                        this.armStaminaPayoffPulse(specialStaminaRefund);
+                    }
+                    const specialRefund = this.player.refundSpecialCooldownFromAttackHit(hb.isSpecial, this.time.now);
+                    if (specialRefund > 0) {
+                        showFloatingCombatText(this, this.player.x, this.player.y - 60, '催锋-' + (specialRefund / 1000).toFixed(1) + 's', '#a9e7ff', 520);
+                    }
+                    const dodgeRefund = this.player.refundDodgeCooldownFromSpecialHit(hb.isSpecial, this.time.now);
+                    if (dodgeRefund > 0) {
+                        showFloatingCombatText(this, this.player.x, this.player.y - 24, '回身-' + (dodgeRefund / 1000).toFixed(1) + 's', '#b9ffd7', 520);
+                    }
+                    if (typeof this.player.consumeDisciplineAttackHitPayoff === 'function' && this.player.consumeDisciplineAttackHitPayoff(hb, this.time.now)) {
+                        showHitImpactPulse(this, this.boss.sprite.x, this.boss.sprite.y, 0xFFF0A6, 15);
+                        showFloatingCombatText(this, this.boss.sprite.x, this.boss.sprite.y - 18, '连斩', '#fff0a6', 560);
+                    }
+                    if (typeof this.player.consumePostDodgeAttackPayoff === 'function' && this.player.consumePostDodgeAttackPayoff(hb)) {
+                        showHitImpactPulse(this, this.boss.sprite.x, this.boss.sprite.y, 0xFFE1A8, 17);
+                        showFloatingCombatText(this, this.boss.sprite.x, this.boss.sprite.y - 34, '追猎斩', '#ffe1a8', 620);
+                    }
+                    if (hb.isLowHpDamageEmpowered) {
+                        showHitImpactPulse(this, this.boss.sprite.x, this.boss.sprite.y, 0xFF8A8A, 14);
+                        showFloatingCombatText(this, this.boss.sprite.x, this.boss.sprite.y - 50, '绝境', '#ffb3b3', 600);
+                    }
+                    const counterBroken = hb.isSpecial
+                        ? this.boss.tryCounterBreak(BOSS_COUNTER_BREAK_STAGGER_MS)
+                        : false;
+                    if (hb.isEmpoweredSpecial) {
+                        showHitImpactPulse(
+                            this,
+                            this.boss.sprite.x,
+                            this.boss.sprite.y,
+                            counterBroken ? 0xFFF0A6 : 0xFFE27A,
+                            counterBroken ? 20 : 18
+                        );
+                        showFloatingCombatText(
+                            this,
+                            this.boss.sprite.x,
+                            this.boss.sprite.y - 26,
+                            '借势重击',
+                            '#fff0a6',
+                            720
+                        );
+                        showFloatingCombatText(
+                            this,
+                            this.boss.sprite.x,
+                            this.boss.sprite.y - 48,
+                            counterBroken ? '破招' : '破势',
+                            counterBroken ? '#ffe39f' : '#ffcf85',
+                            650
+                        );
+                        showFloatingCombatText(this, this.boss.sprite.x, this.boss.sprite.y - 68, '-' + hb.damage, '#ffd39a', 660);
+                    } else if (hb.isSpecial) {
                         showHitImpactPulse(
                             this,
                             this.boss.sprite.x,
@@ -4703,11 +5222,34 @@ class BossScene extends Phaser.Scene {
                         showHitImpactPulse(this, this.boss.sprite.x, this.boss.sprite.y, 0xFF9F6A, 12);
                         showFloatingCombatText(this, this.boss.sprite.x, this.boss.sprite.y - 40, '-' + hb.damage, '#ffe6bf', 500);
                     }
+                    const bossHadSlow = !!(this.boss.activeStatusEffects && this.boss.activeStatusEffects.slow);
+                    if (bossHadSlow && !hb._slowBonusApplied) {
+                        const slowedBonusScale = Math.max(1, Number((GameState.runEffects || DEFAULT_RUN_EFFECTS).playerDamageVsSlowedMultiplier) || 1);
+                        if (slowedBonusScale > 1) {
+                            hb.damage = Math.max(1, Math.round(hb.damage * slowedBonusScale));
+                            hb._slowBonusApplied = true;
+                        }
+                    }
+                    if (bossHadSlow && hb._slowBonusApplied) {
+                        showHitImpactPulse(this, this.boss.sprite.x, this.boss.sprite.y, 0x9FE3FF, 18);
+                        showFloatingCombatText(this, this.boss.sprite.x, this.boss.sprite.y - 92, '破势', '#9fe3ff', 600);
+                    }
                     if (hb.statusEffect && this.boss.applyStatusEffect) {
-                        this.boss.applyStatusEffect(hb.statusEffect.key, {
+                        const didApplyStatus = this.boss.applyStatusEffect(hb.statusEffect.key, {
                             durationMs: hb.statusEffect.durationMs,
                             sourceDamage: hb.statusEffect.sourceDamage || hb.damage
                         });
+                        if (didApplyStatus && hb.statusEffect.routePayoffLabel) {
+                            showHitImpactPulse(this, this.boss.sprite.x, this.boss.sprite.y, 0xFFD39A, 16);
+                            showFloatingCombatText(
+                                this,
+                                this.boss.sprite.x,
+                                this.boss.sprite.y - 70,
+                                hb.statusEffect.routePayoffLabel,
+                                hb.statusEffect.routePayoffColor || '#ffd39a',
+                                620
+                            );
+                        }
                     }
                     hb.damage = 0;
                 }
@@ -6044,12 +6586,15 @@ class UIScene extends Phaser.Scene {
         }).setScrollFactor(0);
         this.staminaBarBg = this.add.graphics();
         this.staminaBarBg.setScrollFactor(0);
+        this.staminaBarPulse = this.add.graphics();
+        this.staminaBarPulse.setScrollFactor(0);
         this.staminaBarFill = this.add.graphics();
         this.staminaBarFill.setScrollFactor(0);
         this.staminaText = this.add.text(pad + 28 + 200 + 8, stY + 2, '0/0', {
             fontSize: '12px',
             fill: '#ffffff'
         }).setScrollFactor(0);
+        this.staminaPayoffPulseUntil = 0;
 
         // Bottom-left: weapon display
         this.aimText = this.add.text(bottomPad, height - 80, '当前瞄准: 右 [IJKL]', {
@@ -6080,6 +6625,7 @@ class UIScene extends Phaser.Scene {
             dodge: 0
         };
         this._lastCombatActionReadiness = null;
+        this._lastCombatActionHudSegments = null;
         this.savedWeaponDebugText = this.add.text(bottomPad, height - 102, '', {
             fontSize: '12px',
             fill: '#66ccff'
@@ -6481,6 +7027,15 @@ class UIScene extends Phaser.Scene {
         this._applyHudLayout();
     }
 
+    armStaminaPayoffPulse(staminaRefund) {
+        const safeRefund = Math.max(0, Number(staminaRefund) || 0);
+        if (safeRefund <= 0) return;
+        this.staminaPayoffPulseUntil = Math.max(
+            Number(this.staminaPayoffPulseUntil) || 0,
+            this.time.now + 220
+        );
+    }
+
     updateHUD(player, areaName) {
         if (!player) return;
         const layout = this._hudLayout || this._buildHudLayout(false);
@@ -6517,12 +7072,34 @@ class UIScene extends Phaser.Scene {
 
         // Stamina bar
         const stRatio = Math.max(0, Math.min(1, player.stamina / player.maxStamina));
+        const staminaPulsePresentation = getStaminaPayoffPulsePresentation(this.time.now, this.staminaPayoffPulseUntil);
+        this.staminaBarPulse.clear();
+        if (staminaPulsePresentation.active) {
+            const pulseWidth = Math.min(200, 200 * stRatio + staminaPulsePresentation.overlayExtraWidth);
+            const pulseHeight = 14 + staminaPulsePresentation.overlayExtraHeight;
+            this.staminaBarPulse.fillStyle(staminaPulsePresentation.overlayColor, staminaPulsePresentation.overlayAlpha);
+            this.staminaBarPulse.fillRect(
+                stBarX,
+                stY - Math.floor(staminaPulsePresentation.overlayExtraHeight / 2),
+                pulseWidth,
+                pulseHeight
+            );
+        }
         this.staminaBarFill.clear();
-        const stColor = stRatio <= UI_WARNING_THRESHOLDS.lowStaminaRatio ? 0xFF9F43 : (stRatio <= 0.45 ? 0xF1C40F : 0xB9E769);
+        const stColor = staminaPulsePresentation.active
+            ? staminaPulsePresentation.fillColor
+            : (stRatio <= UI_WARNING_THRESHOLDS.lowStaminaRatio ? 0xFF9F43 : (stRatio <= 0.45 ? 0xF1C40F : 0xB9E769));
         this.staminaBarFill.fillStyle(stColor, 1);
         this.staminaBarFill.fillRect(stBarX, stY, 200 * stRatio, 14);
         this.staminaText.setText(Math.floor(player.stamina) + '/' + player.maxStamina);
-        this.staminaText.setStyle({ fill: stRatio <= UI_WARNING_THRESHOLDS.lowStaminaRatio ? '#ffe0ad' : '#ffffff' });
+        this.staminaText.setStyle({
+            fill: staminaPulsePresentation.active
+                ? staminaPulsePresentation.textColor
+                : (stRatio <= UI_WARNING_THRESHOLDS.lowStaminaRatio ? '#ffe0ad' : '#ffffff')
+        });
+        this.stLabel.setStyle({
+            fill: staminaPulsePresentation.active ? staminaPulsePresentation.textColor : '#ffffff'
+        });
 
         if (stRatio <= UI_WARNING_THRESHOLDS.lowStaminaRatio && player.hp > 0) {
             this.lowStaminaWarningText.setVisible(true);
@@ -6554,20 +7131,54 @@ class UIScene extends Phaser.Scene {
             staminaRegenPerSecond,
             attackStaminaCost: weapon ? weapon.staminaCost : 0,
             specialStaminaCost: weapon ? weapon.specialStaminaCost : 0,
+            attackStatusLabel: typeof player.getCombatAttackStatusLabel === 'function' ? player.getCombatAttackStatusLabel(this.time.now) : '',
             specialStatusLabel: typeof player.getCombatSpecialStatusLabel === 'function' ? player.getCombatSpecialStatusLabel(this.time.now) : '',
+            dodgeStatusLabel: typeof player.getCombatDodgeStatusLabel === 'function' ? player.getCombatDodgeStatusLabel(this.time.now) : '',
             dodgeStaminaCost: Math.max(1, Math.round(GAME_CONFIG.PLAYER.dodgeStaminaCost * (runEffects.playerDodgeStaminaCostMultiplier || 1)))
         };
         const actionHudSegments = buildCombatActionHudSegments(actionHudState);
         const actionHudReadiness = buildCombatActionReadiness(actionHudState);
         const previousActionReadiness = this._lastCombatActionReadiness;
+        const previousActionHudSegments = this._lastCombatActionHudSegments;
         if (previousActionReadiness) {
             Object.keys(actionHudReadiness).forEach(key => {
                 if (actionHudReadiness[key] && !previousActionReadiness[key]) {
                     this.actionTextReadyFlashUntil[key] = this.time.now + 220;
+                    if (key === 'attack') {
+                        const previousAttackSegment = Array.isArray(previousActionHudSegments) ? previousActionHudSegments.find(segment => segment.key === 'attack') : null;
+                        const previousAttackText = previousAttackSegment && typeof previousAttackSegment.text === 'string' ? previousAttackSegment.text : '';
+                        const previousAttackWasCooldownBlocked = /\d+\.\d+s/.test(previousAttackText);
+                        if (previousAttackWasCooldownBlocked && typeof player.armDisciplineAttackReadyCue === 'function') {
+                            player.armDisciplineAttackReadyCue(this.time.now);
+                        }
+                        if (previousAttackWasCooldownBlocked && typeof player.armDisciplineAttackHitPayoff === 'function') {
+                            player.armDisciplineAttackHitPayoff(this.time.now);
+                        }
+                    }
+                    if (key === 'special' && typeof player.armPrayerSpecialReadyCue === 'function') {
+                        player.armPrayerSpecialReadyCue(this.time.now);
+                    }
+                    if (key === 'dodge') {
+                        const previousDodgeSegment = Array.isArray(previousActionHudSegments) ? previousActionHudSegments.find(segment => segment.key === 'dodge') : null;
+                        const previousDodgeText = previousDodgeSegment && typeof previousDodgeSegment.text === 'string' ? previousDodgeSegment.text : '';
+                        const previousDodgeWasBlocked = previousDodgeText.includes('翻滚中 ->') || previousDodgeText.includes('差') || /\d+\.\d+s/.test(previousDodgeText);
+                        const previousDodgeShowedThresholdState = previousDodgeText.includes('差') || previousDodgeText.includes('翻滚中 ->');
+                        if (previousDodgeWasBlocked && typeof player.armDisciplineDodgeReadyCue === 'function') {
+                            player.armDisciplineDodgeReadyCue(this.time.now);
+                        }
+                        if (previousDodgeShowedThresholdState && typeof player.isDisciplineDodgeStaminaThresholdReady === 'function' && player.isDisciplineDodgeStaminaThresholdReady()) {
+                            this.armStaminaPayoffPulse(1);
+                        }
+                        if (previousDodgeText.includes('差') && typeof player.armPrayerDodgeReadyCue === 'function') {
+                            player.armPrayerDodgeReadyCue(this.time.now);
+                            this.armStaminaPayoffPulse(1);
+                        }
+                    }
                 }
             });
         }
         this._lastCombatActionReadiness = actionHudReadiness;
+        this._lastCombatActionHudSegments = actionHudSegments;
         actionHudSegments.forEach(segment => {
             const actionTextNode = this.actionText[segment.key];
             const actionHighlightActive = this.actionTextReadyFlashUntil[segment.key] > this.time.now;
@@ -6857,11 +7468,18 @@ class HelpScene extends Phaser.Scene {
         const telegraphHeadEdgeFeatherHelpLine = '若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”壳芯之间残余边缘高光的左右羽化偏心也同步压匀半拍，避免清零前最后一粒撞线仍像单侧拖着一缕虚边';
         const telegraphHeadEdgeAlphaHelpLine = '若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”壳芯之间残余边缘高光的左右透明偏心也同步压匀半拍，避免清零前最后一粒撞线仍像单侧多留一层淡雾';
         const telegraphHeadEdgeWarmCoolAlphaHelpLine = '若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”壳芯之间残余边缘高光的左右冷暖透明层次也同步压匀半拍，避免清零前最后一粒撞线仍像单侧残留更白的一缕雾光';
+        const disciplineAttackReadyHelpLine = '若已选“连斩修习”，普攻行会常驻显示“连斩-18%”，而当减 CD 真正把“普攻 U”从“冷却”或翻滚后的冷却预告推回“就绪”时，还会短促切成“连斩就绪”；当更短普攻 CD 真正压出更快的下一次普攻命中时，命中处还会补一个短促的“连斩”浮字与轻 hit pulse';
+        const disciplineReadyHelpLine = '若已选“游步修习”，闪避行会常驻显示“游步-20%/-18%”，而当减 CD / 减耗真正把翻滚从“冷却”、“差体”或翻滚后的下一状态推回“就绪”时，还会短促切成“游步就绪”；当减耗真正把“闪避 Space”从“差体”或翻滚后预告推回“就绪”时，体力条也会同步短促抬亮一下';
+        const prayerReadyHelpLine = '若已选“复苏祷言”，闪避行会常驻显示“复苏+35%”，真正因自然回体转好时还会短促切成“复苏就绪”，并让体力条也同步短促抬亮一下；若已选“迅击祷言”，特攻行会常驻显示“迅击-22%”，真正转好时还会短促切成“迅击就绪”';
+        const weaponRoutingHelpLine = '若已选“压阵修习”，普攻行会在持有近战武器时显示“压阵-18%”，切到弓 / 法杖则改成“压阵切近战”；若已选“离弦修习”，特攻行会在持有远程武器时显示“离弦-22%”，切到近战武器则改成“离弦切远程”';
+        const riskRewardHelpLine = '若已选“绝境修习”，普攻行会在生命高于 45% 时显示“绝境<45%”，压进阈值后改成“绝境+40%”，真正带着这段低血爆发命中时还会补一个“绝境”浮字；若已选“守心修习”，闪避行会在生命高于 70% 时显示“守心-18%”，跌出阈值后改成“守心>70%”，而当这段高血减伤真实挡下一击时，玩家身旁还会补一个“守心”提示';
+        const comboLinkHelpLine = '若已选“催锋修习”，特攻行会常驻显示“催锋-0.2s/击”，普攻命中真的把特攻冷却压短时会浮出“催锋-0.2s”，若刚好直接转好则还会短促切成“催锋就绪”；若已选“回身修习”，闪避行会常驻显示“回身-0.3s/特攻”，特攻命中真的把闪避冷却压短时会浮出“回身-0.3s”，若刚好直接转好则还会短促切成“回身就绪”';
+        const counterattackHelpLine = '若已选“追猎修习”，普攻行会先显示“追猎待闪”，翻滚收招后改成“追猎1.4s”这类剩余窗口提示，真正把这段窗口兑现成强化普攻命中时，还会补一个更亮的“追猎斩”浮字与 hit pulse；若已选“调息修习”，特攻行会常驻显示“调息+6”，且只有在特攻命中后真的回到体力时，体力条才会同步短促抬亮并脉冲一下';
         const sections = [
             { title: '移动', items: ['WASD  —  八方向移动'] },
             { title: '瞄准', items: ['I / J / K / L  —  键盘双轴瞄准（保留上次朝向）', '当前瞄准会显示在 HUD 左下角'] },
-            { title: '战斗', items: ['U / 鼠标左键  —  普通攻击', 'O / 鼠标右键  —  特殊攻击', '左下角行动行会显示冷却；若只差体力，则会显示“差2体/0.1s”这类自然回复 ETA；若冷却转好后仍差体力，则会预告“0.3s后差8体/0.5s”；若正处于翻滚锁定，则会继续预告“翻滚中 -> 就绪”这类翻滚后的下一状态；当任一动作刚切进“就绪”时，只有对应那一项会短促闪亮一下；若 Boss 战切到专用 HUD，则顶部血条会收紧，但左下角当前瞄准 / 武器 / 行动行与右下快捷栏仍保持稳定底边留白；若 Boss 的“反制窗口”起点实际晚于 telegraph 进度条开头，条内还会补一枚“起跳刻度”，避免把整段条体误读成从第一帧起就能反制；若 Boss 的“反制窗口”从第一帧开放、却会在 telegraph 进度条清空前提早收束，条内还会补一枚“收束刻度”，避免把剩余条体误读成还在可反制；“收束刻度”右侧剩余条体也会压成更暗的“尾段残影”，提醒那一截只剩读招倒计时，不再代表可反制窗口；一旦倒计时已经走进这段“尾段残影”，第二行“反制窗口”也会同步切成更低饱和的“已收束提示”，第三行 hint 则会把原本的“反制:”/“反制提示:”前缀改写成更明确的“收束后处理:”或“闪避提示:”，并同步降成更柔和的琥珀色，避免窗口已过后仍把旧提示读成“现在还能反制”；若第二、三行都已切进收束态，第一行“类型 | 攻击名”也会同步压成更低饱和的暖灰白；若第一、二、三行都已切进收束态，进度条左侧仍存活的主色填充也会同步降一档 alpha，避免剩余倒计时继续冒充“当前节奏仍在可反制主拍”；若 Boss telegraph 已进入“尾段残影”区间且主色填充已同步降档 alpha，还会在进度头部补一枚更细的暖色“当前倒计时头标”，避免整段主色一起变淡后，余光里更难抓到剩余读招进度；若 Boss telegraph 刚从可反制主拍切进“尾段残影”且新的“当前倒计时头标”首次出现，头标还会追加约 120ms 的短促暖闪，避免余光里漏掉“反制窗刚收束，后面只剩读招倒计时”的节奏切换；若这段短促暖闪刚结束且剩余读招倒计时已低于约 220ms，头标外侧还会续上一层更弱的暖色余辉，避免最后半拍又失去剩余时长重心；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 120ms，还会把“当前倒计时头标”的内芯略微收窄提亮，避免最后一瞬被外侧余辉吃掉读秒重心；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 80ms，还会把“当前倒计时头标”外侧那层弱暖色余辉略微收短贴边，避免最后一瞬外辉继续压过内芯的终点定位；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 40ms，还会把“当前倒计时头标”外层余辉 alpha 继续压低并钳在条体终点内侧，避免清零前最后一帧仍把条尾看成还有额外余量；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 20ms，还会把“当前倒计时头标”的主芯高度略微收短贴边，避免清零前最后半拍仍像保留完整读秒柱；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 10ms，还会把“当前倒计时头标”外壳的上下帽沿也略微压短，避免清零前最后一闪仍像保留整段完整高度；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 5ms，还会把“当前倒计时头标”外壳 alpha 也轻压一档，避免清零前最后一闪仍像保留整枚完整头标；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 2ms，还会把“当前倒计时头标”内芯 alpha 也轻压一档，避免清零前最后一点亮芯仍像保留完整撞线；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”的内芯与外壳再同步收窄半拍，避免清零前最后一粒亮点仍像保留完整撞线厚度；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”外侧残余暖辉也同步压成更贴边的极细收尾，避免最终同步收窄后外辉仍比真正落点更宽；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”外侧残余暖辉 alpha 也同步轻压半拍，避免最后一圈外辉仍像悬着未收；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”外侧残余暖辉的上下高度也同步压短半拍，避免最后一圈外辉仍像保留完整包边；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”外侧残余暖辉的圆角也同步收紧半拍，避免最后一圈外辉仍像保留完整包边端帽；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”内层残余暖辉的左右宽度也同步收窄半拍，避免最后一丝内辉仍像保留完整胶囊腰身；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”内层残余暖辉的上下高度也同步压短半拍，避免最后一丝内辉仍像保留完整立柱；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”内层残余暖辉 alpha 也同步轻压半拍，避免最后一丝暖辉仍像悬着未收；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”内层残余暖辉的圆角也同步收紧半拍，避免最后一丝内辉仍像保留完整胶囊端帽；若 Boss 的“反制窗口”只落在 telegraph 进度条本体中段，条内还会补一段“窗口高亮区段”，避免还要自己心算真正可反制跨度；若 Boss 的“反制窗口”会拖到 telegraph 进度条终点之后，条尾还会额外补一枚“超出尾标”，避免把条体清空误读成反制窗也已经结束'] },
-            { title: '战斗补充', items: [telegraphLateGlowColorTempHelpLine, telegraphLateGlowInnerColorTempHelpLine, telegraphHeadContrastHelpLine, telegraphHeadColorTempHelpLine, telegraphHeadSaturationHelpLine, telegraphHeadEdgeSoftHelpLine, telegraphHeadEdgeHighlightHelpLine, telegraphHeadEdgeBalanceHelpLine, telegraphHeadEdgeBrightnessHelpLine, telegraphHeadEdgeWarmthHelpLine, telegraphHeadEdgeSaturationHelpLine, telegraphHeadEdgeFeatherHelpLine, telegraphHeadEdgeAlphaHelpLine, telegraphHeadEdgeWarmCoolAlphaHelpLine] },
+            { title: '战斗', items: ['U / 鼠标左键  —  普通攻击', 'O / 鼠标右键  —  特殊攻击', '左下角行动行会显示冷却；若只差体力，则会显示“差2体/0.1s”这类自然回复 ETA；若冷却转好后仍差体力，则会预告“0.3s后差8体/0.5s”；若正处于翻滚锁定，则会继续预告“翻滚中 -> 就绪”这类翻滚后的下一状态；当任一动作刚切进“就绪”时，只有对应那一项会短促闪亮一下；若已选“连斩修习”，普攻行会常驻显示“连斩-18%”，而当减 CD 真正把“普攻 U”从“冷却”或翻滚后的冷却预告推回“就绪”时，还会短促切成“连斩就绪”；当更短普攻 CD 真正压出更快的下一次普攻命中时，命中处还会补一个短促的“连斩”浮字与轻 hit pulse；若已选“游步修习”，闪避行会常驻显示“游步-20%/-18%”，翻滚锁定时也会继续挂在下一状态预告前；若已选“复苏祷言”，闪避行会常驻显示“复苏+35%”，翻滚锁定时也会继续挂在下一状态预告前，真正因自然回体转好时还会短促切成“复苏就绪”；若已选“迅击祷言”，特攻行会常驻显示“迅击-22%”，翻滚锁定时也会继续挂在下一状态预告前；若已选“回息修习”，普攻行会常驻显示“回体+4”；若已选“借势修习”，特攻行会常驻显示“借势待闪”，翻滚收招后会切成“借势1.6s”这类剩余时间；若已选“催锋修习”，特攻行会常驻显示“催锋-0.2s/击”，普攻命中真的把特攻冷却压短时会浮出“催锋-0.2s”，若刚好直接转好则还会短促切成“催锋就绪”；若已选“回身修习”，闪避行会常驻显示“回身-0.3s/特攻”，特攻命中真的把闪避冷却压短时会浮出“回身-0.3s”，若刚好直接转好则还会短促切成“回身就绪”；若已选“追猎修习”，普攻行会先显示“追猎待闪”，翻滚收招后改成“追猎1.4s”这类剩余窗口提示，真正把这段窗口兑现成强化普攻命中时，还会补一个更亮的“追猎斩”浮字与 hit pulse；若已选“调息修习”，特攻行会常驻显示“调息+6”，且只有在特攻命中后真的回到体力时，体力条才会同步短促抬亮并脉冲一下；若已选“绝境修习”，普攻行会会在生命高于 45% 时显示“绝境<45%”，压进阈值后改成“绝境+40%”，真正带着这段低血爆发命中时还会补一个“绝境”浮字；若已选“守心修习”，闪避行会会在生命高于 70% 时显示“守心-18%”，跌出阈值后改成“守心>70%”，而当这段高血减伤真实挡下一击时，玩家身旁还会补一个“守心”提示；若已选“游步修习”，闪避行会常驻显示“游步-20%/-18%”，而当减 CD / 减耗真正把翻滚从“冷却”、“差体”或翻滚后的下一状态推回“就绪”时，还会短促切成“游步就绪”；当减耗真正把“闪避 Space”从“差体”或翻滚后预告推回“就绪”时，体力条也会同步短促抬亮一下；若 Boss 战切到专用 HUD，则顶部血条会收紧，但左下角当前瞄准 / 武器 / 行动行与右下快捷栏仍保持稳定底边留白；若 Boss 的“反制窗口”起点实际晚于 telegraph 进度条开头，条内还会补一枚“起跳刻度”，避免把整段条体误读成从第一帧起就能反制；若 Boss 的“反制窗口”从第一帧开放、却会在 telegraph 进度条清空前提早收束，条内还会补一枚“收束刻度”，避免把剩余条体误读成还在可反制；“收束刻度”右侧剩余条体也会压成更暗的“尾段残影”，提醒那一截只剩读招倒计时，不再代表可反制窗口；一旦倒计时已经走进这段“尾段残影”，第二行“反制窗口”也会同步切成更低饱和的“已收束提示”，第三行 hint 则会把原本的“反制:”/“反制提示:”前缀改写成更明确的“收束后处理:”或“闪避提示:”，并同步降成更柔和的琥珀色，避免窗口已过后仍把旧提示读成“现在还能反制”；若第二、三行都已切进收束态，第一行“类型 | 攻击名”也会同步压成更低饱和的暖灰白；若第一、二、三行都已切进收束态，进度条左侧仍存活的主色填充也会同步降一档 alpha，避免剩余倒计时继续冒充“当前节奏仍在可反制主拍”；若 Boss telegraph 已进入“尾段残影”区间且主色填充已同步降档 alpha，还会在进度头部补一枚更细的暖色“当前倒计时头标”，避免整段主色一起变淡后，余光里更难抓到剩余读招进度；若 Boss telegraph 刚从可反制主拍切进“尾段残影”且新的“当前倒计时头标”首次出现，头标还会追加约 120ms 的短促暖闪，避免余光里漏掉“反制窗刚收束，后面只剩读招倒计时”的节奏切换；若这段短促暖闪刚结束且剩余读招倒计时已低于约 220ms，头标外侧还会续上一层更弱的暖色余辉，避免最后半拍又失去剩余时长重心；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 120ms，还会把“当前倒计时头标”的内芯略微收窄提亮，避免最后一瞬被外侧余辉吃掉读秒重心；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 80ms，还会把“当前倒计时头标”外侧那层弱暖色余辉略微收短贴边，避免最后一瞬外辉继续压过内芯的终点定位；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 40ms，还会把“当前倒计时头标”外层余辉 alpha 继续压低并钳在条体终点内侧，避免清零前最后一帧仍把条尾看成还有额外余量；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 20ms，还会把“当前倒计时头标”的主芯高度略微收短贴边，避免清零前最后半拍仍像保留完整读秒柱；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 10ms，还会把“当前倒计时头标”外壳的上下帽沿也略微压短，避免清零前最后一闪仍像保留整段完整高度；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 5ms，还会把“当前倒计时头标”外壳 alpha 也轻压一档，避免清零前最后一闪仍像保留整枚完整头标；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 2ms，还会把“当前倒计时头标”内芯 alpha 也轻压一档，避免最后一点亮芯仍像保留完整撞线；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”的内芯与外壳再同步收窄半拍，避免清零前最后一粒亮点仍像保留完整撞线厚度；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”外侧残余暖辉也同步压成更贴边的极细收尾，避免最终同步收窄后外辉仍比真正落点更宽；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”外侧残余暖辉 alpha 也同步轻压半拍，避免最后一圈外辉仍像悬着未收；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”外侧残余暖辉的上下高度也同步压短半拍，避免最后一圈外辉仍像保留完整包边；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”外侧残余暖辉的圆角也同步收紧半拍，避免最后一圈外辉仍像保留完整包边端帽；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”内层残余暖辉的左右宽度也同步收窄半拍，避免最后一丝内辉仍像保留完整胶囊腰身；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”内层残余暖辉的上下高度也同步压短半拍，避免最后一丝内辉仍像保留完整立柱；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”内层残余暖辉 alpha 也同步轻压半拍，避免最后一丝暖辉仍像悬着未收；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”内层残余暖辉的圆角也同步收紧半拍，避免最后一丝内辉仍像保留完整胶囊端帽；若 Boss 的“反制窗口”只落在 telegraph 进度条本体中段，条内还会补一段“窗口高亮区段”，避免还要自己心算真正可反制跨度；若 Boss 的“反制窗口”会拖到 telegraph 进度条终点之后，条尾还会额外补一枚“超出尾标”，避免把条体清空误读成反制窗也已经结束'] },
+            { title: '战斗补充', items: [disciplineAttackReadyHelpLine, disciplineReadyHelpLine, prayerReadyHelpLine, weaponRoutingHelpLine, riskRewardHelpLine, comboLinkHelpLine, counterattackHelpLine, telegraphLateGlowColorTempHelpLine, telegraphLateGlowInnerColorTempHelpLine, telegraphHeadContrastHelpLine, telegraphHeadColorTempHelpLine, telegraphHeadSaturationHelpLine, telegraphHeadEdgeSoftHelpLine, telegraphHeadEdgeHighlightHelpLine, telegraphHeadEdgeBalanceHelpLine, telegraphHeadEdgeBrightnessHelpLine, telegraphHeadEdgeWarmthHelpLine, telegraphHeadEdgeSaturationHelpLine, telegraphHeadEdgeFeatherHelpLine, telegraphHeadEdgeAlphaHelpLine, telegraphHeadEdgeWarmCoolAlphaHelpLine] },
             { title: '防御', items: ['Space  —  闪避翻滚（无敌帧）'] },
             { title: '武器', items: ['Q / E  —  切换武器'] },
             { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位，并提示“快捷栏N：+<短名>”；若临时拿不到显式短名则会沿用道具名生成“快捷栏N：+生命”这类短句；提示现在会优先按 Phaser 文本实际宽度钳制，因此“快捷栏N：+HP恢复”这类混排会尽量保留更多有效信息；若当前环境拿不到真实测量结果则回退为宽度权重估算；若道具名词干过长则会截成“快捷栏N：+圣疗秘…”这类省略短句；快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”；若拿不到显式短名则改用“快捷栏1：狂战→净化”这类道具名短句；若这些道具名过长则同样会截成“快捷栏1：古代狂…→神圣净…”这类省略短句', '背包悬停说明也会按实际文本宽度贴边，因此靠近屏幕右缘时不会继续沿用固定 200px 估算', '净化药剂/狂战油可在铁匠制作'] },
