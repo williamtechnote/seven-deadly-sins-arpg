@@ -1303,6 +1303,17 @@ function testRunEventRoomChoicePanelPreview() {
         'panel preview should surface threshold relevance for high-HP guard routes when the player is already above the breakpoint'
     );
 
+    const tempoChoice = getRunEventRoomChoices('prayerShrine').find(choice => choice.key === 'tempoPrayer');
+    assert.equal(
+        buildRunEventRoomChoicePanelPreview(tempoChoice, {
+            playerHp: 100,
+            playerMaxHp: 120,
+            runModifiers: [{ key: 'arcaneTempo', effects: { playerSpecialCooldownMultiplier: 0.82 } }]
+        }),
+        '迅击祷言 [节奏/爆发]: 特攻冷却-22% · 当前局已偏节奏',
+        'panel preview should surface when a tempo-focused prayer route already aligns with the current run modifiers'
+    );
+
     const hedgeChoice = getRunEventRoomChoices('gamblersShrine').find(choice => choice.key === 'carefulWager');
     assert.equal(
         buildRunEventRoomChoicePanelPreview(hedgeChoice, {
