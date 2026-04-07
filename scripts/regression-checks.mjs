@@ -1303,6 +1303,17 @@ function testRunEventRoomChoicePanelPreview() {
         'panel preview should surface threshold relevance for high-HP guard routes when the player is already above the breakpoint'
     );
 
+    const hedgeChoice = getRunEventRoomChoices('gamblersShrine').find(choice => choice.key === 'carefulWager');
+    assert.equal(
+        buildRunEventRoomChoicePanelPreview(hedgeChoice, {
+            playerHp: 100,
+            playerMaxHp: 120,
+            runModifiers: [{ key: 'fortuneWindfall', effects: { goldDropMultiplier: 1.35, extraDropRateMultiplier: 1.4 } }]
+        }),
+        '稳押 [经济/稳健]: 生命-12%, 金币+45 · 预估生命-12 · 当前局已偏经济',
+        'panel preview should let economy synergy coexist with hp-for-gold projection notes'
+    );
+
     assert.equal(
         buildRunEventRoomChoicePanelPreview(healingChoice, {
             playerHp: 114,
