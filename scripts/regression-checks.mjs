@@ -1148,6 +1148,7 @@ function testControlRoutingEventRoom() {
     const executionEffects = buildRunEventRoomEffects(executionSettlement.eventRoom);
     assert.equal(executionEffects.playerDamageVsSlowedMultiplier, 1.28, 'execution lesson should boost damage vs slowed targets');
     assert.match(executionSettlement.eventRoom.resolutionText, /对减速目标伤害 \+28%/, 'payoff route summary should mention stronger damage vs slowed targets');
+    assert.match(executionSettlement.eventRoom.resolutionText, /Boss 破招窗口中的减速目标会进入终结兑现/, 'payoff route summary should mention the boss break-window finisher payoff');
 
     const unresolvedSummary = buildRunEventRoomHudSummary({
         key: 'controlRoutingShrine',
@@ -1158,7 +1159,7 @@ function testControlRoutingEventRoom() {
         unresolvedSummary.routeLines,
         [
             '镇步修习: 减速持续时间+45%',
-            '破势修习: 对减速目标伤害+28%'
+            '破势修习: 对减速目标伤害+28%, Boss破招窗口终结'
         ],
         'control-routing shrine HUD summary should surface both slow/control identities compactly'
     );
@@ -2374,6 +2375,15 @@ function testBossHudReadability() {
     assert.equal(controlSummary.segments[0].label, '破招窗口', 'break highlight should advertise the counter-break state');
     assert.equal(controlSummary.segments[1].label, '受控: 减速', 'control highlight should summarize crowd-control state');
     assert.equal(controlSummary.segments[1].ratio, 0.38, 'highlight segments should match the current HP ratio');
+
+    const finisherSummary = buildBossStatusHighlightSummary({
+        hpRatio: 0.31,
+        breakMs: 700,
+        activeStatuses: ['slow'],
+        finisherArmed: true
+    });
+    assert.deepEqual(finisherSummary.segments.map(segment => segment.key), ['break', 'control', 'finisher'], 'finisher summary should append the armed finisher cue after break/control highlights');
+    assert.equal(finisherSummary.segments[2].label, '破势终结', 'finisher highlight should advertise the upgraded control payoff state');
 
     const emptyStatusSummary = buildBossStatusHighlightSummary({
         hpRatio: 0.62,
@@ -4821,7 +4831,7 @@ function testStatusRoutingRunEffectHooks() {
     );
     assert.match(
         source,
-        /getCombatSpecialStatusLabel\(now\)\s*{[\s\S]*?const slowDurationTag = formatRunEffectIncreaseTag\(runEffects\.playerSlowStatusDurationMultiplier\);[\s\S]*?if \(slowDurationTag\) \{[\s\S]*?return weaponStatus && weaponStatus\.key === 'slow'\s*\?\s*`镇步\$\{slowDurationTag\}`\s*:\s*'镇步切减速';[\s\S]*?\}[\s\S]*?const burnDurationTag = formatRunEffectIncreaseTag\(runEffects\.playerBurnStatusDurationMultiplier\);[\s\S]*?const burnDamageTag = formatRunEffectIncreaseTag\(runEffects\.playerBurnStatusDamageMultiplier\);[\s\S]*?if \(burnDurationTag && burnDamageTag\) \{[\s\S]*?return weaponStatus && weaponStatus\.key === 'burn'\s*\?\s*`余烬\$\{burnDurationTag\}\/\$\{burnDamageTag\}`\s*:\s*'余烬切灼烧';[\s\S]*?\}[\s\S]*?const bleedDurationTag = formatRunEffectIncreaseTag\(runEffects\.playerBleedStatusDurationMultiplier\);[\s\S]*?const bleedDamageTag = formatRunEffectIncreaseTag\(runEffects\.playerBleedStatusDamageMultiplier\);[\s\S]*?if \(bleedDurationTag && bleedDamageTag\) \{[\s\S]*?return weaponStatus && weaponStatus\.key === 'bleed'\s*\?\s*`血痕\$\{bleedDurationTag\}\/\$\{bleedDamageTag\}`\s*:\s*'血痕切流血';[\s\S]*?\}[\s\S]*?const damageVsSlowedTag = formatRunEffectIncreaseTag\(runEffects\.playerDamageVsSlowedMultiplier\);[\s\S]*?if \(damageVsSlowedTag\) \{[\s\S]*?return `破势\$\{damageVsSlowedTag\}`;[\s\S]*?\}/,
+        /getCombatSpecialStatusLabel\(now\)\s*{[\s\S]*?const slowDurationTag = formatRunEffectIncreaseTag\(runEffects\.playerSlowStatusDurationMultiplier\);[\s\S]*?if \(slowDurationTag\) \{[\s\S]*?return weaponStatus && weaponStatus\.key === 'slow'\s*\?\s*`镇步\$\{slowDurationTag\}`\s*:\s*'镇步切减速';[\s\S]*?\}[\s\S]*?const burnDurationTag = formatRunEffectIncreaseTag\(runEffects\.playerBurnStatusDurationMultiplier\);[\s\S]*?const burnDamageTag = formatRunEffectIncreaseTag\(runEffects\.playerBurnStatusDamageMultiplier\);[\s\S]*?if \(burnDurationTag && burnDamageTag\) \{[\s\S]*?return weaponStatus && weaponStatus\.key === 'burn'\s*\?\s*`余烬\$\{burnDurationTag\}\/\$\{burnDamageTag\}`\s*:\s*'余烬切灼烧';[\s\S]*?\}[\s\S]*?const bleedDurationTag = formatRunEffectIncreaseTag\(runEffects\.playerBleedStatusDurationMultiplier\);[\s\S]*?const bleedDamageTag = formatRunEffectIncreaseTag\(runEffects\.playerBleedStatusDamageMultiplier\);[\s\S]*?if \(bleedDurationTag && bleedDamageTag\) \{[\s\S]*?return weaponStatus && weaponStatus\.key === 'bleed'\s*\?\s*`血痕\$\{bleedDurationTag\}\/\$\{bleedDamageTag\}`\s*:\s*'血痕切流血';[\s\S]*?\}[\s\S]*?const damageVsSlowedTag = formatRunEffectIncreaseTag\(runEffects\.playerDamageVsSlowedMultiplier\);[\s\S]*?if \(damageVsSlowedTag\) \{[\s\S]*?if \(\(Number\(now\) \|\| 0\) < finisherReadyUntil\) \{[\s\S]*?return '破势终结';[\s\S]*?\}[\s\S]*?return `破势\$\{damageVsSlowedTag\}`;[\s\S]*?\}/,
         'combat HUD special row should expose the routed slow/control identity and show a switch prompt or payoff tag when applicable'
     );
     assert.match(
@@ -4838,7 +4848,7 @@ function testStatusRoutingRunEffectHooks() {
     );
     assert.match(
         readme,
-        /`镇压圣坛`（在 `镇步修习` 的减速强化与 `破势修习` 的对减速目标加伤之间二选一）/,
+        /`镇压圣坛`（在 `镇步修习` 的减速强化与 `破势修习` 的对减速目标加伤 \/ Boss 破招窗口终结兑现之间二选一）/,
         'README should list the new control-routing shrine in the event-room roster'
     );
 }

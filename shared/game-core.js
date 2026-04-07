@@ -506,11 +506,11 @@
                 {
                     key: 'executionLesson',
                     label: '破势修习',
-                    description: '本局对减速目标伤害 +28%',
+                    description: '本局对减速目标伤害 +28%，Boss 破招窗口中的减速目标会进入终结兑现',
                     effect: {
                         type: 'runEffectBuff',
-                        routeSummary: '对减速目标伤害+28%',
-                        resolutionText: '对减速目标伤害 +28%',
+                        routeSummary: '对减速目标伤害+28%, Boss破招窗口终结',
+                        resolutionText: '对减速目标伤害 +28%，Boss 破招窗口中的减速目标会进入终结兑现',
                         runEffects: {
                             playerDamageVsSlowedMultiplier: 1.28
                         }
@@ -3519,6 +3519,7 @@
         const controlStatusMap = {
             slow: '减速'
         };
+        const finisherArmed = !!safe.finisherArmed;
 
         activeStatuses.forEach((statusKey) => {
             if (typeof statusKey !== 'string') return;
@@ -3544,6 +3545,15 @@
                 ratio: hpRatio,
                 color: 0x78E6FF,
                 alpha: 0.34
+            });
+        }
+        if (finisherArmed) {
+            segments.push({
+                key: 'finisher',
+                label: '破势终结',
+                ratio: hpRatio,
+                color: 0x9FE3FF,
+                alpha: 0.52
             });
         }
 
