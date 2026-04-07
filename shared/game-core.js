@@ -2518,6 +2518,14 @@
             } else if (slowRoute) {
                 notes.push(weaponStatus && weaponStatus.key === 'slow' ? '当前武器可触发' : '需切至减速武器');
             }
+            const choicePreview = basePreview;
+            if ((choicePreview.includes('[爆发') || choicePreview.includes('/爆发]') || choicePreview.includes('猩红锋契')) && runModifierBias.has('爆发')) {
+                notes.push('当前局已偏爆发');
+            } else if ((choicePreview.includes('[节奏') || choicePreview.includes('/节奏]') || choicePreview.includes('复苏祷言') || choicePreview.includes('迅击祷言')) && runModifierBias.has('节奏')) {
+                notes.push('当前局已偏节奏');
+            } else if ((choicePreview.includes('[稳健') || choicePreview.includes('/稳健]') || choicePreview.includes('守心修习')) && runModifierBias.has('稳健')) {
+                notes.push('当前局已偏稳健');
+            }
         }
 
         if (notes.length === 0) return basePreview;
