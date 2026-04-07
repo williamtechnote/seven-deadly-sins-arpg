@@ -624,6 +624,14 @@
         }
     ];
 
+    const WEAPON_STATUS_EFFECTS = {
+        sword: { key: 'bleed' },
+        dualBlades: { key: 'bleed' },
+        hammer: { key: 'slow' },
+        bow: { key: 'bleed' },
+        staff: { key: 'burn' }
+    };
+
     const DEFAULT_SAVE_DATA = {
         inventory: {},
         gold: 0,
@@ -2381,6 +2389,11 @@
         return label || route || '';
     }
 
+    function getWeaponSpecialStatus(weaponKey) {
+        const safeWeaponKey = typeof weaponKey === 'string' ? weaponKey.trim() : '';
+        return WEAPON_STATUS_EFFECTS[safeWeaponKey] || null;
+    }
+
     function buildRunEventRoomChoicePanelPreview(choice, state) {
         const basePreview = buildRunEventRoomChoicePreview(choice);
         const safeChoice = choice && typeof choice === 'object' ? choice : {};
@@ -2390,6 +2403,8 @@
         const currentHp = clampInt(safeState.playerHp, 1, playerMaxHp, playerMaxHp);
         const currentHpRatio = playerMaxHp > 0 ? (currentHp / playerMaxHp) : 1;
         const currentGold = clampInt(safeState.gold, 0, Number.MAX_SAFE_INTEGER, 0);
+        const selectedWeaponKey = typeof safeState.selectedWeaponKey === 'string' ? safeState.selectedWeaponKey : '';
+        const weaponStatus = getWeaponSpecialStatus(selectedWeaponKey);
         const negativeStatuses = Array.isArray(safeState.negativeStatuses) ? safeState.negativeStatuses : [];
 
         let hpDelta = 0;
@@ -2445,6 +2460,16 @@
                 } else if (currentHpRatio >= (highHpThresholdRatio - 0.1)) {
                     notes.push('接近守心线');
                 }
+            }
+            const burnRoute = Number(runEffects.playerBurnStatusDurationMultiplier) > 1 || Number(runEffects.playerBurnStatusDamageMultiplier) > 1;
+            const bleedRoute = Number(runEffects.playerBleedStatusDurationMultiplier) > 1 || Number(runEffects.playerBleedStatusDamageMultiplier) > 1;
+            const slowRoute = Number(runEffects.playerSlowStatusDurationMultiplier) > 1 || Number(runEffects.playerDamageVsSlowedMultiplier) > 1;
+            if (burnRoute) {
+                notes.push(weaponStatus && weaponStatus.key === 'burn' ? '当前武器可触发' : '需切至灼烧武器');
+            } else if (bleedRoute) {
+                notes.push(weaponStatus && weaponStatus.key === 'bleed' ? '当前武器可触发' : '需切至流血武器');
+            } else if (slowRoute) {
+                notes.push(weaponStatus && weaponStatus.key === 'slow' ? '当前武器可触发' : '需切至减速武器');
             }
         }
 
