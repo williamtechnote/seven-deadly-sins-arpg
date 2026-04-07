@@ -1620,7 +1620,8 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             if ((Number(now) || 0) < finisherReadyUntil) {
                 return '破势终结';
             }
-            return `破势${damageVsSlowedTag}`;
+            const weaponSupportsSlow = weaponStatus && weaponStatus.key === 'slow';
+            return weaponSupportsSlow ? `破势${damageVsSlowedTag}` : '破势切减速';
         }
         const rangedSpecialCooldownTag = formatRunEffectReductionTag(runEffects.playerRangedSpecialCooldownMultiplier);
         if (rangedSpecialCooldownTag) {
