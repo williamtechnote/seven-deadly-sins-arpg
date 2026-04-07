@@ -1211,6 +1211,8 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.comboDodgeReadyCueUntil = 0;
         this.prayerSpecialReadyCueUntil = 0;
         this.controlPayoffCueUntil = 0;
+        this.weaponRoutingAttackReadyCueUntil = 0;
+        this.weaponRoutingSpecialReadyCueUntil = 0;
         this.prayerDodgeReadyCueUntil = 0;
         this.disciplineDodgeReadyCueUntil = 0;
         this.attackSequenceId = 0;
@@ -1263,6 +1265,22 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         if (!Array.isArray(this.weapons) || this.weapons.length === 0) return;
         GameState.selectedWeaponKey = this.weapons[this.currentWeaponIndex] || this.weapons[0];
         this._weaponVisualDirty = true;
+        this._armWeaponRoutingReadyCue();
+    }
+
+    _armWeaponRoutingReadyCue() {
+        const now = Number(this.scene && this.scene.time && this.scene.time.now) || 0;
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        const currentWeapon = this.currentWeapon;
+        if (!currentWeapon) return;
+        const meleeAttackCooldownTag = formatRunEffectReductionTag(runEffects.playerMeleeAttackCooldownMultiplier);
+        if (meleeAttackCooldownTag && currentWeapon.type === 'melee') {
+            this.weaponRoutingAttackReadyCueUntil = Math.max(this.weaponRoutingAttackReadyCueUntil || 0, now + 480);
+        }
+        const rangedSpecialCooldownTag = formatRunEffectReductionTag(runEffects.playerRangedSpecialCooldownMultiplier);
+        if (rangedSpecialCooldownTag && currentWeapon.type === 'ranged') {
+            this.weaponRoutingSpecialReadyCueUntil = Math.max(this.weaponRoutingSpecialReadyCueUntil || 0, now + 480);
+        }
     }
 
     _drawWeaponVisual() {
@@ -1407,6 +1425,10 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         }
         const meleeAttackCooldownTag = formatRunEffectReductionTag(runEffects.playerMeleeAttackCooldownMultiplier);
         if (meleeAttackCooldownTag) {
+            const attackReadyCueUntil = Number(this.weaponRoutingAttackReadyCueUntil) || 0;
+            if ((Number(now) || 0) < attackReadyCueUntil && this.currentWeapon && this.currentWeapon.type === 'melee') {
+                return '压阵就位';
+            }
             return this.currentWeapon && this.currentWeapon.type === 'melee'
                 ? `压阵${meleeAttackCooldownTag}`
                 : '压阵切近战';
@@ -1630,6 +1652,10 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         }
         const rangedSpecialCooldownTag = formatRunEffectReductionTag(runEffects.playerRangedSpecialCooldownMultiplier);
         if (rangedSpecialCooldownTag) {
+            const specialReadyCueUntil = Number(this.weaponRoutingSpecialReadyCueUntil) || 0;
+            if ((Number(now) || 0) < specialReadyCueUntil && this.currentWeapon && this.currentWeapon.type === 'ranged') {
+                return '离弦就位';
+            }
             return this.currentWeapon && this.currentWeapon.type === 'ranged'
                 ? `离弦${rangedSpecialCooldownTag}`
                 : '离弦切远程';
