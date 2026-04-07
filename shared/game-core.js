@@ -2405,6 +2405,7 @@
         const currentGold = clampInt(safeState.gold, 0, Number.MAX_SAFE_INTEGER, 0);
         const selectedWeaponKey = typeof safeState.selectedWeaponKey === 'string' ? safeState.selectedWeaponKey : '';
         const weaponStatus = getWeaponSpecialStatus(selectedWeaponKey);
+        const inventory = normalizeInventory(safeState.inventory);
         const negativeStatuses = Array.isArray(safeState.negativeStatuses) ? safeState.negativeStatuses : [];
 
         let hpDelta = 0;
@@ -2440,6 +2441,12 @@
             const shortfall = Math.max(0, goldCost - currentGold);
             if (shortfall > 0) {
                 notes.push(shortfall <= 25 ? `仅差${shortfall}金` : '金币紧张');
+            }
+            const itemChanges = normalizeEffectItemChanges(effect);
+            const duplicateItem = itemChanges.find(({ itemKey }) => clampInt(inventory[itemKey], 0, Number.MAX_SAFE_INTEGER, 0) > 0);
+            if (duplicateItem) {
+                const ownedCount = clampInt(inventory[duplicateItem.itemKey], 0, Number.MAX_SAFE_INTEGER, 0);
+                notes.push(`背包已有${ownedCount}`);
             }
         }
 
