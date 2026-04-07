@@ -1231,6 +1231,26 @@ function testRunEventRoomChoicePanelPreview() {
         'panel preview should surface tactical intent tags for risky economy routes while appending projected HP loss'
     );
 
+    const desperationChoice = getRunEventRoomChoices('riskRewardShrine').find(choice => choice.key === 'desperationLesson');
+    assert.equal(
+        buildRunEventRoomChoicePanelPreview(desperationChoice, {
+            playerHp: 52,
+            playerMaxHp: 120
+        }),
+        '绝境修习: 生命<45%时伤害+40% · 已处绝境线',
+        'panel preview should surface threshold relevance for low-HP risk routes when the player is already inside the breakpoint'
+    );
+
+    const composureChoice = getRunEventRoomChoices('riskRewardShrine').find(choice => choice.key === 'composureLesson');
+    assert.equal(
+        buildRunEventRoomChoicePanelPreview(composureChoice, {
+            playerHp: 96,
+            playerMaxHp: 120
+        }),
+        '守心修习: 生命>70%时承伤-18% · 高血稳定',
+        'panel preview should surface threshold relevance for high-HP guard routes when the player is already above the breakpoint'
+    );
+
     assert.equal(
         buildRunEventRoomChoicePanelPreview(healingChoice, {
             playerHp: 114,
