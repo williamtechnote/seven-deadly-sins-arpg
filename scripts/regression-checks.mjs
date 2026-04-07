@@ -1214,10 +1214,11 @@ function testRunEventRoomChoicePanelPreview() {
     assert.equal(
         buildRunEventRoomChoicePanelPreview(healingChoice, {
             playerHp: 84,
-            playerMaxHp: 120
+            playerMaxHp: 120,
+            negativeStatuses: ['burn', 'slow']
         }),
-        '净泉啜饮 [续航/净化]: 生命+30%, 净化 · 预估生命+36',
-        'panel preview should keep tactical intent tags while appending projected healing'
+        '净泉啜饮 [续航/净化]: 生命+30%, 净化 · 预估生命+36 · 可净化2层',
+        'panel preview should keep tactical intent tags while appending projected healing and contextual cleanse value'
     );
 
     const gambleChoice = getRunEventRoomChoices('gamblersShrine').find(choice => choice.key === 'highStakeWager');
@@ -1228,6 +1229,16 @@ function testRunEventRoomChoicePanelPreview() {
         }),
         '豪赌 [经济/冒险]: 生命-30%, 金币+120 · 预估生命-30',
         'panel preview should surface tactical intent tags for risky economy routes while appending projected HP loss'
+    );
+
+    assert.equal(
+        buildRunEventRoomChoicePanelPreview(healingChoice, {
+            playerHp: 114,
+            playerMaxHp: 120,
+            negativeStatuses: []
+        }),
+        '净泉啜饮 [续航/净化]: 生命+30%, 净化 · 预估生命+6 · 无负面可净化',
+        'panel preview should surface limited healing plus the lack of cleanse value when the player is already healthy and clean'
     );
 }
 

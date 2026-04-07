@@ -2388,6 +2388,8 @@
         const safeState = state && typeof state === 'object' ? state : {};
         const playerMaxHp = Math.max(1, clampInt(safeState.playerMaxHp, 1, Number.MAX_SAFE_INTEGER, 100));
         const currentHp = clampInt(safeState.playerHp, 1, playerMaxHp, playerMaxHp);
+        const currentHpRatio = playerMaxHp > 0 ? (currentHp / playerMaxHp) : 1;
+        const negativeStatuses = Array.isArray(safeState.negativeStatuses) ? safeState.negativeStatuses : [];
 
         let hpDelta = 0;
         if (effect.type === 'hpForGold') {
@@ -2406,8 +2408,19 @@
             );
         }
 
-        if (!hpDelta) return basePreview;
-        return `${basePreview} · 预估生命${hpDelta > 0 ? '+' : ''}${hpDelta}`;
+        const notes = [];
+        if (hpDelta) {
+            notes.push(`预估生命${hpDelta > 0 ? '+' : ''}${hpDelta}`);
+        }
+        if ((effect.type === 'restoreHp' || effect.type === 'restoreHpAndCleanse') && hpDelta <= 0 && currentHpRatio >= 0.85) {
+            notes.push('高血收益低');
+        }
+        if (effect.type === 'restoreHpAndCleanse') {
+            notes.push(negativeStatuses.length > 0 ? `可净化${negativeStatuses.length}层` : '无负面可净化');
+        }
+
+        if (notes.length === 0) return basePreview;
+        return `${basePreview} · ${notes.join(' · ')}`;
     }
 
     function getRunEventRoomChoiceAffordabilityLabel(choice, state) {
