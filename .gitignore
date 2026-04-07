@@ -8,3 +8,5 @@ verify-*.png
 playwright-report/
 test-results/
 artifacts/
+
+.heartbeat-worktrees/
