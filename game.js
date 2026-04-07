@@ -1854,12 +1854,16 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         const damage = Math.round(weapon.damage * this.getDamageMultiplier() * attackDamageMultiplier);
         const disciplineAttackPayoffUntil = this.claimDisciplineAttackHitPayoffWindow(this.scene.time.now);
         const weaponRoutingAttackPayoffActive = weapon.type === 'melee' && (runEffects.playerMeleeAttackCooldownMultiplier || 1) < 1;
+        const weaponRoutingAttackSavedMs = weaponRoutingAttackPayoffActive
+            ? Math.max(0, Math.round(baseAttackCooldown * attackCooldownScale) - this.attackCooldown)
+            : 0;
         return this._spawnHitbox(damage, 1, false, false, {
             attackSequenceId,
             disciplineAttackPayoffUntil,
             isEmpoweredAttack,
             isLowHpDamageEmpowered,
             weaponRoutingAttackPayoffActive,
+            weaponRoutingAttackSavedMs,
             targetHasSlow: false
         });
     }
@@ -1883,9 +1887,13 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         const isLowHpDamageEmpowered = typeof this.isLowHpDamageRouteActive === 'function' && this.isLowHpDamageRouteActive();
         const damage = Math.round(weapon.damage * 2 * this.getDamageMultiplier() * specialDamageMultiplier);
         const weaponRoutingSpecialPayoffActive = weapon.type === 'ranged' && (runEffects.playerRangedSpecialCooldownMultiplier || 1) < 1;
+        const weaponRoutingSpecialSavedMs = weaponRoutingSpecialPayoffActive
+            ? Math.max(0, Math.round(weapon.specialCooldown * specialCdScale) - this.specialCooldown)
+            : 0;
         return this._spawnHitbox(damage, 2, true, isEmpoweredSpecial, {
             isLowHpDamageEmpowered,
             weaponRoutingSpecialPayoffActive,
+            weaponRoutingSpecialSavedMs,
             targetHasSlow: false
         });
     }
@@ -1899,6 +1907,8 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         const isLowHpDamageEmpowered = !!meta.isLowHpDamageEmpowered;
         const weaponRoutingAttackPayoffActive = !!meta.weaponRoutingAttackPayoffActive;
         const weaponRoutingSpecialPayoffActive = !!meta.weaponRoutingSpecialPayoffActive;
+        const weaponRoutingAttackSavedMs = Math.max(0, Number(meta.weaponRoutingAttackSavedMs) || 0);
+        const weaponRoutingSpecialSavedMs = Math.max(0, Number(meta.weaponRoutingSpecialSavedMs) || 0);
         const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
         const specialStatus = isSpecial ? getWeaponSpecialStatus(weaponKey) : null;
         const burnDurationScale = specialStatus && specialStatus.key === 'burn' ? Math.max(1, Number(runEffects.playerBurnStatusDurationMultiplier) || 1) : 1;
@@ -1948,6 +1958,8 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             arrow.isLowHpDamageEmpowered = isLowHpDamageEmpowered;
             arrow.weaponRoutingAttackPayoffActive = weaponRoutingAttackPayoffActive;
             arrow.weaponRoutingSpecialPayoffActive = weaponRoutingSpecialPayoffActive;
+            arrow.weaponRoutingAttackSavedMs = weaponRoutingAttackSavedMs;
+            arrow.weaponRoutingSpecialSavedMs = weaponRoutingSpecialSavedMs;
             arrow.attackSequenceId = attackSequenceId;
             arrow.disciplineAttackPayoffUntil = disciplineAttackPayoffUntil;
             arrow.statusEffect = statusPayload;
@@ -1973,6 +1985,8 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             orb.isLowHpDamageEmpowered = isLowHpDamageEmpowered;
             orb.weaponRoutingAttackPayoffActive = weaponRoutingAttackPayoffActive;
             orb.weaponRoutingSpecialPayoffActive = weaponRoutingSpecialPayoffActive;
+            orb.weaponRoutingAttackSavedMs = weaponRoutingAttackSavedMs;
+            orb.weaponRoutingSpecialSavedMs = weaponRoutingSpecialSavedMs;
             orb.attackSequenceId = attackSequenceId;
             orb.disciplineAttackPayoffUntil = disciplineAttackPayoffUntil;
             orb._pierceHits = [];
@@ -1996,6 +2010,8 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             slam.isLowHpDamageEmpowered = isLowHpDamageEmpowered;
             slam.weaponRoutingAttackPayoffActive = weaponRoutingAttackPayoffActive;
             slam.weaponRoutingSpecialPayoffActive = weaponRoutingSpecialPayoffActive;
+            slam.weaponRoutingAttackSavedMs = weaponRoutingAttackSavedMs;
+            slam.weaponRoutingSpecialSavedMs = weaponRoutingSpecialSavedMs;
             slam.attackSequenceId = attackSequenceId;
             slam.disciplineAttackPayoffUntil = disciplineAttackPayoffUntil;
             slam.x = hx;
@@ -2020,6 +2036,8 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             hitbox.isLowHpDamageEmpowered = isLowHpDamageEmpowered;
             hitbox.weaponRoutingAttackPayoffActive = weaponRoutingAttackPayoffActive;
             hitbox.weaponRoutingSpecialPayoffActive = weaponRoutingSpecialPayoffActive;
+            hitbox.weaponRoutingAttackSavedMs = weaponRoutingAttackSavedMs;
+            hitbox.weaponRoutingSpecialSavedMs = weaponRoutingSpecialSavedMs;
             hitbox.attackSequenceId = attackSequenceId;
             hitbox.disciplineAttackPayoffUntil = disciplineAttackPayoffUntil;
             hitbox.x = hx;
@@ -2064,6 +2082,8 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             hitbox.isLowHpDamageEmpowered = isLowHpDamageEmpowered;
             hitbox.weaponRoutingAttackPayoffActive = weaponRoutingAttackPayoffActive;
             hitbox.weaponRoutingSpecialPayoffActive = weaponRoutingSpecialPayoffActive;
+            hitbox.weaponRoutingAttackSavedMs = weaponRoutingAttackSavedMs;
+            hitbox.weaponRoutingSpecialSavedMs = weaponRoutingSpecialSavedMs;
             hitbox.attackSequenceId = attackSequenceId;
             hitbox.disciplineAttackPayoffUntil = disciplineAttackPayoffUntil;
             hitbox.statusEffect = statusPayload;
@@ -3674,12 +3694,14 @@ class LevelScene extends Phaser.Scene {
                         showFloatingCombatText(this, enemy.x, enemy.y - 30, '追猎斩', '#ffe1a8', 560);
                     }
                     if (hb.weaponRoutingAttackPayoffActive && !hb.isSpecial) {
+                        const savedSeconds = Math.max(0.1, Math.round((Math.max(0, Number(hb.weaponRoutingAttackSavedMs) || 0) / 1000) * 10) / 10);
                         showHitImpactPulse(this, enemy.x, enemy.y, 0xE7F3B0, 12);
-                        showFloatingCombatText(this, enemy.x, enemy.y - 46, '压阵斩', '#f3ffb8', 540);
+                        showFloatingCombatText(this, enemy.x, enemy.y - 46, `压阵省${savedSeconds.toFixed(1)}s`, '#f3ffb8', 540);
                     }
                     if (hb.weaponRoutingSpecialPayoffActive && hb.isSpecial) {
+                        const savedSeconds = Math.max(0.1, Math.round((Math.max(0, Number(hb.weaponRoutingSpecialSavedMs) || 0) / 1000) * 10) / 10);
                         showHitImpactPulse(this, enemy.x, enemy.y, 0x9EDCFF, 13);
-                        showFloatingCombatText(this, enemy.x, enemy.y - 60, '离弦贯', '#bfe9ff', 560);
+                        showFloatingCombatText(this, enemy.x, enemy.y - 60, `离弦省${savedSeconds.toFixed(1)}s`, '#bfe9ff', 560);
                     }
                     if (hb.isLowHpDamageEmpowered) {
                         showHitImpactPulse(this, enemy.x, enemy.y, 0xFF8A8A, 12);
@@ -5241,12 +5263,14 @@ class BossScene extends Phaser.Scene {
                         showFloatingCombatText(this, this.boss.sprite.x, this.boss.sprite.y - 34, '追猎斩', '#ffe1a8', 620);
                     }
                     if (hb.weaponRoutingAttackPayoffActive && !hb.isSpecial) {
+                        const savedSeconds = Math.max(0.1, Math.round((Math.max(0, Number(hb.weaponRoutingAttackSavedMs) || 0) / 1000) * 10) / 10);
                         showHitImpactPulse(this, this.boss.sprite.x, this.boss.sprite.y, 0xE7F3B0, 14);
-                        showFloatingCombatText(this, this.boss.sprite.x, this.boss.sprite.y - 52, '压阵斩', '#f3ffb8', 580);
+                        showFloatingCombatText(this, this.boss.sprite.x, this.boss.sprite.y - 52, `压阵省${savedSeconds.toFixed(1)}s`, '#f3ffb8', 580);
                     }
                     if (hb.weaponRoutingSpecialPayoffActive && hb.isSpecial) {
+                        const savedSeconds = Math.max(0.1, Math.round((Math.max(0, Number(hb.weaponRoutingSpecialSavedMs) || 0) / 1000) * 10) / 10);
                         showHitImpactPulse(this, this.boss.sprite.x, this.boss.sprite.y, 0x9EDCFF, 15);
-                        showFloatingCombatText(this, this.boss.sprite.x, this.boss.sprite.y - 68, '离弦贯', '#bfe9ff', 600);
+                        showFloatingCombatText(this, this.boss.sprite.x, this.boss.sprite.y - 68, `离弦省${savedSeconds.toFixed(1)}s`, '#bfe9ff', 600);
                     }
                     if (hb.isLowHpDamageEmpowered) {
                         showHitImpactPulse(this, this.boss.sprite.x, this.boss.sprite.y, 0xFF8A8A, 14);
