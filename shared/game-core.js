@@ -2394,6 +2394,38 @@
         return WEAPON_STATUS_EFFECTS[safeWeaponKey] || null;
     }
 
+    function getRunModifierTagBias(runModifiers) {
+        const safeRunModifiers = Array.isArray(runModifiers) ? runModifiers : [];
+        const bias = new Set();
+        safeRunModifiers.forEach((modifier) => {
+            const effects = modifier && typeof modifier === 'object' && modifier.effects && typeof modifier.effects === 'object'
+                ? modifier.effects
+                : {};
+            if ((Number(effects.playerDamageMultiplier) || 1) > 1 || (Number(effects.playerLowHpDamageMultiplier) || 1) > 1) {
+                bias.add('爆发');
+            }
+            if ((Number(effects.goldDropMultiplier) || 1) > 1 || (Number(effects.extraDropRateMultiplier) || 1) > 1) {
+                bias.add('经济');
+            }
+            if ((Number(effects.playerAttackCooldownMultiplier) || 1) < 1
+                || (Number(effects.playerSpecialCooldownMultiplier) || 1) < 1
+                || (Number(effects.playerMeleeAttackCooldownMultiplier) || 1) < 1
+                || (Number(effects.playerRangedSpecialCooldownMultiplier) || 1) < 1
+                || (Number(effects.playerStaminaRegenMultiplier) || 1) > 1) {
+                bias.add('节奏');
+            }
+            if ((Number(effects.playerDamageTakenMultiplier) || 1) < 1 || (Number(effects.playerHighHpDamageTakenMultiplier) || 1) < 1) {
+                bias.add('稳健');
+            }
+            if (Array.isArray(modifier.tags)) {
+                modifier.tags.forEach((tag) => {
+                    if (typeof tag === 'string' && ['爆发', '经济', '节奏', '稳健', '补给'].includes(tag)) bias.add(tag);
+                });
+            }
+        });
+        return bias;
+    }
+
     function buildRunEventRoomChoicePanelPreview(choice, state) {
         const basePreview = buildRunEventRoomChoicePreview(choice);
         const safeChoice = choice && typeof choice === 'object' ? choice : {};
@@ -2407,6 +2439,7 @@
         const weaponStatus = getWeaponSpecialStatus(selectedWeaponKey);
         const inventory = normalizeInventory(safeState.inventory);
         const negativeStatuses = Array.isArray(safeState.negativeStatuses) ? safeState.negativeStatuses : [];
+        const runModifierBias = getRunModifierTagBias(safeState.runModifiers);
 
         let hpDelta = 0;
         if (effect.type === 'hpForGold') {
@@ -2448,6 +2481,13 @@
                 const ownedCount = clampInt(inventory[duplicateItem.itemKey], 0, Number.MAX_SAFE_INTEGER, 0);
                 notes.push(`背包已有${ownedCount}`);
             }
+            if (runModifierBias.has('补给')) {
+                notes.push('当前局已偏补给');
+            }
+        }
+
+        if (effect.type === 'hpForGold' && runModifierBias.has('经济')) {
+            notes.push('当前局已偏经济');
         }
 
         if (effect.type === 'runEffectBuff') {
