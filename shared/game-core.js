@@ -624,6 +624,33 @@
         }
     ];
 
+    const RUN_EVENT_ENCOUNTER_PROFILES = Object.freeze({
+        breather: Object.freeze({
+            key: 'breather',
+            previewLabel: '下间缓冲',
+            encounterLabel: '缓冲战',
+            enemySpeedMultiplier: 0.88,
+            enemyHpMultiplier: 0.9,
+            enemyGoldMultiplier: 1
+        }),
+        pressure: Object.freeze({
+            key: 'pressure',
+            previewLabel: '下间高压',
+            encounterLabel: '高压战',
+            enemySpeedMultiplier: 1.12,
+            enemyHpMultiplier: 1.1,
+            enemyGoldMultiplier: 1
+        }),
+        windfall: Object.freeze({
+            key: 'windfall',
+            previewLabel: '下间淘金',
+            encounterLabel: '淘金战',
+            enemySpeedMultiplier: 1.05,
+            enemyHpMultiplier: 1,
+            enemyGoldMultiplier: 1.5
+        })
+    });
+
     const WEAPON_STATUS_EFFECTS = {
         sword: { key: 'bleed' },
         dualBlades: { key: 'bleed' },
@@ -2099,7 +2126,8 @@
                         : (forceHealingDoubleFallback ? '' : selectedChoice.label)
                 )
                 : (runEventRoom.resolved && persistedChoiceLabel ? persistedChoiceLabel : null),
-            resolutionText: runEventRoom.resolved ? persistedResolutionText : ''
+            resolutionText: runEventRoom.resolved ? persistedResolutionText : '',
+            encounterProfilePending: !!runEventRoom.encounterProfilePending && !!runEventRoom.resolved
         };
     }
 
@@ -2120,7 +2148,8 @@
             resolved: false,
             selectedChoiceKey: null,
             selectedChoiceLabel: null,
-            resolutionText: ''
+            resolutionText: '',
+            encounterProfilePending: false
         };
     }
 
@@ -2222,7 +2251,8 @@
                 resolved: true,
                 selectedChoiceKey: choice.key,
                 selectedChoiceLabel: choice.label,
-                resolutionText
+                resolutionText,
+                encounterProfilePending: true
             }
         };
     }
@@ -2378,6 +2408,23 @@
             .filter(tag => typeof tag === 'string' && tag.trim())
             .slice(0, 2);
         return tags.length > 0 ? ` [${tags.join('/')}]` : '';
+    }
+
+    function getRunEventRoomChoiceEncounterProfile(choice) {
+        const tags = getRunEventRoomChoiceIntentTags(choice);
+        if (tags.includes('经济')) return RUN_EVENT_ENCOUNTER_PROFILES.windfall;
+        if (tags.includes('爆发') || tags.includes('节奏') || tags.includes('冒险')) {
+            return RUN_EVENT_ENCOUNTER_PROFILES.pressure;
+        }
+        if (tags.includes('续航') || tags.includes('净化') || tags.includes('稳健') || tags.includes('补给')) {
+            return RUN_EVENT_ENCOUNTER_PROFILES.breather;
+        }
+        return null;
+    }
+
+    function formatRunEventRoomChoiceEncounterPreview(choice) {
+        const profile = getRunEventRoomChoiceEncounterProfile(choice);
+        return profile ? profile.previewLabel : '';
     }
 
     function buildRunEventRoomChoicePreview(choice) {
@@ -2552,6 +2599,14 @@
         return '当前无法完成该选择';
     }
 
+    function getRunEventEncounterProfile(runEventRoom, poolOverride) {
+        const normalizedRoom = normalizeRunEventRoom(runEventRoom, poolOverride);
+        if (!normalizedRoom || !normalizedRoom.resolved || !normalizedRoom.selectedChoiceKey) return null;
+        const choice = getRunEventRoomChoices(normalizedRoom.key, poolOverride)
+            .find(item => item.key === normalizedRoom.selectedChoiceKey) || null;
+        return choice ? getRunEventRoomChoiceEncounterProfile(choice) : null;
+    }
+
     function buildCompactRunEventResolutionText(runEventRoom, choice) {
         const normalizedRoom = runEventRoom && typeof runEventRoom === 'object' ? runEventRoom : {};
         const safeChoice = choice && typeof choice === 'object' ? choice : {};
@@ -2648,13 +2703,16 @@
         const resolvedChoiceLabel = normalizedRoom.selectedChoiceLabel
             || (!forceHealingDoubleFallback && selectedChoice ? selectedChoice.label : '')
             || (normalizedRoom.resolved ? '未知选项' : '');
+        const encounterPreview = normalizedRoom.resolved && selectedChoice
+            ? formatRunEventRoomChoiceEncounterPreview(selectedChoice)
+            : '';
         const visibleChoices = normalizedRoom.resolved
             ? []
             : allChoices.slice(0, 2);
         const routeLines = normalizedRoom.resolved
             ? (
                 resolvedChoiceLabel
-                    ? [`${resolvedPrefix}: ${resolvedChoiceLabel}`.trim()]
+                    ? [`${resolvedPrefix}: ${resolvedChoiceLabel}${encounterPreview ? ` · ${encounterPreview}` : ''}`.trim()]
                     : []
             )
             : visibleChoices.map(choice => buildRunEventRoomChoicePreview(choice));
@@ -2711,11 +2769,19 @@
     }
 
     function buildRunEventRoomWorldLabelRouteLine(runEventRoom, poolOverride) {
-        const summary = buildRunEventRoomHudSummary(runEventRoom, poolOverride);
-        if (!summary.visible || summary.statusLabel !== '已触发') return '';
-        return Array.isArray(summary.routeLines) && summary.routeLines.length > 0
-            ? summary.routeLines[0]
-            : '';
+        const normalizedRoom = normalizeRunEventRoom(runEventRoom, poolOverride);
+        if (!normalizedRoom || !normalizedRoom.resolved) return '';
+        const allChoices = getRunEventRoomChoices(normalizedRoom.key, poolOverride);
+        const selectedChoice = normalizedRoom.selectedChoiceKey
+            ? allChoices.find(choice => choice.key === normalizedRoom.selectedChoiceKey) || null
+            : null;
+        const forceHealingDoubleFallback = normalizedRoom.type === 'healing'
+            && !normalizedRoom.selectedChoiceLabel
+            && !normalizedRoom.resolutionText;
+        const resolvedChoiceLabel = normalizedRoom.selectedChoiceLabel
+            || (!forceHealingDoubleFallback && selectedChoice ? selectedChoice.label : '')
+            || '未知选项';
+        return `${getRunEventRoomResolvedPrefix(normalizedRoom.type)}: ${resolvedChoiceLabel}`.trim();
     }
 
     function buildRunEventRoomWorldLabel(runEventRoom, poolOverride) {
@@ -3998,8 +4064,11 @@
         buildRunEventRoomEffects,
         buildRunEventRoomChoicePreview,
         buildRunEventRoomChoicePanelPreview,
+        getRunEventRoomChoiceEncounterProfile,
+        formatRunEventRoomChoiceEncounterPreview,
         getRunEventRoomChoiceAffordabilityLabel,
         getRunEventRoomChoiceFailureMessage,
+        getRunEventEncounterProfile,
         buildRunEventRoomHudSummary,
         buildRunEventRoomHudLines,
         buildRunEventRoomWorldLabelRouteLine,

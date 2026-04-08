@@ -68,6 +68,9 @@ const {
     buildRunEventRoomEffects,
     buildRunEventRoomHudSummary,
     buildRunEventRoomHudLines,
+    getRunEventRoomChoiceEncounterProfile,
+    formatRunEventRoomChoiceEncounterPreview,
+    getRunEventEncounterProfile,
     getRunChallengeSafeSidebarLabel,
     getRunChallengeInProgressInvalidTargetVisibleFallbacks,
     getRunChallengeCompletedInvalidTargetVisibleFallbacks,
@@ -440,7 +443,8 @@ function testSaveLoadIntegrity() {
             resolved: true,
             selectedChoiceKey: 'highStakeWager',
             selectedChoiceLabel: '豪赌',
-            resolutionText: '失去 30 生命，获得 120 金币'
+            resolutionText: '失去 30 生命，获得 120 金币',
+            encounterProfilePending: false
         },
         quickSlots: ['hpPotion', null, 'staminaPotion', null]
     }, 'serialized+deserialized state should stay stable');
@@ -1207,6 +1211,39 @@ function testRunEventRoomChoiceHelpers() {
     );
 }
 
+function testRunEventEncounterProfileHelpers() {
+    assert.equal(typeof getRunEventRoomChoiceEncounterProfile, 'function', 'event room encounter profile helper should be exported');
+    assert.equal(typeof formatRunEventRoomChoiceEncounterPreview, 'function', 'event room encounter preview helper should be exported');
+    assert.equal(typeof getRunEventEncounterProfile, 'function', 'resolved event room encounter helper should be exported');
+
+    const healingChoice = getRunEventRoomChoices('healingFountain').find(choice => choice.key === 'purifyingSip');
+    const healingProfile = getRunEventRoomChoiceEncounterProfile(healingChoice);
+    assert.equal(healingProfile.key, 'breather', 'healing/cleanse routes should bias the next room toward a breather profile');
+    assert.equal(formatRunEventRoomChoiceEncounterPreview(healingChoice), '下间缓冲', 'healing/cleanse routes should preview the breather encounter');
+
+    const prayerChoice = getRunEventRoomChoices('prayerShrine').find(choice => choice.key === 'tempoPrayer');
+    const prayerProfile = getRunEventRoomChoiceEncounterProfile(prayerChoice);
+    assert.equal(prayerProfile.key, 'pressure', 'tempo/burst routes should bias the next room toward a pressure profile');
+    assert.equal(formatRunEventRoomChoiceEncounterPreview(prayerChoice), '下间高压', 'tempo/burst routes should preview the pressure encounter');
+
+    const gambleChoice = getRunEventRoomChoices('gamblersShrine').find(choice => choice.key === 'highStakeWager');
+    const gambleProfile = getRunEventRoomChoiceEncounterProfile(gambleChoice);
+    assert.equal(gambleProfile.key, 'windfall', 'economy routes should bias the next room toward a windfall profile');
+    assert.equal(gambleProfile.enemyGoldMultiplier, 1.5, 'windfall routes should scale the next room gold drops');
+    assert.equal(formatRunEventRoomChoiceEncounterPreview(gambleChoice), '下间淘金', 'economy routes should preview the windfall encounter');
+
+    const resolvedProfile = getRunEventEncounterProfile({
+        key: 'prayerShrine',
+        discovered: true,
+        resolved: true,
+        selectedChoiceKey: 'tempoPrayer',
+        selectedChoiceLabel: '迅击祷言',
+        resolutionText: '特攻冷却 -22%'
+    });
+    assert.equal(resolvedProfile.key, 'pressure', 'resolved event rooms should expose the chosen route encounter profile');
+    assert.equal(resolvedProfile.encounterLabel, '高压战', 'resolved event rooms should expose the human-readable encounter label');
+}
+
 function testRunEventRoomChoicePanelPreview() {
     assert.equal(typeof buildRunEventRoomChoicePanelPreview, 'function', 'event room choice panel preview helper should be exported');
 
@@ -1408,8 +1445,8 @@ function testRunEventRoomHudSummary() {
     assert.equal(resolvedSummary.metaLabel, '祝福 · 已触发', 'HUD summary should keep the compressed blessing metadata');
     assert.deepEqual(
         resolvedSummary.routeLines,
-        ['效果: 迅击祷言'],
-        'resolved blessing summary should switch to an effect-specific chosen-route prefix'
+        ['效果: 迅击祷言 · 下间高压'],
+        'resolved blessing summary should keep the chosen-route prefix while surfacing the next-room pacing profile'
     );
     assert.equal(
         resolvedSummary.resolutionText,
@@ -1431,8 +1468,8 @@ function testRunEventRoomHudSummary() {
     );
     assert.deepEqual(
         resolvedRiskBuffSummary.routeLines,
-        ['效果: 猩红锋契'],
-        'resolved risk-buff summary should use the shared effect prefix for the chosen route'
+        ['效果: 猩红锋契 · 下间高压'],
+        'resolved risk-buff summary should keep the shared effect prefix while surfacing the next-room pacing profile'
     );
     const resolvedTradeSummary = buildRunEventRoomHudSummary({
         key: 'gamblersShrine',
@@ -1449,8 +1486,8 @@ function testRunEventRoomHudSummary() {
     );
     assert.deepEqual(
         resolvedTradeSummary.routeLines,
-        ['交易: 豪赌'],
-        'resolved trade summary should switch to a trade-specific chosen-route prefix'
+        ['交易: 豪赌 · 下间淘金'],
+        'resolved trade summary should keep the trade-specific chosen-route prefix while surfacing the next-room pacing profile'
     );
 
     const resolvedSupplySummary = buildRunEventRoomHudSummary({
@@ -1477,8 +1514,8 @@ function testRunEventRoomHudSummary() {
     });
     assert.deepEqual(
         resolvedHealingSummary.routeLines,
-        ['治疗: 净泉啜饮'],
-        'resolved healing summary should switch to a healing-specific chosen-route prefix'
+        ['治疗: 净泉啜饮 · 下间缓冲'],
+        'resolved healing summary should keep the healing-specific chosen-route prefix while surfacing the next-room pacing profile'
     );
     assert.equal(
         resolvedHealingSummary.resolutionText,
@@ -1496,8 +1533,8 @@ function testRunEventRoomHudSummary() {
     });
     assert.deepEqual(
         resolvedHealingDoubleFallbackSummary.routeLines,
-        ['治疗: 未知选项'],
-        'resolved healing summary should keep the healing prefix and explicit unknown-option fallback when both stored fragments are missing'
+        ['治疗: 未知选项 · 下间缓冲'],
+        'resolved healing summary should keep the healing prefix, unknown-option fallback, and next-room pacing profile when the choice key is still known'
     );
     assert.equal(
         resolvedHealingDoubleFallbackSummary.resolutionText,
@@ -1534,8 +1571,8 @@ function testRunEventRoomHudSummary() {
     });
     assert.deepEqual(
         resolvedTradeMissingSettlementSummary.routeLines,
-        ['交易: 豪赌'],
-        'resolved trade summary should keep the trade prefix when settlement text is missing'
+        ['交易: 豪赌 · 下间淘金'],
+        'resolved trade summary should keep the trade prefix and next-room pacing profile when settlement text is missing'
     );
     assert.equal(
         resolvedTradeMissingSettlementSummary.resolutionText,
@@ -1669,9 +1706,9 @@ function testRunEventRoomHudLines() {
         [
             '事件房: 祈愿圣坛',
             '祝福 · 已触发',
-            '效果: 迅击祷言 · 特攻冷却-22%'
+            '效果: 迅击祷言 · 下间高压 · 特攻冷却-22%'
         ],
-        'resolved blessing event rooms should merge the chosen route and compact settlement into one line with an effect prefix'
+        'resolved blessing event rooms should merge the chosen route, next-room pacing profile, and compact settlement into one line'
     );
 
     const resolvedTradeLines = buildRunEventRoomHudLines({
@@ -1687,9 +1724,9 @@ function testRunEventRoomHudLines() {
         [
             '事件房: 赌徒圣坛',
             '交易 · 已触发',
-            '交易: 豪赌 · 生命-30, 金币+120'
+            '交易: 豪赌 · 下间淘金 · 生命-30, 金币+120'
         ],
-        'resolved trade event rooms should merge the chosen label and actual settlement delta with a trade prefix'
+        'resolved trade event rooms should merge the chosen label, next-room pacing profile, and actual settlement delta'
     );
 
     const resolvedTradeMissingSettlementLines = buildRunEventRoomHudLines({
@@ -1705,7 +1742,7 @@ function testRunEventRoomHudLines() {
         [
             '事件房: 赌徒圣坛',
             '交易 · 已触发',
-            '交易: 豪赌 · 结算待同步'
+            '交易: 豪赌 · 下间淘金 · 结算待同步'
         ],
         'resolved trade event rooms should keep a stable merged fallback line when settlement text is missing'
     );
@@ -1723,9 +1760,9 @@ function testRunEventRoomHudLines() {
         [
             '事件房: 疗愈泉眼',
             '治疗 · 已触发',
-            '治疗: 净泉啜饮 · 生命+36, 净化'
+            '治疗: 净泉啜饮 · 下间缓冲 · 生命+36, 净化'
         ],
-        'resolved healing event rooms should merge the chosen label and actual settlement delta with a healing prefix'
+        'resolved healing event rooms should merge the chosen label, next-room pacing profile, and actual settlement delta'
     );
 
     const resolvedHealingDoubleFallbackLines = buildRunEventRoomHudLines({
@@ -1741,9 +1778,9 @@ function testRunEventRoomHudLines() {
         [
             '事件房: 疗愈泉眼',
             '治疗 · 已触发',
-            '治疗: 未知选项 · 结算待同步'
+            '治疗: 未知选项 · 下间缓冲 · 结算待同步'
         ],
-        'resolved healing event rooms should keep a stable merged fallback line when both stored fragments are missing'
+        'resolved healing event rooms should keep a stable merged fallback line when both stored fragments are missing but the chosen route remains known'
     );
 
     const resolvedUnknownLines = buildRunEventRoomHudLines({
@@ -2003,6 +2040,30 @@ function testRunEventRoomPromptLabel() {
         buildRunEventRoomPromptLabel({ key: 'mysteryArchive', discovered: true, resolved: false }, unknownTypePool),
         '按F抉择',
         'unknown or future event rooms should keep the generic prompt fallback'
+    );
+}
+
+function testRunEventEncounterRoutingHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /_openRunEventChoicePanel\(\)\s*{[\s\S]*?selectedWeaponKey:\s*this\.player\.currentWeaponKey,[\s\S]*?negativeStatuses:\s*Object\.keys\(this\.player\.activeStatusEffects \|\| \{\}\),[\s\S]*?runModifiers:\s*\(GameState\.runModifiers \|\| \[\]\)\.map\(key => getRunModifierByKey\(key\)\)[\s\S]*?const encounterPreview = formatRunEventRoomChoiceEncounterPreview\(choice\);[\s\S]*?textNode\.setText\(`\$\{index \+ 1\}\. \$\{previewText\}\$\{encounterPreview \? ` · \$\{encounterPreview\}` : ''\}\$\{affordabilityLabel \? ` · \$\{affordabilityLabel\}` : ''\}`\);/,
+        'run-event choice panel should pass the full route context and append the next-room encounter preview tag'
+    );
+    assert.match(
+        source,
+        /_applyRunEventEncounterProfileToRoom3\(profile\)\s*{[\s\S]*?enemy\._runEventEncounterBase = \{[\s\S]*?maxHp:\s*enemy\.maxHp,[\s\S]*?speed:\s*enemy\.speed,[\s\S]*?drops:\s*this\._cloneEnemyDrops\(enemy\.drops\)[\s\S]*?\};[\s\S]*?enemy\.maxHp = Math\.max\(1,\s*Math\.round\(baseStats\.maxHp \* hpScale\)\);[\s\S]*?enemy\.speed = Math\.max\(20,\s*Math\.round\(baseStats\.speed \* speedScale\)\);[\s\S]*?enemy\.drops = this\._scaleEnemyDropGold\(baseStats\.drops,\s*goldScale\);/,
+        'LevelScene should retune room 3 enemy HP, speed, and gold drops from the selected encounter profile'
+    );
+    assert.match(
+        source,
+        /GameState\.runEventRoom = settlement\.eventRoom;[\s\S]*?GameState\.refreshRunEffects\(\);[\s\S]*?const encounterProfile = this\._syncRunEventEncounterProfile\(\);[\s\S]*?this\._showRunEventSettlementFeedback\(settlement,\s*startGold,\s*startHp,\s*encounterProfile\);/,
+        'run-event settlement should immediately apply the chosen encounter profile and expose it in the settlement feedback'
+    );
+    assert.match(
+        source,
+        /_maybeAnnounceRunEventEncounterProfile\(\)\s*{[\s\S]*?const profile = getRunEventEncounterProfile\(GameState\.runEventRoom,\s*RUN_EVENT_ROOM_POOL\);[\s\S]*?this\._showFloatingText\([\s\S]*?profile\.encounterLabel/,
+        'LevelScene should announce the next-room encounter profile on first entry into room 3'
     );
 }
 
@@ -12127,12 +12188,14 @@ function main() {
     runTest('status-routing event room', testStatusRoutingEventRoom);
     runTest('control-routing event room', testControlRoutingEventRoom);
     runTest('run event room choice helpers', testRunEventRoomChoiceHelpers);
+    runTest('run event encounter profile helpers', testRunEventEncounterProfileHelpers);
     runTest('run event room choice panel preview', testRunEventRoomChoicePanelPreview);
     runTest('run event room choice affordability label', testRunEventRoomChoiceAffordabilityLabel);
     runTest('run event room HUD summary', testRunEventRoomHudSummary);
     runTest('run event room HUD lines', testRunEventRoomHudLines);
     runTest('run event room world label', testRunEventRoomWorldLabel);
     runTest('run event room prompt label', testRunEventRoomPromptLabel);
+    runTest('run event encounter routing hooks', testRunEventEncounterRoutingHooks);
     runTest('crafting recipe checks', testCraftingRecipeChecks);
     runTest('consumable use resolution', testConsumableUseResolution);
     runTest('status HUD summary', testStatusHudSummary);

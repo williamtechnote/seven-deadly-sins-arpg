@@ -92,6 +92,7 @@ const {
     buildRunModifierEffects,
     buildRunEventRoomEffects,
     buildRunEventRoomChoicePanelPreview,
+    formatRunEventRoomChoiceEncounterPreview,
     buildRunChallengeCompletedFeedbackText,
     buildRunChallengeSidebarLines,
     getRunChallengeSidebarBadgeAppearance,
@@ -100,6 +101,7 @@ const {
     buildRunEventRoomPromptLabel,
     getRunEventRoomByKey,
     getRunEventRoomChoices,
+    getRunEventEncounterProfile,
     normalizeRunEventRoom,
     pickRunEventRoom,
     resolveRunEventRoomChoice,
@@ -629,7 +631,8 @@ const GameState = {
             resolved: !!this.runEventRoom.resolved,
             selectedChoiceKey: this.runEventRoom.selectedChoiceKey || null,
             selectedChoiceLabel: this.runEventRoom.selectedChoiceLabel || '',
-            resolutionText: this.runEventRoom.resolutionText || ''
+            resolutionText: this.runEventRoom.resolutionText || '',
+            encounterProfilePending: !!this.runEventRoom.encounterProfilePending
         };
     },
     rollRunChallenge() {
@@ -3011,6 +3014,7 @@ class LevelScene extends Phaser.Scene {
 
         // Boss door at far right of Room 3
         const room3 = rooms[2];
+        this.room3Bounds = room3;
         const doorX = room3.x + room3.w - 80;
         const doorY = room3.y + room3.h / 2;
         this.bossDoor = this.add.sprite(doorX, doorY, 'portal');
@@ -3045,9 +3049,12 @@ class LevelScene extends Phaser.Scene {
         this.nearestRunEventRoom = null;
         this._runEventChoiceOpen = false;
         this._runEventChoiceOptions = [];
+        this._runEventEncounterProfileKey = '';
+        this._runEventEncounterProfileAnnouncedKey = '';
         this._levelTextWidthCache = new Map();
         this._levelTextMeasureNodes = {};
         this._createRunEventEncounter(rooms[1]);
+        this._syncRunEventEncounterProfile();
 
         // Input
         const spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
@@ -3485,11 +3492,16 @@ class LevelScene extends Phaser.Scene {
             const previewState = {
                 gold: GameState.gold,
                 playerHp: this.player.hp,
-                playerMaxHp: this.player.maxHp
+                playerMaxHp: this.player.maxHp,
+                selectedWeaponKey: this.player.currentWeaponKey,
+                inventory: GameState.inventory,
+                negativeStatuses: Object.keys(this.player.activeStatusEffects || {}),
+                runModifiers: (GameState.runModifiers || []).map(key => getRunModifierByKey(key))
             };
             const affordabilityLabel = getRunEventRoomChoiceAffordabilityLabel(choice, previewState);
             const previewText = buildRunEventRoomChoicePanelPreview(choice, previewState);
-            textNode.setText(`${index + 1}. ${previewText}${affordabilityLabel ? ` · ${affordabilityLabel}` : ''}`);
+            const encounterPreview = formatRunEventRoomChoiceEncounterPreview(choice);
+            textNode.setText(`${index + 1}. ${previewText}${encounterPreview ? ` · ${encounterPreview}` : ''}${affordabilityLabel ? ` · ${affordabilityLabel}` : ''}`);
             textNode.setVisible(true);
         });
         Object.values(this.runEventChoicePanel).forEach((node) => {
@@ -3517,7 +3529,83 @@ class LevelScene extends Phaser.Scene {
         }
     }
 
-    _showRunEventSettlementFeedback(settlement, startGold, startHp) {
+    _cloneEnemyDrops(drops) {
+        if (!drops || typeof drops !== 'object') return {};
+        return {
+            ...drops,
+            gold: Array.isArray(drops.gold) ? [...drops.gold] : drops.gold
+        };
+    }
+
+    _scaleEnemyDropGold(drops, scale) {
+        const safeDrops = this._cloneEnemyDrops(drops);
+        const goldScale = Math.max(0, Number(scale) || 1);
+        if (safeDrops.gold == null || goldScale === 1) return safeDrops;
+        if (Array.isArray(safeDrops.gold) && safeDrops.gold.length === 2) {
+            safeDrops.gold = safeDrops.gold.map(value => Math.max(0, Math.round((Number(value) || 0) * goldScale)));
+            return safeDrops;
+        }
+        safeDrops.gold = Math.max(0, Math.round((Number(safeDrops.gold) || 0) * goldScale));
+        return safeDrops;
+    }
+
+    _applyRunEventEncounterProfileToRoom3(profile) {
+        if (!profile || !Array.isArray(this.room3Enemies)) return;
+        const hpScale = Math.max(0.5, Number(profile.enemyHpMultiplier) || 1);
+        const speedScale = Math.max(0.5, Number(profile.enemySpeedMultiplier) || 1);
+        const goldScale = Math.max(0.5, Number(profile.enemyGoldMultiplier) || 1);
+        this.room3Enemies.forEach((enemy) => {
+            if (!enemy || !enemy.isAlive) return;
+            if (!enemy._runEventEncounterBase) {
+                enemy._runEventEncounterBase = {
+                    maxHp: enemy.maxHp,
+                    speed: enemy.speed,
+                    baseSpeed: enemy.baseSpeed,
+                    drops: this._cloneEnemyDrops(enemy.drops)
+                };
+            }
+            const baseStats = enemy._runEventEncounterBase;
+            const hpRatio = enemy.maxHp > 0 ? Math.max(0.05, Math.min(1, enemy.hp / enemy.maxHp)) : 1;
+            enemy.maxHp = Math.max(1, Math.round(baseStats.maxHp * hpScale));
+            enemy.hp = Math.max(1, Math.round(enemy.maxHp * hpRatio));
+            enemy.speed = Math.max(20, Math.round(baseStats.speed * speedScale));
+            enemy.baseSpeed = Math.max(20, Math.round(baseStats.baseSpeed * speedScale));
+            enemy.drops = this._scaleEnemyDropGold(baseStats.drops, goldScale);
+            enemy._runEventEncounterProfileKey = profile.key;
+        });
+    }
+
+    _syncRunEventEncounterProfile() {
+        if (!GameState.runEventRoom || !GameState.runEventRoom.encounterProfilePending) return null;
+        const profile = getRunEventEncounterProfile(GameState.runEventRoom, RUN_EVENT_ROOM_POOL);
+        if (!profile) return null;
+        if (this._runEventEncounterProfileKey === profile.key) return profile;
+        this._applyRunEventEncounterProfileToRoom3(profile);
+        GameState.runEventRoom = {
+            ...GameState.runEventRoom,
+            encounterProfilePending: false
+        };
+        this._runEventEncounterProfileKey = profile.key;
+        return profile;
+    }
+
+    _maybeAnnounceRunEventEncounterProfile() {
+        if (!this.room3Bounds || !this.player) return;
+        if (!this._runEventEncounterProfileKey) return;
+        const profile = getRunEventEncounterProfile(GameState.runEventRoom, RUN_EVENT_ROOM_POOL);
+        if (!profile || this._runEventEncounterProfileAnnouncedKey === profile.key) return;
+        const enteredRoom3 = this.player.x >= this.room3Bounds.x + 48;
+        if (!enteredRoom3) return;
+        this._runEventEncounterProfileAnnouncedKey = profile.key;
+        this._showFloatingText(
+            this.room3Bounds.x + this.room3Bounds.w / 2,
+            this.room3Bounds.y + 44,
+            profile.encounterLabel,
+            profile.key === 'windfall' ? '#ffd27a' : (profile.key === 'pressure' ? '#ffb3a7' : '#9fe3ff')
+        );
+    }
+
+    _showRunEventSettlementFeedback(settlement, startGold, startHp, encounterProfile) {
         if (!this.runEventRoomShrine) return;
         const style = this._getRunEventRoomVisualConfig(settlement.eventRoom);
         const goldDelta = (settlement.nextState.gold || 0) - startGold;
@@ -3547,6 +3635,14 @@ class LevelScene extends Phaser.Scene {
                     text: `${item ? item.name : itemKey} +${count}`,
                     color: '#9EFFE1'
                 });
+            });
+        }
+        if (encounterProfile && encounterProfile.previewLabel) {
+            lines.push({
+                text: encounterProfile.previewLabel,
+                color: encounterProfile.key === 'windfall'
+                    ? '#FFD27A'
+                    : (encounterProfile.key === 'pressure' ? '#FFB3A7' : '#9FE3FF')
             });
         }
         if (lines.length === 1 && settlement.eventRoom && settlement.eventRoom.resolutionText) {
@@ -3587,6 +3683,7 @@ class LevelScene extends Phaser.Scene {
         }
         GameState.runEventRoom = settlement.eventRoom;
         GameState.refreshRunEffects();
+        const encounterProfile = this._syncRunEventEncounterProfile();
         this.player.hp = Math.max(1, Math.min(this.player.maxHp, settlement.nextState.playerHp));
         if (settlement.nextState.cleanseNegativeStatuses) {
             this._clearPlayerNegativeStates();
@@ -3598,7 +3695,7 @@ class LevelScene extends Phaser.Scene {
         this.cameras.main.flash(150, 255, 215, 120, false);
         AudioSystem.playUi('pickup');
 
-        this._showRunEventSettlementFeedback(settlement, startGold, startHp);
+        this._showRunEventSettlementFeedback(settlement, startGold, startHp, encounterProfile);
         return true;
     }
 
@@ -3607,6 +3704,7 @@ class LevelScene extends Phaser.Scene {
 
         this._updateRunEventEncounterHint();
         this.player.update(time, delta);
+        this._maybeAnnounceRunEventEncounterProfile();
 
         if (!this._isInWalkable(this.player.x, this.player.y)) {
             const clamped = this._clampToWalkable(this.player.x, this.player.y);
