@@ -69,6 +69,7 @@ const {
     buildRunEventRoomHudSummary,
     buildRunEventRoomHudLines,
     getRunEventRoomChoiceEncounterProfile,
+    buildRunEventEncounterRoster,
     formatRunEventRoomChoiceEncounterPreview,
     getRunEventEncounterProfile,
     getRunChallengeSafeSidebarLabel,
@@ -1213,6 +1214,7 @@ function testRunEventRoomChoiceHelpers() {
 
 function testRunEventEncounterProfileHelpers() {
     assert.equal(typeof getRunEventRoomChoiceEncounterProfile, 'function', 'event room encounter profile helper should be exported');
+    assert.equal(typeof buildRunEventEncounterRoster, 'function', 'event room encounter roster helper should be exported');
     assert.equal(typeof formatRunEventRoomChoiceEncounterPreview, 'function', 'event room encounter preview helper should be exported');
     assert.equal(typeof getRunEventEncounterProfile, 'function', 'resolved event room encounter helper should be exported');
 
@@ -1242,6 +1244,36 @@ function testRunEventEncounterProfileHelpers() {
     });
     assert.equal(resolvedProfile.key, 'pressure', 'resolved event rooms should expose the chosen route encounter profile');
     assert.equal(resolvedProfile.encounterLabel, '高压战', 'resolved event rooms should expose the human-readable encounter label');
+}
+
+function testRunEventEncounterRosterHelpers() {
+    const enemyPool = ['soldier', 'archer', 'brute'];
+    const enemyDefs = {
+        soldier: { hp: 48, damage: 10, speed: 66, drops: { gold: [5, 15] } },
+        archer: { hp: 52, damage: 12, speed: 56, drops: { gold: [8, 20] } },
+        brute: { hp: 72, damage: 18, speed: 47, drops: { gold: [10, 25] } }
+    };
+
+    assert.deepEqual(
+        buildRunEventEncounterRoster({ key: 'breather' }, enemyPool, enemyDefs),
+        ['soldier', 'archer'],
+        'breather profiles should keep room 3 to the two lowest-pressure enemy archetypes'
+    );
+    assert.deepEqual(
+        buildRunEventEncounterRoster({ key: 'pressure' }, enemyPool, enemyDefs),
+        ['brute', 'archer', 'soldier'],
+        'pressure profiles should route room 3 through every local archetype ordered by pressure'
+    );
+    assert.deepEqual(
+        buildRunEventEncounterRoster({ key: 'windfall' }, enemyPool, enemyDefs),
+        ['brute', 'archer'],
+        'windfall profiles should keep room 3 focused on the highest-gold enemy archetypes'
+    );
+    assert.deepEqual(
+        buildRunEventEncounterRoster({ key: 'unknown' }, enemyPool, enemyDefs),
+        ['soldier', 'archer'],
+        'unknown profiles should fall back to the first two local archetypes'
+    );
 }
 
 function testRunEventRoomChoicePanelPreview() {
@@ -2052,8 +2084,8 @@ function testRunEventEncounterRoutingHooks() {
     );
     assert.match(
         source,
-        /_applyRunEventEncounterProfileToRoom3\(profile\)\s*{[\s\S]*?enemy\._runEventEncounterBase = \{[\s\S]*?maxHp:\s*enemy\.maxHp,[\s\S]*?speed:\s*enemy\.speed,[\s\S]*?drops:\s*this\._cloneEnemyDrops\(enemy\.drops\)[\s\S]*?\};[\s\S]*?enemy\.maxHp = Math\.max\(1,\s*Math\.round\(baseStats\.maxHp \* hpScale\)\);[\s\S]*?enemy\.speed = Math\.max\(20,\s*Math\.round\(baseStats\.speed \* speedScale\)\);[\s\S]*?enemy\.drops = this\._scaleEnemyDropGold\(baseStats\.drops,\s*goldScale\);/,
-        'LevelScene should retune room 3 enemy HP, speed, and gold drops from the selected encounter profile'
+        /_applyRunEventEncounterProfileToRoom3\(profile\)\s*{[\s\S]*?const enemyPool = \(typeof AREA_ENEMIES !== 'undefined' && AREA_ENEMIES\[this\.bossKey\]\)[\s\S]*?const rosterKeys = buildRunEventEncounterRoster\(profile,\s*enemyPool,\s*ENEMIES\);[\s\S]*?this\._rebuildRoom3EnemiesFromRoster\(rosterKeys\);[\s\S]*?enemy\._runEventEncounterBase = \{[\s\S]*?maxHp:\s*enemy\.maxHp,[\s\S]*?speed:\s*enemy\.speed,[\s\S]*?drops:\s*this\._cloneEnemyDrops\(enemy\.drops\)[\s\S]*?\};[\s\S]*?enemy\.maxHp = Math\.max\(1,\s*Math\.round\(baseStats\.maxHp \* hpScale\)\);[\s\S]*?enemy\.speed = Math\.max\(20,\s*Math\.round\(baseStats\.speed \* speedScale\)\);[\s\S]*?enemy\.drops = this\._scaleEnemyDropGold\(baseStats\.drops,\s*goldScale\);/,
+        'LevelScene should rebuild room 3 from the encounter-profile roster before retuning HP, speed, and gold drops'
     );
     assert.match(
         source,
@@ -12189,6 +12221,7 @@ function main() {
     runTest('control-routing event room', testControlRoutingEventRoom);
     runTest('run event room choice helpers', testRunEventRoomChoiceHelpers);
     runTest('run event encounter profile helpers', testRunEventEncounterProfileHelpers);
+    runTest('run event encounter roster helpers', testRunEventEncounterRosterHelpers);
     runTest('run event room choice panel preview', testRunEventRoomChoicePanelPreview);
     runTest('run event room choice affordability label', testRunEventRoomChoiceAffordabilityLabel);
     runTest('run event room HUD summary', testRunEventRoomHudSummary);

@@ -92,6 +92,7 @@ const {
     buildRunModifierEffects,
     buildRunEventRoomEffects,
     buildRunEventRoomChoicePanelPreview,
+    buildRunEventEncounterRoster,
     formatRunEventRoomChoiceEncounterPreview,
     buildRunChallengeCompletedFeedbackText,
     buildRunChallengeSidebarLines,
@@ -3549,8 +3550,52 @@ class LevelScene extends Phaser.Scene {
         return safeDrops;
     }
 
+    _destroyEnemyInstance(enemy) {
+        if (!enemy) return;
+        enemy.isAlive = false;
+        enemy.state = 'dead';
+        enemy.setVelocity(0, 0);
+        if (enemy.hpBarBg) enemy.hpBarBg.destroy();
+        if (enemy.hpBarFill) enemy.hpBarFill.destroy();
+        if (enemy.statusAura) enemy.statusAura.destroy();
+        enemy.destroy();
+    }
+
+    _spawnRoom3EnemyFromRoster(enemyKey, slotIndex, totalSlots) {
+        if (!this.room3Bounds || !enemyKey) return null;
+        const slotCount = Math.max(1, Number(totalSlots) || 1);
+        const index = Math.max(0, Number(slotIndex) || 0);
+        const laneRatio = (index + 1) / (slotCount + 1);
+        const ex = this.room3Bounds.x + Math.round(this.room3Bounds.w * laneRatio);
+        const verticalOffset = slotCount <= 1 ? 0 : (index % 2 === 0 ? -68 : 68);
+        const ey = this.room3Bounds.y + this.room3Bounds.h / 2 + verticalOffset;
+        const enemy = new Enemy(this, ex, ey, enemyKey);
+        this.enemies.push(enemy);
+        return enemy;
+    }
+
+    _rebuildRoom3EnemiesFromRoster(rosterKeys) {
+        if (!this.room3Bounds) return;
+        const safeRoster = Array.isArray(rosterKeys)
+            ? rosterKeys.filter(key => typeof key === 'string' && key.trim())
+            : [];
+        if (safeRoster.length === 0) return;
+        const previousRoom3Enemies = Array.isArray(this.room3Enemies) ? [...this.room3Enemies] : [];
+        previousRoom3Enemies.forEach(enemy => this._destroyEnemyInstance(enemy));
+        this.enemies = (Array.isArray(this.enemies) ? this.enemies : [])
+            .filter(enemy => !previousRoom3Enemies.includes(enemy));
+        this.room3Enemies = safeRoster
+            .map((enemyKey, index) => this._spawnRoom3EnemyFromRoster(enemyKey, index, safeRoster.length))
+            .filter(Boolean);
+    }
+
     _applyRunEventEncounterProfileToRoom3(profile) {
         if (!profile || !Array.isArray(this.room3Enemies)) return;
+        const enemyPool = (typeof AREA_ENEMIES !== 'undefined' && AREA_ENEMIES[this.bossKey])
+            ? AREA_ENEMIES[this.bossKey]
+            : ['wrathSoldier', 'wrathArcher', 'wrathBrute'];
+        const rosterKeys = buildRunEventEncounterRoster(profile, enemyPool, ENEMIES);
+        this._rebuildRoom3EnemiesFromRoster(rosterKeys);
         const hpScale = Math.max(0.5, Number(profile.enemyHpMultiplier) || 1);
         const speedScale = Math.max(0.5, Number(profile.enemySpeedMultiplier) || 1);
         const goldScale = Math.max(0.5, Number(profile.enemyGoldMultiplier) || 1);

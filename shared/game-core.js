@@ -2422,6 +2422,55 @@
         return null;
     }
 
+    function getRunEventEncounterEnemyPressureScore(enemyDef) {
+        const safeDef = enemyDef && typeof enemyDef === 'object' ? enemyDef : {};
+        const hp = Math.max(0, Number(safeDef.hp) || 0);
+        const damage = Math.max(0, Number(safeDef.damage) || 0);
+        const speed = Math.max(0, Number(safeDef.speed) || 0);
+        const statusBonus = safeDef.onHitStatus ? 18 : 0;
+        return damage * 12 + speed + hp * 0.35 + statusBonus;
+    }
+
+    function getRunEventEncounterEnemyGoldScore(enemyDef) {
+        const drops = enemyDef && typeof enemyDef === 'object' && enemyDef.drops && typeof enemyDef.drops === 'object'
+            ? enemyDef.drops
+            : {};
+        const gold = drops.gold;
+        if (Array.isArray(gold) && gold.length >= 2) {
+            return ((Number(gold[0]) || 0) + (Number(gold[1]) || 0)) / 2;
+        }
+        return Math.max(0, Number(gold) || 0);
+    }
+
+    function buildRunEventEncounterRoster(profile, enemyPool, enemyDefs) {
+        const safePool = Array.isArray(enemyPool)
+            ? enemyPool.filter((key, index, arr) => typeof key === 'string' && key.trim() && arr.indexOf(key) === index)
+            : [];
+        const safeEnemyDefs = enemyDefs && typeof enemyDefs === 'object' ? enemyDefs : {};
+        const availablePool = safePool.filter(key => safeEnemyDefs[key] && typeof safeEnemyDefs[key] === 'object');
+        if (availablePool.length === 0) return [];
+
+        const byPressureAscending = availablePool.slice().sort((leftKey, rightKey) => {
+            const pressureDelta = getRunEventEncounterEnemyPressureScore(safeEnemyDefs[leftKey]) - getRunEventEncounterEnemyPressureScore(safeEnemyDefs[rightKey]);
+            if (pressureDelta !== 0) return pressureDelta;
+            return availablePool.indexOf(leftKey) - availablePool.indexOf(rightKey);
+        });
+        const byPressureDescending = byPressureAscending.slice().reverse();
+        const byGoldDescending = availablePool.slice().sort((leftKey, rightKey) => {
+            const goldDelta = getRunEventEncounterEnemyGoldScore(safeEnemyDefs[rightKey]) - getRunEventEncounterEnemyGoldScore(safeEnemyDefs[leftKey]);
+            if (goldDelta !== 0) return goldDelta;
+            return availablePool.indexOf(leftKey) - availablePool.indexOf(rightKey);
+        });
+
+        const profileKey = profile && typeof profile === 'object' && typeof profile.key === 'string'
+            ? profile.key
+            : '';
+        if (profileKey === 'pressure') return byPressureDescending.slice(0, Math.min(3, byPressureDescending.length));
+        if (profileKey === 'windfall') return byGoldDescending.slice(0, Math.min(2, byGoldDescending.length));
+        if (profileKey === 'breather') return byPressureAscending.slice(0, Math.min(2, byPressureAscending.length));
+        return availablePool.slice(0, Math.min(2, availablePool.length));
+    }
+
     function formatRunEventRoomChoiceEncounterPreview(choice) {
         const profile = getRunEventRoomChoiceEncounterProfile(choice);
         return profile ? profile.previewLabel : '';
@@ -4065,6 +4114,7 @@
         buildRunEventRoomChoicePreview,
         buildRunEventRoomChoicePanelPreview,
         getRunEventRoomChoiceEncounterProfile,
+        buildRunEventEncounterRoster,
         formatRunEventRoomChoiceEncounterPreview,
         getRunEventRoomChoiceAffordabilityLabel,
         getRunEventRoomChoiceFailureMessage,
