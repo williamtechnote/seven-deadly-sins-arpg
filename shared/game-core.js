@@ -2802,95 +2802,6 @@
         return bias;
     }
 
-    function getRunEventActionStateContext(state) {
-        const safeState = state && typeof state === 'object' ? state : {};
-        const stamina = Math.max(0, Number(safeState.stamina) || 0);
-        const attackCooldownMs = Math.max(0, Number(safeState.attackCooldownMs) || 0);
-        const specialCooldownMs = Math.max(0, Number(safeState.specialCooldownMs) || 0);
-        const dodgeCooldownMs = Math.max(0, Number(safeState.dodgeCooldownMs) || 0);
-        const attackStaminaCost = Math.max(0, Number(safeState.attackStaminaCost) || 0);
-        const specialStaminaCost = Math.max(0, Number(safeState.specialStaminaCost) || 0);
-        const dodgeStaminaCost = Math.max(0, Number(safeState.dodgeStaminaCost) || 0);
-
-        const attackReadyState = resolveCombatActionReadyState(attackCooldownMs, stamina, attackStaminaCost, 0);
-        const specialReadyState = resolveCombatActionReadyState(specialCooldownMs, stamina, specialStaminaCost, 0);
-        const dodgeReadyState = resolveCombatActionReadyState(dodgeCooldownMs, stamina, dodgeStaminaCost, 0);
-        const dodgeCooldownBlocked = dodgeCooldownMs > 0 && stamina + 1e-6 >= dodgeStaminaCost;
-        const dodgeStaminaBlocked = dodgeCooldownMs <= 0 && dodgeStaminaCost > 0 && stamina + 1e-6 < dodgeStaminaCost;
-        const specialStaminaBlocked = specialCooldownMs <= 0 && specialStaminaCost > 0 && stamina + 1e-6 < specialStaminaCost;
-
-        return {
-            attackReadyState,
-            specialReadyState,
-            dodgeReadyState,
-            attackCooldownBlocked: attackCooldownMs > 0 && stamina + 1e-6 >= attackStaminaCost,
-            specialCooldownBlocked: specialCooldownMs > 0 && stamina + 1e-6 >= specialStaminaCost,
-            dodgeCooldownBlocked,
-            dodgeStaminaBlocked,
-            specialStaminaBlocked,
-            needsStaminaFlow: dodgeStaminaBlocked || specialStaminaBlocked,
-            canChainDodgeSpecial: dodgeReadyState.isReady && specialReadyState.isReady && stamina + 1e-6 >= (dodgeStaminaCost + specialStaminaCost),
-            canChainDodgeAttack: dodgeReadyState.isReady && attackReadyState.isReady && stamina + 1e-6 >= (dodgeStaminaCost + attackStaminaCost)
-        };
-    }
-
-    function getRunEventControlRecommendationContext(state) {
-        const safeState = state && typeof state === 'object' ? state : {};
-        return {
-            targetSlowMs: Math.max(0, Number(safeState.controlTargetSlowMs) || 0),
-            finisherWindowMs: Math.max(0, Number(safeState.controlFinisherWindowMs) || 0)
-        };
-    }
-
-    function getRunEventRoomChoiceActionStateNote(choiceKey, state) {
-        const safeChoiceKey = typeof choiceKey === 'string' ? choiceKey.trim() : '';
-        if (!safeChoiceKey) return '';
-        const actionState = getRunEventActionStateContext(state);
-        const safeState = state && typeof state === 'object' ? state : {};
-        const selectedWeaponKey = typeof safeState.selectedWeaponKey === 'string' ? safeState.selectedWeaponKey : '';
-        const weaponStatus = getWeaponSpecialStatus(selectedWeaponKey);
-        const controlState = getRunEventControlRecommendationContext(safeState);
-
-        if (safeChoiceKey === 'flurryLesson') {
-            return actionState.attackCooldownBlocked ? '普攻正卡冷却' : '';
-        }
-        if (safeChoiceKey === 'ghostStepLesson') {
-            if (actionState.dodgeCooldownBlocked) return '闪避正卡冷却';
-            if (actionState.dodgeStaminaBlocked) return '闪避正差体';
-            return '';
-        }
-        if (safeChoiceKey === 'breathingLesson' || safeChoiceKey === 'focusLesson') {
-            return actionState.needsStaminaFlow ? '当前更缺体力' : '';
-        }
-        if (safeChoiceKey === 'momentumLesson') {
-            return actionState.canChainDodgeSpecial ? '可接闪特爆发' : '';
-        }
-        if (safeChoiceKey === 'sharpeningLesson') {
-            return actionState.specialCooldownBlocked && actionState.attackReadyState.isReady ? '特攻正卡冷却' : '';
-        }
-        if (safeChoiceKey === 'reversalStepLesson') {
-            if (!actionState.specialReadyState.isReady) return '';
-            if (actionState.dodgeCooldownBlocked) return '闪避正卡冷却';
-            if (actionState.dodgeStaminaBlocked) return '闪避正差体';
-            return '';
-        }
-        if (safeChoiceKey === 'pursuitLesson') {
-            return actionState.canChainDodgeAttack ? '可接闪后追击' : '';
-        }
-        if (safeChoiceKey === 'crushingLesson') {
-            if (!weaponStatus || weaponStatus.key !== 'slow') return '';
-            if (controlState.finisherWindowMs > 0 || controlState.targetSlowMs > 0) return '';
-            return '先挂减速';
-        }
-        if (safeChoiceKey === 'executionLesson') {
-            if (!weaponStatus || weaponStatus.key !== 'slow') return '';
-            if (controlState.finisherWindowMs > 0) return '可接破势终结';
-            if (controlState.targetSlowMs > 0) return '减速目标已现';
-            return '';
-        }
-        return '';
-    }
-
     function buildRunEventRoomChoicePanelPreview(choice, state) {
         const basePreview = buildRunEventRoomChoicePreview(choice);
         const safeChoice = choice && typeof choice === 'object' ? choice : {};
@@ -2993,13 +2904,68 @@
             }
         }
 
-        const actionStateNote = getRunEventRoomChoiceActionStateNote(safeChoice.key, safeState);
-        if (actionStateNote) {
-            notes.push(actionStateNote);
-        }
-
         if (notes.length === 0) return basePreview;
         return `${basePreview} · ${notes.join(' · ')}`;
+    }
+
+    function getCombatActionReadyRecoveryMs(cooldownMs, stamina, staminaCost, staminaRegenPerSecond) {
+        const remainingCooldownMs = Math.max(0, Number(cooldownMs) || 0);
+        const currentStamina = Math.max(0, Number(stamina) || 0);
+        const requiredStamina = Math.max(0, Number(staminaCost) || 0);
+        const safeStaminaRegenPerSecond = Math.max(0, Number(staminaRegenPerSecond) || 0);
+        if (requiredStamina <= currentStamina) return remainingCooldownMs;
+        if (safeStaminaRegenPerSecond <= 0) return Number.POSITIVE_INFINITY;
+        const staminaRecoveryMs = Math.ceil(((requiredStamina - currentStamina) / safeStaminaRegenPerSecond) * 1000);
+        return Math.max(remainingCooldownMs, staminaRecoveryMs);
+    }
+
+    function getRunEventRoomChoiceRecommendationActionState(state) {
+        const safeState = state && typeof state === 'object' ? state : {};
+        const hasActionSignals = [
+            'attackCooldownMs',
+            'specialCooldownMs',
+            'dodgeCooldownMs',
+            'stamina',
+            'staminaRegenPerSecond'
+        ].some(key => safeState[key] != null);
+        if (!hasActionSignals) return null;
+
+        const isDodging = !!safeState.isDodging;
+        const dodgeLockoutMs = Math.max(0, Number(safeState.dodgeLockoutMs) || 0);
+        const stamina = Math.max(0, Number(safeState.stamina) || 0);
+        const staminaRegenPerSecond = Math.max(0, Number(safeState.staminaRegenPerSecond) || 0);
+        const adjustCooldownMs = (value) => {
+            const safeCooldownMs = Math.max(0, Number(value) || 0);
+            return isDodging ? Math.max(0, safeCooldownMs - dodgeLockoutMs) : safeCooldownMs;
+        };
+        const attackCooldownMs = adjustCooldownMs(safeState.attackCooldownMs);
+        const specialCooldownMs = adjustCooldownMs(safeState.specialCooldownMs);
+        const dodgeCooldownMs = isDodging
+            ? Math.max(0, Number(safeState.dodgePostLockoutCooldownMs) || 0)
+            : Math.max(0, Number(safeState.dodgeCooldownMs) || 0);
+        const attackStaminaCost = Math.max(0, Number(safeState.attackStaminaCost) || 0);
+        const specialStaminaCost = Math.max(0, Number(safeState.specialStaminaCost) || 0);
+        const dodgeStaminaCost = Math.max(0, Number(safeState.dodgeStaminaCost) || 0);
+        const buildMetrics = (cooldownMs, staminaCost) => {
+            const readyState = resolveCombatActionReadyState(
+                cooldownMs,
+                stamina,
+                staminaCost,
+                staminaRegenPerSecond
+            );
+            return {
+                recoveryMs: getCombatActionReadyRecoveryMs(cooldownMs, stamina, staminaCost, staminaRegenPerSecond),
+                missingStamina: Math.max(0, Math.ceil(staminaCost - stamina)),
+                isReady: readyState.isReady
+            };
+        };
+
+        return {
+            attack: buildMetrics(attackCooldownMs, attackStaminaCost),
+            special: buildMetrics(specialCooldownMs, specialStaminaCost),
+            dodge: buildMetrics(dodgeCooldownMs, dodgeStaminaCost),
+            stamina
+        };
     }
 
     function getRunEventRoomChoiceRecommendationDecision(choices, state) {
@@ -3020,6 +2986,7 @@
         const negativeStatuses = Array.isArray(safeState.negativeStatuses)
             ? safeState.negativeStatuses.filter(status => typeof status === 'string' && status.trim())
             : [];
+        const actionState = getRunEventRoomChoiceRecommendationActionState(safeState);
         const byKey = new Map(safeChoices.map((choice, index) => [choice.key, { choice, index }]));
         const hasChoice = (key) => byKey.has(key);
         const buildRecommendation = (key, reason) => {
@@ -3080,6 +3047,68 @@
             return null;
         }
 
+        if (actionState && hasChoice('flurryLesson') && hasChoice('ghostStepLesson')) {
+            if (actionState.attack.recoveryMs >= 900
+                && actionState.attack.recoveryMs >= actionState.dodge.recoveryMs + 400) {
+                return buildRecommendation('flurryLesson', '普攻卡拍');
+            }
+            if (actionState.dodge.recoveryMs >= 900
+                && actionState.dodge.recoveryMs >= actionState.attack.recoveryMs + 400) {
+                return buildRecommendation('ghostStepLesson', '闪避卡拍');
+            }
+            return null;
+        }
+
+        if (actionState && hasChoice('crushingLesson') && hasChoice('executionLesson')) {
+            if (weaponStatus && weaponStatus.key === 'slow') {
+                if (currentHpRatio <= 0.6 || actionState.dodge.recoveryMs >= 900) {
+                    return buildRecommendation('crushingLesson', '当前更宜控场');
+                }
+                if (currentHpRatio >= 0.78
+                    && actionState.attack.recoveryMs <= 400
+                    && actionState.dodge.recoveryMs <= 400) {
+                    return buildRecommendation('executionLesson', '当前可追终结');
+                }
+            }
+            return null;
+        }
+
+        if (actionState && hasChoice('breathingLesson') && hasChoice('momentumLesson')) {
+            if (actionState.attack.missingStamina > 0
+                || actionState.dodge.missingStamina > 0
+                || actionState.special.missingStamina >= 6) {
+                return buildRecommendation('breathingLesson', '当前更缺回线');
+            }
+            if (actionState.dodge.isReady && actionState.special.recoveryMs >= 900) {
+                return buildRecommendation('momentumLesson', '特攻待借势');
+            }
+            return null;
+        }
+
+        if (actionState && hasChoice('sharpeningLesson') && hasChoice('reversalStepLesson')) {
+            if (actionState.attack.isReady && actionState.special.recoveryMs >= 1000) {
+                return buildRecommendation('sharpeningLesson', '特攻待连段');
+            }
+            if (actionState.special.isReady && actionState.dodge.recoveryMs >= 1000) {
+                return buildRecommendation('reversalStepLesson', '闪避待回身');
+            }
+            return null;
+        }
+
+        if (actionState && hasChoice('pursuitLesson') && hasChoice('focusLesson')) {
+            if (actionState.dodge.isReady
+                && actionState.attack.isReady
+                && actionState.special.recoveryMs <= 500
+                && actionState.special.missingStamina <= 0) {
+                return buildRecommendation('pursuitLesson', '可立即追猎');
+            }
+            if (actionState.special.missingStamina > 0
+                || (actionState.special.recoveryMs <= 500 && actionState.stamina <= 10)) {
+                return buildRecommendation('focusLesson', '当前更缺回体');
+            }
+            return null;
+        }
+
         if (hasChoice('highStakeWager') && hasChoice('carefulWager')) {
             if (currentHpRatio >= 0.85) {
                 return buildRecommendation('highStakeWager', '当前血线更能承受');
@@ -3100,46 +3129,6 @@
             if (currentGold >= fieldTonicCost && currentGold < berserkerKitCost) {
                 return buildRecommendation('fieldTonic', '当前可负担');
             }
-            return null;
-        }
-
-        if (hasChoice('flurryLesson') && hasChoice('ghostStepLesson')) {
-            const flurryReason = getRunEventRoomChoiceActionStateNote('flurryLesson', safeState);
-            const ghostReason = getRunEventRoomChoiceActionStateNote('ghostStepLesson', safeState);
-            if (flurryReason && !ghostReason) return buildRecommendation('flurryLesson', flurryReason);
-            if (ghostReason && !flurryReason) return buildRecommendation('ghostStepLesson', ghostReason);
-            return null;
-        }
-
-        if (hasChoice('breathingLesson') && hasChoice('momentumLesson')) {
-            const breathingReason = getRunEventRoomChoiceActionStateNote('breathingLesson', safeState);
-            const momentumReason = getRunEventRoomChoiceActionStateNote('momentumLesson', safeState);
-            if (momentumReason) return buildRecommendation('momentumLesson', momentumReason);
-            if (breathingReason) return buildRecommendation('breathingLesson', breathingReason);
-            return null;
-        }
-
-        if (hasChoice('sharpeningLesson') && hasChoice('reversalStepLesson')) {
-            const sharpeningReason = getRunEventRoomChoiceActionStateNote('sharpeningLesson', safeState);
-            const reversalReason = getRunEventRoomChoiceActionStateNote('reversalStepLesson', safeState);
-            if (sharpeningReason && !reversalReason) return buildRecommendation('sharpeningLesson', sharpeningReason);
-            if (reversalReason && !sharpeningReason) return buildRecommendation('reversalStepLesson', reversalReason);
-            return null;
-        }
-
-        if (hasChoice('pursuitLesson') && hasChoice('focusLesson')) {
-            const pursuitReason = getRunEventRoomChoiceActionStateNote('pursuitLesson', safeState);
-            const focusReason = getRunEventRoomChoiceActionStateNote('focusLesson', safeState);
-            if (pursuitReason) return buildRecommendation('pursuitLesson', pursuitReason);
-            if (focusReason) return buildRecommendation('focusLesson', focusReason);
-            return null;
-        }
-
-        if (hasChoice('crushingLesson') && hasChoice('executionLesson')) {
-            const executionReason = getRunEventRoomChoiceActionStateNote('executionLesson', safeState);
-            const crushingReason = getRunEventRoomChoiceActionStateNote('crushingLesson', safeState);
-            if (executionReason) return buildRecommendation('executionLesson', executionReason);
-            if (crushingReason) return buildRecommendation('crushingLesson', crushingReason);
             return null;
         }
 
@@ -3209,6 +3198,41 @@
                     sourceCueMoment: 'stabilize'
                 };
             }
+            if (normalizedRoom.selectedChoiceKey === 'ghostStepLesson' && recommendationReason === '闪避卡拍') {
+                return {
+                    echo: '游步回拍',
+                    sourceCue: '游步回拍',
+                    sourceCueMoment: 'stabilize'
+                };
+            }
+            if (normalizedRoom.selectedChoiceKey === 'crushingLesson' && recommendationReason === '当前更宜控场') {
+                return {
+                    echo: '先控稳场',
+                    sourceCue: '先控稳场',
+                    sourceCueMoment: 'stabilize'
+                };
+            }
+            if (normalizedRoom.selectedChoiceKey === 'breathingLesson' && recommendationReason === '当前更缺回线') {
+                return {
+                    echo: '回线稳场',
+                    sourceCue: '回线稳场',
+                    sourceCueMoment: 'stabilize'
+                };
+            }
+            if (normalizedRoom.selectedChoiceKey === 'reversalStepLesson' && recommendationReason === '闪避待回身') {
+                return {
+                    echo: '回身回拍',
+                    sourceCue: '回身回拍',
+                    sourceCueMoment: 'stabilize'
+                };
+            }
+            if (normalizedRoom.selectedChoiceKey === 'focusLesson' && recommendationReason === '当前更缺回体') {
+                return {
+                    echo: '回体稳线',
+                    sourceCue: '回体稳线',
+                    sourceCueMoment: 'stabilize'
+                };
+            }
             if (normalizedRoom.selectedChoiceKey === 'composureLesson' && recommendationReason === '高血稳定') {
                 return {
                     echo: '守心稳场',
@@ -3223,42 +3247,34 @@
                     sourceCueMoment: 'stabilize'
                 };
             }
-            if (normalizedRoom.selectedChoiceKey === 'reversalStepLesson'
-                && (recommendationReason === '闪避正卡冷却' || recommendationReason === '闪避正差体')) {
-                return {
-                    echo: '回身回线',
-                    sourceCue: '回身回线',
-                    sourceCueMoment: 'stabilize'
-                };
-            }
-            if (normalizedRoom.selectedChoiceKey === 'breathingLesson' && recommendationReason === '当前更缺体力') {
-                return {
-                    echo: '回体稳线',
-                    sourceCue: '回体稳线',
-                    sourceCueMoment: 'stabilize'
-                };
-            }
-            if (normalizedRoom.selectedChoiceKey === 'focusLesson' && recommendationReason === '当前更缺体力') {
-                return {
-                    echo: '调息续线',
-                    sourceCue: '调息续线',
-                    sourceCueMoment: 'stabilize'
-                };
-            }
-            if (normalizedRoom.selectedChoiceKey === 'crushingLesson' && recommendationReason === '先挂减速') {
-                return {
-                    echo: '减速稳场',
-                    sourceCue: '减速稳场',
-                    sourceCueMoment: 'stabilize'
-                };
-            }
         }
 
         if (profileKey === 'pressure') {
+            if (normalizedRoom.selectedChoiceKey === 'flurryLesson' && recommendationReason === '普攻卡拍') {
+                return {
+                    echo: '抢拍开刃',
+                    sourceCue: '抢拍开刃',
+                    sourceCueMoment: 'engage'
+                };
+            }
             if (normalizedRoom.selectedChoiceKey === 'desperationLesson' && recommendationReason === '已处绝境线') {
                 return {
                     echo: '压线抢势',
                     sourceCue: '压线抢势',
+                    sourceCueMoment: 'engage'
+                };
+            }
+            if (normalizedRoom.selectedChoiceKey === 'momentumLesson' && recommendationReason === '特攻待借势') {
+                return {
+                    echo: '借势抢压',
+                    sourceCue: '借势抢压',
+                    sourceCueMoment: 'engage'
+                };
+            }
+            if (normalizedRoom.selectedChoiceKey === 'sharpeningLesson' && recommendationReason === '特攻待连段') {
+                return {
+                    echo: '连段催锋',
+                    sourceCue: '连段催锋',
                     sourceCueMoment: 'engage'
                 };
             }
@@ -3276,30 +3292,16 @@
                     sourceCueMoment: 'engage'
                 };
             }
-            if (normalizedRoom.selectedChoiceKey === 'flurryLesson' && recommendationReason === '普攻正卡冷却') {
-                return {
-                    echo: '冷却抢拍',
-                    sourceCue: '冷却抢拍',
-                    sourceCueMoment: 'engage'
-                };
-            }
-            if (normalizedRoom.selectedChoiceKey === 'momentumLesson' && recommendationReason === '可接闪特爆发') {
-                return {
-                    echo: '闪后爆发',
-                    sourceCue: '闪后爆发',
-                    sourceCueMoment: 'engage'
-                };
-            }
-            if (normalizedRoom.selectedChoiceKey === 'sharpeningLesson' && recommendationReason === '特攻正卡冷却') {
-                return {
-                    echo: '催锋追段',
-                    sourceCue: '催锋追段',
-                    sourceCueMoment: 'engage'
-                };
-            }
         }
 
         if (profileKey === 'windfall') {
+            if (normalizedRoom.selectedChoiceKey === 'executionLesson' && recommendationReason === '当前可追终结') {
+                return {
+                    echo: '破势收赏',
+                    sourceCue: '破势收赏',
+                    sourceCueMoment: 'bounty'
+                };
+            }
             if (normalizedRoom.selectedChoiceKey === 'highStakeWager' && recommendationReason === '当前血线更能承受') {
                 return {
                     echo: '血线够追赏',
@@ -3321,10 +3323,10 @@
                     sourceCueMoment: 'bounty'
                 };
             }
-            if (normalizedRoom.selectedChoiceKey === 'pursuitLesson' && recommendationReason === '可接闪后追击') {
+            if (normalizedRoom.selectedChoiceKey === 'pursuitLesson' && recommendationReason === '可立即追猎') {
                 return {
-                    echo: '闪后追赏',
-                    sourceCue: '闪后追赏',
+                    echo: '追猎收赏',
+                    sourceCue: '追猎收赏',
                     sourceCueMoment: 'bounty'
                 };
             }

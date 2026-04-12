@@ -968,22 +968,6 @@ function testRunEventRoomSelection() {
     assert.equal(repeat.ok, false, 'resolved event should reject repeat settlement');
     assert.equal(repeat.reason, 'already_resolved', 'repeat settlement should report already_resolved');
 
-    const carefulSettlement = resolveRunEventRoomChoice({
-        gold: 40,
-        playerHp: 52,
-        playerMaxHp: 120
-    }, {
-        key: 'gamblersShrine',
-        discovered: true,
-        resolved: false
-    }, 'carefulWager');
-    assert.equal(carefulSettlement.ok, true, 'careful wager should resolve on the safer gold route');
-    assert.equal(
-        carefulSettlement.eventRoom.selectedChoiceRecommendationReason,
-        '当前更宜稳押',
-        'careful wager should persist the safer-gamble recommendation reason when the player is already too low to justify the high-stake route'
-    );
-
     const fountain = getRunEventRoomByKey('healingFountain');
     assert.ok(fountain, 'healing fountain should exist');
     const fountainChoices = getRunEventRoomChoices('healingFountain');
@@ -1069,6 +1053,22 @@ function testRunEventRoomSelection() {
     }, 'berserkerKit');
     assert.equal(supplyBlocked.ok, false, 'supply cache should reject choices when gold is insufficient');
     assert.equal(supplyBlocked.reason, 'insufficient_gold', 'supply cache should report gold gating explicitly');
+
+    const carefulSettlement = resolveRunEventRoomChoice({
+        gold: 40,
+        playerHp: 52,
+        playerMaxHp: 120
+    }, {
+        key: 'gamblersShrine',
+        discovered: true,
+        resolved: false
+    }, 'carefulWager');
+    assert.equal(carefulSettlement.ok, true, 'careful wager should resolve on the safer gold route');
+    assert.equal(
+        carefulSettlement.eventRoom.selectedChoiceRecommendationReason,
+        '当前更宜稳押',
+        'careful wager should persist the safer-gamble recommendation reason when the player is already too low to justify the high-stake route'
+    );
 
     const prayerChoices = getRunEventRoomChoices('prayerShrine');
     assert.deepEqual(
@@ -1167,6 +1167,29 @@ function testCombatDisciplineEventRoom() {
     assert.equal(ghostStepEffects.playerDodgeStaminaCostMultiplier, 0.82, 'ghost step lesson should reduce dodge stamina cost');
     assert.match(ghostStepSettlement.eventRoom.resolutionText, /闪避冷却 -20%/, 'dodge route summary should mention faster dodge recovery');
     assert.match(ghostStepSettlement.eventRoom.resolutionText, /闪避体力消耗 -18%/, 'dodge route summary should mention cheaper dodges');
+
+    const recommendedFlurrySettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 84,
+        playerMaxHp: 120,
+        attackCooldownMs: 1200,
+        specialCooldownMs: 200,
+        dodgeCooldownMs: 120,
+        stamina: 24,
+        staminaRegenPerSecond: 12,
+        attackStaminaCost: 8,
+        specialStaminaCost: 18,
+        dodgeStaminaCost: 10
+    }, {
+        key: 'combatDisciplineShrine',
+        discovered: true,
+        resolved: false
+    }, 'flurryLesson');
+    assert.equal(
+        recommendedFlurrySettlement.eventRoom.selectedChoiceRecommendationReason,
+        '普攻卡拍',
+        'combat discipline resolution should persist the action-context recommendation reason when the selected route earned the footer recommendation'
+    );
 
     const unresolvedSummary = buildRunEventRoomHudSummary({
         key: 'combatDisciplineShrine',
@@ -1801,6 +1824,109 @@ const ACTION_ROUTE_ENCOUNTER_CASES = Object.freeze([
     }
 ]);
 
+const ACTION_ROUTE_RECOMMENDATION_ECHO_CASES = Object.freeze([
+    {
+        roomKey: 'combatDisciplineShrine',
+        choiceKey: 'flurryLesson',
+        reason: '普攻卡拍',
+        expectedProfileKey: 'pressure',
+        expectedEntry: '高压战 · 三向成压 · 抢拍开刃',
+        expectedClear: '高压战 · 顶住成压 · 抢拍开刃',
+        expectedSourceCue: '抢拍开刃',
+        moment: 'engage'
+    },
+    {
+        roomKey: 'combatDisciplineShrine',
+        choiceKey: 'ghostStepLesson',
+        reason: '闪避卡拍',
+        expectedProfileKey: 'breather',
+        expectedEntry: '缓冲战 · 双拍缓冲 · 游步回拍',
+        expectedClear: '缓冲战 · 稳住出清 · 游步回拍',
+        expectedSourceCue: '游步回拍',
+        moment: 'stabilize'
+    },
+    {
+        roomKey: 'controlRoutingShrine',
+        choiceKey: 'crushingLesson',
+        reason: '当前更宜控场',
+        expectedProfileKey: 'breather',
+        expectedEntry: '缓冲战 · 双拍缓冲 · 先控稳场',
+        expectedClear: '缓冲战 · 稳住出清 · 先控稳场',
+        expectedSourceCue: '先控稳场',
+        moment: 'stabilize'
+    },
+    {
+        roomKey: 'controlRoutingShrine',
+        choiceKey: 'executionLesson',
+        reason: '当前可追终结',
+        expectedProfileKey: 'windfall',
+        expectedEntry: '淘金战 · 后排赏金 · 破势收赏',
+        expectedClear: '淘金战 · 赏金到手 · 破势收赏',
+        expectedSourceCue: '破势收赏',
+        moment: 'bounty'
+    },
+    {
+        roomKey: 'combatFlowShrine',
+        choiceKey: 'breathingLesson',
+        reason: '当前更缺回线',
+        expectedProfileKey: 'breather',
+        expectedEntry: '缓冲战 · 双拍缓冲 · 回线稳场',
+        expectedClear: '缓冲战 · 稳住出清 · 回线稳场',
+        expectedSourceCue: '回线稳场',
+        moment: 'stabilize'
+    },
+    {
+        roomKey: 'combatFlowShrine',
+        choiceKey: 'momentumLesson',
+        reason: '特攻待借势',
+        expectedProfileKey: 'pressure',
+        expectedEntry: '高压战 · 三向成压 · 借势抢压',
+        expectedClear: '高压战 · 顶住成压 · 借势抢压',
+        expectedSourceCue: '借势抢压',
+        moment: 'engage'
+    },
+    {
+        roomKey: 'comboLinkShrine',
+        choiceKey: 'sharpeningLesson',
+        reason: '特攻待连段',
+        expectedProfileKey: 'pressure',
+        expectedEntry: '高压战 · 三向成压 · 连段催锋',
+        expectedClear: '高压战 · 顶住成压 · 连段催锋',
+        expectedSourceCue: '连段催锋',
+        moment: 'engage'
+    },
+    {
+        roomKey: 'comboLinkShrine',
+        choiceKey: 'reversalStepLesson',
+        reason: '闪避待回身',
+        expectedProfileKey: 'breather',
+        expectedEntry: '缓冲战 · 双拍缓冲 · 回身回拍',
+        expectedClear: '缓冲战 · 稳住出清 · 回身回拍',
+        expectedSourceCue: '回身回拍',
+        moment: 'stabilize'
+    },
+    {
+        roomKey: 'counterattackShrine',
+        choiceKey: 'pursuitLesson',
+        reason: '可立即追猎',
+        expectedProfileKey: 'windfall',
+        expectedEntry: '淘金战 · 后排赏金 · 追猎收赏',
+        expectedClear: '淘金战 · 赏金到手 · 追猎收赏',
+        expectedSourceCue: '追猎收赏',
+        moment: 'bounty'
+    },
+    {
+        roomKey: 'counterattackShrine',
+        choiceKey: 'focusLesson',
+        reason: '当前更缺回体',
+        expectedProfileKey: 'breather',
+        expectedEntry: '缓冲战 · 双拍缓冲 · 回体稳线',
+        expectedClear: '缓冲战 · 稳住出清 · 回体稳线',
+        expectedSourceCue: '回体稳线',
+        moment: 'stabilize'
+    }
+]);
+
 const RESOURCE_ROUTE_ENCOUNTER_CASES = Object.freeze([
     {
         roomKey: 'prayerShrine',
@@ -2040,48 +2166,6 @@ function testRunEventEncounterProfileHelpers() {
         'windfall entry previews should append a short recommendation echo when the player explicitly had enough HP to cash into a chase-for-bounty route'
     );
     assert.equal(
-        buildRunEventEncounterEntryPreview(
-            { key: 'pressure', encounterLabel: '高压战' },
-            {
-                key: 'combatDisciplineShrine',
-                discovered: true,
-                resolved: true,
-                selectedChoiceKey: 'flurryLesson',
-                selectedChoiceRecommendationReason: '普攻正卡冷却'
-            }
-        ),
-        '高压战 · 三向成压 · 冷却抢拍',
-        'pressure entry previews should upgrade the flurry route when attack cooldown is the concrete current reason it was recommended'
-    );
-    assert.equal(
-        buildRunEventEncounterEntryPreview(
-            { key: 'breather', encounterLabel: '缓冲战' },
-            {
-                key: 'comboLinkShrine',
-                discovered: true,
-                resolved: true,
-                selectedChoiceKey: 'reversalStepLesson',
-                selectedChoiceRecommendationReason: '闪避正差体'
-            }
-        ),
-        '缓冲战 · 双拍缓冲 · 回身回线',
-        'breather entry previews should upgrade the dodge-refund route when dodge readiness is still the real reason for the recommendation'
-    );
-    assert.equal(
-        buildRunEventEncounterEntryPreview(
-            { key: 'windfall', encounterLabel: '淘金战' },
-            {
-                key: 'counterattackShrine',
-                discovered: true,
-                resolved: true,
-                selectedChoiceKey: 'pursuitLesson',
-                selectedChoiceRecommendationReason: '可接闪后追击'
-            }
-        ),
-        '淘金战 · 后排赏金 · 闪后追赏',
-        'windfall entry previews should upgrade the dodge-chase route when the current action state already supports that pursuit loop'
-    );
-    assert.equal(
         buildRunEventEncounterEntryPreview({ key: 'breather', encounterLabel: '缓冲战' }),
         '缓冲战 · 双拍缓冲',
         'breather routes should expose the shared room-entry tactical cue'
@@ -2107,6 +2191,25 @@ function testRunEventEncounterProfileHelpers() {
             ),
             expectedEntry,
             `${choiceKey} should append its baseline route anchor to the routed room-3 entry cue`
+        );
+    });
+    ACTION_ROUTE_RECOMMENDATION_ECHO_CASES.forEach(({ roomKey, choiceKey, reason, expectedProfileKey, expectedEntry }) => {
+        const encounterLabel = expectedProfileKey === 'breather'
+            ? '缓冲战'
+            : (expectedProfileKey === 'pressure' ? '高压战' : '淘金战');
+        assert.equal(
+            buildRunEventEncounterEntryPreview(
+                { key: expectedProfileKey, encounterLabel },
+                {
+                    key: roomKey,
+                    discovered: true,
+                    resolved: true,
+                    selectedChoiceKey: choiceKey,
+                    selectedChoiceRecommendationReason: reason
+                }
+            ),
+            expectedEntry,
+            `${choiceKey} should upgrade its routed room-3 entry cue when its action recommendation reason still explains the encounter`
         );
     });
     RESOURCE_ROUTE_ENCOUNTER_CASES.forEach(({ roomKey, choiceKey, expectedProfileKey, expectedEntry }) => {
@@ -2270,34 +2373,6 @@ function testRunEventEncounterClearRecapHelpers() {
         'breather clear recaps should append the shared recommendation echo when a cleanse route is still what made the routed room make sense'
     );
     assert.equal(
-        buildRunEventEncounterClearRecap(
-            { key: 'pressure', encounterLabel: '高压战' },
-            {
-                key: 'combatDisciplineShrine',
-                discovered: true,
-                resolved: true,
-                selectedChoiceKey: 'flurryLesson',
-                selectedChoiceRecommendationReason: '普攻正卡冷却'
-            }
-        ),
-        '高压战 · 顶住成压 · 冷却抢拍',
-        'pressure clear recaps should upgrade the flurry route to a tighter recommendation-specific echo when attack cooldown is the actual current bottleneck'
-    );
-    assert.equal(
-        buildRunEventEncounterClearRecap(
-            { key: 'breather', encounterLabel: '缓冲战' },
-            {
-                key: 'comboLinkShrine',
-                discovered: true,
-                resolved: true,
-                selectedChoiceKey: 'reversalStepLesson',
-                selectedChoiceRecommendationReason: '闪避正差体'
-            }
-        ),
-        '缓冲战 · 稳住出清 · 回身回线',
-        'breather clear recaps should upgrade the dodge-refund route to a recommendation-specific echo when dodge readiness is still the real pressure point'
-    );
-    assert.equal(
         buildRunEventEncounterClearRecap({ key: 'pressure', encounterLabel: '高压战' }),
         '高压战 · 顶住成压',
         'pressure routes should close the room with a pressure-held clear recap'
@@ -2393,6 +2468,25 @@ function testRunEventEncounterClearRecapHelpers() {
             ),
             expectedClear,
             `${choiceKey} should append its baseline route anchor to the routed room-3 clear recap`
+        );
+    });
+    ACTION_ROUTE_RECOMMENDATION_ECHO_CASES.forEach(({ roomKey, choiceKey, reason, expectedProfileKey, expectedClear }) => {
+        const encounterLabel = expectedProfileKey === 'breather'
+            ? '缓冲战'
+            : (expectedProfileKey === 'pressure' ? '高压战' : '淘金战');
+        assert.equal(
+            buildRunEventEncounterClearRecap(
+                { key: expectedProfileKey, encounterLabel },
+                {
+                    key: roomKey,
+                    discovered: true,
+                    resolved: true,
+                    selectedChoiceKey: choiceKey,
+                    selectedChoiceRecommendationReason: reason
+                }
+            ),
+            expectedClear,
+            `${choiceKey} should upgrade its routed room-3 clear recap when its action recommendation reason still explains the encounter`
         );
     });
     RESOURCE_ROUTE_ENCOUNTER_CASES.forEach(({ roomKey, choiceKey, expectedProfileKey, expectedClear }) => {
@@ -2547,51 +2641,6 @@ function testRunEventEncounterSourceCueHelpers() {
         '血线够追赏',
         'windfall source cues should fire on the first bounty payoff beat when the high-risk gold route was explicitly recommended'
     );
-    assert.equal(
-        buildRunEventEncounterSourceCue(
-            { key: 'pressure', encounterLabel: '高压战' },
-            {
-                key: 'combatDisciplineShrine',
-                discovered: true,
-                resolved: true,
-                selectedChoiceKey: 'flurryLesson',
-                selectedChoiceRecommendationReason: '普攻正卡冷却'
-            },
-            'engage'
-        ),
-        '冷却抢拍',
-        'pressure source cues should upgrade the flurry route when the recommendation came from a real attack-cooldown bottleneck'
-    );
-    assert.equal(
-        buildRunEventEncounterSourceCue(
-            { key: 'breather', encounterLabel: '缓冲战' },
-            {
-                key: 'comboLinkShrine',
-                discovered: true,
-                resolved: true,
-                selectedChoiceKey: 'reversalStepLesson',
-                selectedChoiceRecommendationReason: '闪避正差体'
-            },
-            'stabilize'
-        ),
-        '回身回线',
-        'breather source cues should upgrade the dodge-refund route when dodge readiness is still the actual problem being solved'
-    );
-    assert.equal(
-        buildRunEventEncounterSourceCue(
-            { key: 'windfall', encounterLabel: '淘金战' },
-            {
-                key: 'counterattackShrine',
-                discovered: true,
-                resolved: true,
-                selectedChoiceKey: 'pursuitLesson',
-                selectedChoiceRecommendationReason: '可接闪后追击'
-            },
-            'bounty'
-        ),
-        '闪后追赏',
-        'windfall source cues should upgrade the pursuit route when the recommendation came from an already-available dodge-chase loop'
-    );
     ACTION_ROUTE_ENCOUNTER_CASES.forEach(({ roomKey, choiceKey, expectedProfileKey, expectedSourceCue, moment }) => {
         const encounterLabel = expectedProfileKey === 'breather'
             ? '缓冲战'
@@ -2609,6 +2658,26 @@ function testRunEventEncounterSourceCueHelpers() {
             ),
             expectedSourceCue,
             `${choiceKey} should fire its baseline route anchor on the routed combat beat`
+        );
+    });
+    ACTION_ROUTE_RECOMMENDATION_ECHO_CASES.forEach(({ roomKey, choiceKey, reason, expectedProfileKey, expectedSourceCue, moment }) => {
+        const encounterLabel = expectedProfileKey === 'breather'
+            ? '缓冲战'
+            : (expectedProfileKey === 'pressure' ? '高压战' : '淘金战');
+        assert.equal(
+            buildRunEventEncounterSourceCue(
+                { key: expectedProfileKey, encounterLabel },
+                {
+                    key: roomKey,
+                    discovered: true,
+                    resolved: true,
+                    selectedChoiceKey: choiceKey,
+                    selectedChoiceRecommendationReason: reason
+                },
+                moment
+            ),
+            expectedSourceCue,
+            `${choiceKey} should upgrade its routed combat source cue when its action recommendation reason still explains the encounter`
         );
     });
     RESOURCE_ROUTE_ENCOUNTER_CASES.forEach(({ roomKey, choiceKey, expectedProfileKey, expectedSourceCue, moment }) => {
@@ -2748,6 +2817,178 @@ function testRunEventRoomChoiceRecommendation() {
         'recommendation helper should elevate the low-HP route when the player is already under its damage threshold'
     );
 
+    const combatDisciplineChoices = getRunEventRoomChoices('combatDisciplineShrine');
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(combatDisciplineChoices, {
+            playerHp: 96,
+            playerMaxHp: 120,
+            attackCooldownMs: 1150,
+            specialCooldownMs: 180,
+            dodgeCooldownMs: 120,
+            stamina: 24,
+            staminaRegenPerSecond: 12,
+            attackStaminaCost: 8,
+            specialStaminaCost: 18,
+            dodgeStaminaCost: 10
+        }),
+        '建议 1：连斩修习 · 普攻卡拍',
+        'recommendation helper should elevate flurry when the normal-attack cadence is the clear live bottleneck'
+    );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(combatDisciplineChoices, {
+            playerHp: 96,
+            playerMaxHp: 120,
+            attackCooldownMs: 180,
+            specialCooldownMs: 220,
+            dodgeCooldownMs: 1250,
+            stamina: 24,
+            staminaRegenPerSecond: 12,
+            attackStaminaCost: 8,
+            specialStaminaCost: 18,
+            dodgeStaminaCost: 10
+        }),
+        '建议 2：游步修习 · 闪避卡拍',
+        'recommendation helper should elevate ghost step when dodge recovery is the clear live bottleneck'
+    );
+
+    const controlChoices = getRunEventRoomChoices('controlRoutingShrine');
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(controlChoices, {
+            playerHp: 60,
+            playerMaxHp: 120,
+            selectedWeaponKey: 'hammer',
+            attackCooldownMs: 220,
+            specialCooldownMs: 420,
+            dodgeCooldownMs: 980,
+            stamina: 18,
+            staminaRegenPerSecond: 11,
+            attackStaminaCost: 12,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 14
+        }),
+        '建议 1：镇步修习 · 当前更宜控场',
+        'recommendation helper should elevate the slow-control route when the live state clearly calls for a safer control-oriented stabilizer'
+    );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(controlChoices, {
+            playerHp: 102,
+            playerMaxHp: 120,
+            selectedWeaponKey: 'hammer',
+            attackCooldownMs: 120,
+            specialCooldownMs: 420,
+            dodgeCooldownMs: 160,
+            stamina: 30,
+            staminaRegenPerSecond: 12,
+            attackStaminaCost: 12,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 14
+        }),
+        '建议 2：破势修习 · 当前可追终结',
+        'recommendation helper should elevate the execution route when the current weapon and live state both support an immediate chase-to-kill posture'
+    );
+
+    const flowChoices = getRunEventRoomChoices('combatFlowShrine');
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(flowChoices, {
+            playerHp: 96,
+            playerMaxHp: 120,
+            attackCooldownMs: 0,
+            specialCooldownMs: 260,
+            dodgeCooldownMs: 220,
+            stamina: 6,
+            staminaRegenPerSecond: 10,
+            attackStaminaCost: 8,
+            specialStaminaCost: 18,
+            dodgeStaminaCost: 10
+        }),
+        '建议 1：回息修习 · 当前更缺回线',
+        'recommendation helper should elevate breathing when the player is currently stamina-starved'
+    );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(flowChoices, {
+            playerHp: 96,
+            playerMaxHp: 120,
+            attackCooldownMs: 160,
+            specialCooldownMs: 1450,
+            dodgeCooldownMs: 0,
+            stamina: 24,
+            staminaRegenPerSecond: 10,
+            attackStaminaCost: 8,
+            specialStaminaCost: 18,
+            dodgeStaminaCost: 10
+        }),
+        '建议 2：借势修习 · 特攻待借势',
+        'recommendation helper should elevate momentum when dodge is ready but the special payoff is still clearly waiting to be cashed in'
+    );
+
+    const comboChoices = getRunEventRoomChoices('comboLinkShrine');
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(comboChoices, {
+            playerHp: 96,
+            playerMaxHp: 120,
+            attackCooldownMs: 0,
+            specialCooldownMs: 1500,
+            dodgeCooldownMs: 180,
+            stamina: 24,
+            staminaRegenPerSecond: 10,
+            attackStaminaCost: 8,
+            specialStaminaCost: 18,
+            dodgeStaminaCost: 10
+        }),
+        '建议 1：催锋修习 · 特攻待连段',
+        'recommendation helper should elevate sharpening when normal attacks are ready but special cooldown is the current bottleneck'
+    );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(comboChoices, {
+            playerHp: 96,
+            playerMaxHp: 120,
+            attackCooldownMs: 180,
+            specialCooldownMs: 0,
+            dodgeCooldownMs: 1500,
+            stamina: 24,
+            staminaRegenPerSecond: 10,
+            attackStaminaCost: 8,
+            specialStaminaCost: 18,
+            dodgeStaminaCost: 10
+        }),
+        '建议 2：回身修习 · 闪避待回身',
+        'recommendation helper should elevate reversal step when special is ready but dodge is the current bottleneck'
+    );
+
+    const counterChoices = getRunEventRoomChoices('counterattackShrine');
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(counterChoices, {
+            playerHp: 96,
+            playerMaxHp: 120,
+            attackCooldownMs: 0,
+            specialCooldownMs: 320,
+            dodgeCooldownMs: 0,
+            stamina: 24,
+            staminaRegenPerSecond: 10,
+            attackStaminaCost: 8,
+            specialStaminaCost: 18,
+            dodgeStaminaCost: 10
+        }),
+        '建议 1：追猎修习 · 可立即追猎',
+        'recommendation helper should elevate pursuit when the player can cash a dodge-into-attack counter route immediately'
+    );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(counterChoices, {
+            playerHp: 96,
+            playerMaxHp: 120,
+            attackCooldownMs: 220,
+            specialCooldownMs: 260,
+            dodgeCooldownMs: 180,
+            stamina: 6,
+            staminaRegenPerSecond: 10,
+            attackStaminaCost: 8,
+            specialStaminaCost: 18,
+            dodgeStaminaCost: 10
+        }),
+        '建议 2：调息修习 · 当前更缺回体',
+        'recommendation helper should elevate focus when the player is clearly missing the stamina to keep the special loop stable'
+    );
+
     const prayerChoices = getRunEventRoomChoices('prayerShrine');
     assert.equal(
         buildRunEventRoomChoiceRecommendation(prayerChoices, {
@@ -2757,124 +2998,6 @@ function testRunEventRoomChoiceRecommendation() {
         }),
         '',
         'recommendation helper should stay silent when neither visible option has a clear contextual edge'
-    );
-
-    const disciplineChoices = getRunEventRoomChoices('combatDisciplineShrine');
-    assert.equal(
-        buildRunEventRoomChoiceRecommendation(disciplineChoices, {
-            playerHp: 100,
-            playerMaxHp: 120,
-            stamina: 28,
-            attackCooldownMs: 520,
-            specialCooldownMs: 0,
-            dodgeCooldownMs: 0,
-            attackStaminaCost: 6,
-            specialStaminaCost: 12,
-            dodgeStaminaCost: 14
-        }),
-        '建议 1：连斩修习 · 普攻正卡冷却',
-        'recommendation helper should elevate the attack-cadence route when normal attack cooldown is the clear current action bottleneck'
-    );
-    assert.equal(
-        buildRunEventRoomChoiceRecommendation(disciplineChoices, {
-            playerHp: 100,
-            playerMaxHp: 120,
-            stamina: 11,
-            attackCooldownMs: 0,
-            specialCooldownMs: 0,
-            dodgeCooldownMs: 0,
-            attackStaminaCost: 6,
-            specialStaminaCost: 12,
-            dodgeStaminaCost: 14
-        }),
-        '建议 2：游步修习 · 闪避正差体',
-        'recommendation helper should elevate the dodge-economy route when dodge is specifically blocked on stamina'
-    );
-
-    const flowChoices = getRunEventRoomChoices('combatFlowShrine');
-    assert.equal(
-        buildRunEventRoomChoiceRecommendation(flowChoices, {
-            playerHp: 100,
-            playerMaxHp: 120,
-            stamina: 32,
-            attackCooldownMs: 0,
-            specialCooldownMs: 0,
-            dodgeCooldownMs: 0,
-            attackStaminaCost: 6,
-            specialStaminaCost: 14,
-            dodgeStaminaCost: 12
-        }),
-        '建议 2：借势修习 · 可接闪特爆发',
-        'recommendation helper should elevate the dodge-into-special burst route when the current action state can already cash in that loop cleanly'
-    );
-
-    const comboChoices = getRunEventRoomChoices('comboLinkShrine');
-    assert.equal(
-        buildRunEventRoomChoiceRecommendation(comboChoices, {
-            playerHp: 100,
-            playerMaxHp: 120,
-            stamina: 24,
-            attackCooldownMs: 0,
-            specialCooldownMs: 640,
-            dodgeCooldownMs: 0,
-            attackStaminaCost: 6,
-            specialStaminaCost: 14,
-            dodgeStaminaCost: 12
-        }),
-        '建议 1：催锋修习 · 特攻正卡冷却',
-        'recommendation helper should elevate the attack-to-special refund route when special cooldown is the clear current bottleneck'
-    );
-
-    const counterChoices = getRunEventRoomChoices('counterattackShrine');
-    assert.equal(
-        buildRunEventRoomChoiceRecommendation(counterChoices, {
-            playerHp: 100,
-            playerMaxHp: 120,
-            stamina: 24,
-            attackCooldownMs: 0,
-            specialCooldownMs: 0,
-            dodgeCooldownMs: 0,
-            attackStaminaCost: 6,
-            specialStaminaCost: 14,
-            dodgeStaminaCost: 12
-        }),
-        '建议 1：追猎修习 · 可接闪后追击',
-        'recommendation helper should elevate the dodge-into-attack chase route when the current action state already supports that pursuit loop'
-    );
-
-    const controlChoices = getRunEventRoomChoices('controlRoutingShrine');
-    assert.equal(
-        buildRunEventRoomChoiceRecommendation(controlChoices, {
-            playerHp: 72,
-            playerMaxHp: 120,
-            selectedWeaponKey: 'hammer',
-            controlTargetSlowMs: 0,
-            controlFinisherWindowMs: 0
-        }),
-        '建议 1：镇步修习 · 先挂减速',
-        'recommendation helper should steer the control shrine toward slow setup when the current loadout can apply slow but no payoff target is yet online'
-    );
-    assert.equal(
-        buildRunEventRoomChoiceRecommendation(controlChoices, {
-            playerHp: 100,
-            playerMaxHp: 120,
-            selectedWeaponKey: 'hammer',
-            controlTargetSlowMs: 2200,
-            controlFinisherWindowMs: 0
-        }),
-        '建议 2：破势修习 · 减速目标已现',
-        'recommendation helper should elevate the payoff route once a slowed target already exists in the recent control context'
-    );
-    assert.equal(
-        buildRunEventRoomChoiceRecommendation(controlChoices, {
-            playerHp: 100,
-            playerMaxHp: 120,
-            selectedWeaponKey: 'hammer',
-            controlTargetSlowMs: 2200,
-            controlFinisherWindowMs: 900
-        }),
-        '建议 2：破势修习 · 可接破势终结',
-        'recommendation helper should prioritize the finisher payoff route when the recent control context already includes a break-window finisher opportunity'
     );
 }
 
@@ -2933,86 +3056,6 @@ function testRunEventRoomChoicePanelPreview() {
         }),
         '破势修习: 对减速目标伤害+28%, Boss破招窗口终结 · 需切至减速武器',
         'panel preview should warn when the current loadout cannot directly trigger the slow/control payoff route'
-    );
-    const flurryChoice = getRunEventRoomChoices('combatDisciplineShrine').find(choice => choice.key === 'flurryLesson');
-    assert.equal(
-        buildRunEventRoomChoicePanelPreview(flurryChoice, {
-            playerHp: 100,
-            playerMaxHp: 120,
-            stamina: 28,
-            attackCooldownMs: 520,
-            specialCooldownMs: 0,
-            dodgeCooldownMs: 0,
-            attackStaminaCost: 6,
-            specialStaminaCost: 12,
-            dodgeStaminaCost: 14
-        }),
-        '连斩修习: 普攻冷却-18% · 普攻正卡冷却',
-        'panel preview should surface when attack cadence is the live action bottleneck for the flurry route'
-    );
-    const ghostStepChoice = getRunEventRoomChoices('combatDisciplineShrine').find(choice => choice.key === 'ghostStepLesson');
-    assert.equal(
-        buildRunEventRoomChoicePanelPreview(ghostStepChoice, {
-            playerHp: 100,
-            playerMaxHp: 120,
-            stamina: 11,
-            attackCooldownMs: 0,
-            specialCooldownMs: 0,
-            dodgeCooldownMs: 0,
-            attackStaminaCost: 6,
-            specialStaminaCost: 12,
-            dodgeStaminaCost: 14
-        }),
-        '游步修习: 闪避冷却-20%, 闪避体力消耗-18% · 闪避正差体',
-        'panel preview should surface when dodge is currently blocked on stamina for the dodge-economy route'
-    );
-    const momentumChoice = getRunEventRoomChoices('combatFlowShrine').find(choice => choice.key === 'momentumLesson');
-    assert.equal(
-        buildRunEventRoomChoicePanelPreview(momentumChoice, {
-            playerHp: 100,
-            playerMaxHp: 120,
-            stamina: 32,
-            attackCooldownMs: 0,
-            specialCooldownMs: 0,
-            dodgeCooldownMs: 0,
-            attackStaminaCost: 6,
-            specialStaminaCost: 14,
-            dodgeStaminaCost: 12
-        }),
-        '借势修习: 闪避后1.6s内特攻伤害+35% · 可接闪特爆发',
-        'panel preview should surface when the current action state can already convert a dodge into an empowered special'
-    );
-    const sharpeningChoice = getRunEventRoomChoices('comboLinkShrine').find(choice => choice.key === 'sharpeningLesson');
-    assert.equal(
-        buildRunEventRoomChoicePanelPreview(sharpeningChoice, {
-            playerHp: 100,
-            playerMaxHp: 120,
-            stamina: 24,
-            attackCooldownMs: 0,
-            specialCooldownMs: 640,
-            dodgeCooldownMs: 0,
-            attackStaminaCost: 6,
-            specialStaminaCost: 14,
-            dodgeStaminaCost: 12
-        }),
-        '催锋修习: 普攻命中特攻冷却-200ms · 特攻正卡冷却',
-        'panel preview should surface when special cooldown is the live bottleneck for the attack-to-special refund route'
-    );
-    const pursuitChoice = getRunEventRoomChoices('counterattackShrine').find(choice => choice.key === 'pursuitLesson');
-    assert.equal(
-        buildRunEventRoomChoicePanelPreview(pursuitChoice, {
-            playerHp: 100,
-            playerMaxHp: 120,
-            stamina: 24,
-            attackCooldownMs: 0,
-            specialCooldownMs: 0,
-            dodgeCooldownMs: 0,
-            attackStaminaCost: 6,
-            specialStaminaCost: 14,
-            dodgeStaminaCost: 12
-        }),
-        '追猎修习: 闪避后1.4s内普攻伤害+28% · 可接闪后追击',
-        'panel preview should surface when the player can already route the next loop through dodge into an empowered attack'
     );
     assert.equal(
         buildRunEventRoomChoicePanelPreview(tradeChoice, {
@@ -3768,28 +3811,23 @@ function testRunEventEncounterRoutingHooks() {
     const source = loadGameSource();
     assert.match(
         source,
-        /_openRunEventChoicePanel\(\)\s*{[\s\S]*?selectedWeaponKey:\s*this\.player\.currentWeaponKey,[\s\S]*?negativeStatuses:\s*Object\.keys\(this\.player\.activeStatusEffects \|\| \{\}\),[\s\S]*?attackCooldownMs:\s*this\.player\.attackCooldown,[\s\S]*?specialCooldownMs:\s*this\.player\.specialCooldown,[\s\S]*?dodgeCooldownMs:\s*this\.player\.dodgeCooldownTimer,[\s\S]*?stamina:\s*this\.player\.stamina,[\s\S]*?controlTargetSlowMs:\s*Math\.max\(0,\s*\(this\.player\.controlRecommendationSlowTargetUntil \|\| 0\) - this\.time\.now\),[\s\S]*?controlFinisherWindowMs:\s*Math\.max\(0,\s*\(this\.player\.controlRecommendationFinisherUntil \|\| 0\) - this\.time\.now\),[\s\S]*?attackStaminaCost:\s*this\.player\.currentWeapon \? this\.player\.currentWeapon\.staminaCost : 0,[\s\S]*?specialStaminaCost:\s*this\.player\.currentWeapon \? this\.player\.currentWeapon\.specialStaminaCost : 0,[\s\S]*?dodgeStaminaCost:\s*Math\.max\(1,\s*Math\.round\(GAME_CONFIG\.PLAYER\.dodgeStaminaCost \* \(\(GameState\.runEffects \|\| DEFAULT_RUN_EFFECTS\)\.playerDodgeStaminaCostMultiplier \|\| 1\)\)\),[\s\S]*?runModifiers:\s*\(GameState\.runModifiers \|\| \[\]\)\.map\(key => getRunModifierByKey\(key\)\)[\s\S]*?const encounterPreview = formatRunEventRoomChoiceEncounterPreview\(choice\);[\s\S]*?textNode\.setText\(`\$\{index \+ 1\}\. \$\{previewText\}\$\{encounterPreview \? ` · \$\{encounterPreview\}` : ''\}\$\{affordabilityLabel \? ` · \$\{affordabilityLabel\}` : ''\}`\);/,
-        'run-event choice panel should pass both the static route context and the live action-state snapshot before appending the next-room encounter preview tag'
+        /_buildRunEventChoicePreviewState\(\)\s*{[\s\S]*?selectedWeaponKey:\s*this\.player\.currentWeaponKey,[\s\S]*?negativeStatuses:\s*Object\.keys\(this\.player\.activeStatusEffects \|\| \{\}\),[\s\S]*?runModifiers:\s*\(GameState\.runModifiers \|\| \[\]\)\.map\(key => getRunModifierByKey\(key\)\),[\s\S]*?attackCooldownMs:\s*this\.player\.attackCooldown,[\s\S]*?specialCooldownMs:\s*this\.player\.specialCooldown,[\s\S]*?dodgeCooldownMs:\s*this\.player\.dodgeCooldownTimer,[\s\S]*?stamina:\s*this\.player\.stamina,[\s\S]*?staminaRegenPerSecond,[\s\S]*?dodgeStaminaCost:\s*Math\.max\(1,\s*Math\.round\(GAME_CONFIG\.PLAYER\.dodgeStaminaCost \* \(runEffects\.playerDodgeStaminaCostMultiplier \|\| 1\)\)\)/,
+        'run-event preview-state builder should pass the full route and live combat context into shared recommendation helpers'
     );
     assert.match(
         source,
-        /_openRunEventChoicePanel\(\)\s*{[\s\S]*?const previewState = \{[\s\S]*?attackCooldownMs:\s*this\.player\.attackCooldown,[\s\S]*?specialCooldownMs:\s*this\.player\.specialCooldown,[\s\S]*?dodgeCooldownMs:\s*this\.player\.dodgeCooldownTimer,[\s\S]*?stamina:\s*this\.player\.stamina,[\s\S]*?controlTargetSlowMs:\s*Math\.max\(0,\s*\(this\.player\.controlRecommendationSlowTargetUntil \|\| 0\) - this\.time\.now\),[\s\S]*?controlFinisherWindowMs:\s*Math\.max\(0,\s*\(this\.player\.controlRecommendationFinisherUntil \|\| 0\) - this\.time\.now\),[\s\S]*?\};[\s\S]*?const recommendation = buildRunEventRoomChoiceRecommendation\(this\._runEventChoiceOptions,\s*previewState\);[\s\S]*?this\._setRunEventChoicePanelFooter\(recommendation \|\| RUN_EVENT_CHOICE_PANEL_FOOTER_DEFAULT,\s*'default'\);/,
-        'run-event choice panel should route both action-state and recent-control context into the shared recommendation helper and only replace the neutral footer when that helper returns a message'
+        /_openRunEventChoicePanel\(\)\s*{[\s\S]*?const previewState = this\._buildRunEventChoicePreviewState\(\);[\s\S]*?const encounterPreview = formatRunEventRoomChoiceEncounterPreview\(choice\);[\s\S]*?textNode\.setText\(`\$\{index \+ 1\}\. \$\{previewText\}\$\{encounterPreview \? ` · \$\{encounterPreview\}` : ''\}\$\{affordabilityLabel \? ` · \$\{affordabilityLabel\}` : ''\}`\);/,
+        'run-event choice panel should pass the full route context and append the next-room encounter preview tag'
     );
     assert.match(
         source,
-        /_handleRunEventChoiceHotkey\(choiceIndex\)\s*{[\s\S]*?const settlement = resolveRunEventRoomChoice\(\{\s*gold:\s*startGold,\s*playerHp:\s*this\.player\.hp,\s*playerMaxHp:\s*this\.player\.maxHp,\s*selectedWeaponKey:\s*this\.player\.currentWeaponKey,\s*inventory:\s*GameState\.inventory,\s*negativeStatuses:\s*Object\.keys\(this\.player\.activeStatusEffects \|\| \{\}\),\s*attackCooldownMs:\s*this\.player\.attackCooldown,\s*specialCooldownMs:\s*this\.player\.specialCooldown,\s*dodgeCooldownMs:\s*this\.player\.dodgeCooldownTimer,\s*stamina:\s*this\.player\.stamina,\s*controlTargetSlowMs:\s*Math\.max\(0,\s*\(this\.player\.controlRecommendationSlowTargetUntil \|\| 0\) - this\.time\.now\),\s*controlFinisherWindowMs:\s*Math\.max\(0,\s*\(this\.player\.controlRecommendationFinisherUntil \|\| 0\) - this\.time\.now\),\s*attackStaminaCost:\s*this\.player\.currentWeapon \? this\.player\.currentWeapon\.staminaCost : 0,\s*specialStaminaCost:\s*this\.player\.currentWeapon \? this\.player\.currentWeapon\.specialStaminaCost : 0,\s*dodgeStaminaCost:\s*Math\.max\(1,\s*Math\.round\(GAME_CONFIG\.PLAYER\.dodgeStaminaCost \* \(\(GameState\.runEffects \|\| DEFAULT_RUN_EFFECTS\)\.playerDodgeStaminaCostMultiplier \|\| 1\)\)\)\s*\},\s*GameState\.runEventRoom,\s*choice\.key,\s*RUN_EVENT_ROOM_POOL\);/,
-        'run-event choice resolution should pass the same recent-control context so the selected route can persist a control-target recommendation receipt'
+        /_openRunEventChoicePanel\(\)\s*{[\s\S]*?const previewState = this\._buildRunEventChoicePreviewState\(\);[\s\S]*?const recommendation = buildRunEventRoomChoiceRecommendation\(this\._runEventChoiceOptions,\s*previewState\);[\s\S]*?this\._setRunEventChoicePanelFooter\(recommendation \|\| RUN_EVENT_CHOICE_PANEL_FOOTER_DEFAULT,\s*'default'\);/,
+        'run-event choice panel should route the shared preview state into a contextual recommendation helper and only replace the neutral footer when that helper returns a message'
     );
     assert.match(
         source,
-        /this\.player\.controlRecommendationSlowTargetUntil = Math\.max\(Number\(this\.player\.controlRecommendationSlowTargetUntil\) \|\| 0,\s*this\.time\.now \+ \d+\);/,
-        'combat hits against slowed targets should arm a short recent-control window for shrine recommendations'
-    );
-    assert.match(
-        source,
-        /this\.player\.controlRecommendationFinisherUntil = Math\.max\(Number\(this\.player\.controlRecommendationFinisherUntil\) \|\| 0,\s*this\.time\.now \+ \d+\);/,
-        'boss finisher windows should arm a short recent-finisher window for shrine recommendations'
+        /_handleRunEventChoiceHotkey\(choiceIndex\)\s*{[\s\S]*?const settlementState = this\._buildRunEventChoicePreviewState\(\);[\s\S]*?settlementState\.gold = startGold;[\s\S]*?const settlement = resolveRunEventRoomChoice\(settlementState,\s*GameState\.runEventRoom,\s*choice\.key,\s*RUN_EVENT_ROOM_POOL\);/,
+        'run-event choice resolution should pass the same recommendation-relevant preview state so the selected route can persist a post-choice recommendation receipt'
     );
     assert.match(
         source,
@@ -12528,6 +12566,16 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /`战技 \/ 镇压 \/ 战势 \/ 连携 \/ 反击` 这些行动型 blessing route 也会把 live combat state 接进同一套 recommendation helper，并在高置信场景下给出 `建议 1\/2：连斩修习 · 普攻卡拍` \/ `游步修习 · 闪避卡拍` \/ `镇步修习 · 当前更宜控场` \/ `借势修习 · 特攻待借势` \/ `催锋修习 · 特攻待连段` \/ `回身修习 · 闪避待回身` \/ `追猎修习 · 可立即追猎` \/ `调息修习 · 当前更缺回体` 这类脚注/,
+        'README should document that action-route recommendations now use live combat bottlenecks before selection'
+    );
+    assert.match(
+        source,
+        /当这些 action recommendation 的 persisted reason 仍和 routed encounter 强相关时，第三房入口 \/ 清场 \/ 首个关键战斗节点还会继续补 `高压战 · 三向成压 · 抢拍开刃` \/ `缓冲战 · 双拍缓冲 · 游步回拍` \/ `淘金战 · 后排赏金 · 破势收赏` 这类更窄的 why-now echo/,
+        'README should document that action-route recommendation reasons now continue into narrower routed room-3 echoes'
+    );
+    assert.match(
+        source,
         /当这个已存储 reason 与 routed encounter 仍强相关时，第三房入口 \/ 清场短句还会继续补 `缓冲战 · 双拍缓冲 · 净化后稳场` \/ `高压战 · 三向成压 · 压线抢势` \/ `淘金战 · 后排赏金 · 血线够追赏` 这类更短遭遇回响；`命途圣坛` 的 `绝境修习 \/ 守心修习` 现在也会真正导向 `下间高压 \/ 下间缓冲`/,
         'README should document that persisted recommendation reasons can now echo through routed room-3 entry and clear feedback, including the newly routed threshold shrine'
     );
@@ -12543,13 +12591,13 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /choice panel 还会继续读取当前 `普攻 \/ 特攻 \/ 闪避` 的冷却与体力状态，并在高置信 action-state 下补 `建议 1：连斩修习 · 普攻正卡冷却` \/ `建议 2：借势修习 · 可接闪特爆发` \/ `建议 1：催锋修习 · 特攻正卡冷却` \/ `建议 1：追猎修习 · 可接闪后追击` 这类脚注；若真的按下这些推荐，第三房入口 \/ 清场 \/ 战中 source cue 也会把原本的 baseline anchor 升级成 `冷却抢拍` \/ `闪后爆发` \/ `催锋追段` \/ `回身回线` \/ `闪后追赏`/,
-        'README should document the first-wave action-state recommendations and the upgraded route-specific encounter echoes they unlock'
+        /`战技 \/ 镇压 \/ 战势 \/ 连携 \/ 反击` 这些行动型 blessing route 也会把 live combat state 接进同一套 recommendation helper，并在高置信场景下给出 `建议 1\/2：连斩修习 · 普攻卡拍` \/ `游步修习 · 闪避卡拍` \/ `镇步修习 · 当前更宜控场` \/ `借势修习 · 特攻待借势` \/ `催锋修习 · 特攻待连段` \/ `回身修习 · 闪避待回身` \/ `追猎修习 · 可立即追猎` \/ `调息修习 · 当前更缺回体` 这类脚注/,
+        'README should document that action-route recommendations now use live combat bottlenecks before selection'
     );
     assert.match(
         source,
-        /`镇压圣坛` 的 `镇步修习 \/ 破势修习` 也会继续读取近期 `减速目标 \/ 破招窗口` 这类 control context，并在高置信场景下补 `建议 1：镇步修习 · 先挂减速` \/ `建议 2：破势修习 · 减速目标已现` \/ `建议 2：破势修习 · 可接破势终结` 这类脚注；若真的按下这些推荐，第三房入口 \/ 清场 \/ 战中 source cue 还会继续补 `减速稳场` \/ `减速追赏` \/ `终结追赏`/,
-        'README should document the control-route live-target recommendations and the routed echoes they unlock'
+        /当这些 action recommendation 的 persisted reason 仍和 routed encounter 强相关时，第三房入口 \/ 清场 \/ 首个关键战斗节点还会继续补 `高压战 · 三向成压 · 抢拍开刃` \/ `缓冲战 · 双拍缓冲 · 游步回拍` \/ `淘金战 · 后排赏金 · 破势收赏` 这类更窄的 why-now echo/,
+        'README should document that action-route recommendation reasons now continue into narrower routed room-3 echoes'
     );
     assert.match(
         source,
@@ -13747,13 +13795,13 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /对“连斩\/游步\/借势\/催锋\/回身\/追猎”这些行动型 blessing，choice panel 还会继续读取当前“普攻\/特攻\/闪避”的冷却与体力状态，并在高置信场景下补“建议 1：连斩修习 · 普攻正卡冷却”\/“建议 2：借势修习 · 可接闪特爆发”\/“建议 1：催锋修习 · 特攻正卡冷却”\/“建议 1：追猎修习 · 可接闪后追击”这类脚注；若真的按下这些推荐，第三房入口\/清场\/战中 source cue 也会把 baseline anchor 升级成“冷却抢拍”\/“闪后爆发”\/“催锋追段”\/“回身回线”\/“闪后追赏”/,
-        'help overlay should document the first-wave action-state recommendations and the upgraded encounter echoes they unlock'
+        /战技\/镇压\/战势\/连携\/反击这些行动型 blessing route 也会把 live combat state 接进同一套 recommendation helper，并在高置信场景下给出“建议 1\/2：连斩修习 · 普攻卡拍”\/“游步修习 · 闪避卡拍”\/“镇步修习 · 当前更宜控场”\/“借势修习 · 特攻待借势”\/“催锋修习 · 特攻待连段”\/“回身修习 · 闪避待回身”\/“追猎修习 · 可立即追猎”\/“调息修习 · 当前更缺回体”这类脚注/,
+        'help overlay should document that action-route recommendations now use live combat bottlenecks before selection'
     );
     assert.match(
         source,
-        /“镇压圣坛”的“镇步修习\/破势修习”也会继续读取近期“减速目标\/破招窗口”这类 control context，并在高置信场景下补“建议 1：镇步修习 · 先挂减速”\/“建议 2：破势修习 · 减速目标已现”\/“建议 2：破势修习 · 可接破势终结”这类脚注；若真的按下这些推荐，第三房入口\/清场\/战中 source cue 还会继续补“减速稳场”\/“减速追赏”\/“终结追赏”/,
-        'help overlay should document the control-route live-target recommendations and the routed echoes they unlock'
+        /若这些 action recommendation 的 persisted reason 仍和 routed encounter 强相关，第三房还会继续把“普攻卡拍\/闪避卡拍\/当前可追终结\/特攻待借势\/特攻待连段\/可立即追猎”压成“抢拍开刃\/游步回拍\/破势收赏\/借势抢压\/连段催锋\/追猎收赏”这类更窄的 why-now echo/,
+        'help overlay should document the narrower action-route why-now echoes that now continue into room-3 combat'
     );
     assert.match(
         source,
@@ -13764,6 +13812,16 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /事件房 choice panel 若出现明显上下文倾向，还会在底部脚注补“建议 1\/2：净泉啜饮 · 可净化2层”这类短推荐，但不会改动原有 1\/2 顺序；若玩家真的选了这条高置信路线，已触发后的 HUD \/ 祭坛世界标签 \/ 结算浮字也会继续补“治疗: 净泉啜饮 · 可净化2层”这类极短确认/,
         'help overlay should document that high-confidence event-room recommendations can persist into resolved confirmation surfaces after selection'
+    );
+    assert.match(
+        source,
+        /战技\/镇压\/战势\/连携\/反击这些行动型 blessing route 也会把 live combat state 接进同一套 recommendation helper，并在高置信场景下给出“建议 1\/2：连斩修习 · 普攻卡拍”\/“游步修习 · 闪避卡拍”\/“镇步修习 · 当前更宜控场”\/“借势修习 · 特攻待借势”\/“催锋修习 · 特攻待连段”\/“回身修习 · 闪避待回身”\/“追猎修习 · 可立即追猎”\/“调息修习 · 当前更缺回体”这类脚注/,
+        'help overlay should document that action-route recommendations now use live combat bottlenecks before selection'
+    );
+    assert.match(
+        source,
+        /若这些 action recommendation 的 persisted reason 仍和 routed encounter 强相关，第三房还会继续把“普攻卡拍\/闪避卡拍\/当前可追终结\/特攻待借势\/特攻待连段\/可立即追猎”压成“抢拍开刃\/游步回拍\/破势收赏\/借势抢压\/连段催锋\/追猎收赏”这类更窄的 why-now echo/,
+        'help overlay should document the narrower action-route why-now echoes that now continue into room-3 combat'
     );
     assert.match(
         source,
