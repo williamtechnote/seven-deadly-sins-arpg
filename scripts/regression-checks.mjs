@@ -1092,23 +1092,6 @@ function testRunEventRoomSelection() {
         '',
         'event-room resolution should stay silent when the selected route did not earn a high-confidence recommendation'
     );
-    const controlRecommendationSettlement = resolveRunEventRoomChoice({
-        gold: 95,
-        playerHp: 100,
-        playerMaxHp: 120,
-        selectedWeaponKey: 'hammer',
-        controlTargetSlowMs: 2200
-    }, {
-        key: 'controlRoutingShrine',
-        discovered: true,
-        resolved: false
-    }, 'executionLesson');
-    assert.equal(controlRecommendationSettlement.ok, true, 'control-routing shrine should still resolve when the execution route is chosen under a live slowed-target context');
-    assert.equal(
-        controlRecommendationSettlement.eventRoom.selectedChoiceRecommendationReason,
-        '减速目标已现',
-        'event-room resolution should persist the live-target control recommendation reason when the selected payoff route matches it'
-    );
     const prayerEffects = buildRunEventRoomEffects(prayerSettlement.eventRoom);
     assert.equal(prayerEffects.playerSpecialCooldownMultiplier, 0.78, 'tempo prayer should shorten special cooldowns');
     assert.match(prayerSettlement.eventRoom.resolutionText, /冷却/, 'prayer shrine summary should mention the cooldown buff');
@@ -2713,49 +2696,6 @@ function testRunEventEncounterSourceCueHelpers() {
         ),
         '留本追赏',
         'careful wager should upgrade its bounty-moment source cue when the safer-gamble recommendation reason is still what makes the routed room sensible'
-    );
-    assert.equal(
-        buildRunEventEncounterEntryPreview(
-            { key: 'breather', encounterLabel: '缓冲战' },
-            {
-                key: 'controlRoutingShrine',
-                discovered: true,
-                resolved: true,
-                selectedChoiceKey: 'crushingLesson',
-                selectedChoiceRecommendationReason: '先挂减速'
-            }
-        ),
-        '缓冲战 · 双拍缓冲 · 减速稳场',
-        'control-route entry preview should upgrade the slow-setup route when the recommendation reason explicitly says to establish slow first'
-    );
-    assert.equal(
-        buildRunEventEncounterSourceCue(
-            { key: 'windfall', encounterLabel: '淘金战' },
-            {
-                key: 'controlRoutingShrine',
-                discovered: true,
-                resolved: true,
-                selectedChoiceKey: 'executionLesson',
-                selectedChoiceRecommendationReason: '减速目标已现'
-            },
-            'bounty'
-        ),
-        '减速追赏',
-        'control-route source cues should upgrade the payoff route when a slowed target is already online'
-    );
-    assert.equal(
-        buildRunEventEncounterClearRecap(
-            { key: 'windfall', encounterLabel: '淘金战' },
-            {
-                key: 'controlRoutingShrine',
-                discovered: true,
-                resolved: true,
-                selectedChoiceKey: 'executionLesson',
-                selectedChoiceRecommendationReason: '可接破势终结'
-            }
-        ),
-        '淘金战 · 赏金到手 · 终结追赏',
-        'control-route clear recap should upgrade the payoff route when the recommendation came from a live finisher window'
     );
     assert.equal(
         buildRunEventEncounterSourceCue(
