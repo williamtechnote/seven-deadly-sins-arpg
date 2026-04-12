@@ -96,6 +96,7 @@ const {
     buildRunEventEncounterFormationSlots,
     buildRunEventEncounterPayoffPresentation,
     buildRunEventEncounterEntryPreview,
+    buildRunEventEncounterSourceCue,
     buildRunEventEncounterClearRecap,
     formatRunEventRoomChoiceEncounterPreview,
     buildRunChallengeCompletedFeedbackText,
@@ -3096,6 +3097,7 @@ class LevelScene extends Phaser.Scene {
         this._runEventEncounterProfileKey = '';
         this._runEventEncounterProfileAnnouncedKey = '';
         this._runEventEncounterProfileClearRecapKey = '';
+        this._runEventEncounterSourceCueShown = { engage: false, stabilize: false, bounty: false };
         this._levelTextWidthCache = new Map();
         this._levelTextMeasureNodes = {};
         this._createRunEventEncounter(rooms[1]);
@@ -3206,6 +3208,7 @@ class LevelScene extends Phaser.Scene {
         if (runEventEncounterPayoff && runEventEncounterPayoff.receiptLabel) {
             showHitImpactPulse(this, x, y, runEventEncounterPayoff.pulseColor, 16);
             showFloatingCombatText(this, x, y - 54, runEventEncounterPayoff.receiptLabel, runEventEncounterPayoff.receiptColor, 680);
+            this._maybeShowRunEventEncounterSourceCue('bounty', x, y - 76);
         }
         if (drops.gold && drops.gold > 0) {
             this._createPickup(x, y, {
@@ -3522,6 +3525,32 @@ class LevelScene extends Phaser.Scene {
         this.runEventRoomIndicator.setVisible(available && inRange && !this._runEventChoiceOpen);
     }
 
+    _buildRunEventChoicePreviewState() {
+        const weapon = this.player && this.player.currentWeapon ? this.player.currentWeapon : null;
+        const runEffects = GameState.runEffects || DEFAULT_RUN_EFFECTS;
+        const staminaRegenPerSecond = GAME_CONFIG.PLAYER.staminaRegen * (runEffects.playerStaminaRegenMultiplier || 1);
+        return {
+            gold: GameState.gold,
+            playerHp: this.player.hp,
+            playerMaxHp: this.player.maxHp,
+            selectedWeaponKey: this.player.currentWeaponKey,
+            inventory: GameState.inventory,
+            negativeStatuses: Object.keys(this.player.activeStatusEffects || {}),
+            runModifiers: (GameState.runModifiers || []).map(key => getRunModifierByKey(key)),
+            isDodging: this.player.isDodging,
+            dodgeLockoutMs: this.player.dodgeLockoutMsRemaining,
+            dodgePostLockoutCooldownMs: Math.max(200, Math.round(GAME_CONFIG.PLAYER.dodgeCooldown * (runEffects.playerDodgeCooldownMultiplier || 1))),
+            attackCooldownMs: this.player.attackCooldown,
+            specialCooldownMs: this.player.specialCooldown,
+            dodgeCooldownMs: this.player.dodgeCooldownTimer,
+            stamina: this.player.stamina,
+            staminaRegenPerSecond,
+            attackStaminaCost: weapon ? weapon.staminaCost : 0,
+            specialStaminaCost: weapon ? weapon.specialStaminaCost : 0,
+            dodgeStaminaCost: Math.max(1, Math.round(GAME_CONFIG.PLAYER.dodgeStaminaCost * (runEffects.playerDodgeStaminaCostMultiplier || 1)))
+        };
+    }
+
     _openRunEventChoicePanel() {
         const eventRoom = GameState.getRunEventRoomSummary ? GameState.getRunEventRoomSummary() : null;
         if (!eventRoom || eventRoom.resolved || !this.nearestRunEventRoom || !this.runEventChoicePanel) return;
@@ -3537,15 +3566,7 @@ class LevelScene extends Phaser.Scene {
         this.runEventChoicePanel.title.setStyle({ fill: style.labelColor });
         this.runEventChoicePanel.description.setText(eventRoom.description);
         this.runEventChoicePanel.panel.setStrokeStyle(2, style.activeTint);
-        const previewState = {
-            gold: GameState.gold,
-            playerHp: this.player.hp,
-            playerMaxHp: this.player.maxHp,
-            selectedWeaponKey: this.player.currentWeaponKey,
-            inventory: GameState.inventory,
-            negativeStatuses: Object.keys(this.player.activeStatusEffects || {}),
-            runModifiers: (GameState.runModifiers || []).map(key => getRunModifierByKey(key))
-        };
+        const previewState = this._buildRunEventChoicePreviewState();
         const recommendation = buildRunEventRoomChoiceRecommendation(this._runEventChoiceOptions, previewState);
         this._setRunEventChoicePanelFooter(recommendation || RUN_EVENT_CHOICE_PANEL_FOOTER_DEFAULT, 'default');
         this.runEventChoicePanel.optionTexts.forEach((textNode, index) => {
@@ -3708,6 +3729,7 @@ class LevelScene extends Phaser.Scene {
             encounterProfilePending: false
         };
         this._runEventEncounterProfileClearRecapKey = '';
+        this._runEventEncounterSourceCueShown = { engage: false, stabilize: false, bounty: false };
         this._runEventEncounterProfileKey = profile.key;
         return profile;
     }
@@ -3728,6 +3750,17 @@ class LevelScene extends Phaser.Scene {
             encounterEntryPreview,
             profile.key === 'windfall' ? '#ffd27a' : (profile.key === 'pressure' ? '#ffb3a7' : '#9fe3ff')
         );
+    }
+
+    _maybeShowRunEventEncounterSourceCue(moment, x, y) {
+        const safeMoment = typeof moment === 'string' ? moment.trim() : '';
+        if (!safeMoment || this._runEventEncounterSourceCueShown[safeMoment]) return;
+        const profile = getRunEventEncounterProfile(GameState.runEventRoom, RUN_EVENT_ROOM_POOL);
+        if (!profile) return;
+        const cue = buildRunEventEncounterSourceCue(profile, GameState.runEventRoom, safeMoment, RUN_EVENT_ROOM_POOL);
+        if (!cue) return;
+        this._runEventEncounterSourceCueShown[safeMoment] = true;
+        this._showFloatingText(x, y, cue, profile.key === 'windfall' ? '#ffd27a' : (profile.key === 'pressure' ? '#ffb3a7' : '#9fe3ff'));
     }
 
     _maybeShowRunEventEncounterClearRecap() {
@@ -3814,14 +3847,9 @@ class LevelScene extends Phaser.Scene {
 
         const startGold = GameState.gold || 0;
         const startHp = this.player.hp;
-        const settlement = resolveRunEventRoomChoice({
-            gold: startGold,
-            playerHp: this.player.hp,
-            playerMaxHp: this.player.maxHp,
-            selectedWeaponKey: this.player.currentWeaponKey,
-            inventory: GameState.inventory,
-            negativeStatuses: Object.keys(this.player.activeStatusEffects || {})
-        }, GameState.runEventRoom, choice.key, RUN_EVENT_ROOM_POOL);
+        const settlementState = this._buildRunEventChoicePreviewState();
+        settlementState.gold = startGold;
+        const settlement = resolveRunEventRoomChoice(settlementState, GameState.runEventRoom, choice.key, RUN_EVENT_ROOM_POOL);
         if (!settlement.ok) {
             AudioSystem.playUi('ui');
             this._setRunEventChoicePanelFooter(getRunEventRoomChoiceFailureMessage(settlement), 'blocked');
@@ -3972,6 +4000,10 @@ class LevelScene extends Phaser.Scene {
                     }
                     if (drops) {
                         this._spawnDropPickups(enemy.x, enemy.y, drops);
+                        const remainingRoom3Enemies = this.room3Enemies.filter(candidate => candidate && candidate.isAlive);
+                        if (this.room3Enemies.includes(enemy) && this._runEventEncounterProfileKey === 'breather' && remainingRoom3Enemies.length > 0) {
+                            this._maybeShowRunEventEncounterSourceCue('stabilize', enemy.x, enemy.y - 72);
+                        }
                         const challengeCompleted = GameState.onEnemyDefeated();
                         if (challengeCompleted) {
                             showFloatingCombatText(
@@ -4007,6 +4039,10 @@ class LevelScene extends Phaser.Scene {
             }
             if (enemy._statusDrops) {
                 this._spawnDropPickups(enemy.x, enemy.y, enemy._statusDrops);
+                const remainingRoom3Enemies = this.room3Enemies.filter(candidate => candidate && candidate.isAlive);
+                if (this.room3Enemies.includes(enemy) && this._runEventEncounterProfileKey === 'breather' && remainingRoom3Enemies.length > 0) {
+                    this._maybeShowRunEventEncounterSourceCue('stabilize', enemy.x, enemy.y - 72);
+                }
                 const challengeCompleted = GameState.onEnemyDefeated();
                 if (challengeCompleted) {
                     showFloatingCombatText(
@@ -4021,6 +4057,9 @@ class LevelScene extends Phaser.Scene {
                 enemy._statusDrops = null;
             }
             if (attacking) {
+                if (this.room3Enemies.includes(enemy) && this._runEventEncounterProfileKey === 'pressure') {
+                    this._maybeShowRunEventEncounterSourceCue('engage', this.player.x, this.player.y - 96);
+                }
                 const d = Phaser.Math.Distance.Between(enemy.x, enemy.y, this.player.x, this.player.y);
                 if (d < enemy.attackRange + 20) {
                     const died = this.player.takeDamage(enemy.damage);
@@ -8029,8 +8068,9 @@ class HelpScene extends Phaser.Scene {
                 items: [
                     'F — NPC / 事件房交互',
                     '事件房祭坛靠近提示也会按 Phaser 文本实际宽度贴在当前视口内，因此贴近屏幕边缘时不会被裁出画面',
-                    '事件房导向的第三房路线现在不只会在 shrine 结算时预告“下间缓冲”/“下间高压”/“下间淘金”，进房时补“缓冲战 · 双拍缓冲”/“高压战 · 三向成压”/“淘金战 · 后排赏金”，还会在真正清场时再补“缓冲战 · 稳住出清”/“高压战 · 顶住成压”/“淘金战 · 赏金到手”这类短回顾；若已存储的 recommendation reason 仍和 routed encounter 强相关，入口/清场短句还会继续补“缓冲战 · 双拍缓冲 · 净化后稳场”/“高压战 · 三向成压 · 压线抢势”/“淘金战 · 后排赏金 · 血线够追赏”这类更短 echo，命途圣坛的“绝境修习”/“守心修习”也会一起接进“下间高压”/“下间缓冲”',
-                    '事件房 choice panel 若出现明显上下文倾向，还会在底部脚注补“建议 1/2：净泉啜饮 · 可净化2层”这类短推荐，但不会改动原有 1/2 顺序；若玩家真的选了这条高置信路线，已触发后的 HUD / 祭坛世界标签 / 结算浮字也会继续补“治疗: 净泉啜饮 · 可净化2层”这类极短确认',
+                    '事件房导向的第三房路线现在不只会在 shrine 结算时预告“下间缓冲”/“下间高压”/“下间淘金”，进房时补“缓冲战 · 双拍缓冲”/“高压战 · 三向成压”/“淘金战 · 后排赏金”，还会在真正清场时再补“缓冲战 · 稳住出清”/“高压战 · 顶住成压”/“淘金战 · 赏金到手”这类短回顾；若已存储的 recommendation reason 仍和 routed encounter 强相关，入口/清场短句还会继续补“缓冲战 · 双拍缓冲 · 净化后稳场”/“高压战 · 三向成压 · 压线抢势”/“淘金战 · 后排赏金 · 血线够追赏”这类更短 echo，命途圣坛的“绝境修习”/“守心修习”也会一起接进“下间高压”/“下间缓冲”；同一套 routed encounter contract 现也开始吃进 build-facing 路线，武备圣坛的“压阵修习”/“离弦修习”会分别导向“下间高压”/“下间淘金”，烙痕圣坛的“余烬修习”/“血痕修习”则会分别导向“下间缓冲”/“下间高压”；其余行动型 blessing route 也会继续把第三房压成“缓冲/高压/淘金”，并在没有 recommendation receipt 时补“连斩抢拍”/“游步整拍”/“镇步控场”/“破势追杀”/“回息稳场”/“借势重击”/“催锋连段”/“回身整拍”/“追猎追赏”/“调息回线”这类 baseline anchor',
+                    '当第三房真正开始兑现这条 recommendation 时，系统还会只在首个稳场节点/首个高压接敌/首个赏金兑现点再补一次“净化后稳场”/“压线抢势”/“血线够追赏”这类战中 source cue；若 recommendation 来自压阵/离弦/余烬/血痕这些 build-facing 路线，还会对应补“贴身压阵”/“远程追赏”/“灼烧稳场”/“挂血抢势”，把“为什么推荐这条”接到实际交手瞬间；即使没有 recommendation receipt，战技/镇压/战势/连携/反击这些行动型 blessing route 也会在同一拍点补“连斩抢拍”/“游步整拍”/“镇步控场”/“破势追杀”/“回息稳场”/“借势重击”/“催锋连段”/“回身整拍”/“追猎追赏”/“调息回线”',
+                    '事件房 choice panel 若出现明显上下文倾向，还会在底部脚注补“建议 1/2：净泉啜饮 · 可净化2层”这类短推荐，但不会改动原有 1/2 顺序；若玩家真的选了这条高置信路线，已触发后的 HUD / 祭坛世界标签 / 结算浮字也会继续补“治疗: 净泉啜饮 · 可净化2层”这类极短确认；战技/镇压/战势/连携/反击这些行动型 blessing route 也会把 live combat state 接进同一套 recommendation helper，并在高置信场景下给出“建议 1/2：连斩修习 · 普攻卡拍”/“游步修习 · 闪避卡拍”/“镇步修习 · 当前更宜控场”/“借势修习 · 特攻待借势”/“催锋修习 · 特攻待连段”/“回身修习 · 闪避待回身”/“追猎修习 · 可立即追猎”/“调息修习 · 当前更缺回体”这类脚注',
                     '右侧固定侧栏里的章节标题、区域名、本局词缀、本局挑战与事件房摘要会优先按 Phaser 文本实际宽度钳制，并按实际文本高度动态纵向排布，避免长标题 / 长路线结算继续互相顶出 HUD',
                     '这些 compact / ultra-compact / ultra-tight 分档会按实际显示尺寸触发，而不再只依赖固定逻辑画布尺寸',
                     challengeRegularBodyDedupHelpLine,

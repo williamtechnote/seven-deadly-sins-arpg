@@ -651,6 +651,86 @@
         })
     });
 
+    const RUN_EVENT_EXPLICIT_PROFILE_KEYS = Object.freeze({
+        vanguardLesson: 'pressure',
+        bloodtraceLesson: 'pressure',
+        flurryLesson: 'pressure',
+        momentumLesson: 'pressure',
+        sharpeningLesson: 'pressure',
+        longshotLesson: 'windfall',
+        executionLesson: 'windfall',
+        pursuitLesson: 'windfall',
+        emberLesson: 'breather',
+        ghostStepLesson: 'breather',
+        crushingLesson: 'breather',
+        breathingLesson: 'breather',
+        reversalStepLesson: 'breather',
+        focusLesson: 'breather'
+    });
+
+    const RUN_EVENT_BASELINE_ROUTE_FEEDBACK = Object.freeze({
+        flurryLesson: Object.freeze({
+            profileKey: 'pressure',
+            echo: '连斩抢拍',
+            sourceCue: '连斩抢拍',
+            sourceCueMoment: 'engage'
+        }),
+        ghostStepLesson: Object.freeze({
+            profileKey: 'breather',
+            echo: '游步整拍',
+            sourceCue: '游步整拍',
+            sourceCueMoment: 'stabilize'
+        }),
+        crushingLesson: Object.freeze({
+            profileKey: 'breather',
+            echo: '镇步控场',
+            sourceCue: '镇步控场',
+            sourceCueMoment: 'stabilize'
+        }),
+        executionLesson: Object.freeze({
+            profileKey: 'windfall',
+            echo: '破势追杀',
+            sourceCue: '破势追杀',
+            sourceCueMoment: 'bounty'
+        }),
+        breathingLesson: Object.freeze({
+            profileKey: 'breather',
+            echo: '回息稳场',
+            sourceCue: '回息稳场',
+            sourceCueMoment: 'stabilize'
+        }),
+        momentumLesson: Object.freeze({
+            profileKey: 'pressure',
+            echo: '借势重击',
+            sourceCue: '借势重击',
+            sourceCueMoment: 'engage'
+        }),
+        sharpeningLesson: Object.freeze({
+            profileKey: 'pressure',
+            echo: '催锋连段',
+            sourceCue: '催锋连段',
+            sourceCueMoment: 'engage'
+        }),
+        reversalStepLesson: Object.freeze({
+            profileKey: 'breather',
+            echo: '回身整拍',
+            sourceCue: '回身整拍',
+            sourceCueMoment: 'stabilize'
+        }),
+        pursuitLesson: Object.freeze({
+            profileKey: 'windfall',
+            echo: '追猎追赏',
+            sourceCue: '追猎追赏',
+            sourceCueMoment: 'bounty'
+        }),
+        focusLesson: Object.freeze({
+            profileKey: 'breather',
+            echo: '调息回线',
+            sourceCue: '调息回线',
+            sourceCueMoment: 'stabilize'
+        })
+    });
+
     const WEAPON_STATUS_EFFECTS = {
         sword: { key: 'bleed' },
         dualBlades: { key: 'bleed' },
@@ -2483,7 +2563,18 @@
         return tags.length > 0 ? ` [${tags.join('/')}]` : '';
     }
 
+    function getRunEventRoomChoiceExplicitEncounterProfileKey(choice) {
+        const safeChoice = choice && typeof choice === 'object' ? choice : {};
+        const choiceKey = typeof safeChoice.key === 'string' ? safeChoice.key.trim() : '';
+        if (!choiceKey) return '';
+        return RUN_EVENT_EXPLICIT_PROFILE_KEYS[choiceKey] || '';
+    }
+
     function getRunEventRoomChoiceEncounterProfile(choice) {
+        const explicitProfileKey = getRunEventRoomChoiceExplicitEncounterProfileKey(choice);
+        if (explicitProfileKey && RUN_EVENT_ENCOUNTER_PROFILES[explicitProfileKey]) {
+            return RUN_EVENT_ENCOUNTER_PROFILES[explicitProfileKey];
+        }
         const tags = getRunEventRoomChoiceIntentTags(choice);
         if (tags.includes('经济')) return RUN_EVENT_ENCOUNTER_PROFILES.windfall;
         if (tags.includes('爆发') || tags.includes('节奏') || tags.includes('冒险')) {
@@ -2781,6 +2872,66 @@
         return `${basePreview} · ${notes.join(' · ')}`;
     }
 
+    function getCombatActionReadyRecoveryMs(cooldownMs, stamina, staminaCost, staminaRegenPerSecond) {
+        const remainingCooldownMs = Math.max(0, Number(cooldownMs) || 0);
+        const currentStamina = Math.max(0, Number(stamina) || 0);
+        const requiredStamina = Math.max(0, Number(staminaCost) || 0);
+        const safeStaminaRegenPerSecond = Math.max(0, Number(staminaRegenPerSecond) || 0);
+        if (requiredStamina <= currentStamina) return remainingCooldownMs;
+        if (safeStaminaRegenPerSecond <= 0) return Number.POSITIVE_INFINITY;
+        const staminaRecoveryMs = Math.ceil(((requiredStamina - currentStamina) / safeStaminaRegenPerSecond) * 1000);
+        return Math.max(remainingCooldownMs, staminaRecoveryMs);
+    }
+
+    function getRunEventRoomChoiceRecommendationActionState(state) {
+        const safeState = state && typeof state === 'object' ? state : {};
+        const hasActionSignals = [
+            'attackCooldownMs',
+            'specialCooldownMs',
+            'dodgeCooldownMs',
+            'stamina',
+            'staminaRegenPerSecond'
+        ].some(key => safeState[key] != null);
+        if (!hasActionSignals) return null;
+
+        const isDodging = !!safeState.isDodging;
+        const dodgeLockoutMs = Math.max(0, Number(safeState.dodgeLockoutMs) || 0);
+        const stamina = Math.max(0, Number(safeState.stamina) || 0);
+        const staminaRegenPerSecond = Math.max(0, Number(safeState.staminaRegenPerSecond) || 0);
+        const adjustCooldownMs = (value) => {
+            const safeCooldownMs = Math.max(0, Number(value) || 0);
+            return isDodging ? Math.max(0, safeCooldownMs - dodgeLockoutMs) : safeCooldownMs;
+        };
+        const attackCooldownMs = adjustCooldownMs(safeState.attackCooldownMs);
+        const specialCooldownMs = adjustCooldownMs(safeState.specialCooldownMs);
+        const dodgeCooldownMs = isDodging
+            ? Math.max(0, Number(safeState.dodgePostLockoutCooldownMs) || 0)
+            : Math.max(0, Number(safeState.dodgeCooldownMs) || 0);
+        const attackStaminaCost = Math.max(0, Number(safeState.attackStaminaCost) || 0);
+        const specialStaminaCost = Math.max(0, Number(safeState.specialStaminaCost) || 0);
+        const dodgeStaminaCost = Math.max(0, Number(safeState.dodgeStaminaCost) || 0);
+        const buildMetrics = (cooldownMs, staminaCost) => {
+            const readyState = resolveCombatActionReadyState(
+                cooldownMs,
+                stamina,
+                staminaCost,
+                staminaRegenPerSecond
+            );
+            return {
+                recoveryMs: getCombatActionReadyRecoveryMs(cooldownMs, stamina, staminaCost, staminaRegenPerSecond),
+                missingStamina: Math.max(0, Math.ceil(staminaCost - stamina)),
+                isReady: readyState.isReady
+            };
+        };
+
+        return {
+            attack: buildMetrics(attackCooldownMs, attackStaminaCost),
+            special: buildMetrics(specialCooldownMs, specialStaminaCost),
+            dodge: buildMetrics(dodgeCooldownMs, dodgeStaminaCost),
+            stamina
+        };
+    }
+
     function getRunEventRoomChoiceRecommendationDecision(choices, state) {
         const safeChoices = Array.isArray(choices)
             ? choices.filter(choice => choice && typeof choice === 'object').slice(0, 2)
@@ -2799,6 +2950,7 @@
         const negativeStatuses = Array.isArray(safeState.negativeStatuses)
             ? safeState.negativeStatuses.filter(status => typeof status === 'string' && status.trim())
             : [];
+        const actionState = getRunEventRoomChoiceRecommendationActionState(safeState);
         const byKey = new Map(safeChoices.map((choice, index) => [choice.key, { choice, index }]));
         const hasChoice = (key) => byKey.has(key);
         const buildRecommendation = (key, reason) => {
@@ -2855,6 +3007,68 @@
             }
             if (weaponStatus && weaponStatus.key === 'bleed') {
                 return buildRecommendation('bloodtraceLesson', '当前武器可触发');
+            }
+            return null;
+        }
+
+        if (actionState && hasChoice('flurryLesson') && hasChoice('ghostStepLesson')) {
+            if (actionState.attack.recoveryMs >= 900
+                && actionState.attack.recoveryMs >= actionState.dodge.recoveryMs + 400) {
+                return buildRecommendation('flurryLesson', '普攻卡拍');
+            }
+            if (actionState.dodge.recoveryMs >= 900
+                && actionState.dodge.recoveryMs >= actionState.attack.recoveryMs + 400) {
+                return buildRecommendation('ghostStepLesson', '闪避卡拍');
+            }
+            return null;
+        }
+
+        if (actionState && hasChoice('crushingLesson') && hasChoice('executionLesson')) {
+            if (weaponStatus && weaponStatus.key === 'slow') {
+                if (currentHpRatio <= 0.6 || actionState.dodge.recoveryMs >= 900) {
+                    return buildRecommendation('crushingLesson', '当前更宜控场');
+                }
+                if (currentHpRatio >= 0.78
+                    && actionState.attack.recoveryMs <= 400
+                    && actionState.dodge.recoveryMs <= 400) {
+                    return buildRecommendation('executionLesson', '当前可追终结');
+                }
+            }
+            return null;
+        }
+
+        if (actionState && hasChoice('breathingLesson') && hasChoice('momentumLesson')) {
+            if (actionState.attack.missingStamina > 0
+                || actionState.dodge.missingStamina > 0
+                || actionState.special.missingStamina >= 6) {
+                return buildRecommendation('breathingLesson', '当前更缺回线');
+            }
+            if (actionState.dodge.isReady && actionState.special.recoveryMs >= 900) {
+                return buildRecommendation('momentumLesson', '特攻待借势');
+            }
+            return null;
+        }
+
+        if (actionState && hasChoice('sharpeningLesson') && hasChoice('reversalStepLesson')) {
+            if (actionState.attack.isReady && actionState.special.recoveryMs >= 1000) {
+                return buildRecommendation('sharpeningLesson', '特攻待连段');
+            }
+            if (actionState.special.isReady && actionState.dodge.recoveryMs >= 1000) {
+                return buildRecommendation('reversalStepLesson', '闪避待回身');
+            }
+            return null;
+        }
+
+        if (actionState && hasChoice('pursuitLesson') && hasChoice('focusLesson')) {
+            if (actionState.dodge.isReady
+                && actionState.attack.isReady
+                && actionState.special.recoveryMs <= 500
+                && actionState.special.missingStamina <= 0) {
+                return buildRecommendation('pursuitLesson', '可立即追猎');
+            }
+            if (actionState.special.missingStamina > 0
+                || (actionState.special.recoveryMs <= 500 && actionState.stamina <= 10)) {
+                return buildRecommendation('focusLesson', '当前更缺回体');
             }
             return null;
         }
@@ -2918,42 +3132,130 @@
         return choice ? getRunEventRoomChoiceEncounterProfile(choice) : null;
     }
 
-    function getRunEventEncounterRecommendationEcho(runEventRoom, profile, poolOverride) {
+    function getRunEventEncounterRecommendationFeedback(runEventRoom, profile, poolOverride) {
         const normalizedRoom = normalizeRunEventRoom(runEventRoom, poolOverride);
-        if (!normalizedRoom || !normalizedRoom.resolved || !normalizedRoom.selectedChoiceKey) return '';
+        if (!normalizedRoom || !normalizedRoom.resolved || !normalizedRoom.selectedChoiceKey) return null;
 
         const recommendationReason = typeof normalizedRoom.selectedChoiceRecommendationReason === 'string'
             ? normalizedRoom.selectedChoiceRecommendationReason.trim()
             : '';
-        if (!recommendationReason) return '';
+        if (!recommendationReason) return null;
 
         const profileKey = profile && typeof profile === 'object' && typeof profile.key === 'string'
             ? profile.key.trim()
             : '';
-        if (!profileKey) return '';
+        if (!profileKey) return null;
 
         if (profileKey === 'breather') {
             if ((normalizedRoom.selectedChoiceKey === 'purifyingSip' || normalizedRoom.selectedChoiceKey === 'fieldTonic')
                 && /^可净化\d+层$/.test(recommendationReason)) {
-                return '净化后稳场';
+                return {
+                    echo: '净化后稳场',
+                    sourceCue: '净化后稳场',
+                    sourceCueMoment: 'stabilize'
+                };
             }
             if (normalizedRoom.selectedChoiceKey === 'vitalSurge' && recommendationReason === '缺口更大') {
-                return '回线稳场';
+                return {
+                    echo: '回线稳场',
+                    sourceCue: '回线稳场',
+                    sourceCueMoment: 'stabilize'
+                };
             }
             if (normalizedRoom.selectedChoiceKey === 'composureLesson' && recommendationReason === '高血稳定') {
-                return '守心稳场';
+                return {
+                    echo: '守心稳场',
+                    sourceCue: '守心稳场',
+                    sourceCueMoment: 'stabilize'
+                };
+            }
+            if (normalizedRoom.selectedChoiceKey === 'emberLesson' && recommendationReason === '当前武器可触发') {
+                return {
+                    echo: '灼烧稳场',
+                    sourceCue: '灼烧稳场',
+                    sourceCueMoment: 'stabilize'
+                };
             }
         }
 
-        if (profileKey === 'pressure' && normalizedRoom.selectedChoiceKey === 'desperationLesson' && recommendationReason === '已处绝境线') {
-            return '压线抢势';
+        if (profileKey === 'pressure') {
+            if (normalizedRoom.selectedChoiceKey === 'desperationLesson' && recommendationReason === '已处绝境线') {
+                return {
+                    echo: '压线抢势',
+                    sourceCue: '压线抢势',
+                    sourceCueMoment: 'engage'
+                };
+            }
+            if (normalizedRoom.selectedChoiceKey === 'vanguardLesson' && recommendationReason === '当前持近战') {
+                return {
+                    echo: '贴身压阵',
+                    sourceCue: '贴身压阵',
+                    sourceCueMoment: 'engage'
+                };
+            }
+            if (normalizedRoom.selectedChoiceKey === 'bloodtraceLesson' && recommendationReason === '当前武器可触发') {
+                return {
+                    echo: '挂血抢势',
+                    sourceCue: '挂血抢势',
+                    sourceCueMoment: 'engage'
+                };
+            }
         }
 
-        if (profileKey === 'windfall' && normalizedRoom.selectedChoiceKey === 'highStakeWager' && recommendationReason === '当前血线更能承受') {
-            return '血线够追赏';
+        if (profileKey === 'windfall') {
+            if (normalizedRoom.selectedChoiceKey === 'highStakeWager' && recommendationReason === '当前血线更能承受') {
+                return {
+                    echo: '血线够追赏',
+                    sourceCue: '血线够追赏',
+                    sourceCueMoment: 'bounty'
+                };
+            }
+            if (normalizedRoom.selectedChoiceKey === 'longshotLesson' && recommendationReason === '当前持远程') {
+                return {
+                    echo: '远程追赏',
+                    sourceCue: '远程追赏',
+                    sourceCueMoment: 'bounty'
+                };
+            }
         }
 
-        return '';
+        return null;
+    }
+
+    function getRunEventEncounterBaselineRouteFeedback(choiceKey, profileKey) {
+        const safeChoiceKey = typeof choiceKey === 'string' ? choiceKey.trim() : '';
+        const safeProfileKey = typeof profileKey === 'string' ? profileKey.trim() : '';
+        if (!safeChoiceKey || !safeProfileKey) return null;
+        const feedback = RUN_EVENT_BASELINE_ROUTE_FEEDBACK[safeChoiceKey];
+        if (!feedback || feedback.profileKey !== safeProfileKey) return null;
+        return feedback;
+    }
+
+    function getRunEventEncounterFeedback(runEventRoom, profile, poolOverride) {
+        const normalizedRoom = normalizeRunEventRoom(runEventRoom, poolOverride);
+        if (!normalizedRoom || !normalizedRoom.resolved || !normalizedRoom.selectedChoiceKey) return null;
+
+        const profileKey = profile && typeof profile === 'object' && typeof profile.key === 'string'
+            ? profile.key.trim()
+            : '';
+        if (!profileKey) return null;
+
+        const recommendationFeedback = getRunEventEncounterRecommendationFeedback(normalizedRoom, profile, poolOverride);
+        if (recommendationFeedback) return recommendationFeedback;
+        return getRunEventEncounterBaselineRouteFeedback(normalizedRoom.selectedChoiceKey, profileKey);
+    }
+
+    function getRunEventEncounterRecommendationEcho(runEventRoom, profile, poolOverride) {
+        const feedback = getRunEventEncounterFeedback(runEventRoom, profile, poolOverride);
+        return feedback && typeof feedback.echo === 'string' ? feedback.echo : '';
+    }
+
+    function buildRunEventEncounterSourceCue(profile, runEventRoom, moment, poolOverride) {
+        const safeMoment = typeof moment === 'string' ? moment.trim() : '';
+        if (!safeMoment) return '';
+        const feedback = getRunEventEncounterFeedback(runEventRoom, profile, poolOverride);
+        if (!feedback || feedback.sourceCueMoment !== safeMoment) return '';
+        return typeof feedback.sourceCue === 'string' ? feedback.sourceCue : '';
     }
 
     function buildRunEventEncounterEntryPreview(profile, runEventRoom, poolOverride) {
@@ -5587,6 +5889,7 @@
         buildRunEventEncounterFormationSlots,
         buildRunEventEncounterPayoffPresentation,
         buildRunEventEncounterEntryPreview,
+        buildRunEventEncounterSourceCue,
         buildRunEventEncounterClearRecap,
         formatRunEventRoomChoiceEncounterPreview,
         getRunEventRoomChoiceAffordabilityLabel,
