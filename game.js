@@ -56,7 +56,7 @@ const {
     buildCombatActionHudSummary,
     getStaminaPayoffPulsePresentation,
     buildQuickSlotItemLabel,
-    buildQuickSlotAutoAssignNotice,
+    buildQuickSlotAutoAssignResult,
     getViewportTextClampX,
     getViewportCenteredTextClampX,
     getInventoryTooltipClampX,
@@ -71,7 +71,6 @@ const {
     getRunModifierHeadingPresentation,
     buildVerticalTextStackLayout,
     buildPriorityTextStackLayout,
-    getQuickSlotAutoAssignIndex,
     normalizeSaveData,
     serializeSaveData,
     deserializeSaveData,
@@ -92,7 +91,12 @@ const {
     buildRunModifierEffects,
     buildRunEventRoomEffects,
     buildRunEventRoomChoicePanelPreview,
+    buildRunEventRoomChoiceRecommendation,
     buildRunEventEncounterRoster,
+    buildRunEventEncounterFormationSlots,
+    buildRunEventEncounterPayoffPresentation,
+    buildRunEventEncounterEntryPreview,
+    buildRunEventEncounterClearRecap,
     formatRunEventRoomChoiceEncounterPreview,
     buildRunChallengeCompletedFeedbackText,
     buildRunChallengeSidebarLines,
@@ -112,7 +116,18 @@ const {
     getRequiredMaterialForWeapon,
     canUpgradeWeapon,
     applyWeaponUpgrade,
+    buildWeaponUpgradeAffordance,
+    buildWeaponUpgradePreviewSummary,
+    buildWeaponUpgradeRowLabel,
+    buildWeaponUpgradeFailureMessage,
+    buildWeaponUpgradeSuccessMessage,
     canCraftRecipe,
+    buildCraftRecipeAffordance,
+    buildCraftRecipeRowLabel,
+    buildCraftRecipeQuickSlotPreview,
+    buildCraftRecipeBatchReceipt,
+    buildCraftRecipeFailureMessage,
+    buildCraftRecipeSuccessMessage,
     applyCraftRecipe
 } = Core;
 
@@ -632,6 +647,7 @@ const GameState = {
             resolved: !!this.runEventRoom.resolved,
             selectedChoiceKey: this.runEventRoom.selectedChoiceKey || null,
             selectedChoiceLabel: this.runEventRoom.selectedChoiceLabel || '',
+            selectedChoiceRecommendationReason: this.runEventRoom.selectedChoiceRecommendationReason || '',
             resolutionText: this.runEventRoom.resolutionText || '',
             encounterProfilePending: !!this.runEventRoom.encounterProfilePending
         };
@@ -2367,6 +2383,8 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
         this.attackCooldown = 0;
         this.attackCooldownMs = 1000;
         this.isAlive = true;
+        this._runEventEncounterEngageAt = 0;
+        this._runEventEncounterBountyTag = null;
 
         // HP bar: background (30×4, 0x333333) and fill (30×4, red)
         this.hpBarBg = scene.add.graphics();
@@ -2392,6 +2410,21 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
         const moveScale = this._updateStatusEffects(time);
 
         if (this.state === 'dead') return;
+
+        const engageAt = Number(this._runEventEncounterEngageAt) || 0;
+        if (engageAt > 0 && time < engageAt) {
+            this.state = 'patrol';
+            this.setVelocity(0, 0);
+            this.hpBarBg.setPosition(this.x, this.y);
+            this.hpBarFill.setPosition(this.x, this.y);
+            const hpRatio = Math.max(0, Math.min(1, this.hp / this.maxHp));
+            this.hpBarFill.clear();
+            this.hpBarFill.fillStyle(0xE74C3C, 1);
+            this.hpBarFill.fillRect(-15, -28, 30 * hpRatio, 4);
+            if (this.statusAura) this.statusAura.setPosition(this.x, this.y);
+            if (this._runEventEncounterBountyTag) this._runEventEncounterBountyTag.setPosition(this.x, this.y - 40);
+            return false;
+        }
 
         const dist = playerSprite
             ? Phaser.Math.Distance.Between(this.x, this.y, playerSprite.x, playerSprite.y)
@@ -2433,6 +2466,7 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
         this.hpBarFill.fillStyle(0xE74C3C, 1);
         this.hpBarFill.fillRect(-15, -28, 30 * hpRatio, 4);
         if (this.statusAura) this.statusAura.setPosition(this.x, this.y);
+        if (this._runEventEncounterBountyTag) this._runEventEncounterBountyTag.setPosition(this.x, this.y - 40);
 
         return this.state === 'attack';
     }
@@ -2524,6 +2558,10 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
                 this.statusAura.destroy();
                 this.statusAura = null;
             }
+            if (this._runEventEncounterBountyTag) {
+                this._runEventEncounterBountyTag.destroy();
+                this._runEventEncounterBountyTag = null;
+            }
             this.isAlive = false;
 
             const drops = { gold: 0, items: [] };
@@ -2535,6 +2573,10 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
                 } else {
                     drops.gold = Math.round(this.drops.gold * goldScale);
                 }
+            }
+            const runEventEncounterPayoff = buildRunEventEncounterPayoffPresentation(this._runEventEncounterFormation, drops.gold);
+            if (runEventEncounterPayoff) {
+                drops.runEventEncounterPayoff = runEventEncounterPayoff;
             }
             drops.items.push(...this._rollExtraDrops());
             return drops;
@@ -2561,6 +2603,7 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
         if (this.hpBarBg && this.hpBarBg.active) this.hpBarBg.destroy();
         if (this.hpBarFill && this.hpBarFill.active) this.hpBarFill.destroy();
         if (this.statusAura && this.statusAura.active) this.statusAura.destroy();
+        if (this._runEventEncounterBountyTag && this._runEventEncounterBountyTag.active) this._runEventEncounterBountyTag.destroy();
         super.destroy();
     }
 }
@@ -3052,6 +3095,7 @@ class LevelScene extends Phaser.Scene {
         this._runEventChoiceOptions = [];
         this._runEventEncounterProfileKey = '';
         this._runEventEncounterProfileAnnouncedKey = '';
+        this._runEventEncounterProfileClearRecapKey = '';
         this._levelTextWidthCache = new Map();
         this._levelTextMeasureNodes = {};
         this._createRunEventEncounter(rooms[1]);
@@ -3156,11 +3200,19 @@ class LevelScene extends Phaser.Scene {
 
     _spawnDropPickups(x, y, drops) {
         if (!drops) return;
+        const runEventEncounterPayoff = drops && typeof drops.runEventEncounterPayoff === 'object'
+            ? drops.runEventEncounterPayoff
+            : null;
+        if (runEventEncounterPayoff && runEventEncounterPayoff.receiptLabel) {
+            showHitImpactPulse(this, x, y, runEventEncounterPayoff.pulseColor, 16);
+            showFloatingCombatText(this, x, y - 54, runEventEncounterPayoff.receiptLabel, runEventEncounterPayoff.receiptColor, 680);
+        }
         if (drops.gold && drops.gold > 0) {
             this._createPickup(x, y, {
                 kind: 'gold',
                 amount: drops.gold,
-                color: 0xFFD700,
+                color: runEventEncounterPayoff && runEventEncounterPayoff.pickupTint ? runEventEncounterPayoff.pickupTint : 0xFFD700,
+                scale: runEventEncounterPayoff && runEventEncounterPayoff.pickupScale ? runEventEncounterPayoff.pickupScale : 1.1,
                 label: '金币 +' + drops.gold
             });
         }
@@ -3182,7 +3234,10 @@ class LevelScene extends Phaser.Scene {
     _createPickup(x, y, data) {
         const pickup = this.physics.add.sprite(x, y, 'projectile');
         pickup.setDepth(8);
-        pickup.setScale(data.kind === 'gold' ? 1.1 : 0.9);
+        const pickupScale = Number.isFinite(Number(data.scale))
+            ? Math.max(0.6, Number(data.scale))
+            : (data.kind === 'gold' ? 1.1 : 0.9);
+        pickup.setScale(pickupScale);
         pickup.setTint(data.color || 0xFFFFFF);
         pickup.body.setAllowGravity(false);
         pickup.body.setImmovable(true);
@@ -3482,7 +3537,17 @@ class LevelScene extends Phaser.Scene {
         this.runEventChoicePanel.title.setStyle({ fill: style.labelColor });
         this.runEventChoicePanel.description.setText(eventRoom.description);
         this.runEventChoicePanel.panel.setStrokeStyle(2, style.activeTint);
-        this._setRunEventChoicePanelFooter(RUN_EVENT_CHOICE_PANEL_FOOTER_DEFAULT, 'default');
+        const previewState = {
+            gold: GameState.gold,
+            playerHp: this.player.hp,
+            playerMaxHp: this.player.maxHp,
+            selectedWeaponKey: this.player.currentWeaponKey,
+            inventory: GameState.inventory,
+            negativeStatuses: Object.keys(this.player.activeStatusEffects || {}),
+            runModifiers: (GameState.runModifiers || []).map(key => getRunModifierByKey(key))
+        };
+        const recommendation = buildRunEventRoomChoiceRecommendation(this._runEventChoiceOptions, previewState);
+        this._setRunEventChoicePanelFooter(recommendation || RUN_EVENT_CHOICE_PANEL_FOOTER_DEFAULT, 'default');
         this.runEventChoicePanel.optionTexts.forEach((textNode, index) => {
             const choice = this._runEventChoiceOptions[index];
             if (!choice) {
@@ -3490,15 +3555,6 @@ class LevelScene extends Phaser.Scene {
                 textNode.setVisible(false);
                 return;
             }
-            const previewState = {
-                gold: GameState.gold,
-                playerHp: this.player.hp,
-                playerMaxHp: this.player.maxHp,
-                selectedWeaponKey: this.player.currentWeaponKey,
-                inventory: GameState.inventory,
-                negativeStatuses: Object.keys(this.player.activeStatusEffects || {}),
-                runModifiers: (GameState.runModifiers || []).map(key => getRunModifierByKey(key))
-            };
             const affordabilityLabel = getRunEventRoomChoiceAffordabilityLabel(choice, previewState);
             const previewText = buildRunEventRoomChoicePanelPreview(choice, previewState);
             const encounterPreview = formatRunEventRoomChoiceEncounterPreview(choice);
@@ -3561,31 +3617,50 @@ class LevelScene extends Phaser.Scene {
         enemy.destroy();
     }
 
-    _spawnRoom3EnemyFromRoster(enemyKey, slotIndex, totalSlots) {
-        if (!this.room3Bounds || !enemyKey) return null;
-        const slotCount = Math.max(1, Number(totalSlots) || 1);
-        const index = Math.max(0, Number(slotIndex) || 0);
-        const laneRatio = (index + 1) / (slotCount + 1);
+    _spawnRoom3EnemyFromFormationSlot(slot) {
+        if (!this.room3Bounds || !slot || typeof slot !== 'object') return null;
+        const safeSlot = slot;
+        const enemyKey = typeof safeSlot.enemyKey === 'string' ? safeSlot.enemyKey.trim() : '';
+        if (!enemyKey) return null;
+        const laneRatio = Math.max(0.18, Math.min(0.88, Number(safeSlot.laneRatio) || 0.5));
+        const depthBand = typeof safeSlot.depthBand === 'string' ? safeSlot.depthBand : 'mid';
+        const flankOffset = Math.max(-1, Math.min(1, Number(safeSlot.flankOffset) || 0));
+        const engageDelayMs = Math.max(0, Number(safeSlot.engageDelayMs) || 0);
+        const goldDropMultiplier = Math.max(0.2, Number(safeSlot.goldDropMultiplier) || 1);
+        const bountyLabel = typeof safeSlot.bountyLabel === 'string' ? safeSlot.bountyLabel.trim() : '';
         const ex = this.room3Bounds.x + Math.round(this.room3Bounds.w * laneRatio);
-        const verticalOffset = slotCount <= 1 ? 0 : (index % 2 === 0 ? -68 : 68);
-        const ey = this.room3Bounds.y + this.room3Bounds.h / 2 + verticalOffset;
+        const depthNudge = depthBand === 'back' ? 18 * flankOffset : (depthBand === 'front' ? -12 * flankOffset : 0);
+        const ey = this.room3Bounds.y + this.room3Bounds.h / 2 + flankOffset * 82 + depthNudge;
         const enemy = new Enemy(this, ex, ey, enemyKey);
+        enemy._runEventEncounterEngageAt = this.time.now + engageDelayMs;
+        enemy._runEventEncounterFormation = { laneRatio, depthBand, flankOffset, engageDelayMs, goldDropMultiplier, bountyLabel };
+        enemy._runEventEncounterBountyTag = bountyLabel ? this.add.text(
+            ex,
+            ey - 40,
+            bountyLabel,
+            {
+                fontSize: '12px',
+                fill: '#ffd27a',
+                stroke: '#4c3100',
+                strokeThickness: 2
+            }
+        ).setOrigin(0.5).setDepth(9) : null;
         this.enemies.push(enemy);
         return enemy;
     }
 
-    _rebuildRoom3EnemiesFromRoster(rosterKeys) {
+    _rebuildRoom3EnemiesFromFormationSlots(formationSlots) {
         if (!this.room3Bounds) return;
-        const safeRoster = Array.isArray(rosterKeys)
-            ? rosterKeys.filter(key => typeof key === 'string' && key.trim())
+        const safeFormation = Array.isArray(formationSlots)
+            ? formationSlots.filter(slot => slot && typeof slot === 'object' && typeof slot.enemyKey === 'string' && slot.enemyKey.trim())
             : [];
-        if (safeRoster.length === 0) return;
+        if (safeFormation.length === 0) return;
         const previousRoom3Enemies = Array.isArray(this.room3Enemies) ? [...this.room3Enemies] : [];
         previousRoom3Enemies.forEach(enemy => this._destroyEnemyInstance(enemy));
         this.enemies = (Array.isArray(this.enemies) ? this.enemies : [])
             .filter(enemy => !previousRoom3Enemies.includes(enemy));
-        this.room3Enemies = safeRoster
-            .map((enemyKey, index) => this._spawnRoom3EnemyFromRoster(enemyKey, index, safeRoster.length))
+        this.room3Enemies = safeFormation
+            .map(slot => this._spawnRoom3EnemyFromFormationSlot(slot))
             .filter(Boolean);
     }
 
@@ -3595,7 +3670,8 @@ class LevelScene extends Phaser.Scene {
             ? AREA_ENEMIES[this.bossKey]
             : ['wrathSoldier', 'wrathArcher', 'wrathBrute'];
         const rosterKeys = buildRunEventEncounterRoster(profile, enemyPool, ENEMIES);
-        this._rebuildRoom3EnemiesFromRoster(rosterKeys);
+        const formationSlots = buildRunEventEncounterFormationSlots(profile, rosterKeys);
+        this._rebuildRoom3EnemiesFromFormationSlots(formationSlots);
         const hpScale = Math.max(0.5, Number(profile.enemyHpMultiplier) || 1);
         const speedScale = Math.max(0.5, Number(profile.enemySpeedMultiplier) || 1);
         const goldScale = Math.max(0.5, Number(profile.enemyGoldMultiplier) || 1);
@@ -3610,12 +3686,13 @@ class LevelScene extends Phaser.Scene {
                 };
             }
             const baseStats = enemy._runEventEncounterBase;
+            const slotGoldScale = Math.max(0.2, Number(enemy._runEventEncounterFormation && enemy._runEventEncounterFormation.goldDropMultiplier) || 1);
             const hpRatio = enemy.maxHp > 0 ? Math.max(0.05, Math.min(1, enemy.hp / enemy.maxHp)) : 1;
             enemy.maxHp = Math.max(1, Math.round(baseStats.maxHp * hpScale));
             enemy.hp = Math.max(1, Math.round(enemy.maxHp * hpRatio));
             enemy.speed = Math.max(20, Math.round(baseStats.speed * speedScale));
             enemy.baseSpeed = Math.max(20, Math.round(baseStats.baseSpeed * speedScale));
-            enemy.drops = this._scaleEnemyDropGold(baseStats.drops, goldScale);
+            enemy.drops = this._scaleEnemyDropGold(baseStats.drops, goldScale * slotGoldScale);
             enemy._runEventEncounterProfileKey = profile.key;
         });
     }
@@ -3630,6 +3707,7 @@ class LevelScene extends Phaser.Scene {
             ...GameState.runEventRoom,
             encounterProfilePending: false
         };
+        this._runEventEncounterProfileClearRecapKey = '';
         this._runEventEncounterProfileKey = profile.key;
         return profile;
     }
@@ -3639,13 +3717,31 @@ class LevelScene extends Phaser.Scene {
         if (!this._runEventEncounterProfileKey) return;
         const profile = getRunEventEncounterProfile(GameState.runEventRoom, RUN_EVENT_ROOM_POOL);
         if (!profile || this._runEventEncounterProfileAnnouncedKey === profile.key) return;
+        const encounterEntryPreview = buildRunEventEncounterEntryPreview(profile, GameState.runEventRoom);
+        if (!encounterEntryPreview) return;
         const enteredRoom3 = this.player.x >= this.room3Bounds.x + 48;
         if (!enteredRoom3) return;
         this._runEventEncounterProfileAnnouncedKey = profile.key;
         this._showFloatingText(
             this.room3Bounds.x + this.room3Bounds.w / 2,
             this.room3Bounds.y + 44,
-            profile.encounterLabel,
+            encounterEntryPreview,
+            profile.key === 'windfall' ? '#ffd27a' : (profile.key === 'pressure' ? '#ffb3a7' : '#9fe3ff')
+        );
+    }
+
+    _maybeShowRunEventEncounterClearRecap() {
+        if (!this.room3Bounds || !this.bossDoor || !Array.isArray(this.room3Enemies)) return;
+        const room3AllDead = this.room3Enemies.every(e => !e.isAlive);
+        if (!room3AllDead || this._runEventEncounterProfileClearRecapKey === this._runEventEncounterProfileKey) return;
+        const profile = getRunEventEncounterProfile(GameState.runEventRoom, RUN_EVENT_ROOM_POOL);
+        const encounterClearRecap = buildRunEventEncounterClearRecap(profile, GameState.runEventRoom);
+        if (!encounterClearRecap) return;
+        this._runEventEncounterProfileClearRecapKey = this._runEventEncounterProfileKey;
+        this._showFloatingText(
+            this.room3Bounds.x + this.room3Bounds.w / 2,
+            this.room3Bounds.y + 72,
+            encounterClearRecap,
             profile.key === 'windfall' ? '#ffd27a' : (profile.key === 'pressure' ? '#ffb3a7' : '#9fe3ff')
         );
     }
@@ -3655,7 +3751,14 @@ class LevelScene extends Phaser.Scene {
         const style = this._getRunEventRoomVisualConfig(settlement.eventRoom);
         const goldDelta = (settlement.nextState.gold || 0) - startGold;
         const hpDelta = (settlement.nextState.playerHp || startHp) - startHp;
+        const recommendationReason = typeof settlement.eventRoom.selectedChoiceRecommendationReason === 'string'
+            ? settlement.eventRoom.selectedChoiceRecommendationReason.trim()
+            : '';
         const lines = [{ text: settlement.choice.label, color: style.accentColor }];
+
+        if (recommendationReason) {
+            lines.push({ text: recommendationReason, color: '#fff0c4' });
+        }
 
         if (goldDelta !== 0) {
             lines.push({
@@ -3714,7 +3817,10 @@ class LevelScene extends Phaser.Scene {
         const settlement = resolveRunEventRoomChoice({
             gold: startGold,
             playerHp: this.player.hp,
-            playerMaxHp: this.player.maxHp
+            playerMaxHp: this.player.maxHp,
+            selectedWeaponKey: this.player.currentWeaponKey,
+            inventory: GameState.inventory,
+            negativeStatuses: Object.keys(this.player.activeStatusEffects || {})
         }, GameState.runEventRoom, choice.key, RUN_EVENT_ROOM_POOL);
         if (!settlement.ok) {
             AudioSystem.playUi('ui');
@@ -3942,6 +4048,8 @@ class LevelScene extends Phaser.Scene {
                 }
             }
         }
+
+        this._maybeShowRunEventEncounterClearRecap();
 
         // Boss door activation when all Room 3 enemies dead
         const room3AllDead = this.room3Enemies.every(e => !e.isAlive);
@@ -6364,22 +6472,11 @@ class InventoryScene extends Phaser.Scene {
                 zone.on('pointerover', () => this._showTooltip(zone.itemDesc, x, y + cellH / 2 + 10));
                 zone.on('pointerout', () => this._hideTooltip());
                 zone.on('pointerdown', () => {
-                    const didOverwrite = !GameState.quickSlots.some(slotKey => !slotKey);
-                    const slot = getQuickSlotAutoAssignIndex(GameState.quickSlots);
-                    const replacedItemKey = didOverwrite ? GameState.quickSlots[slot] : null;
-                    const assignedItemName = item && item.name;
-                    const replacedItemName = replacedItemKey && ITEMS[replacedItemKey]
-                        ? ITEMS[replacedItemKey].name
-                        : '';
-                    GameState.quickSlots[slot] = key;
-                    this._showAutoAssignMessage(buildQuickSlotAutoAssignNotice(slot, {
-                        didOverwrite,
-                        assignedItemKey: key,
-                        assignedItemName,
-                        replacedItemKey,
-                        replacedItemName,
+                    const autoAssign = buildQuickSlotAutoAssignResult(GameState.quickSlots, key, ITEMS, {
                         measureLabelWidth: label => this._measureQuickSlotNoticeLabel(label)
-                    }));
+                    });
+                    GameState.quickSlots = autoAssign.nextQuickSlots;
+                    this._showAutoAssignMessage(autoAssign.notice);
                     this._buildGrid();
                 });
                 this.gridContainer.add([box, txt, cnt, zone]);
@@ -6563,6 +6660,15 @@ class BlacksmithScene extends Phaser.Scene {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
         this.sceneWidth = width;
+        this._blacksmithTextWidthCache = new Map();
+        this._upgradeButtonX = width / 2 + 80;
+        this._weaponRowTextX = width / 2 - 250;
+        this._weaponRowTextMaxWidth = Math.max(0, this._upgradeButtonX - this._weaponRowTextX - 18);
+        this._upgradeButtonTextMaxWidth = Math.max(0, width - this._upgradeButtonX - 36);
+        this._craftRecipeTextX = width / 2 - 250;
+        this._craftRecipeButtonX = width / 2 + 180;
+        this._craftRecipeTextMaxWidth = Math.max(0, this._craftRecipeButtonX - this._craftRecipeTextX - 18);
+        this._craftMessageMaxWidth = Math.max(0, width - 120);
 
         const overlay = this.add.graphics();
         overlay.fillStyle(0x000000, 0.7);
@@ -6589,20 +6695,23 @@ class BlacksmithScene extends Phaser.Scene {
             const unlocked = GameState.unlockedWeapons.includes(key);
             const level = (GameState.weaponLevels || {})[key] || 1;
 
-            const displayName = unlocked ? weapon.name + ' Lv.' + level : '???';
-            const rowText = this.add.text(width / 2 - 250, y, displayName, {
+            const displayName = unlocked ? this._buildWeaponRowText(key) : '???';
+            const rowText = this.add.text(this._weaponRowTextX, y, displayName, {
                 fontSize: '18px',
                 fill: unlocked ? '#ffffff' : '#666666'
             }).setScrollFactor(0).setDepth(1);
 
+            const row = { key, rowText, upgradeBtn: null, unlocked };
             let upgradeBtn = null;
-            if (unlocked && level < 3) {
+            if (unlocked) {
                 const config = this._buildUpgradeConfig(key, level);
                 if (config) {
                     upgradeBtn = this._createUpgradeButton(key, rowText, y, config);
+                    upgradeBtn.parentRow = row;
                 }
             }
-            this.weaponRows.push({ key, rowText, upgradeBtn });
+            row.upgradeBtn = upgradeBtn;
+            this.weaponRows.push(row);
             y += 45;
         });
 
@@ -6615,7 +6724,7 @@ class BlacksmithScene extends Phaser.Scene {
         y += 34;
         this.craftRows = [];
         Object.keys(CRAFTING_RECIPES).forEach((recipeKey) => {
-            const rowText = this.add.text(width / 2 - 250, y, this._buildCraftLabel(recipeKey), {
+            const rowText = this.add.text(this._craftRecipeTextX, y, this._buildCraftLabel(recipeKey), {
                 fontSize: '16px',
                 fill: '#ffffff'
             }).setScrollFactor(0).setDepth(1);
@@ -6623,62 +6732,129 @@ class BlacksmithScene extends Phaser.Scene {
             this.craftRows.push({ recipeKey, rowText, craftBtn });
             y += 40;
         });
+        this._refreshWeaponRows();
+        this._refreshCraftRows();
 
         this.messageText = this.add.text(width / 2, height - 80, '', {
             fontSize: '18px',
             fill: '#44ff44'
         }).setOrigin(0.5).setScrollFactor(0).setDepth(1).setVisible(false);
+        this._quickSlotNoticeMeasureText = this.add.text(-1000, -1000, '', {
+            fontSize: '18px',
+            fill: '#7dffb3'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(0).setVisible(false);
 
         this.input.keyboard.on('keydown-ESC', () => this._close());
         this.input.keyboard.on('keydown-F', () => this._close());
     }
 
+    _getBlacksmithTextMeasureNode(styleKey) {
+        if (!this._blacksmithTextMeasureNodes) {
+            this._blacksmithTextMeasureNodes = {};
+        }
+        const cached = this._blacksmithTextMeasureNodes[styleKey];
+        if (cached && !cached.active) {
+            this._blacksmithTextMeasureNodes[styleKey] = null;
+        }
+        if (!this._blacksmithTextMeasureNodes[styleKey]) {
+            let style = { fontSize: '16px', fill: '#ffffff' };
+            if (styleKey === 'craftMessage') {
+                style = { fontSize: '18px', fill: '#44ff44' };
+            } else if (styleKey === 'upgradeButton') {
+                style = { fontSize: '14px', fill: '#4a90d9' };
+            } else if (styleKey === 'weaponRow') {
+                style = { fontSize: '18px', fill: '#ffffff' };
+            }
+            this._blacksmithTextMeasureNodes[styleKey] = this.add.text(-1000, -1000, '', style)
+                .setVisible(false)
+                .setScrollFactor(0)
+                .setDepth(0);
+        }
+        return this._blacksmithTextMeasureNodes[styleKey];
+    }
+
+    _measureBlacksmithTextWidth(text, styleKey) {
+        const safeText = typeof text === 'string' ? text : '';
+        if (!safeText) return 0;
+        const cacheKey = `${styleKey}:${safeText}`;
+        if (this._blacksmithTextWidthCache && this._blacksmithTextWidthCache.has(cacheKey)) {
+            return this._blacksmithTextWidthCache.get(cacheKey);
+        }
+        const measureText = this._getBlacksmithTextMeasureNode(styleKey);
+        measureText.setText(safeText);
+        const width = measureText.width;
+        if (this._blacksmithTextWidthCache) {
+            this._blacksmithTextWidthCache.set(cacheKey, width);
+        }
+        return width;
+    }
+
+    _buildUpgradeLabel(weaponKey, level) {
+        return buildWeaponUpgradeRowLabel(weaponKey, level, ITEMS, {
+            maxWidth: this._upgradeButtonTextMaxWidth,
+            measureTextWidth: text => this._measureBlacksmithTextWidth(text, 'upgradeButton')
+        });
+    }
+
+    _buildWeaponRowText(weaponKey) {
+        return buildWeaponUpgradePreviewSummary(weaponKey, GameState, WEAPONS, ITEMS, WEAPON_SCALING, {
+            maxWidth: this._weaponRowTextMaxWidth,
+            measureTextWidth: text => this._measureBlacksmithTextWidth(text, 'weaponRow')
+        });
+    }
+
     _buildUpgradeConfig(weaponKey, level) {
         const cost = getUpgradeCostForLevel(level);
         const requiredMaterialKey = getRequiredMaterialForWeapon(weaponKey);
-        if (!cost || !requiredMaterialKey) return null;
+        if (!requiredMaterialKey) return null;
         const requiredMaterialName = ITEMS[requiredMaterialKey] ? ITEMS[requiredMaterialKey].name : requiredMaterialKey;
+        if (!cost) {
+            return {
+                cost: null,
+                requiredMaterialKey,
+                requiredMaterialName,
+                isMaxLevel: true,
+                label: this._buildUpgradeLabel(weaponKey, level)
+            };
+        }
         return {
             cost,
             requiredMaterialKey,
             requiredMaterialName,
-            label: '[强化] ' + cost.gold + '金+' + cost.essence + requiredMaterialName
+            label: this._buildUpgradeLabel(weaponKey, level)
         };
     }
 
     _createUpgradeButton(weaponKey, rowText, y, config) {
-        const upgradeBtn = this.add.text(this.sceneWidth / 2 + 80, y, config.label, {
+        const isMaxLevel = !!(config && config.isMaxLevel);
+        const upgradeBtn = this.add.text(this._upgradeButtonX, y, config.label, {
             fontSize: '14px',
-            fill: '#4a90d9'
-        }).setOrigin(0, 0.5).setScrollFactor(0).setInteractive({ useHandCursor: true }).setDepth(1);
+            fill: isMaxLevel ? '#98a2b3' : '#4a90d9'
+        }).setOrigin(0, 0.5).setScrollFactor(0).setDepth(1);
         upgradeBtn.weaponKey = weaponKey;
         upgradeBtn.cost = config.cost;
         upgradeBtn.requiredMaterialKey = config.requiredMaterialKey;
         upgradeBtn.requiredMaterialName = config.requiredMaterialName;
         upgradeBtn.rowText = rowText;
-        upgradeBtn.on('pointerover', () => upgradeBtn.setStyle({ fill: '#6ab0ff' }));
-        upgradeBtn.on('pointerout', () => upgradeBtn.setStyle({ fill: '#4a90d9' }));
-        upgradeBtn.on('pointerdown', () => this._tryUpgrade(upgradeBtn));
+        upgradeBtn.isMaxLevel = isMaxLevel;
+        if (!isMaxLevel) {
+            upgradeBtn.setInteractive({ useHandCursor: true });
+            upgradeBtn.on('pointerover', () => upgradeBtn.setStyle({ fill: '#6ab0ff' }));
+            upgradeBtn.on('pointerout', () => upgradeBtn.setStyle({ fill: '#4a90d9' }));
+            upgradeBtn.on('pointerdown', () => this._tryUpgrade(upgradeBtn));
+        }
         return upgradeBtn;
     }
 
     _buildCraftLabel(recipeKey) {
-        const recipe = CRAFTING_RECIPES[recipeKey];
-        if (!recipe) return recipeKey;
-        const item = ITEMS[recipe.itemKey];
-        const itemName = item ? item.name : recipe.itemKey;
-        const owned = GameState.inventory[recipe.itemKey] || 0;
-        const matText = Object.entries(recipe.materials || {})
-            .map(([key, count]) => {
-                const matName = ITEMS[key] ? ITEMS[key].name : key;
-                return count + matName;
-            })
-            .join(' + ');
-        return `${itemName} — ${recipe.gold}金 + ${matText}  拥有:${owned}`;
+        return buildCraftRecipeRowLabel(recipeKey, GameState, ITEMS, {
+            maxWidth: this._craftRecipeTextMaxWidth,
+            measureTextWidth: text => this._measureBlacksmithTextWidth(text, 'craftRecipeRow')
+        });
     }
 
     _createCraftButton(recipeKey, rowText, y) {
-        const craftBtn = this.add.text(this.sceneWidth / 2 + 180, y, '[制作]', {
+        const craftBtn = this.add.text(this._craftRecipeButtonX, y, '[制作]', {
             fontSize: '14px',
             fill: '#4a90d9'
         }).setOrigin(0, 0.5).setScrollFactor(0).setInteractive({ useHandCursor: true }).setDepth(1);
@@ -6690,11 +6866,52 @@ class BlacksmithScene extends Phaser.Scene {
         return craftBtn;
     }
 
+    _syncUpgradeButtonState(row, affordance) {
+        if (!row || !row.upgradeBtn || !row.upgradeBtn.active) return;
+        if (row.upgradeBtn.isMaxLevel) {
+            row.upgradeBtn.setStyle({ fill: '#98a2b3' });
+            return;
+        }
+        const canUpgrade = !!(affordance && affordance.canUpgrade);
+        row.upgradeBtn.setStyle({ fill: canUpgrade ? '#4a90d9' : '#667085' });
+        if (canUpgrade) {
+            if (!row.upgradeBtn.input || !row.upgradeBtn.input.enabled) {
+                row.upgradeBtn.setInteractive({ useHandCursor: true });
+            }
+            return;
+        }
+        row.upgradeBtn.disableInteractive();
+    }
+
+    _refreshWeaponRows() {
+        if (!Array.isArray(this.weaponRows)) return;
+        this.weaponRows.forEach((row) => {
+            if (!row || !row.unlocked || !row.rowText || !row.rowText.active) return;
+            const affordance = buildWeaponUpgradeAffordance(row.key, GameState, ITEMS);
+            row.rowText.setText(this._buildWeaponRowText(row.key));
+            this._syncUpgradeButtonState(row, affordance);
+        });
+    }
+
+    _syncCraftButtonState(row, affordance) {
+        if (!row || !row.craftBtn || !row.craftBtn.active) return;
+        const canCraft = !!(affordance && affordance.canCraft);
+        row.craftBtn.setStyle({ fill: canCraft ? '#4a90d9' : '#667085' });
+        if (canCraft) {
+            if (!row.craftBtn.input || !row.craftBtn.input.enabled) {
+                row.craftBtn.setInteractive({ useHandCursor: true });
+            }
+            return;
+        }
+        row.craftBtn.disableInteractive();
+    }
+
     _refreshCraftRows() {
         if (!Array.isArray(this.craftRows)) return;
         this.craftRows.forEach((row) => {
             if (!row || !row.rowText || !row.rowText.active) return;
             row.rowText.setText(this._buildCraftLabel(row.recipeKey));
+            this._syncCraftButtonState(row, buildCraftRecipeAffordance(row.recipeKey, GameState, ITEMS));
         });
     }
 
@@ -6708,10 +6925,10 @@ class BlacksmithScene extends Phaser.Scene {
         }
         if (!check.ok && check.reason === 'material') {
             AudioSystem.playUi('error');
-            const materialName = ITEMS[check.requiredMaterialKey]
-                ? ITEMS[check.requiredMaterialKey].name
-                : check.requiredMaterialKey;
-            this._showMessage('材料不足! 需要' + check.cost.essence + '个' + materialName, '#ff4444');
+            this._showMessage(buildWeaponUpgradeFailureMessage(check, ITEMS, {
+                maxWidth: this._craftMessageMaxWidth,
+                measureTextWidth: text => this._measureBlacksmithTextWidth(text, 'craftMessage')
+            }), '#ff4444');
             return;
         }
         if (!check.ok) {
@@ -6732,44 +6949,90 @@ class BlacksmithScene extends Phaser.Scene {
         GameState.inventory = applied.nextState.inventory;
         GameState.weaponLevels = applied.nextState.weaponLevels;
         this.goldText.setText('金币: ' + GameState.gold);
-        this._refreshCraftRows();
         const level = GameState.weaponLevels[weaponKey];
-        rowText.setText(WEAPONS[weaponKey].name + ' Lv.' + level);
+        const row = btn.parentRow || (Array.isArray(this.weaponRows) ? this.weaponRows.find(entry => entry && entry.key === weaponKey) : null);
         btn.destroy();
-        if (level < 3) {
-            const newConfig = this._buildUpgradeConfig(weaponKey, level);
-            if (newConfig) this._createUpgradeButton(weaponKey, rowText, btn.y, newConfig);
+        if (row) {
+            row.upgradeBtn = null;
         }
-        const materialName = ITEMS[applied.requiredMaterialKey]
-            ? ITEMS[applied.requiredMaterialKey].name
-            : applied.requiredMaterialKey;
-        this._showMessage('强化成功! 消耗' + applied.cost.essence + '个' + materialName, '#44ff44');
+        const newConfig = this._buildUpgradeConfig(weaponKey, level);
+        if (newConfig) {
+            const nextBtn = this._createUpgradeButton(weaponKey, rowText, btn.y, newConfig);
+            nextBtn.parentRow = row || null;
+            if (row) {
+                row.upgradeBtn = nextBtn;
+            }
+        }
+        this._refreshWeaponRows();
+        this._refreshCraftRows();
+        const successMessage = buildWeaponUpgradeSuccessMessage(applied, ITEMS, WEAPONS, WEAPON_SCALING, {
+            maxWidth: this._craftMessageMaxWidth,
+            measureTextWidth: text => this._measureBlacksmithTextWidth(text, 'craftMessage')
+        });
+        this._showMessage(successMessage, '#44ff44');
     }
 
     _tryCraft(btn) {
         const recipeKey = btn.recipeKey;
+        const affordance = buildCraftRecipeAffordance(recipeKey, GameState, ITEMS);
+        if (!affordance.canCraft) {
+            AudioSystem.playUi('error');
+            this._showMessage(buildCraftRecipeFailureMessage(affordance, ITEMS, {
+                maxWidth: this._craftMessageMaxWidth,
+                measureTextWidth: text => this._measureBlacksmithTextWidth(text, 'craftMessage')
+            }), '#ff4444');
+            return;
+        }
         const check = canCraftRecipe(GameState, recipeKey);
         if (!check.ok && check.reason === 'gold') {
             AudioSystem.playUi('error');
-            this._showMessage('金币不足!', '#ff4444');
+            this._showMessage(buildCraftRecipeFailureMessage({
+                reason: check.reason,
+                label: '金币不足!'
+            }, ITEMS, {
+                maxWidth: this._craftMessageMaxWidth,
+                measureTextWidth: text => this._measureBlacksmithTextWidth(text, 'craftMessage')
+            }), '#ff4444');
             return;
         }
         if (!check.ok && check.reason === 'material') {
             AudioSystem.playUi('error');
             const materialName = ITEMS[check.missingItemKey] ? ITEMS[check.missingItemKey].name : check.missingItemKey;
-            this._showMessage('材料不足: ' + materialName, '#ff4444');
+            this._showMessage(buildCraftRecipeFailureMessage({
+                reason: check.reason,
+                label: '材料不足: ' + materialName,
+                missingItemKey: check.missingItemKey,
+                requiredCount: check.requiredCount,
+                currentCount: check.currentCount
+            }, ITEMS, {
+                maxWidth: this._craftMessageMaxWidth,
+                measureTextWidth: text => this._measureBlacksmithTextWidth(text, 'craftMessage')
+            }), '#ff4444');
             return;
         }
         if (!check.ok) {
             AudioSystem.playUi('error');
-            this._showMessage('配方不可用', '#ff4444');
+            this._showMessage(buildCraftRecipeFailureMessage({
+                reason: check.reason,
+                label: '配方不可用'
+            }, ITEMS, {
+                maxWidth: this._craftMessageMaxWidth,
+                measureTextWidth: text => this._measureBlacksmithTextWidth(text, 'craftMessage')
+            }), '#ff4444');
             return;
         }
 
-        const crafted = applyCraftRecipe(GameState, recipeKey);
+        const craftCount = Math.max(1, affordance.maxCraftable || 1);
+        const crafted = applyCraftRecipe(GameState, recipeKey, { count: craftCount });
         if (!crafted.ok || !crafted.nextState) {
             AudioSystem.playUi('error');
-            this._showMessage('制作失败，请重试', '#ff4444');
+            this._showMessage(buildCraftRecipeFailureMessage({
+                reason: 'apply',
+                label: '制作失败，请重试'
+            }, ITEMS, {
+                maxWidth: this._craftMessageMaxWidth,
+                measureTextWidth: text => this._measureBlacksmithTextWidth(text, 'craftMessage')
+            }), '#ff4444');
             return;
         }
 
@@ -6777,9 +7040,23 @@ class BlacksmithScene extends Phaser.Scene {
         GameState.gold = crafted.nextState.gold;
         GameState.inventory = crafted.nextState.inventory;
         this.goldText.setText('金币: ' + GameState.gold);
+        this._refreshWeaponRows();
         this._refreshCraftRows();
-        const itemName = ITEMS[crafted.producedItemKey] ? ITEMS[crafted.producedItemKey].name : crafted.producedItemKey;
-        this._showMessage('制作成功: ' + itemName + ' x' + crafted.producedCount, '#44ff44');
+        const batchReceipt = buildCraftRecipeBatchReceipt(recipeKey, crafted, ITEMS);
+        const craftedItem = ITEMS[crafted.producedItemKey];
+        if (craftedItem && craftedItem.type === 'consumable' && crafted.producedCount > 0) {
+            const autoAssign = buildQuickSlotAutoAssignResult(GameState.quickSlots, crafted.producedItemKey, ITEMS, {
+                measureLabelWidth: label => this._measureQuickSlotNoticeLabel(label)
+            });
+            GameState.quickSlots = autoAssign.nextQuickSlots;
+            const successMessage = buildCraftRecipeSuccessMessage(recipeKey, crafted, autoAssign, ITEMS, {
+                maxWidth: this._craftMessageMaxWidth,
+                measureTextWidth: text => this._measureBlacksmithTextWidth(text, 'craftMessage')
+            });
+            this._showMessage(successMessage, '#7dffb3');
+            return;
+        }
+        this._showMessage(batchReceipt, '#44ff44');
     }
 
     _showMessage(text, color) {
@@ -6787,6 +7064,16 @@ class BlacksmithScene extends Phaser.Scene {
         this.messageText.setStyle({ fill: color });
         this.messageText.setVisible(true);
         this.time.delayedCall(1500, () => this.messageText.setVisible(false));
+    }
+
+    _showAutoAssignMessage(text) {
+        this._showMessage(text, '#7dffb3');
+    }
+
+    _measureQuickSlotNoticeLabel(label) {
+        if (!this._quickSlotNoticeMeasureText) return 0;
+        this._quickSlotNoticeMeasureText.setText(label);
+        return this._quickSlotNoticeMeasureText.width;
     }
 
     _close() {
@@ -7734,7 +8021,7 @@ class HelpScene extends Phaser.Scene {
             { title: '战斗补充', items: [disciplineAttackReadyHelpLine, disciplineReadyHelpLine, prayerReadyHelpLine, weaponRoutingHelpLine, riskRewardHelpLine, comboLinkHelpLine, counterattackHelpLine, telegraphLateGlowColorTempHelpLine, telegraphLateGlowInnerColorTempHelpLine, telegraphHeadContrastHelpLine, telegraphHeadColorTempHelpLine, telegraphHeadSaturationHelpLine, telegraphHeadEdgeSoftHelpLine, telegraphHeadEdgeHighlightHelpLine, telegraphHeadEdgeBalanceHelpLine, telegraphHeadEdgeBrightnessHelpLine, telegraphHeadEdgeWarmthHelpLine, telegraphHeadEdgeSaturationHelpLine, telegraphHeadEdgeFeatherHelpLine, telegraphHeadEdgeAlphaHelpLine, telegraphHeadEdgeWarmCoolAlphaHelpLine] },
             { title: '防御', items: ['Space  —  闪避翻滚（无敌帧）'] },
             { title: '武器', items: ['Q / E  —  切换武器'] },
-            { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位，并提示“快捷栏N：+<短名>”；若临时拿不到显式短名则会沿用道具名生成“快捷栏N：+生命”这类短句；提示现在会优先按 Phaser 文本实际宽度钳制，因此“快捷栏N：+HP恢复”这类混排会尽量保留更多有效信息；若当前环境拿不到真实测量结果则回退为宽度权重估算；若道具名词干过长则会截成“快捷栏N：+圣疗秘…”这类省略短句；快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”；若拿不到显式短名则改用“快捷栏1：狂战→净化”这类道具名短句；若这些道具名过长则同样会截成“快捷栏1：古代狂…→神圣净…”这类省略短句', '背包悬停说明也会按实际文本宽度贴边，因此靠近屏幕右缘时不会继续沿用固定 200px 估算', '净化药剂/狂战油可在铁匠制作'] },
+            { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位，并提示“快捷栏N：+<短名>”；若临时拿不到显式短名则会沿用道具名生成“快捷栏N：+生命”这类短句；提示现在会优先按 Phaser 文本实际宽度钳制，因此“快捷栏N：+HP恢复”这类混排会尽量保留更多有效信息；若当前环境拿不到真实测量结果则回退为宽度权重估算；若道具名词干过长则会截成“快捷栏N：+圣疗秘…”这类省略短句；快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”；若拿不到显式短名则改用“快捷栏1：狂战→净化”这类道具名短句；若这些道具名过长则同样会截成“快捷栏1：古代狂…→神圣净…”这类省略短句', '净化药剂/狂战油在铁匠制作成功时也会直接装入快捷栏，并沿用同一套“快捷栏N：+净化”/“快捷栏1：狂战→净化”提示；制作行现在还会直接补“入1”/“覆盖1：狂战→净化”这类快捷栏预告，让玩家在点前就知道会落在哪格、会不会顶掉现有补给；并额外补一条“净化药剂x2 · 差15金”这类批量回执，直接交代本次做了几份、又是因金币还是材料耗尽才停下；若这条制作成功回执还要再拼上快捷栏落位提示，底部消息会先按实际宽度把“快捷栏1：狂战→净化”收束成“覆盖1：狂战→净化”/“入1”这类短后缀，并把“净化药剂x2 · 差15金”这类做了几份/为何停下信息留在前面；若制作失败提示碰上长材料名或后续 richer error copy，底部消息也会先按实际宽度把“材料不足: 懒惰之精华”收束成“材料不足: 懒惰”/“材料不足”，把 blocker 留在前面；若强化成功提示触发时，底部消息会优先读出“强化成功! Lv.1→Lv.2 · 本次伤害+4/特攻-0.2s/体耗-2 · 消耗2个暴怒之精华”这类带升级段位、收益与材料锚点的回执；若像“强化成功! Lv.2→Lv.3 · 本次伤害+5/特攻-0.2s/体耗-1 · 累计伤害+9/特攻-0.3s/体耗-3”这类末级升级累计总览也放得下，还会优先把整把武器的累计现况一起钉在回执尾段；若中宽档位放不下完整累计总览，则会先收束成“强化成功! Lv.2→Lv.3 · 本次伤害+5/特攻-0.2s/体耗-1 · 累计+9/特攻-0.3s”或至少保住“强化成功! Lv.2→Lv.3 · 本次伤害+5/特攻-0.2s/体耗-1 · 累计伤害+9”这类累计首段锚点；若行宽再继续吃紧，才会退回“强化成功! Lv.1→Lv.2 · 本次伤害+4/特攻-0.2s/体耗-2”、“强化成功! Lv.1→Lv.2 · 本次伤害+4”或“强化成功! Lv.1→Lv.2”，优先把成功结论与升级段位留在前；材料不足路径也会先把“材料不足! 需要2个暴怒之精华”收束成“材料不足! 需要2个暴怒”/“材料不足! 需要2个”，把 blocker 留在前面；若窄窗口下“[强化] 250金+2暴怒之精华”这类强化按钮过长，按钮文案也会先按实际宽度把精华名收束成“[强化] 250金+2暴怒”/“[强化] 250金+2个”，并把“[强化]”与金币/材料成本留在前，避免长精华名继续挤窄按钮可读区；铁匠强化行现在也会在点按钮前直接显示“可强化/差50金/差2个暴怒之精华”这类短标签，blocked 时“[强化]”会同步降色停用，避免继续把 upgrade 决策留到失败提示才揭晓；Lv.3 武器右侧动作位不再留空，会直接显示“已满级”/“满阶”这类短标签，并沿用同一宽度护栏，避免把空白误读成未解锁、渲染缺失或还能继续强化；铁匠强化行现在也会在点按钮前直接补上“本次伤害+4/特攻-0.2s/体耗-2”这类短收益摘要；若武器已升过但还没满级，强化行还会优先补“累计+下次 · 累计伤害+4/本次伤害+5”这类双层短摘要，让玩家在同一行同时读到已购成长与下一跳收益；若行宽再吃紧，会先收束成“累计+4/下次+5”这类紧凑双层锚点，再继续退到“累计伤害+4/本次伤害+5”、“累计伤害+4”或“本次伤害+5”，避免非满级阶段过早丢掉双层语义；若武器已满级，强化行也不会退回只剩武器名，而会改为常驻显示“已满级 · 累计伤害+9/特攻-0.3s/体耗-3”这类累计已购收益；若行宽继续吃紧，会先收束成“满阶 · 累计伤害+9”，避免满级后又读不出这把武器已经买到了哪些成长；若窄窗口下长材料名、“拥有”、“可做xN/差15金”与预告同场出现，制作行会先按实际宽度收束，优先压掉“拥有”、再把材料名压成“嫉妒x1”/“懒惰x1”这类紧凑读法，尽量把决策提示留在“[制作]”前；若制作行显示“可做xN”，点击一次“[制作]”还会直接做到当前上限', '背包悬停说明也会按实际文本宽度贴边，因此靠近屏幕右缘时不会继续沿用固定 200px 估算', '净化药剂/狂战油可在铁匠制作'] },
             { title: '状态', items: ['灼烧/流血会持续掉血', '减速会降低移动速度'] },
             { title: '本局词缀', items: runModifierLines },
             {
@@ -7742,6 +8029,8 @@ class HelpScene extends Phaser.Scene {
                 items: [
                     'F — NPC / 事件房交互',
                     '事件房祭坛靠近提示也会按 Phaser 文本实际宽度贴在当前视口内，因此贴近屏幕边缘时不会被裁出画面',
+                    '事件房导向的第三房路线现在不只会在 shrine 结算时预告“下间缓冲”/“下间高压”/“下间淘金”，进房时补“缓冲战 · 双拍缓冲”/“高压战 · 三向成压”/“淘金战 · 后排赏金”，还会在真正清场时再补“缓冲战 · 稳住出清”/“高压战 · 顶住成压”/“淘金战 · 赏金到手”这类短回顾；若已存储的 recommendation reason 仍和 routed encounter 强相关，入口/清场短句还会继续补“缓冲战 · 双拍缓冲 · 净化后稳场”/“高压战 · 三向成压 · 压线抢势”/“淘金战 · 后排赏金 · 血线够追赏”这类更短 echo，命途圣坛的“绝境修习”/“守心修习”也会一起接进“下间高压”/“下间缓冲”',
+                    '事件房 choice panel 若出现明显上下文倾向，还会在底部脚注补“建议 1/2：净泉啜饮 · 可净化2层”这类短推荐，但不会改动原有 1/2 顺序；若玩家真的选了这条高置信路线，已触发后的 HUD / 祭坛世界标签 / 结算浮字也会继续补“治疗: 净泉啜饮 · 可净化2层”这类极短确认',
                     '右侧固定侧栏里的章节标题、区域名、本局词缀、本局挑战与事件房摘要会优先按 Phaser 文本实际宽度钳制，并按实际文本高度动态纵向排布，避免长标题 / 长路线结算继续互相顶出 HUD',
                     '这些 compact / ultra-compact / ultra-tight 分档会按实际显示尺寸触发，而不再只依赖固定逻辑画布尺寸',
                     challengeRegularBodyDedupHelpLine,

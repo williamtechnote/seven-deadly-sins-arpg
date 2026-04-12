@@ -1663,6 +1663,11 @@
         cleanseTonic: '净',
         berserkerOil: '油'
     };
+
+    const QUICK_SLOT_NOTICE_LABEL_OVERRIDES = {
+        cleanseTonic: '净化',
+        berserkerOil: '狂战'
+    };
     const QUICK_SLOT_NOTICE_DERIVED_LABEL_MAX_WIDTH_UNITS = 6;
     const QUICK_SLOT_NOTICE_DERIVED_LABEL_MAX_MEASURED_WIDTH = 48;
 
@@ -1750,7 +1755,8 @@
     }
 
     function resolveQuickSlotNoticeLabel(itemKey, itemName) {
-        return QUICK_SLOT_SHORT_LABELS[itemKey]
+        return QUICK_SLOT_NOTICE_LABEL_OVERRIDES[itemKey]
+            || QUICK_SLOT_SHORT_LABELS[itemKey]
             || deriveQuickSlotNoticeLabelFromName(itemName)
             || '道具';
     }
@@ -1968,6 +1974,46 @@
         return firstEmptyIndex >= 0 ? firstEmptyIndex : 0;
     }
 
+    function buildQuickSlotAutoAssignResult(quickSlots, assignedItemKey, itemCatalog, options) {
+        const safeQuickSlots = normalizeQuickSlots(quickSlots);
+        const safeAssignedItemKey = typeof assignedItemKey === 'string' ? assignedItemKey.trim() : '';
+        const slotIndex = getQuickSlotAutoAssignIndex(safeQuickSlots);
+        const didOverwrite = safeQuickSlots.every(slot => !!slot);
+        const replacedItemKey = didOverwrite ? safeQuickSlots[slotIndex] : null;
+        const safeItemCatalog = itemCatalog && typeof itemCatalog === 'object' ? itemCatalog : {};
+        const assignedItemName = safeAssignedItemKey
+            && safeItemCatalog[safeAssignedItemKey]
+            && typeof safeItemCatalog[safeAssignedItemKey].name === 'string'
+            ? safeItemCatalog[safeAssignedItemKey].name
+            : '';
+        const replacedItemName = replacedItemKey
+            && safeItemCatalog[replacedItemKey]
+            && typeof safeItemCatalog[replacedItemKey].name === 'string'
+            ? safeItemCatalog[replacedItemKey].name
+            : '';
+        const nextQuickSlots = safeQuickSlots.slice();
+        if (safeAssignedItemKey) {
+            nextQuickSlots[slotIndex] = safeAssignedItemKey;
+        }
+        return {
+            slotIndex,
+            didOverwrite,
+            replacedItemKey,
+            assignedItemKey: safeAssignedItemKey || null,
+            assignedItemName,
+            replacedItemName,
+            nextQuickSlots,
+            notice: buildQuickSlotAutoAssignNotice(slotIndex, {
+                didOverwrite,
+                assignedItemKey: safeAssignedItemKey,
+                assignedItemName,
+                replacedItemKey,
+                replacedItemName,
+                measureLabelWidth: options && options.measureLabelWidth
+            })
+        };
+    }
+
     function buildQuickSlotAutoAssignNotice(slotIndex, options) {
         const safeSlotIndex = clampInt(slotIndex, 0, 3, 0);
         const didOverwrite = !!(options && options.didOverwrite);
@@ -1977,10 +2023,16 @@
         const replacedItemName = options && options.replacedItemName;
         const measureLabelWidth = options && options.measureLabelWidth;
         const measurementCache = typeof measureLabelWidth === 'function' ? new Map() : null;
-        const assignedItemDerivedLabel = QUICK_SLOT_SHORT_LABELS[assignedItemKey]
-            || deriveQuickSlotNoticeLabelFromName(assignedItemName, { measureLabelWidth, measurementCache });
-        const replacedItemDerivedLabel = QUICK_SLOT_SHORT_LABELS[replacedItemKey]
-            || deriveQuickSlotNoticeLabelFromName(replacedItemName, { measureLabelWidth, measurementCache });
+        const assignedItemDerivedLabel = (assignedItemKey
+            ? QUICK_SLOT_NOTICE_LABEL_OVERRIDES[assignedItemKey]
+            : '')
+            || deriveQuickSlotNoticeLabelFromName(assignedItemName, { measureLabelWidth, measurementCache })
+            || QUICK_SLOT_SHORT_LABELS[assignedItemKey];
+        const replacedItemDerivedLabel = (replacedItemKey
+            ? QUICK_SLOT_NOTICE_LABEL_OVERRIDES[replacedItemKey]
+            : '')
+            || deriveQuickSlotNoticeLabelFromName(replacedItemName, { measureLabelWidth, measurementCache })
+            || QUICK_SLOT_SHORT_LABELS[replacedItemKey];
         const assignedItemShortLabel = assignedItemDerivedLabel || '道具';
         const replacedItemShortLabel = replacedItemDerivedLabel || '道具';
         const slotLabel = `快捷栏${safeSlotIndex + 1}：`;
@@ -2105,6 +2157,9 @@
         const persistedResolutionText = typeof runEventRoom.resolutionText === 'string'
             ? runEventRoom.resolutionText
             : '';
+        const persistedRecommendationReason = typeof runEventRoom.selectedChoiceRecommendationReason === 'string'
+            ? runEventRoom.selectedChoiceRecommendationReason.trim()
+            : '';
         const forceHealingDoubleFallback = !!runEventRoom.resolved
             && base.type === 'healing'
             && !persistedChoiceLabel
@@ -2126,6 +2181,7 @@
                         : (forceHealingDoubleFallback ? '' : selectedChoice.label)
                 )
                 : (runEventRoom.resolved && persistedChoiceLabel ? persistedChoiceLabel : null),
+            selectedChoiceRecommendationReason: runEventRoom.resolved ? persistedRecommendationReason : '',
             resolutionText: runEventRoom.resolved ? persistedResolutionText : '',
             encounterProfilePending: !!runEventRoom.encounterProfilePending && !!runEventRoom.resolved
         };
@@ -2148,6 +2204,7 @@
             resolved: false,
             selectedChoiceKey: null,
             selectedChoiceLabel: null,
+            selectedChoiceRecommendationReason: '',
             resolutionText: '',
             encounterProfilePending: false
         };
@@ -2173,6 +2230,13 @@
         const currentGold = clampInt(safeState.gold, 0, Number.MAX_SAFE_INTEGER, 0);
         const currentInventory = normalizeInventory(safeState.inventory);
         const effect = choice.effect && typeof choice.effect === 'object' ? choice.effect : {};
+        const recommendationDecision = getRunEventRoomChoiceRecommendationDecision(
+            getRunEventRoomChoices(normalizedRoom.key, poolOverride),
+            safeState
+        );
+        const selectedChoiceRecommendationReason = recommendationDecision && recommendationDecision.choiceKey === choice.key
+            ? recommendationDecision.reason
+            : '';
 
         let hpLoss = 0;
         let hpGain = 0;
@@ -2251,6 +2315,7 @@
                 resolved: true,
                 selectedChoiceKey: choice.key,
                 selectedChoiceLabel: choice.label,
+                selectedChoiceRecommendationReason,
                 resolutionText,
                 encounterProfilePending: true
             }
@@ -2386,11 +2451,19 @@
             const runEffects = effect.runEffects && typeof effect.runEffects === 'object' ? effect.runEffects : {};
             const playerDamageMultiplier = Number(runEffects.playerDamageMultiplier) || 1;
             const playerDamageTakenMultiplier = Number(runEffects.playerDamageTakenMultiplier) || 1;
+            const playerLowHpDamageMultiplier = Number(runEffects.playerLowHpDamageMultiplier) || 1;
+            const playerHighHpDamageTakenMultiplier = Number(runEffects.playerHighHpDamageTakenMultiplier) || 1;
             const playerSpecialCooldownMultiplier = Number(runEffects.playerSpecialCooldownMultiplier) || 1;
             const playerStaminaRegenMultiplier = Number(runEffects.playerStaminaRegenMultiplier) || 1;
 
             if (playerDamageMultiplier > 1) {
                 return ['爆发', playerDamageTakenMultiplier > 1.1 ? '冒险' : '稳健'];
+            }
+            if (playerLowHpDamageMultiplier > 1) {
+                return ['爆发', '冒险'];
+            }
+            if (playerHighHpDamageTakenMultiplier > 0 && playerHighHpDamageTakenMultiplier < 1) {
+                return ['续航', '稳健'];
             }
             if (playerSpecialCooldownMultiplier > 0 && playerSpecialCooldownMultiplier < 1) {
                 return ['节奏', '爆发'];
@@ -2469,6 +2542,86 @@
         if (profileKey === 'windfall') return byGoldDescending.slice(0, Math.min(2, byGoldDescending.length));
         if (profileKey === 'breather') return byPressureAscending.slice(0, Math.min(2, byPressureAscending.length));
         return availablePool.slice(0, Math.min(2, availablePool.length));
+    }
+
+    function buildRunEventEncounterFormationSlots(profile, rosterKeys) {
+        const safeRoster = Array.isArray(rosterKeys)
+            ? rosterKeys.filter((key, index, arr) => typeof key === 'string' && key.trim() && arr.indexOf(key) === index)
+            : [];
+        if (safeRoster.length === 0) return [];
+
+        const profileKey = profile && typeof profile === 'object' && typeof profile.key === 'string'
+            ? profile.key
+            : '';
+
+        if (profileKey === 'breather') {
+            const templates = [
+                { laneRatio: 0.64, depthBand: 'back', flankOffset: -1, engageDelayMs: 0, goldDropMultiplier: 1, bountyLabel: '' },
+                { laneRatio: 0.82, depthBand: 'back', flankOffset: 1, engageDelayMs: 700, goldDropMultiplier: 1, bountyLabel: '' }
+            ];
+            return safeRoster.slice(0, templates.length).map((enemyKey, index) => ({
+                enemyKey,
+                ...templates[index]
+            }));
+        }
+
+        if (profileKey === 'pressure') {
+            const templates = [
+                { laneRatio: 0.3, depthBand: 'front', flankOffset: 0, engageDelayMs: 0, goldDropMultiplier: 1, bountyLabel: '' },
+                { laneRatio: 0.42, depthBand: 'front', flankOffset: -1, engageDelayMs: 0, goldDropMultiplier: 1, bountyLabel: '' },
+                { laneRatio: 0.54, depthBand: 'front', flankOffset: 1, engageDelayMs: 0, goldDropMultiplier: 1, bountyLabel: '' }
+            ];
+            return safeRoster.slice(0, templates.length).map((enemyKey, index) => ({
+                enemyKey,
+                ...templates[index]
+            }));
+        }
+
+        if (profileKey === 'windfall') {
+            const prioritizedRoster = safeRoster.length >= 2
+                ? [safeRoster[1], safeRoster[0], ...safeRoster.slice(2)]
+                : safeRoster;
+            const templates = [
+                { laneRatio: 0.46, depthBand: 'front', flankOffset: 1, engageDelayMs: 0, goldDropMultiplier: 0.7, bountyLabel: '' },
+                { laneRatio: 0.78, depthBand: 'back', flankOffset: -1, engageDelayMs: 900, goldDropMultiplier: 1.3, bountyLabel: '赏金' }
+            ];
+            return prioritizedRoster.slice(0, templates.length).map((enemyKey, index) => ({
+                enemyKey,
+                ...templates[index]
+            }));
+        }
+
+        const fallbackTemplates = safeRoster.length <= 1
+            ? [{ laneRatio: 0.5, depthBand: 'mid', flankOffset: 0, goldDropMultiplier: 1, bountyLabel: '' }]
+            : (safeRoster.length === 2
+                ? [
+                    { laneRatio: 0.4, depthBand: 'mid', flankOffset: -1, engageDelayMs: 0, goldDropMultiplier: 1, bountyLabel: '' },
+                    { laneRatio: 0.6, depthBand: 'mid', flankOffset: 1, engageDelayMs: 0, goldDropMultiplier: 1, bountyLabel: '' }
+                ]
+                : [
+                    { laneRatio: 0.34, depthBand: 'mid', flankOffset: -1, engageDelayMs: 0, goldDropMultiplier: 1, bountyLabel: '' },
+                    { laneRatio: 0.5, depthBand: 'mid', flankOffset: 0, engageDelayMs: 0, goldDropMultiplier: 1, bountyLabel: '' },
+                    { laneRatio: 0.66, depthBand: 'mid', flankOffset: 1, engageDelayMs: 0, goldDropMultiplier: 1, bountyLabel: '' }
+                ]);
+        return safeRoster.slice(0, fallbackTemplates.length).map((enemyKey, index) => ({
+            enemyKey,
+            ...fallbackTemplates[index]
+        }));
+    }
+
+    function buildRunEventEncounterPayoffPresentation(slot, goldAmount) {
+        const safeSlot = slot && typeof slot === 'object' ? slot : {};
+        const bountyLabel = typeof safeSlot.bountyLabel === 'string' ? safeSlot.bountyLabel.trim() : '';
+        const goldDropMultiplier = Math.max(0.2, Number(safeSlot.goldDropMultiplier) || 1);
+        const gold = Math.max(0, Math.round(Number(goldAmount) || 0));
+        if (!bountyLabel || gold <= 0 || goldDropMultiplier <= 1) return null;
+        return {
+            receiptLabel: `${bountyLabel}+${gold}`,
+            receiptColor: '#fff0a6',
+            pulseColor: 0xFFE27A,
+            pickupTint: 0xFFD27A,
+            pickupScale: 1.35
+        };
     }
 
     function formatRunEventRoomChoiceEncounterPreview(choice) {
@@ -2628,6 +2781,115 @@
         return `${basePreview} · ${notes.join(' · ')}`;
     }
 
+    function getRunEventRoomChoiceRecommendationDecision(choices, state) {
+        const safeChoices = Array.isArray(choices)
+            ? choices.filter(choice => choice && typeof choice === 'object').slice(0, 2)
+            : [];
+        if (safeChoices.length < 2) return null;
+
+        const safeState = state && typeof state === 'object' ? state : {};
+        const playerMaxHp = Math.max(1, clampInt(safeState.playerMaxHp, 1, Number.MAX_SAFE_INTEGER, 100));
+        const currentHp = clampInt(safeState.playerHp, 1, playerMaxHp, playerMaxHp);
+        const currentHpRatio = playerMaxHp > 0 ? (currentHp / playerMaxHp) : 1;
+        const missingHp = Math.max(0, playerMaxHp - currentHp);
+        const currentGold = clampInt(safeState.gold, 0, Number.MAX_SAFE_INTEGER, 0);
+        const selectedWeaponKey = typeof safeState.selectedWeaponKey === 'string' ? safeState.selectedWeaponKey : '';
+        const weaponStatus = getWeaponSpecialStatus(selectedWeaponKey);
+        const inventory = normalizeInventory(safeState.inventory);
+        const negativeStatuses = Array.isArray(safeState.negativeStatuses)
+            ? safeState.negativeStatuses.filter(status => typeof status === 'string' && status.trim())
+            : [];
+        const byKey = new Map(safeChoices.map((choice, index) => [choice.key, { choice, index }]));
+        const hasChoice = (key) => byKey.has(key);
+        const buildRecommendation = (key, reason) => {
+            const entry = byKey.get(key);
+            if (!entry) return null;
+            const label = typeof entry.choice.label === 'string' ? entry.choice.label.trim() : '';
+            if (!label) return null;
+            const safeReason = typeof reason === 'string' ? reason.trim() : '';
+            return {
+                choiceKey: entry.choice.key,
+                index: entry.index,
+                label,
+                reason: safeReason,
+                message: `建议 ${entry.index + 1}：${label}${safeReason ? ` · ${safeReason}` : ''}`
+            };
+        };
+
+        if (hasChoice('vitalSurge') && hasChoice('purifyingSip')) {
+            const cleanseCount = negativeStatuses.length;
+            if (cleanseCount > 0) {
+                return buildRecommendation('purifyingSip', `可净化${cleanseCount}层`);
+            }
+            const vitalHeal = Math.min(Math.max(0, Math.floor(playerMaxHp * 0.55)), missingHp);
+            const purifyingHeal = Math.min(Math.max(0, Math.floor(playerMaxHp * 0.3)), missingHp);
+            if (vitalHeal > purifyingHeal && missingHp >= Math.max(42, purifyingHeal + 18)) {
+                return buildRecommendation('vitalSurge', '缺口更大');
+            }
+            return null;
+        }
+
+        if (hasChoice('desperationLesson') && hasChoice('composureLesson')) {
+            if (currentHpRatio <= 0.45) {
+                return buildRecommendation('desperationLesson', '已处绝境线');
+            }
+            if (currentHpRatio >= 0.7) {
+                return buildRecommendation('composureLesson', '高血稳定');
+            }
+            return null;
+        }
+
+        if (hasChoice('vanguardLesson') && hasChoice('longshotLesson')) {
+            if (selectedWeaponKey === 'sword' || selectedWeaponKey === 'hammer') {
+                return buildRecommendation('vanguardLesson', '当前持近战');
+            }
+            if (selectedWeaponKey === 'bow' || selectedWeaponKey === 'staff') {
+                return buildRecommendation('longshotLesson', '当前持远程');
+            }
+            return null;
+        }
+
+        if (hasChoice('emberLesson') && hasChoice('bloodtraceLesson')) {
+            if (weaponStatus && weaponStatus.key === 'burn') {
+                return buildRecommendation('emberLesson', '当前武器可触发');
+            }
+            if (weaponStatus && weaponStatus.key === 'bleed') {
+                return buildRecommendation('bloodtraceLesson', '当前武器可触发');
+            }
+            return null;
+        }
+
+        if (hasChoice('highStakeWager') && hasChoice('carefulWager')) {
+            if (currentHpRatio >= 0.85) {
+                return buildRecommendation('highStakeWager', '当前血线更能承受');
+            }
+            if (currentHpRatio <= 0.55) {
+                return buildRecommendation('carefulWager', '当前更宜稳押');
+            }
+            return null;
+        }
+
+        if (hasChoice('fieldTonic') && hasChoice('berserkerKit')) {
+            const fieldTonicCost = clampInt(byKey.get('fieldTonic').choice.effect && byKey.get('fieldTonic').choice.effect.goldCost, 0, Number.MAX_SAFE_INTEGER, 0);
+            const berserkerKitCost = clampInt(byKey.get('berserkerKit').choice.effect && byKey.get('berserkerKit').choice.effect.goldCost, 0, Number.MAX_SAFE_INTEGER, 0);
+            const fieldTonicOwned = clampInt(inventory.cleanseTonic, 0, Number.MAX_SAFE_INTEGER, 0);
+            if (negativeStatuses.length > 0 && currentGold >= fieldTonicCost && fieldTonicOwned <= 0) {
+                return buildRecommendation('fieldTonic', `可净化${negativeStatuses.length}层`);
+            }
+            if (currentGold >= fieldTonicCost && currentGold < berserkerKitCost) {
+                return buildRecommendation('fieldTonic', '当前可负担');
+            }
+            return null;
+        }
+
+        return null;
+    }
+
+    function buildRunEventRoomChoiceRecommendation(choices, state) {
+        const decision = getRunEventRoomChoiceRecommendationDecision(choices, state);
+        return decision ? decision.message : '';
+    }
+
     function getRunEventRoomChoiceAffordabilityLabel(choice, state) {
         const safeChoice = choice && typeof choice === 'object' ? choice : {};
         const effect = safeChoice.effect && typeof safeChoice.effect === 'object' ? safeChoice.effect : {};
@@ -2654,6 +2916,82 @@
         const choice = getRunEventRoomChoices(normalizedRoom.key, poolOverride)
             .find(item => item.key === normalizedRoom.selectedChoiceKey) || null;
         return choice ? getRunEventRoomChoiceEncounterProfile(choice) : null;
+    }
+
+    function getRunEventEncounterRecommendationEcho(runEventRoom, profile, poolOverride) {
+        const normalizedRoom = normalizeRunEventRoom(runEventRoom, poolOverride);
+        if (!normalizedRoom || !normalizedRoom.resolved || !normalizedRoom.selectedChoiceKey) return '';
+
+        const recommendationReason = typeof normalizedRoom.selectedChoiceRecommendationReason === 'string'
+            ? normalizedRoom.selectedChoiceRecommendationReason.trim()
+            : '';
+        if (!recommendationReason) return '';
+
+        const profileKey = profile && typeof profile === 'object' && typeof profile.key === 'string'
+            ? profile.key.trim()
+            : '';
+        if (!profileKey) return '';
+
+        if (profileKey === 'breather') {
+            if ((normalizedRoom.selectedChoiceKey === 'purifyingSip' || normalizedRoom.selectedChoiceKey === 'fieldTonic')
+                && /^可净化\d+层$/.test(recommendationReason)) {
+                return '净化后稳场';
+            }
+            if (normalizedRoom.selectedChoiceKey === 'vitalSurge' && recommendationReason === '缺口更大') {
+                return '回线稳场';
+            }
+            if (normalizedRoom.selectedChoiceKey === 'composureLesson' && recommendationReason === '高血稳定') {
+                return '守心稳场';
+            }
+        }
+
+        if (profileKey === 'pressure' && normalizedRoom.selectedChoiceKey === 'desperationLesson' && recommendationReason === '已处绝境线') {
+            return '压线抢势';
+        }
+
+        if (profileKey === 'windfall' && normalizedRoom.selectedChoiceKey === 'highStakeWager' && recommendationReason === '当前血线更能承受') {
+            return '血线够追赏';
+        }
+
+        return '';
+    }
+
+    function buildRunEventEncounterEntryPreview(profile, runEventRoom, poolOverride) {
+        const safeProfile = profile && typeof profile === 'object' ? profile : {};
+        const profileKey = typeof safeProfile.key === 'string' ? safeProfile.key.trim() : '';
+        const baseProfile = profileKey && RUN_EVENT_ENCOUNTER_PROFILES[profileKey]
+            ? RUN_EVENT_ENCOUNTER_PROFILES[profileKey]
+            : null;
+        const encounterLabel = typeof safeProfile.encounterLabel === 'string' && safeProfile.encounterLabel.trim()
+            ? safeProfile.encounterLabel.trim()
+            : (baseProfile && typeof baseProfile.encounterLabel === 'string' ? baseProfile.encounterLabel : '');
+        const tacticalSuffix = profileKey === 'breather'
+            ? '双拍缓冲'
+            : (profileKey === 'pressure'
+                ? '三向成压'
+                : (profileKey === 'windfall' ? '后排赏金' : ''));
+        if (!encounterLabel || !tacticalSuffix) return '';
+        const recommendationEcho = getRunEventEncounterRecommendationEcho(runEventRoom, safeProfile, poolOverride);
+        return `${encounterLabel} · ${tacticalSuffix}${recommendationEcho ? ` · ${recommendationEcho}` : ''}`;
+    }
+
+    function buildRunEventEncounterClearRecap(profile, runEventRoom, poolOverride) {
+        const safeProfile = profile && typeof profile === 'object' ? profile : {};
+        const profileKey = typeof safeProfile.key === 'string' ? safeProfile.key.trim() : '';
+        const baseProfile = profileKey && RUN_EVENT_ENCOUNTER_PROFILES[profileKey]
+            ? RUN_EVENT_ENCOUNTER_PROFILES[profileKey]
+            : null;
+        const encounterLabel = typeof safeProfile.encounterLabel === 'string' && safeProfile.encounterLabel.trim()
+            ? safeProfile.encounterLabel.trim()
+            : (baseProfile && typeof baseProfile.encounterLabel === 'string' ? baseProfile.encounterLabel : '');
+        const recapSuffix = profileKey === 'breather'
+            ? '稳住出清'
+            : (profileKey === 'pressure'
+                ? '顶住成压'
+                : (profileKey === 'windfall' ? '赏金到手' : ''));
+        if (!encounterLabel || !recapSuffix) return '';
+        const recommendationEcho = getRunEventEncounterRecommendationEcho(runEventRoom, safeProfile, poolOverride);
+        return `${encounterLabel} · ${recapSuffix}${recommendationEcho ? ` · ${recommendationEcho}` : ''}`;
     }
 
     function buildCompactRunEventResolutionText(runEventRoom, choice) {
@@ -2745,6 +3083,9 @@
             : null;
         const stateLabel = normalizedRoom.resolved ? '已触发' : (normalizedRoom.discovered ? '已发现' : '未发现');
         const resolvedPrefix = getRunEventRoomResolvedPrefix(normalizedRoom.type);
+        const recommendationReason = typeof normalizedRoom.selectedChoiceRecommendationReason === 'string'
+            ? normalizedRoom.selectedChoiceRecommendationReason.trim()
+            : '';
         const forceHealingDoubleFallback = normalizedRoom.resolved
             && normalizedRoom.type === 'healing'
             && !normalizedRoom.selectedChoiceLabel
@@ -2761,7 +3102,7 @@
         const routeLines = normalizedRoom.resolved
             ? (
                 resolvedChoiceLabel
-                    ? [`${resolvedPrefix}: ${resolvedChoiceLabel}${encounterPreview ? ` · ${encounterPreview}` : ''}`.trim()]
+                    ? [`${resolvedPrefix}: ${resolvedChoiceLabel}${recommendationReason ? ` · ${recommendationReason}` : ''}${encounterPreview ? ` · ${encounterPreview}` : ''}`.trim()]
                     : []
             )
             : visibleChoices.map(choice => buildRunEventRoomChoicePreview(choice));
@@ -2830,7 +3171,10 @@
         const resolvedChoiceLabel = normalizedRoom.selectedChoiceLabel
             || (!forceHealingDoubleFallback && selectedChoice ? selectedChoice.label : '')
             || '未知选项';
-        return `${getRunEventRoomResolvedPrefix(normalizedRoom.type)}: ${resolvedChoiceLabel}`.trim();
+        const recommendationReason = typeof normalizedRoom.selectedChoiceRecommendationReason === 'string'
+            ? normalizedRoom.selectedChoiceRecommendationReason.trim()
+            : '';
+        return `${getRunEventRoomResolvedPrefix(normalizedRoom.type)}: ${resolvedChoiceLabel}${recommendationReason ? ` · ${recommendationReason}` : ''}`.trim();
     }
 
     function buildRunEventRoomWorldLabel(runEventRoom, poolOverride) {
@@ -3833,7 +4177,455 @@
         return { ok: true, reason: null, recipe };
     }
 
-    function applyCraftRecipe(state, recipeKey) {
+    function buildCraftRecipeAffordance(recipeKey, state, itemCatalog) {
+        const recipe = getCraftingRecipe(recipeKey);
+        if (!recipe) {
+            return {
+                label: '配方不可用',
+                canCraft: false,
+                maxCraftable: 0,
+                blockedReason: 'recipe',
+                missingItemKey: null
+            };
+        }
+
+        const safeState = state && typeof state === 'object' ? state : {};
+        const gold = clampInt(safeState.gold, 0, Number.MAX_SAFE_INTEGER, 0);
+        const inventory = normalizeInventory(safeState.inventory);
+        const safeItemCatalog = itemCatalog && typeof itemCatalog === 'object' ? itemCatalog : {};
+        const goldCraftable = recipe.gold > 0
+            ? Math.floor(gold / recipe.gold)
+            : Number.MAX_SAFE_INTEGER;
+
+        let materialCraftable = Number.MAX_SAFE_INTEGER;
+        let firstMissingItemKey = null;
+        let firstMissingCount = 0;
+
+        Object.entries(recipe.materials || {}).forEach(([itemKey, requiredCountRaw]) => {
+            const requiredCount = clampInt(requiredCountRaw, 1, Number.MAX_SAFE_INTEGER, 1);
+            const currentCount = clampInt(inventory[itemKey], 0, Number.MAX_SAFE_INTEGER, 0);
+            materialCraftable = Math.min(materialCraftable, Math.floor(currentCount / requiredCount));
+            if (!firstMissingItemKey && currentCount < requiredCount) {
+                firstMissingItemKey = itemKey;
+                firstMissingCount = requiredCount - currentCount;
+            }
+        });
+
+        const maxCraftable = Math.max(0, Math.min(goldCraftable, materialCraftable));
+        if (maxCraftable > 0) {
+            return {
+                label: `可做x${maxCraftable}`,
+                canCraft: true,
+                maxCraftable,
+                blockedReason: null,
+                missingItemKey: null
+            };
+        }
+
+        if (goldCraftable <= 0) {
+            return {
+                label: `差${Math.max(0, recipe.gold - gold)}金`,
+                canCraft: false,
+                maxCraftable: 0,
+                blockedReason: 'gold',
+                missingItemKey: null
+            };
+        }
+
+        const missingItemName = firstMissingItemKey && safeItemCatalog[firstMissingItemKey] && typeof safeItemCatalog[firstMissingItemKey].name === 'string'
+            ? safeItemCatalog[firstMissingItemKey].name
+            : (firstMissingItemKey || '材料');
+        return {
+            label: `差${Math.max(1, firstMissingCount)}个${missingItemName}`,
+            canCraft: false,
+            maxCraftable: 0,
+            blockedReason: 'material',
+            missingItemKey: firstMissingItemKey
+        };
+    }
+
+    function buildCraftRecipeQuickSlotPreview(recipeKey, state, itemCatalog, options) {
+        const recipe = getCraftingRecipe(recipeKey);
+        if (!recipe || typeof recipe.itemKey !== 'string' || !recipe.itemKey) {
+            return {
+                label: '',
+                slotIndex: null,
+                didOverwrite: false,
+                assignedItemKey: null,
+                replacedItemKey: null,
+                notice: ''
+            };
+        }
+
+        const safeState = state && typeof state === 'object' ? state : {};
+        const safeItemCatalog = itemCatalog && typeof itemCatalog === 'object' ? itemCatalog : {};
+        const craftedItem = safeItemCatalog[recipe.itemKey];
+        if (craftedItem && craftedItem.type && craftedItem.type !== 'consumable') {
+            return {
+                label: '',
+                slotIndex: null,
+                didOverwrite: false,
+                assignedItemKey: recipe.itemKey,
+                replacedItemKey: null,
+                notice: ''
+            };
+        }
+
+        const autoAssign = buildQuickSlotAutoAssignResult(
+            safeState.quickSlots,
+            recipe.itemKey,
+            safeItemCatalog,
+            options
+        );
+        const slotIndex = clampInt(autoAssign.slotIndex, 0, 3, 0);
+        return {
+            label: buildCraftRecipeQuickSlotSummaryFromAutoAssignResult(autoAssign),
+            slotIndex,
+            didOverwrite: autoAssign.didOverwrite,
+            assignedItemKey: autoAssign.assignedItemKey,
+            replacedItemKey: autoAssign.replacedItemKey,
+            notice: autoAssign.notice || ''
+        };
+    }
+
+    function buildCraftRecipeQuickSlotSummaryFromAutoAssignResult(autoAssignResult) {
+        const safeAutoAssignResult = autoAssignResult && typeof autoAssignResult === 'object'
+            ? autoAssignResult
+            : {};
+        const slotIndex = clampInt(safeAutoAssignResult.slotIndex, 0, 3, 0);
+        const slotNumber = slotIndex + 1;
+        const noticePrefix = `快捷栏${slotNumber}：`;
+        const previewTail = typeof safeAutoAssignResult.notice === 'string' && safeAutoAssignResult.notice.startsWith(noticePrefix)
+            ? safeAutoAssignResult.notice.slice(noticePrefix.length).trim()
+            : '';
+        if (safeAutoAssignResult.didOverwrite) {
+            return `覆盖${slotNumber}${previewTail ? `：${previewTail}` : ''}`;
+        }
+        if (!safeAutoAssignResult.assignedItemKey && !previewTail) {
+            return '';
+        }
+        return `入${slotNumber}`;
+    }
+
+    function getCraftRecipeRowTextWidth(text, options) {
+        const safeText = typeof text === 'string' ? text : '';
+        if (!safeText) return 0;
+        const measureTextWidth = options && typeof options.measureTextWidth === 'function'
+            ? options.measureTextWidth
+            : null;
+        if (measureTextWidth) {
+            const measuredWidth = Number(measureTextWidth(safeText));
+            if (Number.isFinite(measuredWidth) && measuredWidth > 0) {
+                return measuredWidth;
+            }
+        }
+        return Array.from(safeText).reduce((sum, glyph) => sum + (getQuickSlotNoticeGlyphWidth(glyph) * 8), 0);
+    }
+
+    function buildCraftRecipeMaterialText(materials, itemCatalog, compact) {
+        const safeMaterials = materials && typeof materials === 'object' ? materials : {};
+        const safeItemCatalog = itemCatalog && typeof itemCatalog === 'object' ? itemCatalog : {};
+        return Object.entries(safeMaterials)
+            .map(([itemKey, countRaw]) => {
+                const count = clampInt(countRaw, 1, Number.MAX_SAFE_INTEGER, 1);
+                const itemName = safeItemCatalog[itemKey] && typeof safeItemCatalog[itemKey].name === 'string'
+                    ? safeItemCatalog[itemKey].name
+                    : itemKey;
+                if (!compact) {
+                    return `${count}${itemName}`;
+                }
+                const compactName = itemName.replace(/\s+/g, '').replace(/之精华$/u, '').replace(/精华$/u, '').trim();
+                return `${compactName || itemName}x${count}`;
+            })
+            .join(' + ');
+    }
+
+    function buildCraftRecipeRowLabel(recipeKey, state, itemCatalog, options) {
+        const recipe = getCraftingRecipe(recipeKey);
+        if (!recipe) return recipeKey;
+
+        const safeState = state && typeof state === 'object' ? state : {};
+        const safeItemCatalog = itemCatalog && typeof itemCatalog === 'object' ? itemCatalog : {};
+        const item = safeItemCatalog[recipe.itemKey];
+        const itemName = item && typeof item.name === 'string'
+            ? item.name
+            : recipe.itemKey;
+        const measureTextWidth = options && typeof options.measureTextWidth === 'function'
+            ? options.measureTextWidth
+            : null;
+        const maxWidth = Number.isFinite(options && options.maxWidth)
+            ? Math.max(0, options.maxWidth)
+            : 0;
+        const inventory = normalizeInventory(safeState.inventory);
+        const ownedCount = clampInt(inventory[recipe.itemKey], 0, Number.MAX_SAFE_INTEGER, 0);
+        const fullMaterialsText = buildCraftRecipeMaterialText(recipe.materials, safeItemCatalog, false);
+        const compactMaterialsText = buildCraftRecipeMaterialText(recipe.materials, safeItemCatalog, true);
+        const fullCostText = fullMaterialsText ? `${recipe.gold}金 + ${fullMaterialsText}` : `${recipe.gold}金`;
+        const compactCostText = compactMaterialsText ? `${recipe.gold}金 + ${compactMaterialsText}` : `${recipe.gold}金`;
+        const affordance = buildCraftRecipeAffordance(recipeKey, safeState, safeItemCatalog);
+        const quickSlotPreview = buildCraftRecipeQuickSlotPreview(recipeKey, safeState, safeItemCatalog, {
+            measureLabelWidth: measureTextWidth
+        });
+        const affordanceLabel = affordance && typeof affordance.label === 'string' ? affordance.label : '';
+        const previewLabel = quickSlotPreview && typeof quickSlotPreview.label === 'string' ? quickSlotPreview.label : '';
+        const measureGlyphWidth = measureTextWidth
+            ? glyph => getCraftRecipeRowTextWidth(glyph, { measureTextWidth })
+            : null;
+        const measurementCache = measureGlyphWidth ? new Map() : null;
+        const buildBaseVariants = () => {
+            const candidates = [
+                `${itemName} — ${fullCostText}  拥有:${ownedCount}`,
+                `${itemName} — ${fullCostText}`,
+                `${itemName} — ${compactCostText}`,
+                `${itemName} — ${recipe.gold}金`
+            ].filter(Boolean);
+            return Array.from(new Set(candidates));
+        };
+        const buildSuffixVariants = () => {
+            const candidates = [];
+            if (affordanceLabel && previewLabel) {
+                candidates.push({
+                    suffix: ` · ${affordanceLabel} · ${previewLabel}`,
+                    allowedBaseCount: 3,
+                    allowBaseClamp: false
+                });
+            }
+            if (affordanceLabel) {
+                candidates.push({
+                    suffix: ` · ${affordanceLabel}`,
+                    allowedBaseCount: 4,
+                    allowBaseClamp: true
+                });
+            } else if (previewLabel) {
+                candidates.push({
+                    suffix: ` · ${previewLabel}`,
+                    allowedBaseCount: 3,
+                    allowBaseClamp: true
+                });
+            }
+            candidates.push({
+                suffix: '',
+                allowedBaseCount: 4,
+                allowBaseClamp: true
+            });
+            return candidates;
+        };
+        const baseVariants = buildBaseVariants();
+        const suffixVariants = buildSuffixVariants();
+        const preferredClampBase = `${itemName} — ${compactCostText}`;
+
+        if (maxWidth <= 0) {
+            return `${baseVariants[0]}${suffixVariants[0] ? suffixVariants[0].suffix : ''}`;
+        }
+
+        for (const suffixVariant of suffixVariants) {
+            const suffix = suffixVariant ? suffixVariant.suffix : '';
+            const allowedBaseCount = suffixVariant && Number.isFinite(suffixVariant.allowedBaseCount)
+                ? Math.max(1, suffixVariant.allowedBaseCount)
+                : baseVariants.length;
+            const allowBaseClamp = !(suffixVariant && suffixVariant.allowBaseClamp === false);
+            const allowedBaseVariants = baseVariants.slice(0, allowedBaseCount);
+            for (const base of allowedBaseVariants) {
+                const label = `${base}${suffix}`;
+                if (getCraftRecipeRowTextWidth(label, { measureTextWidth }) <= maxWidth) {
+                    return label;
+                }
+            }
+            if (suffix && allowBaseClamp) {
+                const suffixWidth = getCraftRecipeRowTextWidth(suffix, { measureTextWidth });
+                if (suffixWidth < maxWidth) {
+                    const clampedBase = clampTextToWidth(preferredClampBase, maxWidth - suffixWidth, {
+                        measureGlyphWidth,
+                        measurementCache
+                    });
+                    if (clampedBase) {
+                        return `${clampedBase}${suffix}`;
+                    }
+                }
+            }
+        }
+
+        return clampTextToWidth(`${preferredClampBase}${affordanceLabel ? ` · ${affordanceLabel}` : ''}`, maxWidth, {
+            measureGlyphWidth,
+            measurementCache
+        });
+    }
+
+    function buildCraftRecipeBatchReceipt(recipeKey, craftResult, itemCatalog) {
+        const safeCraftResult = craftResult && typeof craftResult === 'object' ? craftResult : {};
+        const producedCount = clampInt(safeCraftResult.producedCount, 0, Number.MAX_SAFE_INTEGER, 0);
+        const safeItemCatalog = itemCatalog && typeof itemCatalog === 'object' ? itemCatalog : {};
+        const producedItemKey = typeof safeCraftResult.producedItemKey === 'string'
+            ? safeCraftResult.producedItemKey
+            : '';
+        const producedItemName = producedItemKey
+            && safeItemCatalog[producedItemKey]
+            && typeof safeItemCatalog[producedItemKey].name === 'string'
+            ? safeItemCatalog[producedItemKey].name
+            : (producedItemKey || '道具');
+        const baseLabel = `${producedItemName}x${Math.max(1, producedCount)}`;
+        const stopAffordance = buildCraftRecipeAffordance(recipeKey, safeCraftResult.nextState, safeItemCatalog);
+        const stopLabel = stopAffordance
+            && !stopAffordance.canCraft
+            && typeof stopAffordance.label === 'string'
+            && stopAffordance.label.startsWith('差')
+            ? stopAffordance.label
+            : '';
+        return stopLabel ? `${baseLabel} · ${stopLabel}` : baseLabel;
+    }
+
+    function buildCraftRecipeFailureMessage(failure, itemCatalog, options) {
+        const safeFailure = failure && typeof failure === 'object'
+            ? failure
+            : {};
+        const safeItemCatalog = itemCatalog && typeof itemCatalog === 'object' ? itemCatalog : {};
+        const reason = typeof safeFailure.blockedReason === 'string' && safeFailure.blockedReason
+            ? safeFailure.blockedReason
+            : (typeof safeFailure.reason === 'string' ? safeFailure.reason : '');
+        const rawLabel = typeof safeFailure.label === 'string' ? safeFailure.label.trim() : '';
+        const measureTextWidth = options && typeof options.measureTextWidth === 'function'
+            ? options.measureTextWidth
+            : null;
+        const maxWidth = Number.isFinite(options && options.maxWidth)
+            ? Math.max(0, options.maxWidth)
+            : 0;
+        const missingItemKey = typeof safeFailure.missingItemKey === 'string'
+            ? safeFailure.missingItemKey
+            : '';
+        const missingCount = Math.max(
+            0,
+            clampInt(
+                safeFailure.missingCount,
+                0,
+                Number.MAX_SAFE_INTEGER,
+                Math.max(
+                    0,
+                    clampInt(safeFailure.requiredCount, 0, Number.MAX_SAFE_INTEGER, 0)
+                    - clampInt(safeFailure.currentCount, 0, Number.MAX_SAFE_INTEGER, 0)
+                )
+            )
+        );
+        const missingItemName = missingItemKey
+            && safeItemCatalog[missingItemKey]
+            && typeof safeItemCatalog[missingItemKey].name === 'string'
+            ? safeItemCatalog[missingItemKey].name
+            : missingItemKey;
+        const compactMissingItemName = typeof missingItemName === 'string'
+            ? missingItemName.replace(/\s+/g, '').replace(/之精华$/u, '').replace(/精华$/u, '').trim()
+            : '';
+        const genericReason = rawLabel
+            ? rawLabel.split(/[：:，,]/u)[0].trim()
+            : '';
+        const variants = [];
+        const pushVariant = (value) => {
+            if (typeof value !== 'string') return;
+            const safeValue = value.trim();
+            if (!safeValue || variants.includes(safeValue)) return;
+            variants.push(safeValue);
+        };
+
+        if (reason === 'material' && missingItemName) {
+            pushVariant(rawLabel || `材料不足: ${missingItemName}`);
+            if (compactMissingItemName && compactMissingItemName !== missingItemName) {
+                pushVariant(`材料不足: ${compactMissingItemName}`);
+            }
+            if (missingCount > 0) {
+                pushVariant(`差${missingCount}个${missingItemName}`);
+                if (compactMissingItemName && compactMissingItemName !== missingItemName) {
+                    pushVariant(`差${missingCount}个${compactMissingItemName}`);
+                }
+            }
+            pushVariant('材料不足');
+            pushVariant('当前无法制作');
+        } else if (reason === 'gold') {
+            pushVariant(rawLabel || '金币不足!');
+            pushVariant('金币不足');
+            pushVariant('当前无法制作');
+        } else if (reason === 'recipe') {
+            pushVariant(rawLabel || '配方不可用');
+            pushVariant('当前无法制作');
+        } else if (reason === 'apply') {
+            pushVariant(rawLabel || '制作失败，请重试');
+            pushVariant(genericReason || '制作失败');
+            pushVariant('当前无法制作');
+        } else {
+            pushVariant(rawLabel || '当前无法制作');
+            if (genericReason && genericReason !== rawLabel) {
+                pushVariant(genericReason);
+            }
+        }
+
+        if (variants.length === 0) {
+            return '当前无法制作';
+        }
+        if (maxWidth <= 0) {
+            return variants[0];
+        }
+
+        const measureGlyphWidth = measureTextWidth
+            ? glyph => getCraftRecipeRowTextWidth(glyph, { measureTextWidth })
+            : null;
+        const measurementCache = measureGlyphWidth ? new Map() : null;
+        for (const variant of variants) {
+            if (getCraftRecipeRowTextWidth(variant, { measureTextWidth }) <= maxWidth) {
+                return variant;
+            }
+        }
+
+        return clampTextToWidth(variants[variants.length - 1], maxWidth, {
+            measureGlyphWidth,
+            measurementCache
+        });
+    }
+
+    function buildCraftRecipeSuccessMessage(recipeKey, craftResult, autoAssignResult, itemCatalog, options) {
+        const batchReceipt = buildCraftRecipeBatchReceipt(recipeKey, craftResult, itemCatalog);
+        const safeAutoAssignResult = autoAssignResult && typeof autoAssignResult === 'object'
+            ? autoAssignResult
+            : {};
+        const fullNotice = typeof safeAutoAssignResult.notice === 'string' ? safeAutoAssignResult.notice.trim() : '';
+        const compactNotice = buildCraftRecipeQuickSlotSummaryFromAutoAssignResult(safeAutoAssignResult);
+        if (!fullNotice && !compactNotice) {
+            return batchReceipt;
+        }
+
+        const measureTextWidth = options && typeof options.measureTextWidth === 'function'
+            ? options.measureTextWidth
+            : null;
+        const maxWidth = Number.isFinite(options && options.maxWidth)
+            ? Math.max(0, options.maxWidth)
+            : 0;
+        if (maxWidth <= 0) {
+            return `${batchReceipt} · ${fullNotice || compactNotice}`;
+        }
+
+        const measureGlyphWidth = measureTextWidth
+            ? glyph => getCraftRecipeRowTextWidth(glyph, { measureTextWidth })
+            : null;
+        const measurementCache = measureGlyphWidth ? new Map() : null;
+        const suffixVariants = [];
+        if (fullNotice) {
+            suffixVariants.push(fullNotice);
+        }
+        if (compactNotice && compactNotice !== fullNotice) {
+            suffixVariants.push(compactNotice);
+        }
+        suffixVariants.push('');
+
+        for (const suffix of suffixVariants) {
+            const label = suffix ? `${batchReceipt} · ${suffix}` : batchReceipt;
+            if (getCraftRecipeRowTextWidth(label, { measureTextWidth }) <= maxWidth) {
+                return label;
+            }
+        }
+
+        return clampTextToWidth(batchReceipt, maxWidth, {
+            measureGlyphWidth,
+            measurementCache
+        });
+    }
+
+    function applyCraftRecipe(state, recipeKey, options) {
         const check = canCraftRecipe(state, recipeKey);
         if (!check.ok || !check.recipe) {
             return { ...check, nextState: null };
@@ -3841,27 +4633,36 @@
 
         const safeState = state && typeof state === 'object' ? state : {};
         const inventory = normalizeInventory(safeState.inventory);
+        const maxCraftable = Math.max(1, buildCraftRecipeAffordance(recipeKey, safeState).maxCraftable || 1);
+        const craftCount = Math.max(
+            1,
+            Math.min(
+                maxCraftable,
+                clampInt(options && options.count, 1, Number.MAX_SAFE_INTEGER, 1)
+            )
+        );
         const nextState = {
             ...safeState,
             inventory,
             gold: clampInt(safeState.gold, 0, Number.MAX_SAFE_INTEGER, 0)
         };
 
-        nextState.gold -= check.recipe.gold;
+        nextState.gold -= check.recipe.gold * craftCount;
         Object.entries(check.recipe.materials || {}).forEach(([itemKey, requiredCountRaw]) => {
             const requiredCount = clampInt(requiredCountRaw, 1, Number.MAX_SAFE_INTEGER, 1);
-            const left = (nextState.inventory[itemKey] || 0) - requiredCount;
+            const left = (nextState.inventory[itemKey] || 0) - requiredCount * craftCount;
             if (left > 0) nextState.inventory[itemKey] = left;
             else delete nextState.inventory[itemKey];
         });
-        nextState.inventory[check.recipe.itemKey] = (nextState.inventory[check.recipe.itemKey] || 0) + check.recipe.count;
+        nextState.inventory[check.recipe.itemKey] = (nextState.inventory[check.recipe.itemKey] || 0) + (check.recipe.count * craftCount);
 
         return {
             ok: true,
             reason: null,
             recipe: check.recipe,
+            craftCount,
             producedItemKey: check.recipe.itemKey,
-            producedCount: check.recipe.count,
+            producedCount: check.recipe.count * craftCount,
             nextState
         };
     }
@@ -4023,12 +4824,678 @@
         return {
             ok: true,
             reason: null,
+            weaponKey,
             level: check.level,
             nextLevel: check.level + 1,
             cost: check.cost,
             requiredMaterialKey: check.requiredMaterialKey,
             nextState
         };
+    }
+
+    function buildWeaponUpgradeAffordance(weaponKey, state, itemCatalog) {
+        const safeState = state && typeof state === 'object' ? state : {};
+        const safeItemCatalog = itemCatalog && typeof itemCatalog === 'object' ? itemCatalog : {};
+        const check = canUpgradeWeapon(safeState, weaponKey);
+        if (check.ok) {
+            return {
+                label: '可强化',
+                canUpgrade: true,
+                blockedReason: null,
+                missingItemKey: null,
+                missingCount: 0
+            };
+        }
+
+        const gold = clampInt(safeState.gold, 0, Number.MAX_SAFE_INTEGER, 0);
+        const inventory = normalizeInventory(safeState.inventory);
+        if (check.reason === 'gold' && check.cost) {
+            return {
+                label: `差${Math.max(0, check.cost.gold - gold)}金`,
+                canUpgrade: false,
+                blockedReason: 'gold',
+                missingItemKey: null,
+                missingCount: 0
+            };
+        }
+
+        if (check.reason === 'material' && check.requiredMaterialKey) {
+            const currentCount = clampInt(inventory[check.requiredMaterialKey], 0, Number.MAX_SAFE_INTEGER, 0);
+            const requiredCount = clampInt(check.cost && check.cost.essence, 1, Number.MAX_SAFE_INTEGER, 1);
+            const missingCount = Math.max(1, requiredCount - currentCount);
+            const materialName = safeItemCatalog[check.requiredMaterialKey]
+                && typeof safeItemCatalog[check.requiredMaterialKey].name === 'string'
+                ? safeItemCatalog[check.requiredMaterialKey].name
+                : check.requiredMaterialKey;
+            return {
+                label: `差${Math.max(1, missingCount)}个${materialName}`,
+                canUpgrade: false,
+                blockedReason: 'material',
+                missingItemKey: check.requiredMaterialKey,
+                missingCount
+            };
+        }
+
+        return {
+            label: '',
+            canUpgrade: false,
+            blockedReason: check.reason || 'unknown',
+            missingItemKey: null,
+            missingCount: 0
+        };
+    }
+
+    function buildWeaponUpgradeBenefitSummary(weaponKey, fromLevel, toLevel, weapons, scalingOverride, options) {
+        const safeWeapons = weapons && typeof weapons === 'object' ? weapons : {};
+        const safeScaling = scalingOverride || WEAPON_SCALING;
+        const safeFromLevel = clampInt(fromLevel, 1, 99, 1);
+        const safeToLevel = clampInt(toLevel, safeFromLevel, 99, safeFromLevel);
+        const currentStats = getScaledWeaponStats(safeWeapons, weaponKey, safeFromLevel, safeScaling);
+        const nextStats = getScaledWeaponStats(safeWeapons, weaponKey, safeToLevel, safeScaling);
+        if (!currentStats || !nextStats || safeToLevel <= safeFromLevel) {
+            return '';
+        }
+
+        const damageDelta = Math.max(0, nextStats.damage - currentStats.damage);
+        const specialCooldownDelta = Math.max(0, currentStats.specialCooldown - nextStats.specialCooldown);
+        const staminaDelta = Math.max(
+            0,
+            currentStats.staminaCost - nextStats.staminaCost,
+            currentStats.specialStaminaCost - nextStats.specialStaminaCost
+        );
+        const specialCooldownSeconds = Math.max(0.1, Math.round((specialCooldownDelta / 1000) * 10) / 10).toFixed(1);
+        const variants = [];
+        const pushVariant = (value) => {
+            if (typeof value !== 'string') return;
+            const safeValue = value.trim();
+            if (!safeValue || variants.includes(safeValue)) return;
+            variants.push(safeValue);
+        };
+
+        const labelPrefix = options && typeof options.labelPrefix === 'string'
+            ? options.labelPrefix.trim()
+            : '';
+        const withLabelPrefix = (value) => {
+            const safeValue = typeof value === 'string' ? value.trim() : '';
+            if (!safeValue) return '';
+            return labelPrefix ? `${labelPrefix}${safeValue}` : safeValue;
+        };
+
+        if (damageDelta > 0 && specialCooldownDelta > 0 && staminaDelta > 0) {
+            pushVariant(withLabelPrefix(`伤害+${damageDelta} / 特攻-${specialCooldownSeconds}s / 体耗-${staminaDelta}`));
+        }
+        if (damageDelta > 0 && specialCooldownDelta > 0) {
+            pushVariant(withLabelPrefix(`伤害+${damageDelta} / 特攻-${specialCooldownSeconds}s`));
+        }
+        if (damageDelta > 0 && staminaDelta > 0) {
+            pushVariant(withLabelPrefix(`伤害+${damageDelta} / 体耗-${staminaDelta}`));
+        }
+        if (damageDelta > 0) {
+            pushVariant(withLabelPrefix(`伤害+${damageDelta}`));
+        }
+        if (specialCooldownDelta > 0) {
+            pushVariant(withLabelPrefix(`特攻-${specialCooldownSeconds}s`));
+        }
+        if (staminaDelta > 0) {
+            pushVariant(withLabelPrefix(`体耗-${staminaDelta}`));
+        }
+        if (variants.length === 0) {
+            return '';
+        }
+
+        const measureTextWidth = options && typeof options.measureTextWidth === 'function'
+            ? options.measureTextWidth
+            : null;
+        const maxWidth = Number.isFinite(options && options.maxWidth)
+            ? Math.max(0, options.maxWidth)
+            : 0;
+        if (maxWidth <= 0) {
+            return variants[0];
+        }
+
+        const measureGlyphWidth = measureTextWidth
+            ? glyph => getCraftRecipeRowTextWidth(glyph, { measureTextWidth })
+            : null;
+        const measurementCache = measureGlyphWidth ? new Map() : null;
+        for (const variant of variants) {
+            if (getCraftRecipeRowTextWidth(variant, { measureTextWidth }) <= maxWidth) {
+                return variant;
+            }
+        }
+
+        return clampTextToWidth(variants[variants.length - 1], maxWidth, {
+            measureGlyphWidth,
+            measurementCache
+        });
+    }
+
+    function buildWeaponUpgradePreviewSummary(weaponKey, state, weapons, itemCatalog, scalingOverride, options) {
+        const safeState = state && typeof state === 'object' ? state : {};
+        const safeWeapons = weapons && typeof weapons === 'object' ? weapons : {};
+        const safeItemCatalog = itemCatalog && typeof itemCatalog === 'object' ? itemCatalog : {};
+        const safeScaling = scalingOverride || WEAPON_SCALING;
+        const baseWeapon = safeWeapons[weaponKey];
+        if (!baseWeapon) return weaponKey;
+
+        const level = getWeaponLevel(safeState.weaponLevels, weaponKey);
+        const baseLabel = `${baseWeapon.name} Lv.${level}`;
+        const affordance = buildWeaponUpgradeAffordance(weaponKey, safeState, safeItemCatalog);
+        const isMaxLevel = affordance && affordance.blockedReason === 'max_level';
+        const rawAffordanceLabel = affordance && typeof affordance.label === 'string'
+            ? affordance.label.trim()
+            : '';
+        const affordanceVariants = [];
+        const pushAffordanceVariant = (value) => {
+            if (typeof value !== 'string') return;
+            const safeValue = value.trim();
+            if (!safeValue || affordanceVariants.includes(safeValue)) return;
+            affordanceVariants.push(safeValue);
+        };
+        pushAffordanceVariant(rawAffordanceLabel);
+        if (isMaxLevel) {
+            pushAffordanceVariant('已满级');
+            pushAffordanceVariant('满阶');
+            pushAffordanceVariant('满');
+        }
+        if (affordance && affordance.blockedReason === 'material' && affordance.missingItemKey) {
+            const materialName = safeItemCatalog[affordance.missingItemKey]
+                && typeof safeItemCatalog[affordance.missingItemKey].name === 'string'
+                ? safeItemCatalog[affordance.missingItemKey].name
+                : affordance.missingItemKey;
+            const compactMaterialName = typeof materialName === 'string'
+                ? materialName.replace(/\s+/g, '').replace(/之精华$/u, '').replace(/精华$/u, '').trim()
+                : '';
+            if (affordance.missingCount > 0 && compactMaterialName && compactMaterialName !== materialName) {
+                pushAffordanceVariant(`差${affordance.missingCount}个${compactMaterialName}`);
+            }
+            if (affordance.missingCount > 0) {
+                pushAffordanceVariant(`差${affordance.missingCount}个`);
+            }
+        }
+        if (affordanceVariants.length === 0) {
+            affordanceVariants.push('');
+        }
+
+        const nextBenefitSummary = isMaxLevel
+            ? ''
+            : buildWeaponUpgradeBenefitSummary(weaponKey, level, level + 1, safeWeapons, safeScaling, {
+                labelPrefix: '本次',
+                measureTextWidth: options && options.measureTextWidth,
+                maxWidth: options && options.maxWidth
+            });
+        const cumulativeBenefitSummary = level > 1
+            ? buildWeaponUpgradeBenefitSummary(weaponKey, 1, level, safeWeapons, safeScaling, {
+                labelPrefix: '累计',
+                measureTextWidth: options && options.measureTextWidth,
+                maxWidth: options && options.maxWidth
+            })
+            : '';
+        const benefitSummary = isMaxLevel ? cumulativeBenefitSummary : nextBenefitSummary;
+        const benefitVariants = [];
+        const pushBenefitVariant = (value) => {
+            if (typeof value !== 'string') return;
+            const safeValue = value.trim();
+            if (!safeValue || benefitVariants.includes(safeValue)) return;
+            benefitVariants.push(safeValue);
+        };
+        pushBenefitVariant(benefitSummary);
+        const benefitSegments = typeof benefitSummary === 'string'
+            ? benefitSummary.split(' / ').map(segment => segment.trim()).filter(Boolean)
+            : [];
+        if (benefitSegments.length >= 2) {
+            pushBenefitVariant(benefitSegments.slice(0, 2).join(' / '));
+        }
+        if (benefitSegments.length >= 1) {
+            pushBenefitVariant(benefitSegments[0]);
+        }
+
+        const variants = [];
+        const pushVariant = (parts) => {
+            const safeParts = Array.isArray(parts) ? parts.filter(Boolean) : [];
+            if (!safeParts.length) return;
+            const label = safeParts.join(' · ');
+            if (!variants.includes(label)) {
+                variants.push(label);
+            }
+        };
+
+        const layeredVariants = [];
+        const pushLayeredVariant = (parts) => {
+            const safeParts = Array.isArray(parts) ? parts.filter(Boolean) : [];
+            if (!safeParts.length) return;
+            const label = safeParts.join(' · ');
+            if (!layeredVariants.includes(label)) {
+                layeredVariants.push(label);
+            }
+        };
+        const buildCompactLayerAnchor = (segment, anchorLabel) => {
+            if (typeof segment !== 'string' || typeof anchorLabel !== 'string') {
+                return '';
+            }
+            const safeSegment = segment.trim();
+            const safeAnchorLabel = anchorLabel.trim();
+            if (!safeSegment || !safeAnchorLabel) {
+                return '';
+            }
+            const deltaMatch = safeSegment.match(/([+-].+)$/u);
+            if (!deltaMatch || !deltaMatch[1]) {
+                return '';
+            }
+            return `${safeAnchorLabel}${deltaMatch[1]}`;
+        };
+        if (!isMaxLevel && cumulativeBenefitSummary && nextBenefitSummary) {
+            const cumulativeSegments = cumulativeBenefitSummary.split(' / ').map(segment => segment.trim()).filter(Boolean);
+            const nextSegments = nextBenefitSummary.split(' / ').map(segment => segment.trim()).filter(Boolean);
+            const cumulativePrimarySegment = cumulativeSegments[0] || '';
+            const nextPrimarySegment = nextSegments[0] || '';
+            const compactCumulativeAnchor = buildCompactLayerAnchor(cumulativePrimarySegment, '累计');
+            const compactNextAnchor = buildCompactLayerAnchor(nextPrimarySegment, '下次');
+            if (cumulativePrimarySegment && nextPrimarySegment) {
+                pushLayeredVariant([baseLabel, '累计+下次', `${cumulativePrimarySegment} / ${nextPrimarySegment}`]);
+                if (compactCumulativeAnchor && compactNextAnchor) {
+                    pushLayeredVariant([baseLabel, `${compactCumulativeAnchor} / ${compactNextAnchor}`]);
+                }
+                pushLayeredVariant([baseLabel, `累计${level > 1 ? '已购' : ''}`, cumulativePrimarySegment, nextPrimarySegment]);
+                pushLayeredVariant([baseLabel, `${cumulativePrimarySegment} / ${nextPrimarySegment}`]);
+            }
+        }
+        layeredVariants.forEach(label => {
+            if (!variants.includes(label)) {
+                variants.push(label);
+            }
+        });
+        if (benefitVariants.length > 0) {
+            benefitVariants.forEach((benefit) => {
+                affordanceVariants.forEach((affordanceLabel) => {
+                    pushVariant([baseLabel, affordanceLabel, benefit]);
+                });
+            });
+        }
+        affordanceVariants.forEach((affordanceLabel) => {
+            pushVariant([baseLabel, affordanceLabel]);
+        });
+        pushVariant([baseLabel]);
+
+        const measureTextWidth = options && typeof options.measureTextWidth === 'function'
+            ? options.measureTextWidth
+            : null;
+        const maxWidth = Number.isFinite(options && options.maxWidth)
+            ? Math.max(0, options.maxWidth)
+            : 0;
+        if (maxWidth <= 0) {
+            return variants[0];
+        }
+
+        const measureGlyphWidth = measureTextWidth
+            ? glyph => getCraftRecipeRowTextWidth(glyph, { measureTextWidth })
+            : null;
+        const measurementCache = measureGlyphWidth ? new Map() : null;
+        for (const variant of variants) {
+            if (getCraftRecipeRowTextWidth(variant, { measureTextWidth }) <= maxWidth) {
+                return variant;
+            }
+        }
+
+        return clampTextToWidth(variants[variants.length - 1], maxWidth, {
+            measureGlyphWidth,
+            measurementCache
+        });
+    }
+
+    function buildWeaponUpgradeRowLabel(weaponKey, level, itemCatalog, options) {
+        const cost = getUpgradeCostForLevel(level);
+        const requiredMaterialKey = getRequiredMaterialForWeapon(weaponKey);
+        if (!requiredMaterialKey) {
+            return '[强化]';
+        }
+
+        const measureTextWidth = options && typeof options.measureTextWidth === 'function'
+            ? options.measureTextWidth
+            : null;
+        const maxWidth = Number.isFinite(options && options.maxWidth)
+            ? Math.max(0, options.maxWidth)
+            : 0;
+        const variants = [];
+        const pushVariant = (value) => {
+            if (typeof value !== 'string') return;
+            const safeValue = value.trim();
+            if (!safeValue || variants.includes(safeValue)) return;
+            variants.push(safeValue);
+        };
+
+        if (!cost) {
+            pushVariant('已满级');
+            pushVariant('满阶');
+            pushVariant('满');
+            if (maxWidth <= 0) {
+                return variants[0];
+            }
+
+            const measureGlyphWidth = measureTextWidth
+                ? glyph => getCraftRecipeRowTextWidth(glyph, { measureTextWidth })
+                : null;
+            const measurementCache = measureGlyphWidth ? new Map() : null;
+            for (const variant of variants) {
+                if (getCraftRecipeRowTextWidth(variant, { measureTextWidth }) <= maxWidth) {
+                    return variant;
+                }
+            }
+
+            return clampTextToWidth(variants[variants.length - 1], maxWidth, {
+                measureGlyphWidth,
+                measurementCache
+            });
+        }
+
+        const safeItemCatalog = itemCatalog && typeof itemCatalog === 'object' ? itemCatalog : {};
+        const materialName = safeItemCatalog[requiredMaterialKey]
+            && typeof safeItemCatalog[requiredMaterialKey].name === 'string'
+            ? safeItemCatalog[requiredMaterialKey].name
+            : requiredMaterialKey;
+        const compactMaterialName = typeof materialName === 'string'
+            ? materialName.replace(/\s+/g, '').replace(/之精华$/u, '').replace(/精华$/u, '').trim()
+            : '';
+        pushVariant(`[强化] ${cost.gold}金+${cost.essence}${materialName}`);
+        if (compactMaterialName && compactMaterialName !== materialName) {
+            pushVariant(`[强化] ${cost.gold}金+${cost.essence}${compactMaterialName}`);
+        }
+        pushVariant(`[强化] ${cost.gold}金+${cost.essence}个`);
+        pushVariant(`[强化] ${cost.gold}金`);
+        pushVariant('[强化]');
+
+        if (maxWidth <= 0) {
+            return variants[0];
+        }
+
+        const measureGlyphWidth = measureTextWidth
+            ? glyph => getCraftRecipeRowTextWidth(glyph, { measureTextWidth })
+            : null;
+        const measurementCache = measureGlyphWidth ? new Map() : null;
+        for (const variant of variants) {
+            if (getCraftRecipeRowTextWidth(variant, { measureTextWidth }) <= maxWidth) {
+                return variant;
+            }
+        }
+
+        return clampTextToWidth(variants[variants.length - 1], maxWidth, {
+            measureGlyphWidth,
+            measurementCache
+        });
+    }
+
+    function buildWeaponUpgradeFailureMessage(result, itemCatalog, options) {
+        const safeResult = result && typeof result === 'object'
+            ? result
+            : {};
+        const safeItemCatalog = itemCatalog && typeof itemCatalog === 'object' ? itemCatalog : {};
+        const reason = typeof safeResult.reason === 'string' ? safeResult.reason : '';
+        const rawLabel = typeof safeResult.label === 'string' ? safeResult.label.trim() : '';
+        const measureTextWidth = options && typeof options.measureTextWidth === 'function'
+            ? options.measureTextWidth
+            : null;
+        const maxWidth = Number.isFinite(options && options.maxWidth)
+            ? Math.max(0, options.maxWidth)
+            : 0;
+        const requiredCount = Math.max(
+            0,
+            clampInt(
+                safeResult.requiredCount,
+                0,
+                Number.MAX_SAFE_INTEGER,
+                clampInt(
+                    safeResult.cost && safeResult.cost.essence,
+                    0,
+                    Number.MAX_SAFE_INTEGER,
+                    0
+                )
+            )
+        );
+        const requiredMaterialKey = typeof safeResult.requiredMaterialKey === 'string'
+            ? safeResult.requiredMaterialKey
+            : '';
+        const materialName = requiredMaterialKey
+            && safeItemCatalog[requiredMaterialKey]
+            && typeof safeItemCatalog[requiredMaterialKey].name === 'string'
+            ? safeItemCatalog[requiredMaterialKey].name
+            : requiredMaterialKey;
+        const compactMaterialName = typeof materialName === 'string'
+            ? materialName.replace(/\s+/g, '').replace(/之精华$/u, '').replace(/精华$/u, '').trim()
+            : '';
+        const variants = [];
+        const pushVariant = (value) => {
+            if (typeof value !== 'string') return;
+            const safeValue = value.trim();
+            if (!safeValue || variants.includes(safeValue)) return;
+            variants.push(safeValue);
+        };
+
+        if (reason === 'material') {
+            if (rawLabel) {
+                pushVariant(rawLabel);
+            } else if (requiredCount > 0 && materialName) {
+                pushVariant(`材料不足! 需要${requiredCount}个${materialName}`);
+            } else {
+                pushVariant('材料不足!');
+            }
+            if (requiredCount > 0 && compactMaterialName && compactMaterialName !== materialName) {
+                pushVariant(`材料不足! 需要${requiredCount}个${compactMaterialName}`);
+            }
+            if (requiredCount > 0) {
+                pushVariant(`材料不足! 需要${requiredCount}个`);
+            }
+            pushVariant('材料不足!');
+            pushVariant('当前无法强化');
+        } else if (reason === 'gold') {
+            pushVariant(rawLabel || '金币不足!');
+            pushVariant('当前无法强化');
+        } else if (reason === 'max_level') {
+            pushVariant(rawLabel || '该武器已达最高等级');
+            pushVariant('当前无法强化');
+        } else if (reason === 'material_binding_missing') {
+            pushVariant(rawLabel || '该武器缺少强化材料绑定');
+            pushVariant('当前无法强化');
+        } else {
+            pushVariant(rawLabel || '当前无法强化');
+        }
+
+        if (variants.length === 0) {
+            return '当前无法强化';
+        }
+        if (maxWidth <= 0) {
+            return variants[0];
+        }
+
+        const measureGlyphWidth = measureTextWidth
+            ? glyph => getCraftRecipeRowTextWidth(glyph, { measureTextWidth })
+            : null;
+        const measurementCache = measureGlyphWidth ? new Map() : null;
+        for (const variant of variants) {
+            if (getCraftRecipeRowTextWidth(variant, { measureTextWidth }) <= maxWidth) {
+                return variant;
+            }
+        }
+
+        return clampTextToWidth(variants[variants.length - 1], maxWidth, {
+            measureGlyphWidth,
+            measurementCache
+        });
+    }
+
+    function buildWeaponUpgradeSuccessMessage(result, itemCatalog, weapons, scalingOverride, options) {
+        const safeResult = result && typeof result === 'object'
+            ? result
+            : {};
+        const safeItemCatalog = itemCatalog && typeof itemCatalog === 'object' ? itemCatalog : {};
+        const safeWeapons = weapons && typeof weapons === 'object' ? weapons : {};
+        const safeScaling = scalingOverride || WEAPON_SCALING;
+        const rawLabel = typeof safeResult.label === 'string' ? safeResult.label.trim() : '';
+        const measureTextWidth = options && typeof options.measureTextWidth === 'function'
+            ? options.measureTextWidth
+            : null;
+        const maxWidth = Number.isFinite(options && options.maxWidth)
+            ? Math.max(0, options.maxWidth)
+            : 0;
+        const spentCount = Math.max(
+            0,
+            clampInt(
+                safeResult.cost && safeResult.cost.essence,
+                0,
+                Number.MAX_SAFE_INTEGER,
+                0
+            )
+        );
+        const requiredMaterialKey = typeof safeResult.requiredMaterialKey === 'string'
+            ? safeResult.requiredMaterialKey
+            : '';
+        const materialName = requiredMaterialKey
+            && safeItemCatalog[requiredMaterialKey]
+            && typeof safeItemCatalog[requiredMaterialKey].name === 'string'
+            ? safeItemCatalog[requiredMaterialKey].name
+            : requiredMaterialKey;
+        const compactMaterialName = typeof materialName === 'string'
+            ? materialName.replace(/\s+/g, '').replace(/之精华$/u, '').replace(/精华$/u, '').trim()
+            : '';
+        const variants = [];
+        const pushVariant = (value) => {
+            if (typeof value !== 'string') return;
+            const safeValue = value.trim();
+            if (!safeValue || variants.includes(safeValue)) return;
+            variants.push(safeValue);
+        };
+
+        const benefitSummary = buildWeaponUpgradeBenefitSummary(
+            safeResult.weaponKey,
+            safeResult.level,
+            safeResult.nextLevel,
+            safeWeapons,
+            safeScaling,
+            {
+                labelPrefix: '本次'
+            }
+        );
+        const fromLevel = clampInt(safeResult.level, 1, 99, 1);
+        const toLevel = clampInt(safeResult.nextLevel, fromLevel, 99, fromLevel);
+        const levelTransition = toLevel > fromLevel ? `Lv.${fromLevel}→Lv.${toLevel}` : '';
+        const cumulativeBenefitSummary = toLevel > 2
+            ? buildWeaponUpgradeBenefitSummary(
+                safeResult.weaponKey,
+                1,
+                toLevel,
+                safeWeapons,
+                safeScaling,
+                {
+                    labelPrefix: '累计'
+                }
+            )
+            : '';
+        const cumulativeSegments = cumulativeBenefitSummary.split(' / ').map(segment => segment.trim()).filter(Boolean);
+        const buildCompactLayerAnchor = (segment, anchorLabel) => {
+            if (typeof segment !== 'string' || typeof anchorLabel !== 'string') {
+                return '';
+            }
+            const safeSegment = segment.trim();
+            const safeAnchorLabel = anchorLabel.trim();
+            if (!safeSegment || !safeAnchorLabel) {
+                return '';
+            }
+            const deltaMatch = safeSegment.match(/([+-].+)$/u);
+            if (!deltaMatch || !deltaMatch[1]) {
+                return '';
+            }
+            return `${safeAnchorLabel}${deltaMatch[1]}`;
+        };
+        const compactCumulativeAnchor = [
+            buildCompactLayerAnchor(cumulativeSegments[0] || '', '累计'),
+            cumulativeSegments[1] || ''
+        ].filter(Boolean).join(' / ');
+        const cumulativePrimaryAnchor = cumulativeSegments[0] || '';
+        const fullSpendAnchor = spentCount > 0 && materialName
+            ? `消耗${spentCount}个${materialName}`
+            : '';
+        const compactSpendAnchor = spentCount > 0 && compactMaterialName && compactMaterialName !== materialName
+            ? `消耗${spentCount}个${compactMaterialName}`
+            : '';
+        if (benefitSummary) {
+            const benefitSegments = benefitSummary.split(' / ').map(segment => segment.trim()).filter(Boolean);
+            if (levelTransition && cumulativeBenefitSummary) {
+                if (fullSpendAnchor) {
+                    pushVariant(`强化成功! ${levelTransition} · ${benefitSummary} · ${cumulativeBenefitSummary} · ${fullSpendAnchor}`);
+                }
+                if (compactSpendAnchor) {
+                    pushVariant(`强化成功! ${levelTransition} · ${benefitSummary} · ${cumulativeBenefitSummary} · ${compactSpendAnchor}`);
+                }
+                pushVariant(`强化成功! ${levelTransition} · ${benefitSummary} · ${cumulativeBenefitSummary}`);
+                if (compactCumulativeAnchor) {
+                    pushVariant(`强化成功! ${levelTransition} · ${benefitSummary} · ${compactCumulativeAnchor}`);
+                }
+                if (cumulativePrimaryAnchor) {
+                    pushVariant(`强化成功! ${levelTransition} · ${benefitSummary} · ${cumulativePrimaryAnchor}`);
+                }
+            }
+            if (levelTransition) {
+                if (fullSpendAnchor) {
+                    pushVariant(`强化成功! ${levelTransition} · ${benefitSummary} · ${fullSpendAnchor}`);
+                }
+                if (compactSpendAnchor) {
+                    pushVariant(`强化成功! ${levelTransition} · ${benefitSummary} · ${compactSpendAnchor}`);
+                }
+                pushVariant(`强化成功! ${levelTransition} · ${benefitSummary}`);
+            }
+            if (benefitSegments.length >= 2) {
+                if (levelTransition) {
+                    pushVariant(`强化成功! ${levelTransition} · ${benefitSegments.slice(0, 2).join(' / ')}`);
+                }
+            }
+            if (benefitSegments.length >= 1) {
+                if (levelTransition) {
+                    pushVariant(`强化成功! ${levelTransition} · ${benefitSegments[0]}`);
+                }
+            }
+            if (levelTransition) {
+                pushVariant(`强化成功! ${levelTransition}`);
+            }
+            pushVariant(`强化成功! ${benefitSummary}`);
+            if (benefitSegments.length >= 2) {
+                pushVariant(`强化成功! ${benefitSegments.slice(0, 2).join(' / ')}`);
+            }
+            if (benefitSegments.length >= 1) {
+                pushVariant(`强化成功! ${benefitSegments[0]}`);
+            }
+        }
+        if (rawLabel) {
+            pushVariant(rawLabel);
+        } else if (spentCount > 0 && materialName) {
+            pushVariant(`强化成功! 消耗${spentCount}个${materialName}`);
+        } else {
+            pushVariant('强化成功!');
+        }
+        if (spentCount > 0 && compactMaterialName && compactMaterialName !== materialName) {
+            pushVariant(`强化成功! 消耗${spentCount}个${compactMaterialName}`);
+        }
+        if (spentCount > 0) {
+            pushVariant(`强化成功! 消耗${spentCount}个`);
+        }
+        pushVariant('强化成功!');
+        pushVariant('强化成功');
+
+        if (maxWidth <= 0) {
+            return variants[0];
+        }
+
+        const measureGlyphWidth = measureTextWidth
+            ? glyph => getCraftRecipeRowTextWidth(glyph, { measureTextWidth })
+            : null;
+        const measurementCache = measureGlyphWidth ? new Map() : null;
+        for (const variant of variants) {
+            if (getCraftRecipeRowTextWidth(variant, { measureTextWidth }) <= maxWidth) {
+                return variant;
+            }
+        }
+
+        return clampTextToWidth(variants[variants.length - 1], maxWidth, {
+            measureGlyphWidth,
+            measurementCache
+        });
     }
 
     return {
@@ -4074,6 +5541,7 @@
         getRunChallengeSidebarBadgeAppearance,
         buildQuickSlotItemLabel,
         buildQuickSlotAutoAssignNotice,
+        buildQuickSlotAutoAssignResult,
         getViewportTextClampX,
         getViewportCenteredTextClampX,
         getInventoryTooltipClampX,
@@ -4113,8 +5581,13 @@
         buildRunEventRoomEffects,
         buildRunEventRoomChoicePreview,
         buildRunEventRoomChoicePanelPreview,
+        buildRunEventRoomChoiceRecommendation,
         getRunEventRoomChoiceEncounterProfile,
         buildRunEventEncounterRoster,
+        buildRunEventEncounterFormationSlots,
+        buildRunEventEncounterPayoffPresentation,
+        buildRunEventEncounterEntryPreview,
+        buildRunEventEncounterClearRecap,
         formatRunEventRoomChoiceEncounterPreview,
         getRunEventRoomChoiceAffordabilityLabel,
         getRunEventRoomChoiceFailureMessage,
@@ -4135,8 +5608,20 @@
         getRequiredMaterialForWeapon,
         canUpgradeWeapon,
         applyWeaponUpgrade,
+        buildWeaponUpgradeAffordance,
+        buildWeaponUpgradeBenefitSummary,
+        buildWeaponUpgradePreviewSummary,
+        buildWeaponUpgradeRowLabel,
+        buildWeaponUpgradeFailureMessage,
+        buildWeaponUpgradeSuccessMessage,
         getCraftingRecipe,
         canCraftRecipe,
+        buildCraftRecipeAffordance,
+        buildCraftRecipeRowLabel,
+        buildCraftRecipeQuickSlotPreview,
+        buildCraftRecipeBatchReceipt,
+        buildCraftRecipeFailureMessage,
+        buildCraftRecipeSuccessMessage,
         applyCraftRecipe
     };
 });
