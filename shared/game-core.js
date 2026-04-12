@@ -2834,10 +2834,22 @@
         };
     }
 
+    function getRunEventControlRecommendationContext(state) {
+        const safeState = state && typeof state === 'object' ? state : {};
+        return {
+            targetSlowMs: Math.max(0, Number(safeState.controlTargetSlowMs) || 0),
+            finisherWindowMs: Math.max(0, Number(safeState.controlFinisherWindowMs) || 0)
+        };
+    }
+
     function getRunEventRoomChoiceActionStateNote(choiceKey, state) {
         const safeChoiceKey = typeof choiceKey === 'string' ? choiceKey.trim() : '';
         if (!safeChoiceKey) return '';
         const actionState = getRunEventActionStateContext(state);
+        const safeState = state && typeof state === 'object' ? state : {};
+        const selectedWeaponKey = typeof safeState.selectedWeaponKey === 'string' ? safeState.selectedWeaponKey : '';
+        const weaponStatus = getWeaponSpecialStatus(selectedWeaponKey);
+        const controlState = getRunEventControlRecommendationContext(safeState);
 
         if (safeChoiceKey === 'flurryLesson') {
             return actionState.attackCooldownBlocked ? '普攻正卡冷却' : '';
@@ -2864,6 +2876,17 @@
         }
         if (safeChoiceKey === 'pursuitLesson') {
             return actionState.canChainDodgeAttack ? '可接闪后追击' : '';
+        }
+        if (safeChoiceKey === 'crushingLesson') {
+            if (!weaponStatus || weaponStatus.key !== 'slow') return '';
+            if (controlState.finisherWindowMs > 0 || controlState.targetSlowMs > 0) return '';
+            return '先挂减速';
+        }
+        if (safeChoiceKey === 'executionLesson') {
+            if (!weaponStatus || weaponStatus.key !== 'slow') return '';
+            if (controlState.finisherWindowMs > 0) return '可接破势终结';
+            if (controlState.targetSlowMs > 0) return '减速目标已现';
+            return '';
         }
         return '';
     }
@@ -3112,6 +3135,14 @@
             return null;
         }
 
+        if (hasChoice('crushingLesson') && hasChoice('executionLesson')) {
+            const executionReason = getRunEventRoomChoiceActionStateNote('executionLesson', safeState);
+            const crushingReason = getRunEventRoomChoiceActionStateNote('crushingLesson', safeState);
+            if (executionReason) return buildRecommendation('executionLesson', executionReason);
+            if (crushingReason) return buildRecommendation('crushingLesson', crushingReason);
+            return null;
+        }
+
         return null;
     }
 
@@ -3214,6 +3245,13 @@
                     sourceCueMoment: 'stabilize'
                 };
             }
+            if (normalizedRoom.selectedChoiceKey === 'crushingLesson' && recommendationReason === '先挂减速') {
+                return {
+                    echo: '减速稳场',
+                    sourceCue: '减速稳场',
+                    sourceCueMoment: 'stabilize'
+                };
+            }
         }
 
         if (profileKey === 'pressure') {
@@ -3287,6 +3325,21 @@
                 return {
                     echo: '闪后追赏',
                     sourceCue: '闪后追赏',
+                    sourceCueMoment: 'bounty'
+                };
+            }
+            if (normalizedRoom.selectedChoiceKey === 'executionLesson' && recommendationReason === '减速目标已现') {
+                return {
+                    echo: '减速追赏',
+                    sourceCue: '减速追赏',
+                    sourceCueMoment: 'bounty'
+                };
+            }
+            if (normalizedRoom.selectedChoiceKey === 'executionLesson'
+                && (recommendationReason === '可接破势终结' || recommendationReason === '当前可追终结')) {
+                return {
+                    echo: '终结追赏',
+                    sourceCue: '终结追赏',
                     sourceCueMoment: 'bounty'
                 };
             }

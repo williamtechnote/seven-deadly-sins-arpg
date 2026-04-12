@@ -1092,6 +1092,23 @@ function testRunEventRoomSelection() {
         '',
         'event-room resolution should stay silent when the selected route did not earn a high-confidence recommendation'
     );
+    const controlRecommendationSettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 100,
+        playerMaxHp: 120,
+        selectedWeaponKey: 'hammer',
+        controlTargetSlowMs: 2200
+    }, {
+        key: 'controlRoutingShrine',
+        discovered: true,
+        resolved: false
+    }, 'executionLesson');
+    assert.equal(controlRecommendationSettlement.ok, true, 'control-routing shrine should still resolve when the execution route is chosen under a live slowed-target context');
+    assert.equal(
+        controlRecommendationSettlement.eventRoom.selectedChoiceRecommendationReason,
+        '减速目标已现',
+        'event-room resolution should persist the live-target control recommendation reason when the selected payoff route matches it'
+    );
     const prayerEffects = buildRunEventRoomEffects(prayerSettlement.eventRoom);
     assert.equal(prayerEffects.playerSpecialCooldownMultiplier, 0.78, 'tempo prayer should shorten special cooldowns');
     assert.match(prayerSettlement.eventRoom.resolutionText, /冷却/, 'prayer shrine summary should mention the cooldown buff');
@@ -2629,6 +2646,49 @@ function testRunEventEncounterSourceCueHelpers() {
         'careful wager should upgrade its bounty-moment source cue when the safer-gamble recommendation reason is still what makes the routed room sensible'
     );
     assert.equal(
+        buildRunEventEncounterEntryPreview(
+            { key: 'breather', encounterLabel: '缓冲战' },
+            {
+                key: 'controlRoutingShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'crushingLesson',
+                selectedChoiceRecommendationReason: '先挂减速'
+            }
+        ),
+        '缓冲战 · 双拍缓冲 · 减速稳场',
+        'control-route entry preview should upgrade the slow-setup route when the recommendation reason explicitly says to establish slow first'
+    );
+    assert.equal(
+        buildRunEventEncounterSourceCue(
+            { key: 'windfall', encounterLabel: '淘金战' },
+            {
+                key: 'controlRoutingShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'executionLesson',
+                selectedChoiceRecommendationReason: '减速目标已现'
+            },
+            'bounty'
+        ),
+        '减速追赏',
+        'control-route source cues should upgrade the payoff route when a slowed target is already online'
+    );
+    assert.equal(
+        buildRunEventEncounterClearRecap(
+            { key: 'windfall', encounterLabel: '淘金战' },
+            {
+                key: 'controlRoutingShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'executionLesson',
+                selectedChoiceRecommendationReason: '可接破势终结'
+            }
+        ),
+        '淘金战 · 赏金到手 · 终结追赏',
+        'control-route clear recap should upgrade the payoff route when the recommendation came from a live finisher window'
+    );
+    assert.equal(
         buildRunEventEncounterSourceCue(
             { key: 'breather', encounterLabel: '缓冲战' },
             {
@@ -2780,6 +2840,41 @@ function testRunEventRoomChoiceRecommendation() {
         }),
         '建议 1：追猎修习 · 可接闪后追击',
         'recommendation helper should elevate the dodge-into-attack chase route when the current action state already supports that pursuit loop'
+    );
+
+    const controlChoices = getRunEventRoomChoices('controlRoutingShrine');
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(controlChoices, {
+            playerHp: 72,
+            playerMaxHp: 120,
+            selectedWeaponKey: 'hammer',
+            controlTargetSlowMs: 0,
+            controlFinisherWindowMs: 0
+        }),
+        '建议 1：镇步修习 · 先挂减速',
+        'recommendation helper should steer the control shrine toward slow setup when the current loadout can apply slow but no payoff target is yet online'
+    );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(controlChoices, {
+            playerHp: 100,
+            playerMaxHp: 120,
+            selectedWeaponKey: 'hammer',
+            controlTargetSlowMs: 2200,
+            controlFinisherWindowMs: 0
+        }),
+        '建议 2：破势修习 · 减速目标已现',
+        'recommendation helper should elevate the payoff route once a slowed target already exists in the recent control context'
+    );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(controlChoices, {
+            playerHp: 100,
+            playerMaxHp: 120,
+            selectedWeaponKey: 'hammer',
+            controlTargetSlowMs: 2200,
+            controlFinisherWindowMs: 900
+        }),
+        '建议 2：破势修习 · 可接破势终结',
+        'recommendation helper should prioritize the finisher payoff route when the recent control context already includes a break-window finisher opportunity'
     );
 }
 
@@ -3673,18 +3768,28 @@ function testRunEventEncounterRoutingHooks() {
     const source = loadGameSource();
     assert.match(
         source,
-        /_openRunEventChoicePanel\(\)\s*{[\s\S]*?selectedWeaponKey:\s*this\.player\.currentWeaponKey,[\s\S]*?negativeStatuses:\s*Object\.keys\(this\.player\.activeStatusEffects \|\| \{\}\),[\s\S]*?attackCooldownMs:\s*this\.player\.attackCooldown,[\s\S]*?specialCooldownMs:\s*this\.player\.specialCooldown,[\s\S]*?dodgeCooldownMs:\s*this\.player\.dodgeCooldownTimer,[\s\S]*?stamina:\s*this\.player\.stamina,[\s\S]*?attackStaminaCost:\s*this\.player\.currentWeapon \? this\.player\.currentWeapon\.staminaCost : 0,[\s\S]*?specialStaminaCost:\s*this\.player\.currentWeapon \? this\.player\.currentWeapon\.specialStaminaCost : 0,[\s\S]*?dodgeStaminaCost:\s*Math\.max\(1,\s*Math\.round\(GAME_CONFIG\.PLAYER\.dodgeStaminaCost \* \(\(GameState\.runEffects \|\| DEFAULT_RUN_EFFECTS\)\.playerDodgeStaminaCostMultiplier \|\| 1\)\)\),[\s\S]*?runModifiers:\s*\(GameState\.runModifiers \|\| \[\]\)\.map\(key => getRunModifierByKey\(key\)\)[\s\S]*?const encounterPreview = formatRunEventRoomChoiceEncounterPreview\(choice\);[\s\S]*?textNode\.setText\(`\$\{index \+ 1\}\. \$\{previewText\}\$\{encounterPreview \? ` · \$\{encounterPreview\}` : ''\}\$\{affordabilityLabel \? ` · \$\{affordabilityLabel\}` : ''\}`\);/,
+        /_openRunEventChoicePanel\(\)\s*{[\s\S]*?selectedWeaponKey:\s*this\.player\.currentWeaponKey,[\s\S]*?negativeStatuses:\s*Object\.keys\(this\.player\.activeStatusEffects \|\| \{\}\),[\s\S]*?attackCooldownMs:\s*this\.player\.attackCooldown,[\s\S]*?specialCooldownMs:\s*this\.player\.specialCooldown,[\s\S]*?dodgeCooldownMs:\s*this\.player\.dodgeCooldownTimer,[\s\S]*?stamina:\s*this\.player\.stamina,[\s\S]*?controlTargetSlowMs:\s*Math\.max\(0,\s*\(this\.player\.controlRecommendationSlowTargetUntil \|\| 0\) - this\.time\.now\),[\s\S]*?controlFinisherWindowMs:\s*Math\.max\(0,\s*\(this\.player\.controlRecommendationFinisherUntil \|\| 0\) - this\.time\.now\),[\s\S]*?attackStaminaCost:\s*this\.player\.currentWeapon \? this\.player\.currentWeapon\.staminaCost : 0,[\s\S]*?specialStaminaCost:\s*this\.player\.currentWeapon \? this\.player\.currentWeapon\.specialStaminaCost : 0,[\s\S]*?dodgeStaminaCost:\s*Math\.max\(1,\s*Math\.round\(GAME_CONFIG\.PLAYER\.dodgeStaminaCost \* \(\(GameState\.runEffects \|\| DEFAULT_RUN_EFFECTS\)\.playerDodgeStaminaCostMultiplier \|\| 1\)\)\),[\s\S]*?runModifiers:\s*\(GameState\.runModifiers \|\| \[\]\)\.map\(key => getRunModifierByKey\(key\)\)[\s\S]*?const encounterPreview = formatRunEventRoomChoiceEncounterPreview\(choice\);[\s\S]*?textNode\.setText\(`\$\{index \+ 1\}\. \$\{previewText\}\$\{encounterPreview \? ` · \$\{encounterPreview\}` : ''\}\$\{affordabilityLabel \? ` · \$\{affordabilityLabel\}` : ''\}`\);/,
         'run-event choice panel should pass both the static route context and the live action-state snapshot before appending the next-room encounter preview tag'
     );
     assert.match(
         source,
-        /_openRunEventChoicePanel\(\)\s*{[\s\S]*?const previewState = \{[\s\S]*?attackCooldownMs:\s*this\.player\.attackCooldown,[\s\S]*?specialCooldownMs:\s*this\.player\.specialCooldown,[\s\S]*?dodgeCooldownMs:\s*this\.player\.dodgeCooldownTimer,[\s\S]*?stamina:\s*this\.player\.stamina,[\s\S]*?\};[\s\S]*?const recommendation = buildRunEventRoomChoiceRecommendation\(this\._runEventChoiceOptions,\s*previewState\);[\s\S]*?this\._setRunEventChoicePanelFooter\(recommendation \|\| RUN_EVENT_CHOICE_PANEL_FOOTER_DEFAULT,\s*'default'\);/,
-        'run-event choice panel should route the live action-state snapshot into the shared recommendation helper and only replace the neutral footer when that helper returns a message'
+        /_openRunEventChoicePanel\(\)\s*{[\s\S]*?const previewState = \{[\s\S]*?attackCooldownMs:\s*this\.player\.attackCooldown,[\s\S]*?specialCooldownMs:\s*this\.player\.specialCooldown,[\s\S]*?dodgeCooldownMs:\s*this\.player\.dodgeCooldownTimer,[\s\S]*?stamina:\s*this\.player\.stamina,[\s\S]*?controlTargetSlowMs:\s*Math\.max\(0,\s*\(this\.player\.controlRecommendationSlowTargetUntil \|\| 0\) - this\.time\.now\),[\s\S]*?controlFinisherWindowMs:\s*Math\.max\(0,\s*\(this\.player\.controlRecommendationFinisherUntil \|\| 0\) - this\.time\.now\),[\s\S]*?\};[\s\S]*?const recommendation = buildRunEventRoomChoiceRecommendation\(this\._runEventChoiceOptions,\s*previewState\);[\s\S]*?this\._setRunEventChoicePanelFooter\(recommendation \|\| RUN_EVENT_CHOICE_PANEL_FOOTER_DEFAULT,\s*'default'\);/,
+        'run-event choice panel should route both action-state and recent-control context into the shared recommendation helper and only replace the neutral footer when that helper returns a message'
     );
     assert.match(
         source,
-        /_handleRunEventChoiceHotkey\(choiceIndex\)\s*{[\s\S]*?const settlement = resolveRunEventRoomChoice\(\{\s*gold:\s*startGold,\s*playerHp:\s*this\.player\.hp,\s*playerMaxHp:\s*this\.player\.maxHp,\s*selectedWeaponKey:\s*this\.player\.currentWeaponKey,\s*inventory:\s*GameState\.inventory,\s*negativeStatuses:\s*Object\.keys\(this\.player\.activeStatusEffects \|\| \{\}\),\s*attackCooldownMs:\s*this\.player\.attackCooldown,\s*specialCooldownMs:\s*this\.player\.specialCooldown,\s*dodgeCooldownMs:\s*this\.player\.dodgeCooldownTimer,\s*stamina:\s*this\.player\.stamina,\s*attackStaminaCost:\s*this\.player\.currentWeapon \? this\.player\.currentWeapon\.staminaCost : 0,\s*specialStaminaCost:\s*this\.player\.currentWeapon \? this\.player\.currentWeapon\.specialStaminaCost : 0,\s*dodgeStaminaCost:\s*Math\.max\(1,\s*Math\.round\(GAME_CONFIG\.PLAYER\.dodgeStaminaCost \* \(\(GameState\.runEffects \|\| DEFAULT_RUN_EFFECTS\)\.playerDodgeStaminaCostMultiplier \|\| 1\)\)\)\s*\},\s*GameState\.runEventRoom,\s*choice\.key,\s*RUN_EVENT_ROOM_POOL\);/,
-        'run-event choice resolution should pass the same live action-state snapshot so the selected route can persist an action-state recommendation receipt'
+        /_handleRunEventChoiceHotkey\(choiceIndex\)\s*{[\s\S]*?const settlement = resolveRunEventRoomChoice\(\{\s*gold:\s*startGold,\s*playerHp:\s*this\.player\.hp,\s*playerMaxHp:\s*this\.player\.maxHp,\s*selectedWeaponKey:\s*this\.player\.currentWeaponKey,\s*inventory:\s*GameState\.inventory,\s*negativeStatuses:\s*Object\.keys\(this\.player\.activeStatusEffects \|\| \{\}\),\s*attackCooldownMs:\s*this\.player\.attackCooldown,\s*specialCooldownMs:\s*this\.player\.specialCooldown,\s*dodgeCooldownMs:\s*this\.player\.dodgeCooldownTimer,\s*stamina:\s*this\.player\.stamina,\s*controlTargetSlowMs:\s*Math\.max\(0,\s*\(this\.player\.controlRecommendationSlowTargetUntil \|\| 0\) - this\.time\.now\),\s*controlFinisherWindowMs:\s*Math\.max\(0,\s*\(this\.player\.controlRecommendationFinisherUntil \|\| 0\) - this\.time\.now\),\s*attackStaminaCost:\s*this\.player\.currentWeapon \? this\.player\.currentWeapon\.staminaCost : 0,\s*specialStaminaCost:\s*this\.player\.currentWeapon \? this\.player\.currentWeapon\.specialStaminaCost : 0,\s*dodgeStaminaCost:\s*Math\.max\(1,\s*Math\.round\(GAME_CONFIG\.PLAYER\.dodgeStaminaCost \* \(\(GameState\.runEffects \|\| DEFAULT_RUN_EFFECTS\)\.playerDodgeStaminaCostMultiplier \|\| 1\)\)\)\s*\},\s*GameState\.runEventRoom,\s*choice\.key,\s*RUN_EVENT_ROOM_POOL\);/,
+        'run-event choice resolution should pass the same recent-control context so the selected route can persist a control-target recommendation receipt'
+    );
+    assert.match(
+        source,
+        /this\.player\.controlRecommendationSlowTargetUntil = Math\.max\(Number\(this\.player\.controlRecommendationSlowTargetUntil\) \|\| 0,\s*this\.time\.now \+ \d+\);/,
+        'combat hits against slowed targets should arm a short recent-control window for shrine recommendations'
+    );
+    assert.match(
+        source,
+        /this\.player\.controlRecommendationFinisherUntil = Math\.max\(Number\(this\.player\.controlRecommendationFinisherUntil\) \|\| 0,\s*this\.time\.now \+ \d+\);/,
+        'boss finisher windows should arm a short recent-finisher window for shrine recommendations'
     );
     assert.match(
         source,
@@ -12443,6 +12548,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /`镇压圣坛` 的 `镇步修习 \/ 破势修习` 也会继续读取近期 `减速目标 \/ 破招窗口` 这类 control context，并在高置信场景下补 `建议 1：镇步修习 · 先挂减速` \/ `建议 2：破势修习 · 减速目标已现` \/ `建议 2：破势修习 · 可接破势终结` 这类脚注；若真的按下这些推荐，第三房入口 \/ 清场 \/ 战中 source cue 还会继续补 `减速稳场` \/ `减速追赏` \/ `终结追赏`/,
+        'README should document the control-route live-target recommendations and the routed echoes they unlock'
+    );
+    assert.match(
+        source,
         /当第三房真正开始兑现这条 recommendation 时，shared contract 还会只在首个稳场节点 \/ 首个高压接敌 \/ 首个赏金兑现点再补一次 `净化后稳场` \/ `压线抢势` \/ `血线够追赏` 这类战中 source cue，把“为什么推荐这条”接到实际交手瞬间/,
         'README should document the one-shot combat source cue that cashes recommendation reasons into the first key routed room-3 beat'
     );
@@ -13639,6 +13749,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /对“连斩\/游步\/借势\/催锋\/回身\/追猎”这些行动型 blessing，choice panel 还会继续读取当前“普攻\/特攻\/闪避”的冷却与体力状态，并在高置信场景下补“建议 1：连斩修习 · 普攻正卡冷却”\/“建议 2：借势修习 · 可接闪特爆发”\/“建议 1：催锋修习 · 特攻正卡冷却”\/“建议 1：追猎修习 · 可接闪后追击”这类脚注；若真的按下这些推荐，第三房入口\/清场\/战中 source cue 也会把 baseline anchor 升级成“冷却抢拍”\/“闪后爆发”\/“催锋追段”\/“回身回线”\/“闪后追赏”/,
         'help overlay should document the first-wave action-state recommendations and the upgraded encounter echoes they unlock'
+    );
+    assert.match(
+        source,
+        /“镇压圣坛”的“镇步修习\/破势修习”也会继续读取近期“减速目标\/破招窗口”这类 control context，并在高置信场景下补“建议 1：镇步修习 · 先挂减速”\/“建议 2：破势修习 · 减速目标已现”\/“建议 2：破势修习 · 可接破势终结”这类脚注；若真的按下这些推荐，第三房入口\/清场\/战中 source cue 还会继续补“减速稳场”\/“减速追赏”\/“终结追赏”/,
+        'help overlay should document the control-route live-target recommendations and the routed echoes they unlock'
     );
     assert.match(
         source,
