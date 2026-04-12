@@ -669,6 +669,42 @@
     });
 
     const RUN_EVENT_BASELINE_ROUTE_FEEDBACK = Object.freeze({
+        renewalPrayer: Object.freeze({
+            profileKey: 'breather',
+            echo: '复苏回拍',
+            sourceCue: '复苏回拍',
+            sourceCueMoment: 'stabilize'
+        }),
+        tempoPrayer: Object.freeze({
+            profileKey: 'pressure',
+            echo: '迅击抢拍',
+            sourceCue: '迅击抢拍',
+            sourceCueMoment: 'engage'
+        }),
+        highStakeWager: Object.freeze({
+            profileKey: 'windfall',
+            echo: '豪赌追赏',
+            sourceCue: '豪赌追赏',
+            sourceCueMoment: 'bounty'
+        }),
+        carefulWager: Object.freeze({
+            profileKey: 'windfall',
+            echo: '稳押收赏',
+            sourceCue: '稳押收赏',
+            sourceCueMoment: 'bounty'
+        }),
+        fieldTonic: Object.freeze({
+            profileKey: 'breather',
+            echo: '净包稳场',
+            sourceCue: '净包稳场',
+            sourceCueMoment: 'stabilize'
+        }),
+        berserkerKit: Object.freeze({
+            profileKey: 'pressure',
+            echo: '狂油抢势',
+            sourceCue: '狂油抢势',
+            sourceCueMoment: 'engage'
+        }),
         flurryLesson: Object.freeze({
             profileKey: 'pressure',
             echo: '连斩抢拍',
@@ -3230,6 +3266,13 @@
                 return {
                     echo: '血线够追赏',
                     sourceCue: '血线够追赏',
+                    sourceCueMoment: 'bounty'
+                };
+            }
+            if (normalizedRoom.selectedChoiceKey === 'carefulWager' && recommendationReason === '当前更宜稳押') {
+                return {
+                    echo: '留本追赏',
+                    sourceCue: '留本追赏',
                     sourceCueMoment: 'bounty'
                 };
             }

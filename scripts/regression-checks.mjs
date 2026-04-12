@@ -968,6 +968,22 @@ function testRunEventRoomSelection() {
     assert.equal(repeat.ok, false, 'resolved event should reject repeat settlement');
     assert.equal(repeat.reason, 'already_resolved', 'repeat settlement should report already_resolved');
 
+    const carefulSettlement = resolveRunEventRoomChoice({
+        gold: 40,
+        playerHp: 52,
+        playerMaxHp: 120
+    }, {
+        key: 'gamblersShrine',
+        discovered: true,
+        resolved: false
+    }, 'carefulWager');
+    assert.equal(carefulSettlement.ok, true, 'careful wager should resolve on the safer gold route');
+    assert.equal(
+        carefulSettlement.eventRoom.selectedChoiceRecommendationReason,
+        '当前更宜稳押',
+        'careful wager should persist the safer-gamble recommendation reason when the player is already too low to justify the high-stake route'
+    );
+
     const fountain = getRunEventRoomByKey('healingFountain');
     assert.ok(fountain, 'healing fountain should exist');
     const fountainChoices = getRunEventRoomChoices('healingFountain');
@@ -1768,6 +1784,63 @@ const ACTION_ROUTE_ENCOUNTER_CASES = Object.freeze([
     }
 ]);
 
+const RESOURCE_ROUTE_ENCOUNTER_CASES = Object.freeze([
+    {
+        roomKey: 'prayerShrine',
+        choiceKey: 'renewalPrayer',
+        expectedProfileKey: 'breather',
+        expectedEntry: '缓冲战 · 双拍缓冲 · 复苏回拍',
+        expectedClear: '缓冲战 · 稳住出清 · 复苏回拍',
+        expectedSourceCue: '复苏回拍',
+        moment: 'stabilize'
+    },
+    {
+        roomKey: 'prayerShrine',
+        choiceKey: 'tempoPrayer',
+        expectedProfileKey: 'pressure',
+        expectedEntry: '高压战 · 三向成压 · 迅击抢拍',
+        expectedClear: '高压战 · 顶住成压 · 迅击抢拍',
+        expectedSourceCue: '迅击抢拍',
+        moment: 'engage'
+    },
+    {
+        roomKey: 'gamblersShrine',
+        choiceKey: 'highStakeWager',
+        expectedProfileKey: 'windfall',
+        expectedEntry: '淘金战 · 后排赏金 · 豪赌追赏',
+        expectedClear: '淘金战 · 赏金到手 · 豪赌追赏',
+        expectedSourceCue: '豪赌追赏',
+        moment: 'bounty'
+    },
+    {
+        roomKey: 'gamblersShrine',
+        choiceKey: 'carefulWager',
+        expectedProfileKey: 'windfall',
+        expectedEntry: '淘金战 · 后排赏金 · 稳押收赏',
+        expectedClear: '淘金战 · 赏金到手 · 稳押收赏',
+        expectedSourceCue: '稳押收赏',
+        moment: 'bounty'
+    },
+    {
+        roomKey: 'supplyCache',
+        choiceKey: 'fieldTonic',
+        expectedProfileKey: 'breather',
+        expectedEntry: '缓冲战 · 双拍缓冲 · 净包稳场',
+        expectedClear: '缓冲战 · 稳住出清 · 净包稳场',
+        expectedSourceCue: '净包稳场',
+        moment: 'stabilize'
+    },
+    {
+        roomKey: 'supplyCache',
+        choiceKey: 'berserkerKit',
+        expectedProfileKey: 'pressure',
+        expectedEntry: '高压战 · 三向成压 · 狂油抢势',
+        expectedClear: '高压战 · 顶住成压 · 狂油抢势',
+        expectedSourceCue: '狂油抢势',
+        moment: 'engage'
+    }
+]);
+
 function testRunEventEncounterProfileHelpers() {
     assert.equal(typeof getRunEventRoomChoiceEncounterProfile, 'function', 'event room encounter profile helper should be exported');
     assert.equal(typeof buildRunEventEncounterRoster, 'function', 'event room encounter roster helper should be exported');
@@ -2019,6 +2092,38 @@ function testRunEventEncounterProfileHelpers() {
             `${choiceKey} should append its baseline route anchor to the routed room-3 entry cue`
         );
     });
+    RESOURCE_ROUTE_ENCOUNTER_CASES.forEach(({ roomKey, choiceKey, expectedProfileKey, expectedEntry }) => {
+        const encounterLabel = expectedProfileKey === 'breather'
+            ? '缓冲战'
+            : (expectedProfileKey === 'pressure' ? '高压战' : '淘金战');
+        assert.equal(
+            buildRunEventEncounterEntryPreview(
+                { key: expectedProfileKey, encounterLabel },
+                {
+                    key: roomKey,
+                    discovered: true,
+                    resolved: true,
+                    selectedChoiceKey: choiceKey
+                }
+            ),
+            expectedEntry,
+            `${choiceKey} should append its resource-route baseline anchor to the routed room-3 entry cue`
+        );
+    });
+    assert.equal(
+        buildRunEventEncounterEntryPreview(
+            { key: 'windfall', encounterLabel: '淘金战' },
+            {
+                key: 'gamblersShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'carefulWager',
+                selectedChoiceRecommendationReason: '当前更宜稳押'
+            }
+        ),
+        '淘金战 · 后排赏金 · 留本追赏',
+        'careful wager should upgrade its routed entry cue when the safer-gamble recommendation reason is what justified the windfall room'
+    );
     assert.equal(
         buildRunEventEncounterEntryPreview({ key: 'unknown', encounterLabel: '未知战' }),
         '',
@@ -2273,6 +2378,38 @@ function testRunEventEncounterClearRecapHelpers() {
             `${choiceKey} should append its baseline route anchor to the routed room-3 clear recap`
         );
     });
+    RESOURCE_ROUTE_ENCOUNTER_CASES.forEach(({ roomKey, choiceKey, expectedProfileKey, expectedClear }) => {
+        const encounterLabel = expectedProfileKey === 'breather'
+            ? '缓冲战'
+            : (expectedProfileKey === 'pressure' ? '高压战' : '淘金战');
+        assert.equal(
+            buildRunEventEncounterClearRecap(
+                { key: expectedProfileKey, encounterLabel },
+                {
+                    key: roomKey,
+                    discovered: true,
+                    resolved: true,
+                    selectedChoiceKey: choiceKey
+                }
+            ),
+            expectedClear,
+            `${choiceKey} should append its resource-route baseline anchor to the routed room-3 clear recap`
+        );
+    });
+    assert.equal(
+        buildRunEventEncounterClearRecap(
+            { key: 'windfall', encounterLabel: '淘金战' },
+            {
+                key: 'gamblersShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'carefulWager',
+                selectedChoiceRecommendationReason: '当前更宜稳押'
+            }
+        ),
+        '淘金战 · 赏金到手 · 留本追赏',
+        'careful wager should upgrade its clear recap when the safer-gamble recommendation reason still explains the routed bounty room'
+    );
     assert.equal(
         buildRunEventEncounterClearRecap({ key: 'unknown', encounterLabel: '未知战' }),
         '',
@@ -2457,6 +2594,40 @@ function testRunEventEncounterSourceCueHelpers() {
             `${choiceKey} should fire its baseline route anchor on the routed combat beat`
         );
     });
+    RESOURCE_ROUTE_ENCOUNTER_CASES.forEach(({ roomKey, choiceKey, expectedProfileKey, expectedSourceCue, moment }) => {
+        const encounterLabel = expectedProfileKey === 'breather'
+            ? '缓冲战'
+            : (expectedProfileKey === 'pressure' ? '高压战' : '淘金战');
+        assert.equal(
+            buildRunEventEncounterSourceCue(
+                { key: expectedProfileKey, encounterLabel },
+                {
+                    key: roomKey,
+                    discovered: true,
+                    resolved: true,
+                    selectedChoiceKey: choiceKey
+                },
+                moment
+            ),
+            expectedSourceCue,
+            `${choiceKey} should fire its resource-route baseline anchor on the routed combat beat`
+        );
+    });
+    assert.equal(
+        buildRunEventEncounterSourceCue(
+            { key: 'windfall', encounterLabel: '淘金战' },
+            {
+                key: 'gamblersShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'carefulWager',
+                selectedChoiceRecommendationReason: '当前更宜稳押'
+            },
+            'bounty'
+        ),
+        '留本追赏',
+        'careful wager should upgrade its bounty-moment source cue when the safer-gamble recommendation reason is still what makes the routed room sensible'
+    );
     assert.equal(
         buildRunEventEncounterSourceCue(
             { key: 'breather', encounterLabel: '缓冲战' },
@@ -12107,6 +12278,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /资源与结算路线也会接进同一套第三房锚点：`复苏祷言 \/ 迅击祷言 \/ 豪赌 \/ 稳押 \/ 战地净化包 \/ 狂战补给` 会分别补 `复苏回拍 \/ 迅击抢拍 \/ 豪赌追赏 \/ 稳押收赏 \/ 净包稳场 \/ 狂油抢势` 这类 entry \/ clear \/ source cue；若 `稳押` 本身是因为 `当前更宜稳押` 才被推荐，还会继续升级成 `留本追赏`/,
+        'README should document the resource-route anchor ladder and the narrower safer-gamble recommendation override'
+    );
+    assert.match(
+        source,
         /若已选 `连斩修习`，`普攻 U` 会常驻显示 `连斩-18%`，而当减 CD 真正把 `普攻 U` 从 `冷却` 或翻滚后的冷却预告推回 `就绪` 时，还会短促切成 `连斩就绪`/,
         'README should document the combat-discipline attack-ready payoff cue alongside the persistent route label'
     );
@@ -12973,6 +13149,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若已选“复苏祷言”，闪避行会常驻显示“复苏\+35%”，真正因自然回体转好时还会短促切成“复苏就绪”[\s\S]*?若已选“迅击祷言”，特攻行会常驻显示“迅击-22%”，真正转好时还会短促切成“迅击就绪”/,
         'help overlay should explain the prayer-shrine identity label and payoff-ready cue'
+    );
+    assert.match(
+        source,
+        /资源与结算路线现在也会把第三房继续钉成更具体的战术短句：“复苏祷言 \/ 迅击祷言 \/ 豪赌 \/ 稳押 \/ 战地净化包 \/ 狂战补给”会分别补“复苏回拍 \/ 迅击抢拍 \/ 豪赌追赏 \/ 稳押收赏 \/ 净包稳场 \/ 狂油抢势”；若“稳押”本身是因为“当前更宜稳押”才成立，还会继续升级成“留本追赏”/,
+        'help overlay should explain the resource-route anchor ladder and the narrower safer-gamble recommendation override'
     );
     assert.match(
         source,
