@@ -1,16 +1,17 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] 行动型 blessing route 上下文 recommendation：当前 `战技 / 镇压 / 战势 / 连携 / 反击` 虽已能把 `连斩抢拍 / 游步整拍 / 镇步控场 / 破势追杀 / 回息稳场 / 借势重击 / 催锋连段 / 回身整拍 / 追猎追赏 / 调息回线` 这些身份接进第三房 routed encounter，但 choice panel 仍只会对 `净化 / 血线 / 武器类型 / 异常路线` 给出高置信脚注；后续应把 live combat bottleneck 也接进 shared recommendation helper，让 `普攻卡拍 / 闪避卡拍 / 当前更宜控场 / 特攻待借势 / 特攻待连段 / 闪避待回身 / 可立即追猎 / 当前更缺回体` 这类 action-context reason 能在选择前直接收束成 `建议 1/2`
+- [ ] 资源 / 结算型 route 第三房锚点扩展：当前 `祈愿圣坛 / 赌徒圣坛 / 战备商柜` 虽已能把路线导向 `下间缓冲 / 下间高压 / 下间淘金`，但真正进到第三房后仍只会读到 generic `双拍缓冲 / 三向成压 / 后排赏金`；后续应把 `复苏回拍 / 迅击抢拍 / 豪赌追赏 / 稳押收赏 / 净包稳场 / 狂油抢势` 这类 resource-route anchor 接进 shared encounter ladder，并让 `稳押` 在 `当前更宜稳押` 这类 persisted reason 仍强相关时继续升级成 `留本追赏`
 
 ## Next Up
 - [ ] 更多 blessing route recommendation 遭遇映射：当行动型 choice-panel recommendation 跑通后，再评估是否把这批新的 action-context reason 也接进 post-choice encounter echo / source cue，让更多路线不只在选前给脚注，也能在选后/进房时继续兑现“为什么刚才推荐它”
-- [ ] route anchor 进一步扩到 `武备 / 命途 / 烙痕` 之外的更多 run-state lane：当行动型 blessing route 已能通过 baseline anchor 读懂后，再评估是否把 `祈愿圣坛 / 赌徒圣坛 / 战备商柜` 这类更偏资源与结算的路线也接进同一套 room-3 anchor ladder，让第三房的 entry / clear / source cue 进一步统一成 “route identity -> immediate combat read” 的共享语言
+- [ ] 资源 / 结算型 route recommendation encounter echo 深化：当 `祈愿圣坛 / 赌徒圣坛 / 战备商柜` 的 baseline anchor 跑通后，再评估是否把 `当前局已偏节奏 / 可净化N层 / 当前可负担` 这类更偏 run-state / affordability 的 reason 也筛进更窄的 encounter echo，避免只剩 baseline identity、却还没把“为什么是现在”继续接进 routed combat
 
 ## Blocked
 - [x] 仓库交付闭环：源仓库自带未提交修改 + 未跟踪 plan 文件会在整合 `origin/main` 时阻塞 merge；现已通过归档/提交历史改动解除该 blocker（完成：2026-04-07 11:52 +08）
 
 ## Completed
+- [x] 行动型 blessing route 上下文 recommendation：`战技 / 镇压 / 战势 / 连携 / 反击` 现在会把 live combat bottleneck 接进 choice-panel shared recommendation helper，并在高置信场景下给出 `普攻卡拍 / 闪避卡拍 / 当前更宜控场 / 特攻待借势 / 特攻待连段 / 闪避待回身 / 可立即追猎 / 当前更缺回体` 这类 action-context reason；同一条 reason 也会在选中对应路线时持久化进 resolved receipt，让 recommendation judgement 能从选前脚注延续到选后确认（完成：2026-04-13 06:39 +08）
 - [x] 行动型 blessing route 遭遇锚点扩展：`战技圣坛 / 镇压圣坛 / 战势圣坛 / 连携圣坛 / 反击圣坛` 现在会把 `连斩 / 游步 / 镇步 / 破势 / 回息 / 借势 / 催锋 / 回身 / 追猎 / 调息` 这些 action identity 显式接进 `下间缓冲 / 下间高压 / 下间淘金` 的 routed encounter profile，并在缺少高置信 recommendation 时继续补 `连斩抢拍 / 游步整拍 / 镇步控场 / 破势追杀 / 回息稳场 / 借势重击 / 催锋连段 / 回身整拍 / 追猎追赏 / 调息回线` 这类 baseline anchor，让动作路线本身能在下一房第一段交手里被立刻读懂（完成：2026-04-13 06:13 +08）
 - [x] build-facing blessing route 遭遇映射首批落地：`武备圣坛 / 烙痕圣坛` 现在会把 `压阵修习 / 离弦修习 / 余烬修习 / 血痕修习` 分别接进 `下间高压 / 下间淘金 / 下间缓冲 / 下间高压` 的 routed encounter profile，并在 route reason 仍强相关时继续补 `贴身压阵 / 远程追赏 / 灼烧稳场 / 挂血抢势` 这类 entry / clear / source cue，把 build-facing recommendation 真正接到第三房第一段交手（完成：2026-04-13 06:00 +08）
 - [x] 事件房推荐理由遭遇兑现回响：当前高置信 recommendation 现在会在 route 与 persisted reason 仍强相关时继续补进第三房入口 / 清场短句：`缓冲战 · 双拍缓冲 · 净化后稳场`、`高压战 · 三向成压 · 压线抢势`、`淘金战 · 后排赏金 · 血线够追赏` 这类更短 echo 会沿 shared encounter entry / clear helpers 一起落到 runtime floating text、README 与 help overlay；同时 `命途圣坛` 的 `绝境修习 / 守心修习` 也补进了 `下间高压 / 下间缓冲` routing，让 recommendation judgement 从选前脚注、选后回执一路延续到下一房入口与收束（完成：2026-04-13 05:39 +08）
