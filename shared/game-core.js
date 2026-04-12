@@ -3080,6 +3080,17 @@
             return null;
         }
 
+        if (hasChoice('renewalPrayer') && hasChoice('tempoPrayer')) {
+            const actionState = getRunEventActionStateContext(safeState);
+            if (actionState.needsStaminaFlow) {
+                return buildRecommendation('renewalPrayer', '当前更缺回体');
+            }
+            if (actionState.specialCooldownBlocked) {
+                return buildRecommendation('tempoPrayer', '当前更缺特攻');
+            }
+            return null;
+        }
+
         if (hasChoice('flurryLesson') && hasChoice('ghostStepLesson')) {
             const flurryReason = getRunEventRoomChoiceActionStateNote('flurryLesson', safeState);
             const ghostReason = getRunEventRoomChoiceActionStateNote('ghostStepLesson', safeState);
@@ -3214,9 +3225,30 @@
                     sourceCueMoment: 'stabilize'
                 };
             }
+            if (normalizedRoom.selectedChoiceKey === 'renewalPrayer' && recommendationReason === '当前更缺回体') {
+                return {
+                    echo: '回体回拍',
+                    sourceCue: '回体回拍',
+                    sourceCueMoment: 'stabilize'
+                };
+            }
+            if (normalizedRoom.selectedChoiceKey === 'fieldTonic' && recommendationReason === '当前可负担') {
+                return {
+                    echo: '备净稳场',
+                    sourceCue: '备净稳场',
+                    sourceCueMoment: 'stabilize'
+                };
+            }
         }
 
         if (profileKey === 'pressure') {
+            if (normalizedRoom.selectedChoiceKey === 'tempoPrayer' && recommendationReason === '当前更缺特攻') {
+                return {
+                    echo: '特攻抢拍',
+                    sourceCue: '特攻抢拍',
+                    sourceCueMoment: 'engage'
+                };
+            }
             if (normalizedRoom.selectedChoiceKey === 'desperationLesson' && recommendationReason === '已处绝境线') {
                 return {
                     echo: '压线抢势',

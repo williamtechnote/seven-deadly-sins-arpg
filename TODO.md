@@ -5,12 +5,12 @@
 
 ## Next Up
 - [ ] 更多 blessing route recommendation 遭遇映射：当行动型 choice-panel recommendation 跑通后，再评估是否把这批新的 action-context reason 也接进 post-choice encounter echo / source cue，让更多路线不只在选前给脚注，也能在选后/进房时继续兑现“为什么刚才推荐它”
-- [ ] 资源 / 结算型 route recommendation encounter echo 深化：当 `祈愿圣坛 / 赌徒圣坛 / 战备商柜` 的 baseline anchor 跑通后，再评估是否把 `当前局已偏节奏 / 可净化N层 / 当前可负担` 这类更偏 run-state / affordability 的 reason 也筛进更窄的 encounter echo，避免只剩 baseline identity、却还没把“为什么是现在”继续接进 routed combat
 
 ## Blocked
 - [x] 仓库交付闭环：源仓库自带未提交修改 + 未跟踪 plan 文件会在整合 `origin/main` 时阻塞 merge；现已通过归档/提交历史改动解除该 blocker（完成：2026-04-07 11:52 +08）
 
 ## Completed
+- [x] 资源 / 结算型 route recommendation encounter echo 深化：`祈愿圣坛 / 战备商柜 / 赌徒圣坛` 现在会把 `当前更缺回体 / 当前更缺特攻 / 当前可负担` 这些高置信 reason 持久化进 resolved receipt，并让 `复苏祷言 / 迅击祷言 / 战地净化包` 在第三房 entry / clear / source cue 继续压成 `回体回拍 / 特攻抢拍 / 备净稳场`，把资源路线从 baseline anchor 继续推进到 why-now routed combat feedback（完成：2026-04-13 07:57 +08）
 - [x] 资源 / 结算型 route 第三房锚点扩展：`祈愿圣坛 / 赌徒圣坛 / 战备商柜` 现在会把 `复苏祷言 / 迅击祷言 / 豪赌 / 稳押 / 战地净化包 / 狂战补给` 这些 resource-route identity 显式接进 `下间缓冲 / 下间高压 / 下间淘金` 的 routed encounter profile，并在没有更强 recommendation echo 时继续补 `复苏回拍 / 迅击抢拍 / 豪赌追赏 / 稳押收赏 / 净包稳场 / 狂油抢势` 这类 baseline anchor；若 `稳押` 的 persisted reason 仍是 `当前更宜稳押`，入口 / 清场 / source cue 还会继续升级成 `留本追赏`，把资源与结算路线也接进同一套 “route identity -> immediate combat read” contract（完成：2026-04-13 06:53 +08）
 - [x] 行动型 blessing route 抉择 recommendation 首批扩展：choice panel 现在会继续读取当前 `普攻 / 特攻 / 闪避` 的冷却与体力状态，在高置信 action-state 下补 `建议 1：连斩修习 · 普攻正卡冷却` / `建议 2：借势修习 · 可接闪特爆发` / `建议 1：催锋修习 · 特攻正卡冷却` / `建议 1：追猎修习 · 可接闪后追击` 这类脚注；若玩家真的按下这些推荐，第三房入口 / 清场 / 战中 source cue 也会把 baseline anchor 升级成 `冷却抢拍` / `闪后爆发` / `催锋追段` / `回身回线` / `闪后追赏`，把行动路线从选前判断一路接到下一房关键拍点（完成：2026-04-13 06:26 +08）
 - [x] 行动型 blessing route 遭遇锚点扩展：`战技圣坛 / 镇压圣坛 / 战势圣坛 / 连携圣坛 / 反击圣坛` 现在都会把 `连斩 / 游步 / 镇步 / 破势 / 回息 / 借势 / 催锋 / 回身 / 追猎 / 调息` 这些 action identity 显式接进 `下间缓冲 / 下间高压 / 下间淘金` 的 routed encounter profile，并在缺少高置信 recommendation 时仍补 `连斩抢拍 / 游步整拍 / 镇步控场 / 破势追杀 / 回息稳场 / 借势重击 / 催锋连段 / 回身整拍 / 追猎追赏 / 调息回线` 这类 route-specific entry / clear / source anchor，让行动路线也能在下一房第一段交手里被立刻读懂（完成：2026-04-13 06:13 +08）

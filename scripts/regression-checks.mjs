@@ -1057,6 +1057,22 @@ function testRunEventRoomSelection() {
     assert.equal(supplySettlement.nextState.inventory.hpPotion, 1, 'other inventory entries should remain intact');
     assert.match(supplySettlement.eventRoom.resolutionText, /净化药剂/, 'supply cache summary should mention the granted item');
 
+    const supplyAffordableSettlement = resolveRunEventRoomChoice({
+        gold: 50,
+        playerHp: 84,
+        playerMaxHp: 120,
+        inventory: {}
+    }, {
+        key: 'supplyCache',
+        discovered: true,
+        resolved: false
+    }, 'fieldTonic');
+    assert.equal(
+        supplyAffordableSettlement.eventRoom.selectedChoiceRecommendationReason,
+        '当前可负担',
+        'field tonic should persist the affordability recommendation reason when it is the only currently buyable supply route'
+    );
+
     const supplyBlocked = resolveRunEventRoomChoice({
         gold: 30,
         playerHp: 84,
@@ -1079,7 +1095,14 @@ function testRunEventRoomSelection() {
     const prayerSettlement = resolveRunEventRoomChoice({
         gold: 95,
         playerHp: 84,
-        playerMaxHp: 120
+        playerMaxHp: 120,
+        stamina: 24,
+        attackCooldownMs: 0,
+        specialCooldownMs: 640,
+        dodgeCooldownMs: 0,
+        attackStaminaCost: 6,
+        specialStaminaCost: 14,
+        dodgeStaminaCost: 12
     }, {
         key: 'prayerShrine',
         discovered: true,
@@ -1089,8 +1112,8 @@ function testRunEventRoomSelection() {
     assert.equal(prayerSettlement.eventRoom.selectedChoiceLabel, '迅击祷言', 'prayer shrine should persist the chosen label');
     assert.equal(
         prayerSettlement.eventRoom.selectedChoiceRecommendationReason,
-        '',
-        'event-room resolution should stay silent when the selected route did not earn a high-confidence recommendation'
+        '当前更缺特攻',
+        'prayer shrine should persist the compact prayer recommendation reason when the selected route solves the current combat bottleneck'
     );
     const prayerEffects = buildRunEventRoomEffects(prayerSettlement.eventRoom);
     assert.equal(prayerEffects.playerSpecialCooldownMultiplier, 0.78, 'tempo prayer should shorten special cooldowns');
@@ -2065,6 +2088,48 @@ function testRunEventEncounterProfileHelpers() {
         'windfall entry previews should upgrade the dodge-chase route when the current action state already supports that pursuit loop'
     );
     assert.equal(
+        buildRunEventEncounterEntryPreview(
+            { key: 'breather', encounterLabel: '缓冲战' },
+            {
+                key: 'prayerShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'renewalPrayer',
+                selectedChoiceRecommendationReason: '当前更缺回体'
+            }
+        ),
+        '缓冲战 · 双拍缓冲 · 回体回拍',
+        'breather entry previews should upgrade the stamina-regen prayer when the routed room is solving a real stamina-flow bottleneck'
+    );
+    assert.equal(
+        buildRunEventEncounterEntryPreview(
+            { key: 'pressure', encounterLabel: '高压战' },
+            {
+                key: 'prayerShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'tempoPrayer',
+                selectedChoiceRecommendationReason: '当前更缺特攻'
+            }
+        ),
+        '高压战 · 三向成压 · 特攻抢拍',
+        'pressure entry previews should upgrade the tempo prayer when special cadence is the actual reason the route was recommended'
+    );
+    assert.equal(
+        buildRunEventEncounterEntryPreview(
+            { key: 'breather', encounterLabel: '缓冲战' },
+            {
+                key: 'supplyCache',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'fieldTonic',
+                selectedChoiceRecommendationReason: '当前可负担'
+            }
+        ),
+        '缓冲战 · 双拍缓冲 · 备净稳场',
+        'breather entry previews should upgrade the cleanse supply route when affordability is the real reason it was recommended'
+    );
+    assert.equal(
         buildRunEventEncounterEntryPreview({ key: 'breather', encounterLabel: '缓冲战' }),
         '缓冲战 · 双拍缓冲',
         'breather routes should expose the shared room-entry tactical cue'
@@ -2356,6 +2421,48 @@ function testRunEventEncounterClearRecapHelpers() {
         'pressure clear recaps should append the shared recommendation echo when a bleed route recommendation still explains the routed pressure room'
     );
     assert.equal(
+        buildRunEventEncounterClearRecap(
+            { key: 'breather', encounterLabel: '缓冲战' },
+            {
+                key: 'prayerShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'renewalPrayer',
+                selectedChoiceRecommendationReason: '当前更缺回体'
+            }
+        ),
+        '缓冲战 · 稳住出清 · 回体回拍',
+        'breather clear recaps should upgrade the stamina-regen prayer when stamina flow is still the reason the routed room makes sense'
+    );
+    assert.equal(
+        buildRunEventEncounterClearRecap(
+            { key: 'pressure', encounterLabel: '高压战' },
+            {
+                key: 'prayerShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'tempoPrayer',
+                selectedChoiceRecommendationReason: '当前更缺特攻'
+            }
+        ),
+        '高压战 · 顶住成压 · 特攻抢拍',
+        'pressure clear recaps should upgrade the tempo prayer when special cadence is still the concrete routed pressure payoff'
+    );
+    assert.equal(
+        buildRunEventEncounterClearRecap(
+            { key: 'breather', encounterLabel: '缓冲战' },
+            {
+                key: 'supplyCache',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'fieldTonic',
+                selectedChoiceRecommendationReason: '当前可负担'
+            }
+        ),
+        '缓冲战 · 稳住出清 · 备净稳场',
+        'breather clear recaps should upgrade the cleanse supply route when affordability is still the reason the route fits this run'
+    );
+    assert.equal(
         buildRunEventEncounterClearRecap({ key: 'windfall', encounterLabel: '淘金战' }),
         '淘金战 · 赏金到手',
         'windfall routes should close the room with a payoff-secured clear recap'
@@ -2575,6 +2682,51 @@ function testRunEventEncounterSourceCueHelpers() {
         '闪后追赏',
         'windfall source cues should upgrade the pursuit route when the recommendation came from an already-available dodge-chase loop'
     );
+    assert.equal(
+        buildRunEventEncounterSourceCue(
+            { key: 'breather', encounterLabel: '缓冲战' },
+            {
+                key: 'prayerShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'renewalPrayer',
+                selectedChoiceRecommendationReason: '当前更缺回体'
+            },
+            'stabilize'
+        ),
+        '回体回拍',
+        'breather source cues should fire the tighter prayer echo when stamina flow is the live reason for the routed room'
+    );
+    assert.equal(
+        buildRunEventEncounterSourceCue(
+            { key: 'pressure', encounterLabel: '高压战' },
+            {
+                key: 'prayerShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'tempoPrayer',
+                selectedChoiceRecommendationReason: '当前更缺特攻'
+            },
+            'engage'
+        ),
+        '特攻抢拍',
+        'pressure source cues should fire the tighter tempo-prayer echo when special cadence is the live reason for the routed room'
+    );
+    assert.equal(
+        buildRunEventEncounterSourceCue(
+            { key: 'breather', encounterLabel: '缓冲战' },
+            {
+                key: 'supplyCache',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'fieldTonic',
+                selectedChoiceRecommendationReason: '当前可负担'
+            },
+            'stabilize'
+        ),
+        '备净稳场',
+        'breather source cues should fire the tighter supply-route echo when affordability is the live reason for the routed room'
+    );
     ACTION_ROUTE_ENCOUNTER_CASES.forEach(({ roomKey, choiceKey, expectedProfileKey, expectedSourceCue, moment }) => {
         const encounterLabel = expectedProfileKey === 'breather'
             ? '缓冲战'
@@ -2693,10 +2845,59 @@ function testRunEventRoomChoiceRecommendation() {
         buildRunEventRoomChoiceRecommendation(prayerChoices, {
             playerHp: 100,
             playerMaxHp: 120,
-            selectedWeaponKey: 'sword'
+            stamina: 8,
+            attackCooldownMs: 0,
+            specialCooldownMs: 0,
+            dodgeCooldownMs: 0,
+            attackStaminaCost: 6,
+            specialStaminaCost: 14,
+            dodgeStaminaCost: 12
+        }),
+        '建议 1：复苏祷言 · 当前更缺回体',
+        'recommendation helper should elevate the stamina-regen prayer when the current action loop is clearly blocked on stamina flow'
+    );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(prayerChoices, {
+            playerHp: 100,
+            playerMaxHp: 120,
+            stamina: 24,
+            attackCooldownMs: 0,
+            specialCooldownMs: 640,
+            dodgeCooldownMs: 0,
+            attackStaminaCost: 6,
+            specialStaminaCost: 14,
+            dodgeStaminaCost: 12
+        }),
+        '建议 2：迅击祷言 · 当前更缺特攻',
+        'recommendation helper should elevate the special-cadence prayer when special cooldown is the clear current bottleneck'
+    );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(prayerChoices, {
+            playerHp: 100,
+            playerMaxHp: 120,
+            selectedWeaponKey: 'sword',
+            stamina: 24,
+            attackCooldownMs: 0,
+            specialCooldownMs: 0,
+            dodgeCooldownMs: 0,
+            attackStaminaCost: 6,
+            specialStaminaCost: 14,
+            dodgeStaminaCost: 12
         }),
         '',
-        'recommendation helper should stay silent when neither visible option has a clear contextual edge'
+        'recommendation helper should stay silent when neither prayer route has a clear contextual edge'
+    );
+
+    const supplyChoices = getRunEventRoomChoices('supplyCache');
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(supplyChoices, {
+            playerHp: 100,
+            playerMaxHp: 120,
+            gold: 50,
+            inventory: {}
+        }),
+        '建议 1：战地净化包 · 当前可负担',
+        'recommendation helper should elevate the cleanse supply route when it is the only currently affordable option'
     );
 
     const disciplineChoices = getRunEventRoomChoices('combatDisciplineShrine');
@@ -12278,8 +12479,8 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /资源与结算路线也会接进同一套第三房锚点：`复苏祷言 \/ 迅击祷言 \/ 豪赌 \/ 稳押 \/ 战地净化包 \/ 狂战补给` 会分别补 `复苏回拍 \/ 迅击抢拍 \/ 豪赌追赏 \/ 稳押收赏 \/ 净包稳场 \/ 狂油抢势` 这类 entry \/ clear \/ source cue；若 `稳押` 本身是因为 `当前更宜稳押` 才被推荐，还会继续升级成 `留本追赏`/,
-        'README should document the resource-route anchor ladder and the narrower safer-gamble recommendation override'
+        /资源与结算路线也会接进同一套第三房锚点：`复苏祷言 \/ 迅击祷言 \/ 豪赌 \/ 稳押 \/ 战地净化包 \/ 狂战补给` 会分别补 `复苏回拍 \/ 迅击抢拍 \/ 豪赌追赏 \/ 稳押收赏 \/ 净包稳场 \/ 狂油抢势` 这类 entry \/ clear \/ source cue；若 `稳押` 本身是因为 `当前更宜稳押` 才被推荐，还会继续升级成 `留本追赏`；若 recommendation 分别来自 `复苏祷言` 的 `当前更缺回体`、`迅击祷言` 的 `当前更缺特攻` 或 `战地净化包` 的 `当前可负担`，入口 \/ 清场 \/ source cue 还会继续压成 `回体回拍` \/ `特攻抢拍` \/ `备净稳场`/,
+        'README should document the resource-route anchor ladder, the safer-gamble override, and the tighter prayer/supply why-now echoes'
     );
     assert.match(
         source,
@@ -13152,8 +13353,8 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /资源与结算路线现在也会把第三房继续钉成更具体的战术短句：“复苏祷言 \/ 迅击祷言 \/ 豪赌 \/ 稳押 \/ 战地净化包 \/ 狂战补给”会分别补“复苏回拍 \/ 迅击抢拍 \/ 豪赌追赏 \/ 稳押收赏 \/ 净包稳场 \/ 狂油抢势”；若“稳押”本身是因为“当前更宜稳押”才成立，还会继续升级成“留本追赏”/,
-        'help overlay should explain the resource-route anchor ladder and the narrower safer-gamble recommendation override'
+        /资源与结算路线现在也会把第三房继续钉成更具体的战术短句：“复苏祷言 \/ 迅击祷言 \/ 豪赌 \/ 稳押 \/ 战地净化包 \/ 狂战补给”会分别补“复苏回拍 \/ 迅击抢拍 \/ 豪赌追赏 \/ 稳押收赏 \/ 净包稳场 \/ 狂油抢势”；若“稳押”本身是因为“当前更宜稳押”才成立，还会继续升级成“留本追赏”；若 recommendation 来自“复苏祷言”的“当前更缺回体”、“迅击祷言”的“当前更缺特攻”或“战地净化包”的“当前可负担”，入口\/清场\/source cue 还会继续压成“回体回拍”\/“特攻抢拍”\/“备净稳场”/,
+        'help overlay should explain the resource-route anchor ladder, the safer-gamble override, and the tighter prayer/supply why-now echoes'
     );
     assert.match(
         source,
