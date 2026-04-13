@@ -3500,6 +3500,11 @@
         return `${encounterLabel} · ${tacticalSuffix}${recommendationEcho ? ` · ${recommendationEcho}` : ''}`;
     }
 
+    function buildRunEventEncounterStagingReceipt(profile, runEventRoom, poolOverride) {
+        const entryPreview = buildRunEventEncounterEntryPreview(profile, runEventRoom, poolOverride);
+        return entryPreview ? `遭遇: ${entryPreview}` : '';
+    }
+
     function buildRunEventEncounterObjectiveCue(profile) {
         const safeProfile = profile && typeof profile === 'object' ? profile : {};
         const profileKey = typeof safeProfile.key === 'string' ? safeProfile.key.trim() : '';
@@ -3722,6 +3727,7 @@
                 typeLabel: '',
                 routeLines: [],
                 routeSummary: '',
+                stagingLine: '',
                 resolutionText: ''
             };
         }
@@ -3745,12 +3751,18 @@
         const encounterPreview = normalizedRoom.resolved && selectedChoice
             ? formatRunEventRoomChoiceEncounterPreview(selectedChoice)
             : '';
+        const encounterProfile = normalizedRoom.resolved
+            ? getRunEventEncounterProfile(normalizedRoom, poolOverride)
+            : null;
         const encounterTiming = normalizedRoom.resolved && selectedChoice
             ? formatRunEventEncounterPayoffTimingLabel(
-                getRunEventEncounterProfile(normalizedRoom, poolOverride),
+                encounterProfile,
                 normalizedRoom,
                 poolOverride
             )
+            : '';
+        const stagingLine = normalizedRoom.resolved
+            ? buildRunEventEncounterStagingReceipt(encounterProfile, normalizedRoom, poolOverride)
             : '';
         const visibleChoices = normalizedRoom.resolved
             ? []
@@ -3758,7 +3770,7 @@
         const routeLines = normalizedRoom.resolved
             ? (
                 resolvedChoiceLabel
-                    ? [`${resolvedPrefix}: ${resolvedChoiceLabel}${recommendationReason ? ` · ${recommendationReason}` : ''}${encounterPreview ? ` · ${encounterPreview}` : ''}${encounterTiming ? ` · ${encounterTiming}` : ''}`.trim()]
+                    ? [`${resolvedPrefix}: ${resolvedChoiceLabel}${recommendationReason ? ` · ${recommendationReason}` : ''}${stagingLine ? '' : (encounterPreview ? ` · ${encounterPreview}` : '')}${encounterTiming ? ` · ${encounterTiming}` : ''}`.trim()]
                     : []
             )
             : visibleChoices.map((choice) => {
@@ -3784,6 +3796,7 @@
             typeLabel: `类型 ${getRunEventRoomTypeLabel(normalizedRoom.type)}`,
             routeLines,
             routeSummary,
+            stagingLine,
             resolutionText
         };
     }
@@ -3801,6 +3814,16 @@
             const selectedLine = Array.isArray(summary.routeLines) && summary.routeLines.length > 0
                 ? summary.routeLines[0]
                 : '';
+            if (summary.stagingLine) {
+                if (selectedLine) {
+                    lines.push(selectedLine);
+                }
+                lines.push(summary.stagingLine);
+                if (summary.resolutionText) {
+                    lines.push(`结算: ${summary.resolutionText}`);
+                }
+                return lines;
+            }
             if (selectedLine && summary.resolutionText) {
                 lines.push(`${selectedLine} · ${summary.resolutionText}`);
             } else if (selectedLine) {
@@ -6266,6 +6289,7 @@
         buildRunEventEncounterFormationSlots,
         buildRunEventEncounterPayoffPresentation,
         buildRunEventEncounterEntryPreview,
+        buildRunEventEncounterStagingReceipt,
         buildRunEventEncounterObjectiveCue,
         buildRunEventEncounterObjectivePreview,
         buildRunEventEncounterSourceCue,
