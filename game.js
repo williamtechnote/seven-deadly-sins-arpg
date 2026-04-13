@@ -96,6 +96,7 @@ const {
     buildRunEventEncounterFormationSlots,
     buildRunEventEncounterPayoffPresentation,
     buildRunEventEncounterEntryPreview,
+    buildRunEventEncounterStagingReceipt,
     buildRunEventEncounterSourceCue,
     buildRunEventEncounterClearRecap,
     formatRunEventRoomChoiceEncounterPreview,
@@ -3786,6 +3787,7 @@ class LevelScene extends Phaser.Scene {
         const style = this._getRunEventRoomVisualConfig(settlement.eventRoom);
         const goldDelta = (settlement.nextState.gold || 0) - startGold;
         const hpDelta = (settlement.nextState.playerHp || startHp) - startHp;
+        const encounterStagingReceipt = buildRunEventEncounterStagingReceipt(encounterProfile, settlement.eventRoom, RUN_EVENT_ROOM_POOL);
         const recommendationReason = typeof settlement.eventRoom.selectedChoiceRecommendationReason === 'string'
             ? settlement.eventRoom.selectedChoiceRecommendationReason.trim()
             : '';
@@ -3820,9 +3822,9 @@ class LevelScene extends Phaser.Scene {
                 });
             });
         }
-        if (encounterProfile && encounterProfile.previewLabel) {
+        if (encounterStagingReceipt) {
             lines.push({
-                text: encounterProfile.previewLabel,
+                text: encounterStagingReceipt,
                 color: encounterProfile.key === 'windfall'
                     ? '#FFD27A'
                     : (encounterProfile.key === 'pressure' ? '#FFB3A7' : '#9FE3FF')

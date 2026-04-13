@@ -3405,6 +3405,11 @@
         return `${encounterLabel} · ${tacticalSuffix}${recommendationEcho ? ` · ${recommendationEcho}` : ''}`;
     }
 
+    function buildRunEventEncounterStagingReceipt(profile, runEventRoom, poolOverride) {
+        const entryPreview = buildRunEventEncounterEntryPreview(profile, runEventRoom, poolOverride);
+        return entryPreview ? `遭遇: ${entryPreview}` : '';
+    }
+
     function buildRunEventEncounterClearRecap(profile, runEventRoom, poolOverride) {
         const safeProfile = profile && typeof profile === 'object' ? profile : {};
         const profileKey = typeof safeProfile.key === 'string' ? safeProfile.key.trim() : '';
@@ -3503,6 +3508,7 @@
                 typeLabel: '',
                 routeLines: [],
                 routeSummary: '',
+                stagingReceipt: '',
                 resolutionText: ''
             };
         }
@@ -3523,6 +3529,9 @@
         const resolvedChoiceLabel = normalizedRoom.selectedChoiceLabel
             || (!forceHealingDoubleFallback && selectedChoice ? selectedChoice.label : '')
             || (normalizedRoom.resolved ? '未知选项' : '');
+        const encounterProfile = normalizedRoom.resolved && selectedChoice
+            ? getRunEventRoomChoiceEncounterProfile(selectedChoice)
+            : null;
         const encounterPreview = normalizedRoom.resolved && selectedChoice
             ? formatRunEventRoomChoiceEncounterPreview(selectedChoice)
             : '';
@@ -3536,7 +3545,10 @@
                     : []
             )
             : visibleChoices.map(choice => buildRunEventRoomChoicePreview(choice));
-        const routeSummary = routeLines.join('\n');
+        const stagingReceipt = normalizedRoom.resolved
+            ? buildRunEventEncounterStagingReceipt(encounterProfile, normalizedRoom, poolOverride)
+            : '';
+        const routeSummary = [...routeLines, stagingReceipt].filter(Boolean).join('\n');
         const resolutionText = normalizedRoom.resolved
             ? (
                 normalizedRoom.resolutionText
@@ -3553,6 +3565,7 @@
             typeLabel: `类型 ${getRunEventRoomTypeLabel(normalizedRoom.type)}`,
             routeLines,
             routeSummary,
+            stagingReceipt,
             resolutionText
         };
     }
@@ -3570,6 +3583,14 @@
             const selectedLine = Array.isArray(summary.routeLines) && summary.routeLines.length > 0
                 ? summary.routeLines[0]
                 : '';
+            if (summary.stagingReceipt) {
+                if (selectedLine) lines.push(selectedLine);
+                lines.push(summary.stagingReceipt);
+                if (summary.resolutionText) {
+                    lines.push(`结算: ${summary.resolutionText}`);
+                }
+                return lines;
+            }
             if (selectedLine && summary.resolutionText) {
                 lines.push(`${selectedLine} · ${summary.resolutionText}`);
             } else if (selectedLine) {
@@ -6017,6 +6038,7 @@
         buildRunEventEncounterFormationSlots,
         buildRunEventEncounterPayoffPresentation,
         buildRunEventEncounterEntryPreview,
+        buildRunEventEncounterStagingReceipt,
         buildRunEventEncounterSourceCue,
         buildRunEventEncounterClearRecap,
         formatRunEventRoomChoiceEncounterPreview,
