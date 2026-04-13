@@ -96,8 +96,6 @@ const {
     buildRunEventEncounterFormationSlots,
     buildRunEventEncounterPayoffPresentation,
     buildRunEventEncounterEntryPreview,
-    buildRunEventEncounterStagingReceipt,
-    buildRunEventEncounterObjectiveCue,
     buildRunEventEncounterSourceCue,
     buildRunEventEncounterClearRecap,
     buildRunEventEncounterBossDoorRecap,
@@ -105,8 +103,11 @@ const {
     buildRunEventEncounterBossVictoryRecap,
     buildHubLastRunSummary,
     buildHubPortalChoiceSummary,
+    buildBlacksmithPrepRecommendation,
+    buildShopPrepRecommendation,
     buildRunStartTargetCue,
     buildFirstCombatTargetCue,
+    buildCorridorTargetBridgeCue,
     formatRunEventRoomChoiceEncounterPreview,
     formatRunEventRoomChoiceEncounterTiming,
     buildRunChallengeCompletedFeedbackText,
@@ -216,9 +217,7 @@ const ATTACK_DISPLAY_NAMES = {
     reverseControl: '混乱逆转',
     illusion: '幻影风暴',
     sleepFog: '沉眠迷雾',
-    webCage: '蛛网囚笼',
     coinTrap: '贪金陷阱',
-    hungerTide: '饥潮奔涌',
     treasureStorm: '宝藏风暴',
     consume: '吞噬暴走',
     nightmare: '梦魇压制',
@@ -237,9 +236,7 @@ const ATTACK_COUNTER_HINTS = {
     reverseControl: '反制: 停止冲刺，短步修正方向',
     illusion: '反制: 先躲弹幕，再找本体',
     sleepFog: '反制: 迅速离开雾区，避免持续减速',
-    webCage: '反制: 先稳住中心，小步贴着空区移动，别被收束墙挤到边线',
     coinTrap: '反制: 不要站角落，留翻滚路径',
-    hungerTide: '反制: 留翻滚穿潮，别在边线耗光体力',
     treasureStorm: '反制: 沿边绕圈，等待间隙反打',
     consume: '反制: 远离正面并保留一次翻滚',
     nightmare: '反制: 先保命，等压制结束再输出',
@@ -258,9 +255,7 @@ const ATTACK_COUNTER_WINDOW_MS = {
     reverseControl: 1500,
     illusion: 1700,
     sleepFog: 1800,
-    webCage: 1700,
     coinTrap: 1400,
-    hungerTide: 1500,
     treasureStorm: 1700,
     consume: 1300,
     nightmare: 1600,
@@ -279,9 +274,7 @@ const ATTACK_COUNTER_WINDOW_START_OFFSET_MS = {
     reverseControl: 0,
     illusion: 0,
     sleepFog: 0,
-    webCage: 0,
     coinTrap: 0,
-    hungerTide: 0,
     treasureStorm: 0,
     consume: 0,
     nightmare: 0,
@@ -313,9 +306,7 @@ const BOSS_ATTACK_STATUS_ON_HIT = {
     bite: { key: 'bleed', durationMs: 2400 },
     firePunch: { key: 'burn', durationMs: 1600 },
     sleepFog: { key: 'slow', durationMs: 2200 },
-    webCage: { key: 'slow', durationMs: 2400 },
-    magmaRing: { key: 'burn', durationMs: 2400 },
-    hungerTide: { key: 'slow', durationMs: 1600 }
+    magmaRing: { key: 'burn', durationMs: 2400 }
 };
 
 const UI_WARNING_THRESHOLDS = {
@@ -337,9 +328,7 @@ const MAJOR_BOSS_PHASE_ATTACKS = new Set([
     'mirageDance',
     'illusion',
     'coinTrap',
-    'hungerTide',
     'sleepFog',
-    'webCage',
     'treasureStorm',
     'consume',
     'nightmare'
@@ -571,6 +560,7 @@ const GameState = {
     runEffects: { ...DEFAULT_RUN_EFFECTS },
     runEventRoom: null,
     lastRunSummary: null,
+    portalPreparationTarget: null,
     runChallenge: null,
     quickSlots: [null, null, null, null],
 
@@ -736,6 +726,7 @@ const GameState = {
         this.rollRunModifiers();
         this.rollRunEventRoom();
         this.lastRunSummary = base.lastRunSummary || null;
+        this.portalPreparationTarget = null;
         this.rollRunChallenge();
         this.quickSlots = [null, null, null, null];
         recordTestEvent('gamestate:reset', {
@@ -787,6 +778,7 @@ const GameState = {
             this.runEventRoom = data.runEventRoom || null;
             this.ensureRunEventRoom();
             this.lastRunSummary = data.lastRunSummary || null;
+            this.portalPreparationTarget = null;
             this.quickSlots = data.quickSlots || [null, null, null, null];
             this.ensureSelectedWeapon();
             if (!this.runChallenge) this.rollRunChallenge();
@@ -2871,17 +2863,21 @@ class HubScene extends Phaser.Scene {
                 lineSpacing: 4
             }).setScrollFactor(0).setDepth(97);
         }
-        this._hubPortalChoiceSummary = { visible: false, title: '选门回顾', lines: [] };
         const portalChoiceX = 16;
-        const portalChoiceY = this.cameras.main.height - 108;
-        this._hubPortalChoicePanel = this.add.rectangle(portalChoiceX, portalChoiceY, 296, 84, 0x0b1220, 0.88)
+        const portalChoiceY = this.cameras.main.height - 100;
+        this._hubPortalChoiceSummary = {
+            visible: false,
+            title: '选门参考',
+            lines: []
+        };
+        this._hubPortalChoicePanel = this.add.rectangle(portalChoiceX, portalChoiceY, 300, 82, 0x0b1220, 0.88)
             .setOrigin(0, 0)
             .setScrollFactor(0)
             .setDepth(96)
             .setVisible(false);
         this._hubPortalChoiceTitleText = this.add.text(portalChoiceX + 12, portalChoiceY + 10, this._hubPortalChoiceSummary.title, {
             fontSize: '14px',
-            fill: '#f5d58a',
+            fill: '#7ed7ff',
             fontStyle: 'bold'
         }).setScrollFactor(0).setDepth(97).setVisible(false);
         this._hubPortalChoiceBodyText = this.add.text(portalChoiceX + 12, portalChoiceY + 32, '', {
@@ -2889,6 +2885,7 @@ class HubScene extends Phaser.Scene {
             fill: '#d7e2f2',
             lineSpacing: 4
         }).setScrollFactor(0).setDepth(97).setVisible(false);
+        this._refreshHubPortalChoiceSummary();
         this.scene.launch('UIScene');
 
         GameState.save();
@@ -2995,17 +2992,43 @@ class HubScene extends Phaser.Scene {
         this._miniMapDynamic.strokeCircle(playerPos.x, playerPos.y, 6);
     }
 
-    _setHubPortalChoiceSummary(summary) {
-        if (!this._hubPortalChoicePanel || !this._hubPortalChoiceTitleText || !this._hubPortalChoiceBodyText) return;
-        summary = summary && typeof summary === 'object'
-            ? summary
-            : { visible: false, title: '选门回顾', lines: [] };
-        const lines = Array.isArray(summary.lines) ? summary.lines : [];
-        this._hubPortalChoicePanel.setVisible(!!summary.visible);
-        this._hubPortalChoiceTitleText.setVisible(!!summary.visible);
-        this._hubPortalChoiceBodyText.setVisible(!!summary.visible);
-        this._hubPortalChoiceTitleText.setText(summary.title || '选门回顾');
-        this._hubPortalChoiceBodyText.setText(lines.join('\n'));
+    _refreshHubPortalChoiceSummary() {
+        const portalFocusRadius = 96;
+        let focusedPortal = null;
+        let nearestDistance = Number.POSITIVE_INFINITY;
+        this.portals.forEach(portal => {
+            const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, portal.x, portal.y);
+            if (distance < portalFocusRadius && distance < nearestDistance) {
+                nearestDistance = distance;
+                focusedPortal = portal;
+            }
+        });
+        const targetLabel = focusedPortal && focusedPortal.label && typeof focusedPortal.label.text === 'string'
+            ? focusedPortal.label.text.replace(/\s*✓$/, '').trim()
+            : '';
+        this._hubPortalChoiceSummary = buildHubPortalChoiceSummary(GameState.lastRunSummary, {
+            label: targetLabel,
+            bossKey: focusedPortal.bossKey
+        });
+        if (focusedPortal && focusedPortal.bossKey && targetLabel) {
+            GameState.portalPreparationTarget = {
+                label: targetLabel,
+                bossKey: focusedPortal.bossKey
+            };
+        }
+        const visible = !!this._hubPortalChoiceSummary.visible;
+        this._hubPortalChoicePanel.setVisible(visible);
+        this._hubPortalChoiceTitleText.setVisible(visible);
+        this._hubPortalChoiceBodyText.setVisible(visible);
+        if (!visible) return;
+        const panelHeight = 30 + this._hubPortalChoiceSummary.lines.length * 20;
+        const panelY = this.cameras.main.height - panelHeight - 16;
+        this._hubPortalChoicePanel.setPosition(16, panelY);
+        this._hubPortalChoicePanel.setSize(300, panelHeight);
+        this._hubPortalChoiceTitleText.setPosition(28, panelY + 10);
+        this._hubPortalChoiceBodyText.setPosition(28, panelY + 32);
+        this._hubPortalChoiceTitleText.setText(this._hubPortalChoiceSummary.title);
+        this._hubPortalChoiceBodyText.setText(this._hubPortalChoiceSummary.lines.join('\n'));
     }
 
     _flushPortalTransition() {
@@ -3045,20 +3068,8 @@ class HubScene extends Phaser.Scene {
             }
         });
         this.nearestNpc = nearest;
-        const portalFocusRadius = 96;
-        let focusedPortal = null;
-        let nearestDistance = portalFocusRadius;
-        this.portals.forEach(portal => {
-            const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, portal.x, portal.y);
-            if (distance < portalFocusRadius && distance < nearestDistance) {
-                nearestDistance = distance;
-                focusedPortal = portal;
-            }
-        });
-        const targetLabel = focusedPortal && focusedPortal.label ? focusedPortal.label.text : '';
-        this._hubPortalChoiceSummary = buildHubPortalChoiceSummary(GameState.lastRunSummary, targetLabel);
-        this._setHubPortalChoiceSummary(this._hubPortalChoiceSummary);
         this._updateMiniMap();
+        this._refreshHubPortalChoiceSummary();
 
         const ui = this.scene.get('UIScene');
         if (ui && ui.updateHUD) ui.updateHUD(this.player, '净罪庇护所');
@@ -3077,10 +3088,13 @@ class LevelScene extends Phaser.Scene {
         const bossKey = data.bossKey || 'wrath';
         const boss = BOSSES[bossKey];
         this.bossKey = bossKey;
+        this._runEventBossTarget = { label: `${boss.sin} ${boss.area}`, bossKey };
         this._runStartTargetCue = buildRunStartTargetCue({ label: `${boss.sin} ${boss.area}`, bossKey });
-        this._firstCombatTargetCue = buildFirstCombatTargetCue({ label: `${boss.sin} ${boss.area}`, bossKey });
         this._runStartTargetCueShown = false;
+        this._firstCombatTargetCue = buildFirstCombatTargetCue({ label: `${boss.sin} ${boss.area}`, bossKey });
         this._firstCombatTargetCueShown = false;
+        this._corridorTargetBridgeCue = buildCorridorTargetBridgeCue({ label: `${boss.sin} ${boss.area}`, bossKey });
+        this._corridorTargetBridgeCueShown = false;
         AudioSystem.bindSceneInput(this);
         GameState.ensureRunModifiers();
 
@@ -3094,6 +3108,7 @@ class LevelScene extends Phaser.Scene {
             { x: 800, y: 350, w: 200, h: 150 },
             { x: 1750, y: 300, w: 200, h: 150 }
         ];
+        this.firstCorridorBounds = corridors[0];
 
         // Darker background tint from boss color
         const cr = (boss.color >> 16) & 0xFF;
@@ -3151,7 +3166,7 @@ class LevelScene extends Phaser.Scene {
         spawnInRoom(rooms[1], 4);
         spawnInRoom(rooms[2], 2);
 
-        this.room1Enemies = this.enemies.slice(0, 3);
+        this.room1Enemies = this.enemies.filter((_, i) => i < 3);
         this.room3Enemies = this.enemies.filter((_, i) => i >= 7);
 
         // Boss door at far right of Room 3
@@ -3200,7 +3215,6 @@ class LevelScene extends Phaser.Scene {
         this._runEventEncounterProfileKey = '';
         this._runEventEncounterProfileAnnouncedKey = '';
         this._runEventEncounterProfileClearRecapKey = '';
-        this._runEventEncounterObjectiveCueShownKey = '';
         this._runEventEncounterSourceCueShown = { engage: false, stabilize: false, bounty: false };
         this._levelTextWidthCache = new Map();
         this._levelTextMeasureNodes = {};
@@ -3406,11 +3420,24 @@ class LevelScene extends Phaser.Scene {
 
     _maybeShowFirstCombatTargetCue() {
         if (!this._firstCombatTargetCue || this._firstCombatTargetCueShown) return;
-        const room1WakeUp = this.room1Enemies.some(enemy => enemy && enemy.isAlive && enemy.state !== 'patrol');
-        if (!room1WakeUp) return;
-        if (!this.player || !this.player.active || !this.scene.isActive()) return;
+        if (!this.player || !Array.isArray(this.room1Enemies) || this.room1Enemies.length === 0) return;
+        const room1CombatWakeup = this.room1Enemies.some((enemy) => enemy && enemy.isAlive && (enemy.state === 'chase' || enemy.state === 'attack'));
+        if (!room1CombatWakeup) return;
         this._firstCombatTargetCueShown = true;
         this._showFloatingText(this.player.x, this.player.y - 96, this._firstCombatTargetCue, '#ffe7b8');
+    }
+
+    _maybeShowCorridorTargetBridgeCue() {
+        if (!this._corridorTargetBridgeCue || this._corridorTargetBridgeCueShown) return;
+        if (!this.player || !Array.isArray(this.room1Enemies) || this.room1Enemies.length === 0) return;
+        const room1AllDead = this.room1Enemies.every((enemy) => !enemy || !enemy.isAlive);
+        if (!room1AllDead) return;
+        const corridor = this.firstCorridorBounds;
+        if (!corridor) return;
+        const insideFirstCorridor = this.player.x >= corridor.x && this.player.x <= corridor.x + corridor.w && this.player.y >= corridor.y && this.player.y <= corridor.y + corridor.h;
+        if (!insideFirstCorridor) return;
+        this._corridorTargetBridgeCueShown = true;
+        this._showFloatingText(this.player.x, this.player.y - 90, this._corridorTargetBridgeCue, '#ffe7b8');
     }
 
     _getRunEventRoomVisualConfig(eventRoom) {
@@ -3473,7 +3500,7 @@ class LevelScene extends Phaser.Scene {
             fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(9);
 
-        const indicator = this.add.text(altarX, altarY - 64, buildRunEventRoomPromptLabel(eventRoom, RUN_EVENT_ROOM_POOL, { bossKey: this.bossKey }), {
+        const indicator = this.add.text(altarX, altarY - 64, buildRunEventRoomPromptLabel(eventRoom, RUN_EVENT_ROOM_POOL, this._runEventBossTarget), {
             fontSize: '12px',
             fill: style.accentColor
         }).setOrigin(0.5).setDepth(9).setVisible(false);
@@ -3613,7 +3640,7 @@ class LevelScene extends Phaser.Scene {
         const eventRoom = GameState.getRunEventRoomSummary ? GameState.getRunEventRoomSummary() : null;
         const resolved = !eventRoom || !!eventRoom.resolved;
         const style = this._getRunEventRoomVisualConfig(eventRoom);
-        const worldLabelText = eventRoom ? buildRunEventRoomWorldLabel(eventRoom, RUN_EVENT_ROOM_POOL, { bossKey: this.bossKey }) : '';
+        const worldLabelText = eventRoom ? buildRunEventRoomWorldLabel(eventRoom, RUN_EVENT_ROOM_POOL, this._runEventBossTarget) : '';
         this.runEventRoomShrine.setTint(resolved ? style.resolvedTint : style.activeTint);
         this.runEventRoomShrine.setAlpha(resolved ? 0.55 : 1);
         if (this.runEventRoomLabel) {
@@ -3623,7 +3650,7 @@ class LevelScene extends Phaser.Scene {
         if (this.runEventRoomIndicator) {
             this.runEventRoomIndicator.setVisible(false);
             this.runEventRoomIndicator.setColor(style.accentColor);
-            this.runEventRoomIndicator.setText(buildRunEventRoomPromptLabel(eventRoom, RUN_EVENT_ROOM_POOL, { bossKey: this.bossKey }));
+            this.runEventRoomIndicator.setText(buildRunEventRoomPromptLabel(eventRoom, RUN_EVENT_ROOM_POOL, this._runEventBossTarget));
             this._refreshRunEventPromptPosition();
         }
     }
@@ -3632,7 +3659,7 @@ class LevelScene extends Phaser.Scene {
         this.nearestRunEventRoom = null;
         if (!this.runEventRoomShrine || !this.runEventRoomIndicator) return;
         const eventRoom = GameState.getRunEventRoomSummary ? GameState.getRunEventRoomSummary() : null;
-        const worldLabelText = eventRoom ? buildRunEventRoomWorldLabel(eventRoom, RUN_EVENT_ROOM_POOL, { bossKey: this.bossKey }) : '';
+        const worldLabelText = eventRoom ? buildRunEventRoomWorldLabel(eventRoom, RUN_EVENT_ROOM_POOL, this._runEventBossTarget) : '';
         const available = !!eventRoom && !eventRoom.resolved;
         const inRange = Phaser.Math.Distance.Between(
             this.player.x,
@@ -3641,7 +3668,7 @@ class LevelScene extends Phaser.Scene {
             this.runEventRoomShrine.y
         ) <= 92;
         this.nearestRunEventRoom = available && inRange ? this.runEventRoomShrine : null;
-        this.runEventRoomIndicator.setText(buildRunEventRoomPromptLabel(eventRoom, RUN_EVENT_ROOM_POOL, { bossKey: this.bossKey }));
+        this.runEventRoomIndicator.setText(buildRunEventRoomPromptLabel(eventRoom, RUN_EVENT_ROOM_POOL, this._runEventBossTarget));
         this._refreshRunEventPromptPosition();
         this._refreshRunEventWorldLabelPosition(worldLabelText);
         this.runEventRoomIndicator.setVisible(available && inRange && !this._runEventChoiceOpen);
@@ -3656,6 +3683,7 @@ class LevelScene extends Phaser.Scene {
             playerHp: this.player.hp,
             playerMaxHp: this.player.maxHp,
             selectedWeaponKey: this.player.currentWeaponKey,
+            bossKey: this.bossKey,
             inventory: GameState.inventory,
             negativeStatuses: Object.keys(this.player.activeStatusEffects || {}),
             runModifiers: (GameState.runModifiers || []).map(key => getRunModifierByKey(key)),
@@ -3700,7 +3728,7 @@ class LevelScene extends Phaser.Scene {
             }
             const affordabilityLabel = getRunEventRoomChoiceAffordabilityLabel(choice, previewState);
             const previewText = buildRunEventRoomChoicePanelPreview(choice, previewState);
-            const encounterPreview = formatRunEventRoomChoiceEncounterPreview(choice, { includeStagingAnchor: true });
+            const encounterPreview = formatRunEventRoomChoiceEncounterPreview(choice);
             const encounterTiming = formatRunEventRoomChoiceEncounterTiming(choice, RUN_EVENT_ROOM_POOL);
             textNode.setText(`${index + 1}. ${previewText}${encounterPreview ? ` · ${encounterPreview}` : ''}${encounterTiming ? ` · ${encounterTiming}` : ''}${affordabilityLabel ? ` · ${affordabilityLabel}` : ''}`);
             textNode.setVisible(true);
@@ -3852,7 +3880,6 @@ class LevelScene extends Phaser.Scene {
             encounterProfilePending: false
         };
         this._runEventEncounterProfileClearRecapKey = '';
-        this._runEventEncounterObjectiveCueShownKey = '';
         this._runEventEncounterSourceCueShown = { engage: false, stabilize: false, bounty: false };
         this._runEventEncounterProfileKey = profile.key;
         return profile;
@@ -3865,29 +3892,15 @@ class LevelScene extends Phaser.Scene {
         if (!profile || this._runEventEncounterProfileAnnouncedKey === profile.key) return;
         const encounterEntryPreview = buildRunEventEncounterEntryPreview(profile, GameState.runEventRoom);
         if (!encounterEntryPreview) return;
-        const encounterObjectiveCue = buildRunEventEncounterObjectiveCue(profile);
         const enteredRoom3 = this.player.x >= this.room3Bounds.x + 48;
         if (!enteredRoom3) return;
-        const encounterColor = profile.key === 'windfall' ? '#ffd27a' : (profile.key === 'pressure' ? '#ffb3a7' : '#9fe3ff');
         this._runEventEncounterProfileAnnouncedKey = profile.key;
         this._showFloatingText(
             this.room3Bounds.x + this.room3Bounds.w / 2,
             this.room3Bounds.y + 44,
             encounterEntryPreview,
-            encounterColor
+            profile.key === 'windfall' ? '#ffd27a' : (profile.key === 'pressure' ? '#ffb3a7' : '#9fe3ff')
         );
-        if (encounterObjectiveCue) {
-            this._runEventEncounterObjectiveCueShownKey = profile.key;
-            this.time.delayedCall(420, () => {
-                if (this._runEventEncounterProfileKey !== profile.key) return;
-                this._showFloatingText(
-                    this.room3Bounds.x + this.room3Bounds.w / 2,
-                    this.room3Bounds.y + 74,
-                    encounterObjectiveCue,
-                    encounterColor
-                );
-            });
-        }
     }
 
     _maybeShowRunEventEncounterSourceCue(moment, x, y) {
@@ -3933,7 +3946,6 @@ class LevelScene extends Phaser.Scene {
         const recommendationReason = typeof settlement.eventRoom.selectedChoiceRecommendationReason === 'string'
             ? settlement.eventRoom.selectedChoiceRecommendationReason.trim()
             : '';
-        const stagingReceipt = buildRunEventEncounterStagingReceipt(encounterProfile, settlement.eventRoom, RUN_EVENT_ROOM_POOL);
         const lines = [{ text: settlement.choice.label, color: style.accentColor }];
 
         if (recommendationReason) {
@@ -3965,9 +3977,9 @@ class LevelScene extends Phaser.Scene {
                 });
             });
         }
-        if (stagingReceipt) {
+        if (encounterProfile && encounterProfile.previewLabel) {
             lines.push({
-                text: stagingReceipt,
+                text: encounterProfile.previewLabel,
                 color: encounterProfile.key === 'windfall'
                     ? '#FFD27A'
                     : (encounterProfile.key === 'pressure' ? '#FFB3A7' : '#9FE3FF')
@@ -4028,8 +4040,8 @@ class LevelScene extends Phaser.Scene {
     update(time, delta) {
         if (this.playerDead) return;
 
-        this._updateRunEventEncounterHint();
         this._maybeShowRunStartTargetCue();
+        this._updateRunEventEncounterHint();
         this.player.update(time, delta);
         this._maybeAnnounceRunEventEncounterProfile();
 
@@ -4237,7 +4249,7 @@ class LevelScene extends Phaser.Scene {
         }
 
         this._maybeShowFirstCombatTargetCue();
-
+        this._maybeShowCorridorTargetBridgeCue();
         this._maybeShowRunEventEncounterClearRecap();
 
         // Boss door activation when all Room 3 enemies dead
@@ -4256,7 +4268,7 @@ const BOSS_ATTACK_TYPES = {
     CONE: ['flameBreath', 'charge', 'lunge', 'dash'],
     SPECIAL: ['mirror', 'copyWeapon', 'shapeShift', 'reverseControl', 'illusion', 'bladeOrbit', 'mirageDance'],
     BUFF: ['berserk', 'nightmare', 'treasureStorm', 'consume', 'divineStrike'],
-    HAZARD: ['summonSpider', 'coinTrap', 'sleepFog', 'webCage', 'magmaRing', 'hungerTide']
+    HAZARD: ['summonSpider', 'coinTrap', 'sleepFog', 'magmaRing']
 };
 
 function getAttackType(attackName) {
@@ -5261,56 +5273,6 @@ class Boss {
                 for (const f of this.attackData.fogs) if (f.g.active) f.g.destroy();
                 this._finishAttack(time);
             }
-        } else if (atk === 'webCage') {
-            if (!this.attackData.started) {
-                this.attackData.started = true;
-                this.sprite.body.setVelocity(0, 0);
-                const wb = this.scene.physics.world.bounds;
-                const outerHalfSize = 220;
-                const innerHalfSize = 84;
-                const wallThickness = 28;
-                this.attackData.anchorX = Phaser.Math.Clamp(player.x, wb.x + outerHalfSize + 24, wb.right - outerHalfSize - 24);
-                this.attackData.anchorY = Phaser.Math.Clamp(player.y, wb.y + outerHalfSize + 24, wb.bottom - outerHalfSize - 24);
-                this.attackData.outerHalfSize = outerHalfSize;
-                this.attackData.innerHalfSize = innerHalfSize;
-                this.attackData.wallThickness = wallThickness;
-                this.attackData.lastHit = 0;
-                this.attackData.cage = this.scene.add.graphics();
-                this.attackData.cage.setDepth(8);
-            }
-            const ratio = Math.min(1, elapsed / 1900);
-            const halfSize = Phaser.Math.Linear(this.attackData.outerHalfSize, this.attackData.innerHalfSize, ratio);
-            const wallThickness = this.attackData.wallThickness;
-            const left = this.attackData.anchorX - halfSize;
-            const top = this.attackData.anchorY - halfSize;
-            const cageSize = halfSize * 2;
-            this.attackData.cage.clear();
-            this.attackData.cage.fillStyle(this.config.color, 0.2);
-            this.attackData.cage.fillRect(left - wallThickness, top - wallThickness, cageSize + wallThickness * 2, wallThickness);
-            this.attackData.cage.fillRect(left - wallThickness, top + cageSize, cageSize + wallThickness * 2, wallThickness);
-            this.attackData.cage.fillRect(left - wallThickness, top, wallThickness, cageSize);
-            this.attackData.cage.fillRect(left + cageSize, top, wallThickness, cageSize);
-            this.attackData.cage.lineStyle(4, 0xEBD7FF, 0.9);
-            this.attackData.cage.strokeRect(left, top, cageSize, cageSize);
-            this.attackData.cage.lineStyle(2, 0xA267D9, 0.72);
-            this.attackData.cage.strokeRect(left + 10, top + 10, Math.max(16, cageSize - 20), Math.max(16, cageSize - 20));
-            const dx = Math.abs(player.x - this.attackData.anchorX);
-            const dy = Math.abs(player.y - this.attackData.anchorY);
-            const dangerBand = wallThickness / 2 + 10;
-            const touchesVerticalWall = Math.abs(dx - halfSize) <= dangerBand && dy <= halfSize + dangerBand;
-            const touchesHorizontalWall = Math.abs(dy - halfSize) <= dangerBand && dx <= halfSize + dangerBand;
-            if (
-                (touchesVerticalWall || touchesHorizontalWall)
-                && !player.isInvincible
-                && time - this.attackData.lastHit >= 420
-            ) {
-                this.attackData.lastHit = time;
-                this._dealDamageToPlayer(player, this.damage * 0.28, atk);
-            }
-            if (elapsed >= 2050) {
-                if (this.attackData.cage && this.attackData.cage.active) this.attackData.cage.destroy();
-                this._finishAttack(time);
-            }
         } else if (atk === 'magmaRing') {
             if (!this.attackData.started) {
                 this.attackData.started = true;
@@ -5341,88 +5303,6 @@ class Boss {
             }
             if (elapsed >= 1900) {
                 if (this.attackData.ring && this.attackData.ring.active) this.attackData.ring.destroy();
-                this._finishAttack(time);
-            }
-        } else if (atk === 'hungerTide') {
-            if (!this.attackData.started) {
-                this.attackData.started = true;
-                this.sprite.body.setVelocity(0, 0);
-                const wb = this.scene.physics.world.bounds;
-                const wallWidth = 96;
-                const wallSpeed = 430;
-                const waveTop = wb.y + 72;
-                const waveHeight = Math.max(180, wb.height - 144);
-                this.attackData.waveCount = 3;
-                this.attackData.wallWidth = wallWidth;
-                this.attackData.waveTop = waveTop;
-                this.attackData.waveHeight = waveHeight;
-                this.attackData.waves = [];
-                for (let i = 0; i < this.attackData.waveCount; i++) {
-                    const g = this.scene.add.graphics();
-                    g.setDepth(8);
-                    this.attackData.waves.push({
-                        g,
-                        direction: i % 2 === 0 ? 1 : -1,
-                        launchAt: time + i * 420,
-                        x: i % 2 === 0 ? wb.x - wallWidth - 24 : wb.right + wallWidth + 24,
-                        lastHit: 0
-                    });
-                }
-            }
-            const wb = this.scene.physics.world.bounds;
-            const wallWidth = this.attackData.wallWidth;
-            const waveTop = this.attackData.waveTop;
-            const waveHeight = this.attackData.waveHeight;
-            const wallSpeed = 430;
-            const dangerHalfWidth = wallWidth / 2 + 14;
-            for (const wave of this.attackData.waves) {
-                if (!wave.g.active) continue;
-                wave.g.clear();
-                if (time < wave.launchAt) {
-                    const blinkAlpha = Math.floor((wave.launchAt - time) / 90) % 2 === 0 ? 0.22 : 0.44;
-                    const warningWidth = 24;
-                    const warningX = wave.direction > 0 ? wb.x + 8 : wb.right - warningWidth - 8;
-                    wave.g.fillStyle(0xF0D78A, blinkAlpha);
-                    wave.g.fillRect(warningX, waveTop, warningWidth, waveHeight);
-                    wave.g.fillStyle(this.config.color, 0.18);
-                    wave.g.fillRect(warningX, waveTop, warningWidth, waveHeight);
-                    continue;
-                }
-                wave.x += wave.direction * wallSpeed * delta / 1000;
-                const drawX = wave.x - wallWidth / 2;
-                wave.g.fillStyle(this.config.color, 0.36);
-                wave.g.fillRect(drawX, waveTop, wallWidth, waveHeight);
-                wave.g.fillStyle(0xF3D98A, 0.78);
-                wave.g.fillRect(
-                    wave.direction > 0 ? drawX + wallWidth - 10 : drawX,
-                    waveTop,
-                    10,
-                    waveHeight
-                );
-                wave.g.fillStyle(0xB96B3C, 0.22);
-                wave.g.fillRect(drawX + 12, waveTop + 16, Math.max(20, wallWidth - 24), Math.max(32, waveHeight - 32));
-                const insideWallX = Math.abs(player.x - wave.x) <= dangerHalfWidth;
-                const insideWallY = player.y >= waveTop - 12 && player.y <= waveTop + waveHeight + 12;
-                if (
-                    insideWallX
-                    && insideWallY
-                    && !player.isInvincible
-                    && time - wave.lastHit >= 480
-                ) {
-                    wave.lastHit = time;
-                    this._dealDamageToPlayer(player, this.damage * 0.3, atk);
-                }
-                const passedArena = wave.direction > 0
-                    ? wave.x - wallWidth / 2 > wb.right + 36
-                    : wave.x + wallWidth / 2 < wb.x - 36;
-                if (passedArena) {
-                    wave.g.destroy();
-                }
-            }
-            if (elapsed >= 3200) {
-                for (const wave of this.attackData.waves) {
-                    if (wave.g.active) wave.g.destroy();
-                }
                 this._finishAttack(time);
             }
         } else {
@@ -6941,29 +6821,42 @@ class ShopScene extends Phaser.Scene {
             fill: '#FFD700'
         }).setOrigin(0.5).setScrollFactor(0).setDepth(1);
 
+        this._shopPrepRecommendation = buildShopPrepRecommendation(GameState.portalPreparationTarget);
+        this._shopPrepTitleText = this.add.text(width / 2 - 200, 118, this._shopPrepRecommendation.title, {
+            fontSize: '14px',
+            fill: '#ffd27a',
+            fontStyle: 'bold'
+        }).setScrollFactor(0).setDepth(1).setVisible(!!this._shopPrepRecommendation.visible);
+        this._shopPrepBodyText = this.add.text(width / 2 - 200, 140, this._shopPrepRecommendation.lines.join('\n'), {
+            fontSize: '13px',
+            fill: '#ffe7b8',
+            lineSpacing: 4
+        }).setScrollFactor(0).setDepth(1).setVisible(!!this._shopPrepRecommendation.visible);
+
         const buyableItems = Object.entries(ITEMS)
             .filter(([, v]) => v.price != null && (v.type === 'consumable' || v.type === 'material'))
             .sort((a, b) => {
                 if (a[1].type === b[1].type) return a[1].price - b[1].price;
                 return a[1].type === 'consumable' ? -1 : 1;
             });
-        let y = 150;
+        let y = this._shopPrepRecommendation.visible ? 190 : 150;
         buyableItems.forEach(([key, item]) => {
             const count = GameState.inventory[key] || 0;
             const typeTag = item.type === 'material' ? '[材料]' : '[消耗品]';
+            const isRecommendedItem = !!(this._shopPrepRecommendation && this._shopPrepRecommendation.itemKey === key);
             const row = this.add.text(width / 2 - 200, y, `${typeTag} ${item.name} — ${item.price}金币  拥有: ${count}`, {
                 fontSize: '18px',
-                fill: '#ffffff'
+                fill: isRecommendedItem ? '#ffe7b8' : '#ffffff'
             }).setScrollFactor(0).setDepth(1);
 
             const buyBtn = this.add.text(width / 2 + 120, y, '[购买]', {
                 fontSize: '16px',
-                fill: '#4a90d9'
+                fill: isRecommendedItem ? '#ffd27a' : '#4a90d9'
             }).setOrigin(0, 0.5).setScrollFactor(0).setInteractive({ useHandCursor: true }).setDepth(1);
             buyBtn.itemKey = key;
             buyBtn.rowY = y;
-            buyBtn.on('pointerover', () => buyBtn.setStyle({ fill: '#6ab0ff' }));
-            buyBtn.on('pointerout', () => buyBtn.setStyle({ fill: '#4a90d9' }));
+            buyBtn.on('pointerover', () => buyBtn.setStyle({ fill: isRecommendedItem ? '#ffe3a3' : '#6ab0ff' }));
+            buyBtn.on('pointerout', () => buyBtn.setStyle({ fill: isRecommendedItem ? '#ffd27a' : '#4a90d9' }));
             buyBtn.on('pointerdown', () => this._tryBuy(key, item, row, buyBtn));
             y += 45;
         });
@@ -7038,9 +6931,21 @@ class BlacksmithScene extends Phaser.Scene {
             fill: '#FFD700'
         }).setOrigin(0.5).setScrollFactor(0).setDepth(1);
 
+        this._blacksmithPrepRecommendation = buildBlacksmithPrepRecommendation(GameState.portalPreparationTarget);
+        this._blacksmithPrepTitleText = this.add.text(width / 2 - 250, 118, this._blacksmithPrepRecommendation.title, {
+            fontSize: '14px',
+            fill: '#ffd27a',
+            fontStyle: 'bold'
+        }).setScrollFactor(0).setDepth(1).setVisible(!!this._blacksmithPrepRecommendation.visible);
+        this._blacksmithPrepBodyText = this.add.text(width / 2 - 250, 140, this._blacksmithPrepRecommendation.lines.join('\n'), {
+            fontSize: '13px',
+            fill: '#ffe7b8',
+            lineSpacing: 4
+        }).setScrollFactor(0).setDepth(1).setVisible(!!this._blacksmithPrepRecommendation.visible);
+
         const weaponKeys = Object.keys(WEAPONS);
         this.weaponRows = [];
-        let y = 150;
+        let y = this._blacksmithPrepRecommendation.visible ? 190 : 150;
         weaponKeys.forEach((key, i) => {
             const weapon = WEAPONS[key];
             const unlocked = GameState.unlockedWeapons.includes(key);
@@ -7075,9 +6980,10 @@ class BlacksmithScene extends Phaser.Scene {
         y += 34;
         this.craftRows = [];
         Object.keys(CRAFTING_RECIPES).forEach((recipeKey) => {
+            const isRecommendedRecipe = !!(this._blacksmithPrepRecommendation && this._blacksmithPrepRecommendation.recipeKey === recipeKey);
             const rowText = this.add.text(this._craftRecipeTextX, y, this._buildCraftLabel(recipeKey), {
                 fontSize: '16px',
-                fill: '#ffffff'
+                fill: isRecommendedRecipe ? '#ffe7b8' : '#ffffff'
             }).setScrollFactor(0).setDepth(1);
             const craftBtn = this._createCraftButton(recipeKey, rowText, y);
             this.craftRows.push({ recipeKey, rowText, craftBtn });
@@ -7205,9 +7111,10 @@ class BlacksmithScene extends Phaser.Scene {
     }
 
     _createCraftButton(recipeKey, rowText, y) {
+        const isRecommendedRecipe = !!(this._blacksmithPrepRecommendation && this._blacksmithPrepRecommendation.recipeKey === recipeKey);
         const craftBtn = this.add.text(this._craftRecipeButtonX, y, '[制作]', {
             fontSize: '14px',
-            fill: '#4a90d9'
+            fill: isRecommendedRecipe ? '#ffd27a' : '#4a90d9'
         }).setOrigin(0, 0.5).setScrollFactor(0).setInteractive({ useHandCursor: true }).setDepth(1);
         craftBtn.recipeKey = recipeKey;
         craftBtn.rowText = rowText;
@@ -7246,8 +7153,9 @@ class BlacksmithScene extends Phaser.Scene {
 
     _syncCraftButtonState(row, affordance) {
         if (!row || !row.craftBtn || !row.craftBtn.active) return;
+        const isRecommendedRecipe = !!(this._blacksmithPrepRecommendation && this._blacksmithPrepRecommendation.recipeKey === row.recipeKey);
         const canCraft = !!(affordance && affordance.canCraft);
-        row.craftBtn.setStyle({ fill: canCraft ? '#4a90d9' : '#667085' });
+        row.craftBtn.setStyle({ fill: canCraft ? (isRecommendedRecipe ? '#ffd27a' : '#4a90d9') : (isRecommendedRecipe ? '#8f7a52' : '#667085') });
         if (canCraft) {
             if (!row.craftBtn.input || !row.craftBtn.input.enabled) {
                 row.craftBtn.setInteractive({ useHandCursor: true });
@@ -7261,7 +7169,9 @@ class BlacksmithScene extends Phaser.Scene {
         if (!Array.isArray(this.craftRows)) return;
         this.craftRows.forEach((row) => {
             if (!row || !row.rowText || !row.rowText.active) return;
+            const isRecommendedRecipe = !!(this._blacksmithPrepRecommendation && this._blacksmithPrepRecommendation.recipeKey === row.recipeKey);
             row.rowText.setText(this._buildCraftLabel(row.recipeKey));
+            row.rowText.setStyle({ fill: isRecommendedRecipe ? '#ffe7b8' : '#ffffff' });
             this._syncCraftButtonState(row, buildCraftRecipeAffordance(row.recipeKey, GameState, ITEMS));
         });
     }
@@ -8125,13 +8035,7 @@ class UIScene extends Phaser.Scene {
 
         const eventRoom = GameState.getRunEventRoomSummary ? GameState.getRunEventRoomSummary() : null;
         if (eventRoom) {
-            const lines = buildRunEventRoomHudLines(eventRoom, RUN_EVENT_ROOM_POOL, {
-                encounterPreviewOptions: {
-                    includeStagingAnchor: true,
-                    maxWidth: this._getHudSidebarMaxWidth(),
-                    measureTextWidth: text => this._measureHudSidebarTextWidth(text, 'eventRoomSidebar')
-                }
-            });
+            const lines = buildRunEventRoomHudLines(eventRoom, RUN_EVENT_ROOM_POOL);
             this.eventRoomText.setText(this._fitHudSidebarTextBlock(lines, this._getHudSidebarMaxWidth(), 'eventRoomSidebar', 'eventRoomSidebar').join('\n'));
             this.eventRoomText.setStyle({ fill: eventRoom.resolved ? '#9fa8b3' : '#ffd27a' });
         } else {
@@ -8371,13 +8275,11 @@ class HelpScene extends Phaser.Scene {
         const riskRewardHelpLine = '若已选“绝境修习”，普攻行会在生命高于 45% 时显示“绝境<45%”，压进阈值后改成“绝境+40%”，真正带着这段低血爆发命中时还会补一个“绝境”浮字；若已选“守心修习”，闪避行会在生命高于 70% 时显示“守心-18%”，跌出阈值后改成“守心>70%”，而当这段高血减伤真实挡下一击时，玩家身旁还会补一个“守心”提示';
         const comboLinkHelpLine = '若已选“催锋修习”，特攻行会常驻显示“催锋-0.2s/击”，普攻命中真的把特攻冷却压短时会浮出“催锋-0.2s”，若刚好直接转好则还会短促切成“催锋就绪”；若已选“回身修习”，闪避行会常驻显示“回身-0.3s/特攻”，特攻命中真的把闪避冷却压短时会浮出“回身-0.3s”，若刚好直接转好则还会短促切成“回身就绪”';
         const counterattackHelpLine = '若已选“追猎修习”，普攻行会先显示“追猎待闪”，翻滚收招后改成“追猎1.4s”这类剩余窗口提示，真正把这段窗口兑现成强化普攻命中时，还会补一个更亮的“追猎斩”浮字与 hit pulse；若已选“调息修习”，特攻行会常驻显示“调息+6”，且只有在特攻命中后真的回到体力时，体力条才会同步短促抬亮并脉冲一下';
-        const gluttonyHungerTideHelpLine = '“深渊巨口”末阶段会追加“饥潮奔涌”：三道污潮会从两侧轮番卷入，逼玩家留一次翻滚穿潮；擦潮还会吃到短 slow，别把体力耗在边线';
-        const slothWebCageHelpLine = '“梦境蛛后”在 phase 2/3 还会补一个“蛛网囚笼”：蛛网围栏会围绕玩家初始站位收束；若被墙线扫到会吃到伤害与 slow，先稳住中心再等收束结束';
         const sections = [
             { title: '移动', items: ['WASD  —  八方向移动'] },
             { title: '瞄准', items: ['I / J / K / L  —  键盘双轴瞄准（保留上次朝向）', '当前瞄准会显示在 HUD 左下角'] },
             { title: '战斗', items: ['U / 鼠标左键  —  普通攻击', 'O / 鼠标右键  —  特殊攻击', '左下角行动行会显示冷却；若只差体力，则会显示“差2体/0.1s”这类自然回复 ETA；若冷却转好后仍差体力，则会预告“0.3s后差8体/0.5s”；若正处于翻滚锁定，则会继续预告“翻滚中 -> 就绪”这类翻滚后的下一状态；当任一动作刚切进“就绪”时，只有对应那一项会短促闪亮一下；若已选“连斩修习”，普攻行会常驻显示“连斩-18%”，而当减 CD 真正把“普攻 U”从“冷却”或翻滚后的冷却预告推回“就绪”时，还会短促切成“连斩就绪”；当更短普攻 CD 真正压出更快的下一次普攻命中时，命中处还会补一个短促的“连斩”浮字与轻 hit pulse；若已选“游步修习”，闪避行会常驻显示“游步-20%/-18%”，翻滚锁定时也会继续挂在下一状态预告前；若已选“复苏祷言”，闪避行会常驻显示“复苏+35%”，翻滚锁定时也会继续挂在下一状态预告前，真正因自然回体转好时还会短促切成“复苏就绪”；若已选“迅击祷言”，特攻行会常驻显示“迅击-22%”，翻滚锁定时也会继续挂在下一状态预告前；若已选“回息修习”，普攻行会常驻显示“回体+4”；若已选“借势修习”，特攻行会常驻显示“借势待闪”，翻滚收招后会切成“借势1.6s”这类剩余时间；若已选“催锋修习”，特攻行会常驻显示“催锋-0.2s/击”，普攻命中真的把特攻冷却压短时会浮出“催锋-0.2s”，若刚好直接转好则还会短促切成“催锋就绪”；若已选“回身修习”，闪避行会常驻显示“回身-0.3s/特攻”，特攻命中真的把闪避冷却压短时会浮出“回身-0.3s”，若刚好直接转好则还会短促切成“回身就绪”；若已选“追猎修习”，普攻行会先显示“追猎待闪”，翻滚收招后改成“追猎1.4s”这类剩余窗口提示，真正把这段窗口兑现成强化普攻命中时，还会补一个更亮的“追猎斩”浮字与 hit pulse；若已选“调息修习”，特攻行会常驻显示“调息+6”，且只有在特攻命中后真的回到体力时，体力条才会同步短促抬亮并脉冲一下；若已选“绝境修习”，普攻行会会在生命高于 45% 时显示“绝境<45%”，压进阈值后改成“绝境+40%”，真正带着这段低血爆发命中时还会补一个“绝境”浮字；若已选“守心修习”，闪避行会会在生命高于 70% 时显示“守心-18%”，跌出阈值后改成“守心>70%”，而当这段高血减伤真实挡下一击时，玩家身旁还会补一个“守心”提示；若已选“游步修习”，闪避行会常驻显示“游步-20%/-18%”，而当减 CD / 减耗真正把翻滚从“冷却”、“差体”或翻滚后的下一状态推回“就绪”时，还会短促切成“游步就绪”；当减耗真正把“闪避 Space”从“差体”或翻滚后预告推回“就绪”时，体力条也会同步短促抬亮一下；若 Boss 战切到专用 HUD，则顶部血条会收紧，但左下角当前瞄准 / 武器 / 行动行与右下快捷栏仍保持稳定底边留白；若 Boss 的“反制窗口”起点实际晚于 telegraph 进度条开头，条内还会补一枚“起跳刻度”，避免把整段条体误读成从第一帧起就能反制；若 Boss 的“反制窗口”从第一帧开放、却会在 telegraph 进度条清空前提早收束，条内还会补一枚“收束刻度”，避免把剩余条体误读成还在可反制；“收束刻度”右侧剩余条体也会压成更暗的“尾段残影”，提醒那一截只剩读招倒计时，不再代表可反制窗口；一旦倒计时已经走进这段“尾段残影”，第二行“反制窗口”也会同步切成更低饱和的“已收束提示”，第三行 hint 则会把原本的“反制:”/“反制提示:”前缀改写成更明确的“收束后处理:”或“闪避提示:”，并同步降成更柔和的琥珀色，避免窗口已过后仍把旧提示读成“现在还能反制”；若第二、三行都已切进收束态，第一行“类型 | 攻击名”也会同步压成更低饱和的暖灰白；若第一、二、三行都已切进收束态，进度条左侧仍存活的主色填充也会同步降一档 alpha，避免剩余倒计时继续冒充“当前节奏仍在可反制主拍”；若 Boss telegraph 已进入“尾段残影”区间且主色填充已同步降档 alpha，还会在进度头部补一枚更细的暖色“当前倒计时头标”，避免整段主色一起变淡后，余光里更难抓到剩余读招进度；若 Boss telegraph 刚从可反制主拍切进“尾段残影”且新的“当前倒计时头标”首次出现，头标还会追加约 120ms 的短促暖闪，避免余光里漏掉“反制窗刚收束，后面只剩读招倒计时”的节奏切换；若这段短促暖闪刚结束且剩余读招倒计时已低于约 220ms，头标外侧还会续上一层更弱的暖色余辉，避免最后半拍又失去剩余时长重心；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 120ms，还会把“当前倒计时头标”的内芯略微收窄提亮，避免最后一瞬被外侧余辉吃掉读秒重心；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 80ms，还会把“当前倒计时头标”外侧那层弱暖色余辉略微收短贴边，避免最后一瞬外辉继续压过内芯的终点定位；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 40ms，还会把“当前倒计时头标”外层余辉 alpha 继续压低并钳在条体终点内侧，避免清零前最后一帧仍把条尾看成还有额外余量；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 20ms，还会把“当前倒计时头标”的主芯高度略微收短贴边，避免清零前最后半拍仍像保留完整读秒柱；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 10ms，还会把“当前倒计时头标”外壳的上下帽沿也略微压短，避免清零前最后一闪仍像保留整段完整高度；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 5ms，还会把“当前倒计时头标”外壳 alpha 也轻压一档，避免清零前最后一闪仍像保留整枚完整头标；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 2ms，还会把“当前倒计时头标”内芯 alpha 也轻压一档，避免最后一点亮芯仍像保留完整撞线；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”的内芯与外壳再同步收窄半拍，避免清零前最后一粒亮点仍像保留完整撞线厚度；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”外侧残余暖辉也同步压成更贴边的极细收尾，避免最终同步收窄后外辉仍比真正落点更宽；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”外侧残余暖辉 alpha 也同步轻压半拍，避免最后一圈外辉仍像悬着未收；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”外侧残余暖辉的上下高度也同步压短半拍，避免最后一圈外辉仍像保留完整包边；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”外侧残余暖辉的圆角也同步收紧半拍，避免最后一圈外辉仍像保留完整包边端帽；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”内层残余暖辉的左右宽度也同步收窄半拍，避免最后一丝内辉仍像保留完整胶囊腰身；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”内层残余暖辉的上下高度也同步压短半拍，避免最后一丝内辉仍像保留完整立柱；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”内层残余暖辉 alpha 也同步轻压半拍，避免最后一丝暖辉仍像悬着未收；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”内层残余暖辉的圆角也同步收紧半拍，避免最后一丝内辉仍像保留完整胶囊端帽；若 Boss 的“反制窗口”只落在 telegraph 进度条本体中段，条内还会补一段“窗口高亮区段”，避免还要自己心算真正可反制跨度；若 Boss 的“反制窗口”会拖到 telegraph 进度条终点之后，条尾还会额外补一枚“超出尾标”，避免把条体清空误读成反制窗也已经结束'] },
-            { title: '战斗补充', items: [disciplineAttackReadyHelpLine, disciplineReadyHelpLine, prayerReadyHelpLine, weaponRoutingHelpLine, riskRewardHelpLine, comboLinkHelpLine, counterattackHelpLine, gluttonyHungerTideHelpLine, slothWebCageHelpLine, telegraphLateGlowColorTempHelpLine, telegraphLateGlowInnerColorTempHelpLine, telegraphHeadContrastHelpLine, telegraphHeadColorTempHelpLine, telegraphHeadSaturationHelpLine, telegraphHeadEdgeSoftHelpLine, telegraphHeadEdgeHighlightHelpLine, telegraphHeadEdgeBalanceHelpLine, telegraphHeadEdgeBrightnessHelpLine, telegraphHeadEdgeWarmthHelpLine, telegraphHeadEdgeSaturationHelpLine, telegraphHeadEdgeFeatherHelpLine, telegraphHeadEdgeAlphaHelpLine, telegraphHeadEdgeWarmCoolAlphaHelpLine] },
+            { title: '战斗补充', items: [disciplineAttackReadyHelpLine, disciplineReadyHelpLine, prayerReadyHelpLine, weaponRoutingHelpLine, riskRewardHelpLine, comboLinkHelpLine, counterattackHelpLine, telegraphLateGlowColorTempHelpLine, telegraphLateGlowInnerColorTempHelpLine, telegraphHeadContrastHelpLine, telegraphHeadColorTempHelpLine, telegraphHeadSaturationHelpLine, telegraphHeadEdgeSoftHelpLine, telegraphHeadEdgeHighlightHelpLine, telegraphHeadEdgeBalanceHelpLine, telegraphHeadEdgeBrightnessHelpLine, telegraphHeadEdgeWarmthHelpLine, telegraphHeadEdgeSaturationHelpLine, telegraphHeadEdgeFeatherHelpLine, telegraphHeadEdgeAlphaHelpLine, telegraphHeadEdgeWarmCoolAlphaHelpLine] },
             { title: '防御', items: ['Space  —  闪避翻滚（无敌帧）'] },
             { title: '武器', items: ['Q / E  —  切换武器'] },
             { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位，并提示“快捷栏N：+<短名>”；若临时拿不到显式短名则会沿用道具名生成“快捷栏N：+生命”这类短句；提示现在会优先按 Phaser 文本实际宽度钳制，因此“快捷栏N：+HP恢复”这类混排会尽量保留更多有效信息；若当前环境拿不到真实测量结果则回退为宽度权重估算；若道具名词干过长则会截成“快捷栏N：+圣疗秘…”这类省略短句；快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”；若拿不到显式短名则改用“快捷栏1：狂战→净化”这类道具名短句；若这些道具名过长则同样会截成“快捷栏1：古代狂…→神圣净…”这类省略短句', '净化药剂/狂战油在铁匠制作成功时也会直接装入快捷栏，并沿用同一套“快捷栏N：+净化”/“快捷栏1：狂战→净化”提示；制作行现在还会直接补“入1”/“覆盖1：狂战→净化”这类快捷栏预告，让玩家在点前就知道会落在哪格、会不会顶掉现有补给；并额外补一条“净化药剂x2 · 差15金”这类批量回执，直接交代本次做了几份、又是因金币还是材料耗尽才停下；若这条制作成功回执还要再拼上快捷栏落位提示，底部消息会先按实际宽度把“快捷栏1：狂战→净化”收束成“覆盖1：狂战→净化”/“入1”这类短后缀，并把“净化药剂x2 · 差15金”这类做了几份/为何停下信息留在前面；若制作失败提示碰上长材料名或后续 richer error copy，底部消息也会先按实际宽度把“材料不足: 懒惰之精华”收束成“材料不足: 懒惰”/“材料不足”，把 blocker 留在前面；若强化成功提示触发时，底部消息会优先读出“强化成功! Lv.1→Lv.2 · 本次伤害+4/特攻-0.2s/体耗-2 · 消耗2个暴怒之精华”这类带升级段位、收益与材料锚点的回执；若像“强化成功! Lv.2→Lv.3 · 本次伤害+5/特攻-0.2s/体耗-1 · 累计伤害+9/特攻-0.3s/体耗-3 · 消耗2个暴怒之精华”这类末级升级累计总览也放得下，还会优先把整把武器的累计现况与本次花费一起钉在回执尾段；若中宽档位放不下完整累计总览，则会先保住“强化成功! Lv.2→Lv.3 · 本次伤害+5/特攻-0.2s/体耗-1 · 累计+9/特攻-0.3s · 消耗2个暴怒”或至少“强化成功! Lv.2→Lv.3 · 本次伤害+5/特攻-0.2s/体耗-1 · 累计伤害+9 · 消耗2个暴怒”这类累计+消耗双锚点，再继续退回只保留累计首段的旧梯子；若行宽再继续吃紧，才会退回“强化成功! Lv.1→Lv.2 · 本次伤害+4/特攻-0.2s/体耗-2”、“强化成功! Lv.1→Lv.2 · 本次伤害+4”或“强化成功! Lv.1→Lv.2”，优先把成功结论与升级段位留在前；材料不足路径也会先把“材料不足! 需要2个暴怒之精华”收束成“材料不足! 需要2个暴怒”/“材料不足! 需要2个”，把 blocker 留在前面；若窄窗口下“[强化] 250金+2暴怒之精华”这类强化按钮过长，按钮文案也会先按实际宽度把精华名收束成“[强化] 250金+2暴怒”/“[强化] 250金+2个”，并把“[强化]”与金币/材料成本留在前，避免长精华名继续挤窄按钮可读区；铁匠强化行现在也会在点按钮前直接显示“可强化/差50金/差2个暴怒之精华”这类短标签，blocked 时“[强化]”会同步降色停用，避免继续把 upgrade 决策留到失败提示才揭晓；Lv.3 武器右侧动作位不再留空，会直接显示“已满级”/“满阶”这类短标签，并沿用同一宽度护栏，避免把空白误读成未解锁、渲染缺失或还能继续强化；铁匠强化行现在也会在点按钮前直接补上“本次伤害+4/特攻-0.2s/体耗-2”这类短收益摘要；若武器已升过但还没满级，强化行还会优先补“累计+下次 · 累计伤害+4/本次伤害+5”这类双层短摘要，让玩家在同一行同时读到已购成长与下一跳收益；若行宽再吃紧，会先收束成“累计+4/下次+5”这类紧凑双层锚点，再继续退到“累计伤害+4/本次伤害+5”、“累计伤害+4”或“本次伤害+5”，避免非满级阶段过早丢掉双层语义；若武器已满级，强化行也不会退回只剩武器名，而会改为常驻显示“已满级 · 累计伤害+9/特攻-0.3s/体耗-3”这类累计已购收益；若行宽继续吃紧，会先收束成“满阶 · 累计伤害+9”，避免满级后又读不出这把武器已经买到了哪些成长；若窄窗口下长材料名、“拥有”、“可做xN/差15金”与预告同场出现，制作行会先按实际宽度收束，优先压掉“拥有”、再把材料名压成“嫉妒x1”/“懒惰x1”这类紧凑读法，尽量把决策提示留在“[制作]”前；若制作行显示“可做xN”，点击一次“[制作]”还会直接做到当前上限', '背包悬停说明也会按实际文本宽度贴边，因此靠近屏幕右缘时不会继续沿用固定 200px 估算', '净化药剂/狂战油可在铁匠制作'] },
@@ -8387,15 +8289,18 @@ class HelpScene extends Phaser.Scene {
                 title: '交互/界面',
                 items: [
                     'F — NPC / 事件房交互',
-                    '贴近传送门时，若 Hub 已保存上轮路线，还会补一个“选门回顾”，把目标门、上轮收官与源头抉择压进同一块小卡片',
-                    '真正踏进关卡后的第一秒，还会补一次“目标 色欲 · 稳拍反制”/“目标 暴怒 · 回体扛压”这类一次性开局提示；若开局 seed 先把玩家落进首段普通战斗，首个房间刚被敌群唤醒时也会再补一次“首战 稳拍反制”/“首战 回体扛压”这类短 cue；贴近首个未结算事件房时，祭坛也会继续补“按F效果 · 稳拍反制”/“祈愿圣坛 · 目标 稳拍反制”这类目标姿态提示',
                     '事件房祭坛靠近提示也会按 Phaser 文本实际宽度贴在当前视口内，因此贴近屏幕边缘时不会被裁出画面',
-                    '事件房导向的第三房路线现在会按 preview 宽度分层：更宽的 surface 会先补“下间缓冲 · 双低压 · 先稳前排”/“下间高压 · 三敌齐压 · 先拆夹角”/“下间淘金 · 双赏金 · 先盯后排”这类 layered forecast，较窄的 surface 则继续保留“下间缓冲 · 先稳前排”/“下间高压 · 先拆夹角”/“下间淘金 · 先盯后排”；进房时再补“缓冲战 · 双拍缓冲”/“高压战 · 三向成压”/“淘金战 · 后排赏金”，真正清场时再补“缓冲战 · 稳住出清”/“高压战 · 顶住成压”/“淘金战 · 赏金到手”这类短回顾；若已存储的 recommendation reason 仍和 routed encounter 强相关，入口/清场短句还会继续补“缓冲战 · 双拍缓冲 · 净化后稳场”/“高压战 · 三向成压 · 压线抢势”/“淘金战 · 后排赏金 · 血线够追赏”这类更短 echo，命途圣坛的“绝境修习”/“守心修习”也会一起接进“下间高压”/“下间缓冲”；同一套 routed encounter contract 现也开始吃进 build-facing 路线，武备圣坛的“压阵修习”/“离弦修习”会分别导向“下间高压”/“下间淘金”，烙痕圣坛的“余烬修习”/“血痕修习”则会分别导向“下间缓冲”/“下间高压”；其余行动型 blessing route 也会继续把第三房压成“缓冲/高压/淘金”，并在没有 recommendation receipt 时补“连斩抢拍”/“游步整拍”/“镇步控场”/“破势追杀”/“回息稳场”/“借势重击”/“催锋连段”/“回身整拍”/“追猎追赏”/“调息回线”这类 baseline anchor；当进房预告落下半拍后，系统还会再补一次“先稳前排”/“先拆夹角”/“先盯后排”这类首拍目标 cue，把 routed encounter 继续收束成第一拍战术，而不是只停在房型说明',
+                    '事件房导向的第三房路线现在不只会在 shrine 结算时预告“下间缓冲”/“下间高压”/“下间淘金”，进房时补“缓冲战 · 双拍缓冲”/“高压战 · 三向成压”/“淘金战 · 后排赏金”，还会在真正清场时再补“缓冲战 · 稳住出清”/“高压战 · 顶住成压”/“淘金战 · 赏金到手”这类短回顾；若已存储的 recommendation reason 仍和 routed encounter 强相关，入口/清场短句还会继续补“缓冲战 · 双拍缓冲 · 净化后稳场”/“高压战 · 三向成压 · 压线抢势”/“淘金战 · 后排赏金 · 血线够追赏”这类更短 echo，命途圣坛的“绝境修习”/“守心修习”也会一起接进“下间高压”/“下间缓冲”；同一套 routed encounter contract 现也开始吃进 build-facing 路线，武备圣坛的“压阵修习”/“离弦修习”会分别导向“下间高压”/“下间淘金”，烙痕圣坛的“余烬修习”/“血痕修习”则会分别导向“下间缓冲”/“下间高压”；其余行动型 blessing route 也会继续把第三房压成“缓冲/高压/淘金”，并在没有 recommendation receipt 时补“连斩抢拍”/“游步整拍”/“镇步控场”/“破势追杀”/“回息稳场”/“借势重击”/“催锋连段”/“回身整拍”/“追猎追赏”/“调息回线”这类 baseline anchor',
+                    '传送门的“选门参考”若已经给出“门前 稳线读招”/“门前 回体扛压”/“门前 稳拍反制”这类 Boss posture，真正踏进关卡后的第一秒还会再补一次“目标 傲慢 · 稳线读招”/“目标 暴怒 · 回体扛压”/“目标 色欲 · 稳拍反制”这类一次性开局提示，让 scene transition 后不会立刻失声',
+                    '若开局 seed 会先把玩家落进首段普通战斗，首个房间刚被敌群唤醒时也会再补一次“首战 稳拍反制”/“首战 回体扛压”这类短 cue，把目标姿态保到第一次开压，而不是提前退回记忆题',
+                    '若首段普通战斗已经清场，但首个未结算 shrine 还没贴近，穿过首段 corridor 时也会再补一次“过门 稳拍反制”/“过门 回体扛压”这类短 cue，把目标姿态继续保到第一次路线抉择前',
+                    '当玩家真正贴近首个未结算事件房时，靠近提示/世界标签也会继续补“按F效果 · 稳拍反制”/“祈愿圣坛 · 目标 稳拍反制”这类短 reminder，把同一条 Boss posture 接到第一次路线抉择前，而不是为了保住目标姿态再新增常驻 Boss HUD',
                     '当清场浮字淡出后，Boss 门标签也会继续保留“缓冲路线 · 稳线迎战”/“高压路线 · 顶压迎战”/“淘金路线 · 带赏迎战”这类 run-arc 回顾，让这段路线怎样改写了整段推进节奏不会在进 Boss 前立刻断掉；真正踏进 Boss 房后的第一拍，还会再补一次“缓冲路线 · 稳线开局”/“高压路线 · 抢势开局”/“淘金路线 · 带赏开局”这类共享 opener，把这段 route identity 真正接进 Boss 开局',
-                    '事件房导向的第三房路线现在会按 preview 宽度分层：更宽的 surface 会先补“下间缓冲 · 双低压 · 先稳前排”/“下间高压 · 三敌齐压 · 先拆夹角”/“下间淘金 · 双赏金 · 先盯后排”这类 layered forecast，较窄的 surface 则继续保留“下间缓冲 · 先稳前排”/“下间高压 · 先拆夹角”/“下间淘金 · 先盯后排”；进房时再补“缓冲战 · 双拍缓冲”/“高压战 · 三向成压”/“淘金战 · 后排赏金”，真正清场时再补“缓冲战 · 稳住出清”/“高压战 · 顶住成压”/“淘金战 · 赏金到手”这类短回顾；若已存储的 recommendation reason 仍和 routed encounter 强相关，入口/清场短句还会继续补“缓冲战 · 双拍缓冲 · 净化后稳场”/“高压战 · 三向成压 · 压线抢势”/“淘金战 · 后排赏金 · 血线够追赏”这类更短 echo，命途圣坛的“绝境修习”/“守心修习”也会一起接进“下间高压”/“下间缓冲”；同一套 routed encounter contract 现也开始吃进 build-facing 路线，武备圣坛的“压阵修习”/“离弦修习”会分别导向“下间高压”/“下间淘金”，烙痕圣坛的“余烬修习”/“血痕修习”则会分别导向“下间缓冲”/“下间高压”；其余行动型 blessing route 也会继续把第三房压成“缓冲/高压/淘金”，并在没有 recommendation receipt 时补“连斩抢拍”/“游步整拍”/“镇步控场”/“破势追杀”/“回息稳场”/“借势重击”/“催锋连段”/“回身整拍”/“追猎追赏”/“调息回线”这类 baseline anchor',
+                    '事件房导向的第三房路线现在不只会在 shrine 结算时预告“下间缓冲”/“下间高压”/“下间淘金”，进房时补“缓冲战 · 双拍缓冲”/“高压战 · 三向成压”/“淘金战 · 后排赏金”，还会在真正清场时再补“缓冲战 · 稳住出清”/“高压战 · 顶住成压”/“淘金战 · 赏金到手”这类短回顾；若已存储的 recommendation reason 仍和 routed encounter 强相关，入口/清场短句还会继续补“缓冲战 · 双拍缓冲 · 净化后稳场”/“高压战 · 三向成压 · 压线抢势”/“淘金战 · 后排赏金 · 血线够追赏”这类更短 echo，命途圣坛的“绝境修习”/“守心修习”也会一起接进“下间高压”/“下间缓冲”；同一套 routed encounter contract 现也开始吃进 build-facing 路线，武备圣坛的“压阵修习”/“离弦修习”会分别导向“下间高压”/“下间淘金”，烙痕圣坛的“余烬修习”/“血痕修习”则会分别导向“下间缓冲”/“下间高压”；其余行动型 blessing route 也会继续把第三房压成“缓冲/高压/淘金”，并在没有 recommendation receipt 时补“连斩抢拍”/“游步整拍”/“镇步控场”/“破势追杀”/“回息稳场”/“借势重击”/“催锋连段”/“回身整拍”/“追猎追赏”/“调息回线”这类 baseline anchor',
                     '资源与结算路线现在也会把第三房继续钉成更具体的战术短句：“复苏祷言 / 迅击祷言 / 豪赌 / 稳押 / 战地净化包 / 狂战补给”会分别补“复苏回拍 / 迅击抢拍 / 豪赌追赏 / 稳押收赏 / 净包稳场 / 狂油抢势”；若“稳押”本身是因为“当前更宜稳押”才成立，还会继续升级成“留本追赏”；若“迅击祷言”本身就是因为“当前局已偏节奏”才被推荐，还会继续把 routed “高压战”压成“顺势抢压”；若“战地净化包”是因为“当前可负担”才成立，也会把 routed “缓冲战”继续压成“趁价备净”',
                     '当第三房真正开始兑现这条 recommendation 时，系统还会只在首个稳场节点/首个高压接敌/首个赏金兑现点再补一次“净化后稳场”/“压线抢势”/“血线够追赏”这类战中 source cue；若 recommendation 来自压阵/离弦/余烬/血痕这些 build-facing 路线，还会对应补“贴身压阵”/“远程追赏”/“灼烧稳场”/“挂血抢势”，把“为什么推荐这条”接到实际交手瞬间；即使没有 recommendation receipt，战技/镇压/战势/连携/反击这些行动型 blessing route 也会在同一拍点补“连斩抢拍”/“游步整拍”/“镇步控场”/“破势追杀”/“回息稳场”/“借势重击”/“催锋连段”/“回身整拍”/“追猎追赏”/“调息回线”',
                     '事件房 choice panel 若出现明显上下文倾向，还会在底部脚注补“建议 1/2：净泉啜饮 · 可净化2层”这类短推荐，但不会改动原有 1/2 顺序；若玩家真的选了这条高置信路线，已触发后的 HUD / 祭坛世界标签 / 结算浮字也会继续补“治疗: 净泉啜饮 · 可净化2层”这类极短确认；祈愿圣坛现在也会在明显节奏偏向时给出“建议 2：迅击祷言 · 当前局已偏节奏”这类脚注；若玩家真的选了这条高置信路线，已触发后的 HUD / 祭坛世界标签 / 结算浮字也会继续补“效果: 迅击祷言 · 当前局已偏节奏”这类极短确认；choice panel / 侧栏事件房摘要 / 已触发后的祭坛世界标签现在还会继续补“首拍兑现 / 稳场兑现 / 追赏兑现”这类极短时机签，让玩家在选前与选后都知道这条路线会在下一房的开压、稳场或追赏节点开始回本；战技/镇压/战势/连携/反击这些行动型 blessing route 也会把 live combat state 接进同一套 recommendation helper，并在高置信场景下给出“建议 1/2：连斩修习 · 普攻卡拍”/“游步修习 · 闪避卡拍”/“镇步修习 · 当前更宜控场”/“借势修习 · 特攻待借势”/“催锋修习 · 特攻待连段”/“回身修习 · 闪避待回身”/“追猎修习 · 可立即追猎”/“调息修习 · 当前更缺回体”这类脚注；武备/烙痕这些 build-facing route 也会在高置信场景下给出“建议 1/2：压阵修习 · 近战更宜压线”/“离弦修习 · 远程更宜追赏”/“余烬修习 · 灼烧更宜稳场”/“血痕修习 · 挂血更宜抢势”，不再只停在静态 loadout fit',
+                    '命途/烙痕这些 threshold/status route 也会在较安静但高置信的场景下复用同一套 Boss posture：若当前血线还没压进“绝境/守心”阈值，或 burn/bleed loadout 也还没有强到足以单独解释当前 live state，choice panel 也会补“建议 1/2：绝境修习 · 目标Boss更宜压线”/“守心修习 · 目标Boss更宜回体”/“余烬修习 · 目标Boss更宜控场”/“血痕修习 · 目标Boss更宜压线”；若这些理由仍和 routed encounter 强相关，room-3 还会继续把它们兑现成“压线抢势”/“守心稳场”/“灼烧稳场”/“挂血抢势”这类短 echo',
                     '若这些 action recommendation 的 persisted reason 仍和 routed encounter 强相关，第三房还会继续把“普攻卡拍/闪避卡拍/当前可追终结/特攻待借势/特攻待连段/可立即追猎”压成“抢拍开刃/游步回拍/破势收赏/借势抢压/连段催锋/追猎收赏”这类更窄的 why-now echo',
                     '右侧固定侧栏里的章节标题、区域名、本局词缀、本局挑战与事件房摘要会优先按 Phaser 文本实际宽度钳制，并按实际文本高度动态纵向排布，避免长标题 / 长路线结算继续互相顶出 HUD',
                     '这些 compact / ultra-compact / ultra-tight 分档会按实际显示尺寸触发，而不再只依赖固定逻辑画布尺寸',

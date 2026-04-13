@@ -90,8 +90,8 @@ const BOSSES = {
         area: '沉睡森林', color: 0xB10DC9,
         phases: [
             { hpPercent: 1.0, attacks: ['webShot', 'summonSpider'] },
-            { hpPercent: 0.6, attacks: ['webShot', 'summonSpider', 'sleepFog', 'webCage'] },
-            { hpPercent: 0.3, attacks: ['webShot', 'summonSpider', 'sleepFog', 'webCage', 'nightmare'] }
+            { hpPercent: 0.6, attacks: ['webShot', 'summonSpider', 'sleepFog'] },
+            { hpPercent: 0.3, attacks: ['webShot', 'summonSpider', 'sleepFog', 'nightmare'] }
         ],
         defeatDialog: [
             { speaker: '梦境蛛后', text: '梦醒了……这漫长的沉睡，终于结束了。' },
@@ -119,7 +119,7 @@ const BOSSES = {
         phases: [
             { hpPercent: 1.0, attacks: ['bite', 'vomit'] },
             { hpPercent: 0.6, attacks: ['bite', 'vomit', 'devour'] },
-            { hpPercent: 0.3, attacks: ['bite', 'vomit', 'devour', 'consume', 'hungerTide'] }
+            { hpPercent: 0.3, attacks: ['bite', 'vomit', 'devour', 'consume'] }
         ],
         defeatDialog: [
             { speaker: '深渊巨口', text: '还是……好饿……永远填不满……' },
@@ -240,8 +240,8 @@ const AREA_ENEMIES = {
 const ITEMS = {
     hpPotion: { name: '生命药水', type: 'consumable', effect: 'healHp', value: 30, price: 20, description: '恢复30点HP' },
     staminaPotion: { name: '体力药水', type: 'consumable', effect: 'healStamina', value: 40, price: 15, description: '恢复40点体力' },
-    cleanseTonic: { name: '净化药剂', type: 'consumable', effect: 'cleanseWard', value: 0, description: '清除负面状态并获得4秒状态抗性' },
-    berserkerOil: { name: '狂战油', type: 'consumable', effect: 'battleFocus', value: 0, description: '8秒内玩家伤害提升25%' },
+    cleanseTonic: { name: '净化药剂', type: 'consumable', effect: 'cleanseWard', value: 0, price: 55, description: '清除负面状态并获得4秒状态抗性' },
+    berserkerOil: { name: '狂战油', type: 'consumable', effect: 'battleFocus', value: 0, price: 65, description: '8秒内玩家伤害提升25%' },
     prideEssence: { name: '傲慢之精华', type: 'material', price: 70, description: '堕天骑士身上散落的光之碎片' },
     envyEssence: { name: '嫉妒之精华', type: 'material', price: 70, description: '影形者残留的变异物质' },
     wrathEssence: { name: '暴怒之精华', type: 'material', price: 80, description: '炎魔将军燃烧殆尽后的余烬' },

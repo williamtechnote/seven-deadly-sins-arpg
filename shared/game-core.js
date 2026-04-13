@@ -822,6 +822,56 @@
         final: '全备赴渊'
     });
 
+    const BLACKSMITH_PREP_RECOMMENDATIONS = Object.freeze({
+        pride: Object.freeze({
+            recipeKey: 'cleanseTonic',
+            recipeLabel: '净化药剂',
+            prepCue: '稳线备净'
+        }),
+        envy: Object.freeze({
+            recipeKey: 'berserkerOil',
+            recipeLabel: '狂战油',
+            prepCue: '拆位开刃'
+        }),
+        wrath: Object.freeze({
+            recipeKey: 'cleanseTonic',
+            recipeLabel: '净化药剂',
+            prepCue: '稳场备净'
+        }),
+        sloth: Object.freeze({
+            recipeKey: 'cleanseTonic',
+            recipeLabel: '净化药剂',
+            prepCue: '拉稳备净'
+        }),
+        greed: Object.freeze({
+            recipeKey: 'berserkerOil',
+            recipeLabel: '狂战油',
+            prepCue: '追赏开刃'
+        }),
+        gluttony: Object.freeze({
+            recipeKey: 'cleanseTonic',
+            recipeLabel: '净化药剂',
+            prepCue: '留体备净'
+        }),
+        lust: Object.freeze({
+            recipeKey: 'berserkerOil',
+            recipeLabel: '狂战油',
+            prepCue: '抢势开刃'
+        })
+    });
+
+    const BOSS_MATCHUP_RECOMMENDATION_REASONS = Object.freeze({
+        sustain: '目标Boss更宜回体',
+        reposition: '目标Boss更宜拆位',
+        measuredDodge: '目标Boss更宜稳拍',
+        pressure: '目标Boss更宜压线',
+        chaseBackline: '目标Boss更宜追后',
+        control: '目标Boss更宜控场',
+        momentum: '目标Boss更宜借势',
+        combo: '目标Boss更宜连段',
+        hunt: '目标Boss更宜追猎'
+    });
+
     function clampInt(value, min, max, fallback) {
         const n = Number(value);
         if (!Number.isFinite(n)) return fallback;
@@ -876,12 +926,6 @@
             bossKey,
             bossCue: bossKey && HUB_PORTAL_TARGET_CUES[bossKey] ? HUB_PORTAL_TARGET_CUES[bossKey] : ''
         };
-    }
-
-    function getTargetBossCue(target) {
-        if (!target || typeof target !== 'object') return '';
-        const bossKey = typeof target.bossKey === 'string' ? target.bossKey.trim() : '';
-        return bossKey && HUB_PORTAL_TARGET_CUES[bossKey] ? HUB_PORTAL_TARGET_CUES[bossKey] : '';
     }
 
     function resolveKeyboardAimState(input) {
@@ -2808,9 +2852,9 @@
         };
     }
 
-    function formatRunEventRoomChoiceEncounterPreview(choice, options) {
+    function formatRunEventRoomChoiceEncounterPreview(choice) {
         const profile = getRunEventRoomChoiceEncounterProfile(choice);
-        return buildRunEventEncounterObjectivePreview(profile, options);
+        return profile ? profile.previewLabel : '';
     }
 
     function buildRunEventRoomChoicePreview(choice) {
@@ -3038,6 +3082,7 @@
         const missingHp = Math.max(0, playerMaxHp - currentHp);
         const currentGold = clampInt(safeState.gold, 0, Number.MAX_SAFE_INTEGER, 0);
         const selectedWeaponKey = typeof safeState.selectedWeaponKey === 'string' ? safeState.selectedWeaponKey : '';
+        const bossKey = typeof safeState.bossKey === 'string' ? safeState.bossKey.trim() : '';
         const weaponStatus = getWeaponSpecialStatus(selectedWeaponKey);
         const inventory = normalizeInventory(safeState.inventory);
         const runModifierBias = getRunModifierTagBias(safeState.runModifiers);
@@ -3105,12 +3150,24 @@
             if (currentHpRatio >= 0.7) {
                 return buildRecommendation('composureLesson', '高血稳定');
             }
+            if (bossKey === 'pride') {
+                return buildRecommendation('desperationLesson', BOSS_MATCHUP_RECOMMENDATION_REASONS.pressure);
+            }
+            if (bossKey === 'wrath' || bossKey === 'gluttony') {
+                return buildRecommendation('composureLesson', BOSS_MATCHUP_RECOMMENDATION_REASONS.sustain);
+            }
             return null;
         }
 
         if (hasChoice('renewalPrayer') && hasChoice('tempoPrayer')) {
             if (runModifierBias.has('节奏')) {
                 return buildRecommendation('tempoPrayer', '当前局已偏节奏');
+            }
+            if (bossKey === 'wrath' || bossKey === 'gluttony') {
+                return buildRecommendation('renewalPrayer', BOSS_MATCHUP_RECOMMENDATION_REASONS.sustain);
+            }
+            if (bossKey === 'envy') {
+                return buildRecommendation('tempoPrayer', BOSS_MATCHUP_RECOMMENDATION_REASONS.reposition);
             }
             return null;
         }
@@ -3122,6 +3179,12 @@
             if (isRangedLoadout && wantsWindfallChase) {
                 return buildRecommendation('longshotLesson', '远程更宜追赏');
             }
+            if (isMeleeLoadout && (bossKey === 'pride' || bossKey === 'wrath')) {
+                return buildRecommendation('vanguardLesson', BOSS_MATCHUP_RECOMMENDATION_REASONS.pressure);
+            }
+            if (isRangedLoadout && bossKey === 'greed') {
+                return buildRecommendation('longshotLesson', BOSS_MATCHUP_RECOMMENDATION_REASONS.chaseBackline);
+            }
             return null;
         }
 
@@ -3131,6 +3194,13 @@
             }
             if (weaponStatus && weaponStatus.key === 'bleed' && supportsPressureFollowup) {
                 return buildRecommendation('bloodtraceLesson', '挂血更宜抢势');
+            }
+            if (weaponStatus && weaponStatus.key === 'burn'
+                && (bossKey === 'wrath' || bossKey === 'gluttony')) {
+                return buildRecommendation('emberLesson', BOSS_MATCHUP_RECOMMENDATION_REASONS.control);
+            }
+            if (weaponStatus && weaponStatus.key === 'bleed' && bossKey === 'pride') {
+                return buildRecommendation('bloodtraceLesson', BOSS_MATCHUP_RECOMMENDATION_REASONS.pressure);
             }
             return null;
         }
@@ -3143,6 +3213,9 @@
             if (actionState.dodge.recoveryMs >= 900
                 && actionState.dodge.recoveryMs >= actionState.attack.recoveryMs + 400) {
                 return buildRecommendation('ghostStepLesson', '闪避卡拍');
+            }
+            if (bossKey === 'pride' || bossKey === 'lust') {
+                return buildRecommendation('ghostStepLesson', BOSS_MATCHUP_RECOMMENDATION_REASONS.measuredDodge);
             }
             return null;
         }
@@ -3157,6 +3230,9 @@
                     && actionState.dodge.recoveryMs <= 400) {
                     return buildRecommendation('executionLesson', '当前可追终结');
                 }
+                if (bossKey === 'wrath' || bossKey === 'gluttony') {
+                    return buildRecommendation('crushingLesson', BOSS_MATCHUP_RECOMMENDATION_REASONS.control);
+                }
             }
             return null;
         }
@@ -3170,6 +3246,9 @@
             if (actionState.dodge.isReady && actionState.special.recoveryMs >= 900) {
                 return buildRecommendation('momentumLesson', '特攻待借势');
             }
+            if (bossKey === 'pride' || bossKey === 'lust') {
+                return buildRecommendation('momentumLesson', BOSS_MATCHUP_RECOMMENDATION_REASONS.momentum);
+            }
             return null;
         }
 
@@ -3179,6 +3258,9 @@
             }
             if (actionState.special.isReady && actionState.dodge.recoveryMs >= 1000) {
                 return buildRecommendation('reversalStepLesson', '闪避待回身');
+            }
+            if (bossKey === 'envy') {
+                return buildRecommendation('sharpeningLesson', BOSS_MATCHUP_RECOMMENDATION_REASONS.combo);
             }
             return null;
         }
@@ -3193,6 +3275,12 @@
             if (actionState.special.missingStamina > 0
                 || (actionState.special.recoveryMs <= 500 && actionState.stamina <= 10)) {
                 return buildRecommendation('focusLesson', '当前更缺回体');
+            }
+            if (bossKey === 'greed' || bossKey === 'envy') {
+                return buildRecommendation('pursuitLesson', BOSS_MATCHUP_RECOMMENDATION_REASONS.hunt);
+            }
+            if (bossKey === 'wrath' || bossKey === 'gluttony') {
+                return buildRecommendation('focusLesson', BOSS_MATCHUP_RECOMMENDATION_REASONS.sustain);
             }
             return null;
         }
@@ -3271,6 +3359,14 @@
         if (!profileKey) return null;
 
         if (profileKey === 'breather') {
+            if (normalizedRoom.selectedChoiceKey === 'renewalPrayer'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.sustain) {
+                return {
+                    echo: '回体稳线',
+                    sourceCue: '回体稳线',
+                    sourceCueMoment: 'stabilize'
+                };
+            }
             if ((normalizedRoom.selectedChoiceKey === 'purifyingSip' || normalizedRoom.selectedChoiceKey === 'fieldTonic')
                 && /^可净化\d+层$/.test(recommendationReason)) {
                 return {
@@ -3300,7 +3396,23 @@
                     sourceCueMoment: 'stabilize'
                 };
             }
+            if (normalizedRoom.selectedChoiceKey === 'ghostStepLesson'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.measuredDodge) {
+                return {
+                    echo: '游步稳拍',
+                    sourceCue: '游步稳拍',
+                    sourceCueMoment: 'stabilize'
+                };
+            }
             if (normalizedRoom.selectedChoiceKey === 'crushingLesson' && recommendationReason === '当前更宜控场') {
+                return {
+                    echo: '先控稳场',
+                    sourceCue: '先控稳场',
+                    sourceCueMoment: 'stabilize'
+                };
+            }
+            if (normalizedRoom.selectedChoiceKey === 'crushingLesson'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.control) {
                 return {
                     echo: '先控稳场',
                     sourceCue: '先控稳场',
@@ -3328,7 +3440,23 @@
                     sourceCueMoment: 'stabilize'
                 };
             }
+            if (normalizedRoom.selectedChoiceKey === 'focusLesson'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.sustain) {
+                return {
+                    echo: '回体稳线',
+                    sourceCue: '回体稳线',
+                    sourceCueMoment: 'stabilize'
+                };
+            }
             if (normalizedRoom.selectedChoiceKey === 'composureLesson' && recommendationReason === '高血稳定') {
+                return {
+                    echo: '守心稳场',
+                    sourceCue: '守心稳场',
+                    sourceCueMoment: 'stabilize'
+                };
+            }
+            if (normalizedRoom.selectedChoiceKey === 'composureLesson'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.sustain) {
                 return {
                     echo: '守心稳场',
                     sourceCue: '守心稳场',
@@ -3343,9 +3471,25 @@
                     sourceCueMoment: 'stabilize'
                 };
             }
+            if (normalizedRoom.selectedChoiceKey === 'emberLesson'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.control) {
+                return {
+                    echo: '灼烧稳场',
+                    sourceCue: '灼烧稳场',
+                    sourceCueMoment: 'stabilize'
+                };
+            }
         }
 
         if (profileKey === 'pressure') {
+            if (normalizedRoom.selectedChoiceKey === 'tempoPrayer'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.reposition) {
+                return {
+                    echo: '拆位抢拍',
+                    sourceCue: '拆位抢拍',
+                    sourceCueMoment: 'engage'
+                };
+            }
             if (normalizedRoom.selectedChoiceKey === 'flurryLesson' && recommendationReason === '普攻卡拍') {
                 return {
                     echo: '抢拍开刃',
@@ -3367,6 +3511,14 @@
                     sourceCueMoment: 'engage'
                 };
             }
+            if (normalizedRoom.selectedChoiceKey === 'desperationLesson'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.pressure) {
+                return {
+                    echo: '压线抢势',
+                    sourceCue: '压线抢势',
+                    sourceCueMoment: 'engage'
+                };
+            }
             if (normalizedRoom.selectedChoiceKey === 'momentumLesson' && recommendationReason === '特攻待借势') {
                 return {
                     echo: '借势抢压',
@@ -3374,7 +3526,23 @@
                     sourceCueMoment: 'engage'
                 };
             }
+            if (normalizedRoom.selectedChoiceKey === 'momentumLesson'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.momentum) {
+                return {
+                    echo: '借势抢压',
+                    sourceCue: '借势抢压',
+                    sourceCueMoment: 'engage'
+                };
+            }
             if (normalizedRoom.selectedChoiceKey === 'sharpeningLesson' && recommendationReason === '特攻待连段') {
+                return {
+                    echo: '连段催锋',
+                    sourceCue: '连段催锋',
+                    sourceCueMoment: 'engage'
+                };
+            }
+            if (normalizedRoom.selectedChoiceKey === 'sharpeningLesson'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.combo) {
                 return {
                     echo: '连段催锋',
                     sourceCue: '连段催锋',
@@ -3389,8 +3557,24 @@
                     sourceCueMoment: 'engage'
                 };
             }
+            if (normalizedRoom.selectedChoiceKey === 'vanguardLesson'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.pressure) {
+                return {
+                    echo: '贴身压阵',
+                    sourceCue: '贴身压阵',
+                    sourceCueMoment: 'engage'
+                };
+            }
             if (normalizedRoom.selectedChoiceKey === 'bloodtraceLesson'
                 && (recommendationReason === '当前武器可触发' || recommendationReason === '挂血更宜抢势')) {
+                return {
+                    echo: '挂血抢势',
+                    sourceCue: '挂血抢势',
+                    sourceCueMoment: 'engage'
+                };
+            }
+            if (normalizedRoom.selectedChoiceKey === 'bloodtraceLesson'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.pressure) {
                 return {
                     echo: '挂血抢势',
                     sourceCue: '挂血抢势',
@@ -3429,7 +3613,23 @@
                     sourceCueMoment: 'bounty'
                 };
             }
+            if (normalizedRoom.selectedChoiceKey === 'longshotLesson'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.chaseBackline) {
+                return {
+                    echo: '远程断后',
+                    sourceCue: '远程断后',
+                    sourceCueMoment: 'bounty'
+                };
+            }
             if (normalizedRoom.selectedChoiceKey === 'pursuitLesson' && recommendationReason === '可立即追猎') {
+                return {
+                    echo: '追猎收赏',
+                    sourceCue: '追猎收赏',
+                    sourceCueMoment: 'bounty'
+                };
+            }
+            if (normalizedRoom.selectedChoiceKey === 'pursuitLesson'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.hunt) {
                 return {
                     echo: '追猎收赏',
                     sourceCue: '追猎收赏',
@@ -3538,61 +3738,6 @@
         return `${encounterLabel} · ${tacticalSuffix}${recommendationEcho ? ` · ${recommendationEcho}` : ''}`;
     }
 
-    function buildRunEventEncounterStagingReceipt(profile, runEventRoom, poolOverride) {
-        const entryPreview = buildRunEventEncounterEntryPreview(profile, runEventRoom, poolOverride);
-        return entryPreview ? `遭遇: ${entryPreview}` : '';
-    }
-
-    function buildRunEventEncounterObjectiveCue(profile) {
-        const safeProfile = profile && typeof profile === 'object' ? profile : {};
-        const profileKey = typeof safeProfile.key === 'string' ? safeProfile.key.trim() : '';
-        if (profileKey === 'breather') return '先稳前排';
-        if (profileKey === 'pressure') return '先拆夹角';
-        if (profileKey === 'windfall') return '先盯后排';
-        return '';
-    }
-
-    function buildRunEventEncounterPreviewStagingAnchor(profile) {
-        const safeProfile = profile && typeof profile === 'object' ? profile : {};
-        const profileKey = typeof safeProfile.key === 'string' ? safeProfile.key.trim() : '';
-        if (profileKey === 'breather') return '双低压';
-        if (profileKey === 'pressure') return '三敌齐压';
-        if (profileKey === 'windfall') return '双赏金';
-        return '';
-    }
-
-    function canRunEventEncounterPreviewFit(text, options) {
-        const safeText = typeof text === 'string' ? text.trim() : '';
-        const safeOptions = options && typeof options === 'object' ? options : {};
-        const maxWidth = Number(safeOptions.maxWidth);
-        const measureTextWidth = typeof safeOptions.measureTextWidth === 'function'
-            ? safeOptions.measureTextWidth
-            : null;
-        if (!safeText || !Number.isFinite(maxWidth) || maxWidth <= 0 || !measureTextWidth) return true;
-        return measureTextWidth(safeText) <= maxWidth;
-    }
-
-    function buildRunEventEncounterObjectivePreview(profile, options) {
-        const safeProfile = profile && typeof profile === 'object' ? profile : {};
-        const safeOptions = options && typeof options === 'object' ? options : {};
-        const profileKey = typeof safeProfile.key === 'string' ? safeProfile.key.trim() : '';
-        const baseProfile = profileKey && RUN_EVENT_ENCOUNTER_PROFILES[profileKey]
-            ? RUN_EVENT_ENCOUNTER_PROFILES[profileKey]
-            : null;
-        const previewLabel = typeof safeProfile.previewLabel === 'string' && safeProfile.previewLabel.trim()
-            ? safeProfile.previewLabel.trim()
-            : (baseProfile && typeof baseProfile.previewLabel === 'string' ? baseProfile.previewLabel : '');
-        const objectiveCue = buildRunEventEncounterObjectiveCue(safeProfile);
-        const previewStagingAnchor = buildRunEventEncounterPreviewStagingAnchor(safeProfile);
-        if (!previewLabel || !objectiveCue) return '';
-        const compactPreview = `${previewLabel} · ${objectiveCue}`;
-        if (!safeOptions.includeStagingAnchor || !previewStagingAnchor) return compactPreview;
-        const layeredPreview = `${previewLabel} · ${previewStagingAnchor} · ${objectiveCue}`;
-        return canRunEventEncounterPreviewFit(layeredPreview, safeOptions)
-            ? layeredPreview
-            : compactPreview;
-    }
-
     function buildRunEventEncounterClearRecap(profile, runEventRoom, poolOverride) {
         const safeProfile = profile && typeof profile === 'object' ? profile : {};
         const profileKey = typeof safeProfile.key === 'string' ? safeProfile.key.trim() : '';
@@ -3687,29 +3832,39 @@
 
     function buildHubPortalChoiceSummary(summary, targetLabel) {
         const normalizedSummary = normalizeLastRunSummary(summary);
-        const target = typeof targetLabel === 'string'
-            ? targetLabel.trim()
-            : (targetLabel && typeof targetLabel.label === 'string' ? targetLabel.label.trim() : '');
-        if (!target || !normalizedSummary) {
+        const normalizedTarget = normalizeHubPortalTarget(targetLabel);
+        if (!normalizedTarget) {
             return {
                 visible: false,
-                title: '选门回顾',
+                title: '选门参考',
                 lines: []
             };
         }
 
-        const lines = [`目标 ${target}`];
-        const lastRunAnchor = normalizedSummary.routeRecap || normalizedSummary.bossLabel;
+        const lines = [`目标 ${normalizedTarget.label}`];
+        if (normalizedTarget.bossCue) {
+            lines.push(`门前 ${normalizedTarget.bossCue}`);
+        }
+        const lastRunAnchor = normalizedSummary
+            ? (normalizedSummary.routeRecap || normalizedSummary.bossLabel)
+            : '';
         if (lastRunAnchor) {
             lines.push(`上轮 ${lastRunAnchor}`);
         }
-        if (normalizedSummary.choiceLabel) {
+        if (normalizedSummary && normalizedSummary.choiceLabel) {
             lines.push(`源于 ${normalizedSummary.choiceLabel}${normalizedSummary.recommendationReason ? ` · ${normalizedSummary.recommendationReason}` : ''}`);
         }
+        if (lines.length <= 1) {
+            return {
+                visible: false,
+                title: '选门参考',
+                lines: []
+            };
+        }
         return {
-            visible: lines.length > 1,
-            title: '选门回顾',
-            lines: lines.length > 1 ? lines : []
+            visible: true,
+            title: '选门参考',
+            lines
         };
     }
 
@@ -3721,10 +3876,72 @@
         return `目标 ${shortLabel} · ${normalizedTarget.bossCue}`;
     }
 
+    function buildHubConsumablePrepRecommendation(target, title, keyField) {
+        const normalizedTarget = normalizeHubPortalTarget(target);
+        if (!normalizedTarget || !normalizedTarget.bossCue || !normalizedTarget.bossKey) {
+            return {
+                visible: false,
+                title,
+                lines: [],
+                [keyField]: ''
+            };
+        }
+        const prep = BLACKSMITH_PREP_RECOMMENDATIONS[normalizedTarget.bossKey];
+        if (!prep) {
+            return {
+                visible: false,
+                title,
+                lines: [],
+                [keyField]: ''
+            };
+        }
+        const shortLabel = normalizedTarget.label.split(/\s+/).find(Boolean) || normalizedTarget.label;
+        if (!shortLabel) {
+            return {
+                visible: false,
+                title,
+                lines: [],
+                [keyField]: ''
+            };
+        }
+        return {
+            visible: true,
+            title,
+            lines: [
+                `目标 ${shortLabel} · ${normalizedTarget.bossCue}`,
+                `推荐 ${prep.recipeLabel} · ${prep.prepCue}`
+            ],
+            [keyField]: prep.recipeKey
+        };
+    }
+
+    function buildBlacksmithPrepRecommendation(target) {
+        return buildHubConsumablePrepRecommendation(target, '备战参考', 'recipeKey');
+    }
+
+    function buildShopPrepRecommendation(target) {
+        return buildHubConsumablePrepRecommendation(target, '采购参考', 'itemKey');
+    }
+
     function buildFirstCombatTargetCue(target) {
         const normalizedTarget = normalizeHubPortalTarget(target);
         if (!normalizedTarget || !normalizedTarget.bossCue) return '';
         return `首战 ${normalizedTarget.bossCue}`;
+    }
+
+    function buildCorridorTargetBridgeCue(target) {
+        const normalizedTarget = normalizeHubPortalTarget(target);
+        if (!normalizedTarget || !normalizedTarget.bossCue) return '';
+        return `过门 ${normalizedTarget.bossCue}`;
+    }
+
+    function buildRunEventRoomTargetPostureCue(target) {
+        const normalizedTarget = normalizeHubPortalTarget(target);
+        if (!normalizedTarget || !normalizedTarget.bossCue) return null;
+        return {
+            promptCue: normalizedTarget.bossCue,
+            worldLabelCue: `目标 ${normalizedTarget.bossCue}`
+        };
     }
 
     function buildCompactRunEventResolutionText(runEventRoom, choice) {
@@ -3795,12 +4012,8 @@
         return '已选';
     }
 
-    function buildRunEventRoomHudSummary(runEventRoom, poolOverride, options) {
+    function buildRunEventRoomHudSummary(runEventRoom, poolOverride) {
         const normalizedRoom = normalizeRunEventRoom(runEventRoom, poolOverride);
-        const safeOptions = options && typeof options === 'object' ? options : {};
-        const encounterPreviewOptions = safeOptions.encounterPreviewOptions && typeof safeOptions.encounterPreviewOptions === 'object'
-            ? safeOptions.encounterPreviewOptions
-            : null;
         if (!normalizedRoom) {
             return {
                 visible: false,
@@ -3810,7 +4023,6 @@
                 typeLabel: '',
                 routeLines: [],
                 routeSummary: '',
-                stagingLine: '',
                 resolutionText: ''
             };
         }
@@ -3832,20 +4044,14 @@
             || (!forceHealingDoubleFallback && selectedChoice ? selectedChoice.label : '')
             || (normalizedRoom.resolved ? '未知选项' : '');
         const encounterPreview = normalizedRoom.resolved && selectedChoice
-            ? formatRunEventRoomChoiceEncounterPreview(selectedChoice, encounterPreviewOptions)
+            ? formatRunEventRoomChoiceEncounterPreview(selectedChoice)
             : '';
-        const encounterProfile = normalizedRoom.resolved
-            ? getRunEventEncounterProfile(normalizedRoom, poolOverride)
-            : null;
         const encounterTiming = normalizedRoom.resolved && selectedChoice
             ? formatRunEventEncounterPayoffTimingLabel(
-                encounterProfile,
+                getRunEventEncounterProfile(normalizedRoom, poolOverride),
                 normalizedRoom,
                 poolOverride
             )
-            : '';
-        const stagingLine = normalizedRoom.resolved
-            ? buildRunEventEncounterStagingReceipt(encounterProfile, normalizedRoom, poolOverride)
             : '';
         const visibleChoices = normalizedRoom.resolved
             ? []
@@ -3853,12 +4059,12 @@
         const routeLines = normalizedRoom.resolved
             ? (
                 resolvedChoiceLabel
-                    ? [`${resolvedPrefix}: ${resolvedChoiceLabel}${recommendationReason ? ` · ${recommendationReason}` : ''}${stagingLine ? '' : (encounterPreview ? ` · ${encounterPreview}` : '')}${encounterTiming ? ` · ${encounterTiming}` : ''}`.trim()]
+                    ? [`${resolvedPrefix}: ${resolvedChoiceLabel}${recommendationReason ? ` · ${recommendationReason}` : ''}${encounterPreview ? ` · ${encounterPreview}` : ''}${encounterTiming ? ` · ${encounterTiming}` : ''}`.trim()]
                     : []
             )
             : visibleChoices.map((choice) => {
                 const preview = buildRunEventRoomChoicePreview(choice);
-                const nextRoomPreview = formatRunEventRoomChoiceEncounterPreview(choice, encounterPreviewOptions);
+                const nextRoomPreview = formatRunEventRoomChoiceEncounterPreview(choice);
                 const nextRoomTiming = formatRunEventRoomChoiceEncounterTiming(choice, poolOverride);
                 return `${preview}${nextRoomPreview ? ` · ${nextRoomPreview}` : ''}${nextRoomTiming ? ` · ${nextRoomTiming}` : ''}`.trim();
             });
@@ -3879,13 +4085,12 @@
             typeLabel: `类型 ${getRunEventRoomTypeLabel(normalizedRoom.type)}`,
             routeLines,
             routeSummary,
-            stagingLine,
             resolutionText
         };
     }
 
-    function buildRunEventRoomHudLines(runEventRoom, poolOverride, options) {
-        const summary = buildRunEventRoomHudSummary(runEventRoom, poolOverride, options);
+    function buildRunEventRoomHudLines(runEventRoom, poolOverride) {
+        const summary = buildRunEventRoomHudSummary(runEventRoom, poolOverride);
         if (!summary.visible) return [];
 
         const lines = [
@@ -3897,16 +4102,6 @@
             const selectedLine = Array.isArray(summary.routeLines) && summary.routeLines.length > 0
                 ? summary.routeLines[0]
                 : '';
-            if (summary.stagingLine) {
-                if (selectedLine) {
-                    lines.push(selectedLine);
-                }
-                lines.push(summary.stagingLine);
-                if (summary.resolutionText) {
-                    lines.push(`结算: ${summary.resolutionText}`);
-                }
-                return lines;
-            }
             if (selectedLine && summary.resolutionText) {
                 lines.push(`${selectedLine} · ${summary.resolutionText}`);
             } else if (selectedLine) {
@@ -3951,7 +4146,7 @@
         return `${getRunEventRoomResolvedPrefix(normalizedRoom.type)}: ${resolvedChoiceLabel}${recommendationReason ? ` · ${recommendationReason}` : ''}${encounterTiming ? ` · ${encounterTiming}` : ''}`.trim();
     }
 
-    function buildRunEventRoomWorldLabel(runEventRoom, poolOverride, targetContext) {
+    function buildRunEventRoomWorldLabel(runEventRoom, poolOverride, target) {
         const persistedRoom = runEventRoom && typeof runEventRoom === 'object' ? runEventRoom : null;
         const persistedName = persistedRoom && typeof persistedRoom.name === 'string'
             ? persistedRoom.name.trim()
@@ -3964,8 +4159,10 @@
                 : persistedName;
         }
         if (!normalizedRoom.resolved) {
-            const bossCue = getTargetBossCue(targetContext);
-            return bossCue ? `${normalizedRoom.name} · 目标 ${bossCue}` : normalizedRoom.name;
+            const targetCue = buildRunEventRoomTargetPostureCue(target);
+            return targetCue && targetCue.worldLabelCue
+                ? `${normalizedRoom.name} · ${targetCue.worldLabelCue}`
+                : normalizedRoom.name;
         }
 
         const selectedLine = buildRunEventRoomWorldLabelRouteLine(normalizedRoom, poolOverride);
@@ -3973,13 +4170,16 @@
         return `${normalizedRoom.name} · 已结算`;
     }
 
-    function buildRunEventRoomPromptLabel(runEventRoom, poolOverride, targetContext) {
+    function buildRunEventRoomPromptLabel(runEventRoom, poolOverride, target) {
         const normalizedRoom = normalizeRunEventRoom(runEventRoom, poolOverride);
         if (!normalizedRoom) return '按F抉择';
         const prefix = getRunEventRoomResolvedPrefix(normalizedRoom.type);
         const baseLabel = prefix === '已选' ? '按F抉择' : `按F${prefix}`;
-        const bossCue = getTargetBossCue(targetContext);
-        return bossCue ? `${baseLabel} · ${bossCue}` : baseLabel;
+        if (normalizedRoom.resolved) return baseLabel;
+        const targetCue = buildRunEventRoomTargetPostureCue(target);
+        return targetCue && targetCue.promptCue
+            ? `${baseLabel} · ${targetCue.promptCue}`
+            : baseLabel;
     }
 
     function pickRunModifiers(randomFn, count, poolOverride) {
@@ -6377,9 +6577,6 @@
         buildRunEventEncounterFormationSlots,
         buildRunEventEncounterPayoffPresentation,
         buildRunEventEncounterEntryPreview,
-        buildRunEventEncounterStagingReceipt,
-        buildRunEventEncounterObjectiveCue,
-        buildRunEventEncounterObjectivePreview,
         buildRunEventEncounterSourceCue,
         buildRunEventEncounterClearRecap,
         buildRunEventEncounterBossDoorRecap,
@@ -6387,8 +6584,12 @@
         buildRunEventEncounterBossVictoryRecap,
         buildHubLastRunSummary,
         buildHubPortalChoiceSummary,
+        buildBlacksmithPrepRecommendation,
+        buildShopPrepRecommendation,
         buildRunStartTargetCue,
         buildFirstCombatTargetCue,
+        buildCorridorTargetBridgeCue,
+        buildRunEventRoomTargetPostureCue,
         formatRunEventEncounterPayoffTimingLabel,
         formatRunEventRoomChoiceEncounterPreview,
         formatRunEventRoomChoiceEncounterTiming,
