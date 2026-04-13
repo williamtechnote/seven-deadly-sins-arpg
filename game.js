@@ -3655,6 +3655,7 @@ class LevelScene extends Phaser.Scene {
         const style = this._getRunEventRoomVisualConfig(settlement.eventRoom);
         const goldDelta = (settlement.nextState.gold || 0) - startGold;
         const hpDelta = (settlement.nextState.playerHp || startHp) - startHp;
+        const encounterPreview = formatRunEventRoomChoiceEncounterPreview(settlement.choice);
         const lines = [{ text: settlement.choice.label, color: style.accentColor }];
 
         if (goldDelta !== 0) {
@@ -3682,12 +3683,12 @@ class LevelScene extends Phaser.Scene {
                 });
             });
         }
-        if (encounterProfile && encounterProfile.previewLabel) {
+        if (encounterPreview) {
             lines.push({
-                text: encounterProfile.previewLabel,
-                color: encounterProfile.key === 'windfall'
+                text: encounterPreview,
+                color: encounterProfile && encounterProfile.key === 'windfall'
                     ? '#FFD27A'
-                    : (encounterProfile.key === 'pressure' ? '#FFB3A7' : '#9FE3FF')
+                    : (encounterProfile && encounterProfile.key === 'pressure' ? '#FFB3A7' : '#9FE3FF')
             });
         }
         if (lines.length === 1 && settlement.eventRoom && settlement.eventRoom.resolutionText) {

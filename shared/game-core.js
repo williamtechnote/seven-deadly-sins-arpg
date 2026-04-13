@@ -2471,9 +2471,23 @@
         return availablePool.slice(0, Math.min(2, availablePool.length));
     }
 
+    function getRunEventEncounterCompositionLabel(profile) {
+        const profileKey = profile && typeof profile === 'object' && typeof profile.key === 'string'
+            ? profile.key.trim()
+            : '';
+        if (profileKey === 'breather') return '双低压';
+        if (profileKey === 'pressure') return '三敌齐压';
+        if (profileKey === 'windfall') return '双赏金';
+        return '';
+    }
+
     function formatRunEventRoomChoiceEncounterPreview(choice) {
         const profile = getRunEventRoomChoiceEncounterProfile(choice);
-        return profile ? profile.previewLabel : '';
+        if (!profile) return '';
+        const previewLabel = typeof profile.previewLabel === 'string' ? profile.previewLabel.trim() : '';
+        const compositionLabel = getRunEventEncounterCompositionLabel(profile);
+        if (previewLabel && compositionLabel) return `${previewLabel} · ${compositionLabel}`;
+        return previewLabel || compositionLabel;
     }
 
     function buildRunEventRoomChoicePreview(choice) {

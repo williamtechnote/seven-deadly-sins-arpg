@@ -1221,18 +1221,30 @@ function testRunEventEncounterProfileHelpers() {
     const healingChoice = getRunEventRoomChoices('healingFountain').find(choice => choice.key === 'purifyingSip');
     const healingProfile = getRunEventRoomChoiceEncounterProfile(healingChoice);
     assert.equal(healingProfile.key, 'breather', 'healing/cleanse routes should bias the next room toward a breather profile');
-    assert.equal(formatRunEventRoomChoiceEncounterPreview(healingChoice), '下间缓冲', 'healing/cleanse routes should preview the breather encounter');
+    assert.equal(
+        formatRunEventRoomChoiceEncounterPreview(healingChoice),
+        '下间缓冲 · 双低压',
+        'healing/cleanse routes should preview both the breather posture and its softer two-enemy picture'
+    );
 
     const prayerChoice = getRunEventRoomChoices('prayerShrine').find(choice => choice.key === 'tempoPrayer');
     const prayerProfile = getRunEventRoomChoiceEncounterProfile(prayerChoice);
     assert.equal(prayerProfile.key, 'pressure', 'tempo/burst routes should bias the next room toward a pressure profile');
-    assert.equal(formatRunEventRoomChoiceEncounterPreview(prayerChoice), '下间高压', 'tempo/burst routes should preview the pressure encounter');
+    assert.equal(
+        formatRunEventRoomChoiceEncounterPreview(prayerChoice),
+        '下间高压 · 三敌齐压',
+        'tempo/burst routes should preview both the pressure posture and its immediate three-enemy stack'
+    );
 
     const gambleChoice = getRunEventRoomChoices('gamblersShrine').find(choice => choice.key === 'highStakeWager');
     const gambleProfile = getRunEventRoomChoiceEncounterProfile(gambleChoice);
     assert.equal(gambleProfile.key, 'windfall', 'economy routes should bias the next room toward a windfall profile');
     assert.equal(gambleProfile.enemyGoldMultiplier, 1.5, 'windfall routes should scale the next room gold drops');
-    assert.equal(formatRunEventRoomChoiceEncounterPreview(gambleChoice), '下间淘金', 'economy routes should preview the windfall encounter');
+    assert.equal(
+        formatRunEventRoomChoiceEncounterPreview(gambleChoice),
+        '下间淘金 · 双赏金',
+        'economy routes should preview both the windfall posture and its double-bounty picture'
+    );
 
     const resolvedProfile = getRunEventEncounterProfile({
         key: 'prayerShrine',
@@ -1477,8 +1489,8 @@ function testRunEventRoomHudSummary() {
     assert.equal(resolvedSummary.metaLabel, '祝福 · 已触发', 'HUD summary should keep the compressed blessing metadata');
     assert.deepEqual(
         resolvedSummary.routeLines,
-        ['效果: 迅击祷言 · 下间高压'],
-        'resolved blessing summary should keep the chosen-route prefix while surfacing the next-room pacing profile'
+        ['效果: 迅击祷言 · 下间高压 · 三敌齐压'],
+        'resolved blessing summary should keep the chosen-route prefix while surfacing both the next-room posture and the concrete encounter picture'
     );
     assert.equal(
         resolvedSummary.resolutionText,
@@ -1500,8 +1512,8 @@ function testRunEventRoomHudSummary() {
     );
     assert.deepEqual(
         resolvedRiskBuffSummary.routeLines,
-        ['效果: 猩红锋契 · 下间高压'],
-        'resolved risk-buff summary should keep the shared effect prefix while surfacing the next-room pacing profile'
+        ['效果: 猩红锋契 · 下间高压 · 三敌齐压'],
+        'resolved risk-buff summary should keep the shared effect prefix while surfacing both the next-room posture and encounter picture'
     );
     const resolvedTradeSummary = buildRunEventRoomHudSummary({
         key: 'gamblersShrine',
@@ -1518,8 +1530,8 @@ function testRunEventRoomHudSummary() {
     );
     assert.deepEqual(
         resolvedTradeSummary.routeLines,
-        ['交易: 豪赌 · 下间淘金'],
-        'resolved trade summary should keep the trade-specific chosen-route prefix while surfacing the next-room pacing profile'
+        ['交易: 豪赌 · 下间淘金 · 双赏金'],
+        'resolved trade summary should keep the trade-specific chosen-route prefix while surfacing both the next-room posture and encounter picture'
     );
 
     const resolvedSupplySummary = buildRunEventRoomHudSummary({
@@ -1546,8 +1558,8 @@ function testRunEventRoomHudSummary() {
     });
     assert.deepEqual(
         resolvedHealingSummary.routeLines,
-        ['治疗: 净泉啜饮 · 下间缓冲'],
-        'resolved healing summary should keep the healing-specific chosen-route prefix while surfacing the next-room pacing profile'
+        ['治疗: 净泉啜饮 · 下间缓冲 · 双低压'],
+        'resolved healing summary should keep the healing-specific chosen-route prefix while surfacing both the next-room posture and encounter picture'
     );
     assert.equal(
         resolvedHealingSummary.resolutionText,
@@ -1565,8 +1577,8 @@ function testRunEventRoomHudSummary() {
     });
     assert.deepEqual(
         resolvedHealingDoubleFallbackSummary.routeLines,
-        ['治疗: 未知选项 · 下间缓冲'],
-        'resolved healing summary should keep the healing prefix, unknown-option fallback, and next-room pacing profile when the choice key is still known'
+        ['治疗: 未知选项 · 下间缓冲 · 双低压'],
+        'resolved healing summary should keep the healing prefix, unknown-option fallback, and richer next-room preview when the choice key is still known'
     );
     assert.equal(
         resolvedHealingDoubleFallbackSummary.resolutionText,
@@ -1603,8 +1615,8 @@ function testRunEventRoomHudSummary() {
     });
     assert.deepEqual(
         resolvedTradeMissingSettlementSummary.routeLines,
-        ['交易: 豪赌 · 下间淘金'],
-        'resolved trade summary should keep the trade prefix and next-room pacing profile when settlement text is missing'
+        ['交易: 豪赌 · 下间淘金 · 双赏金'],
+        'resolved trade summary should keep the trade prefix and richer next-room preview when settlement text is missing'
     );
     assert.equal(
         resolvedTradeMissingSettlementSummary.resolutionText,
@@ -1738,9 +1750,9 @@ function testRunEventRoomHudLines() {
         [
             '事件房: 祈愿圣坛',
             '祝福 · 已触发',
-            '效果: 迅击祷言 · 下间高压 · 特攻冷却-22%'
+            '效果: 迅击祷言 · 下间高压 · 三敌齐压 · 特攻冷却-22%'
         ],
-        'resolved blessing event rooms should merge the chosen route, next-room pacing profile, and compact settlement into one line'
+        'resolved blessing event rooms should merge the chosen route, richer next-room preview, and compact settlement into one line'
     );
 
     const resolvedTradeLines = buildRunEventRoomHudLines({
@@ -1756,9 +1768,9 @@ function testRunEventRoomHudLines() {
         [
             '事件房: 赌徒圣坛',
             '交易 · 已触发',
-            '交易: 豪赌 · 下间淘金 · 生命-30, 金币+120'
+            '交易: 豪赌 · 下间淘金 · 双赏金 · 生命-30, 金币+120'
         ],
-        'resolved trade event rooms should merge the chosen label, next-room pacing profile, and actual settlement delta'
+        'resolved trade event rooms should merge the chosen label, richer next-room preview, and actual settlement delta'
     );
 
     const resolvedTradeMissingSettlementLines = buildRunEventRoomHudLines({
@@ -1774,7 +1786,7 @@ function testRunEventRoomHudLines() {
         [
             '事件房: 赌徒圣坛',
             '交易 · 已触发',
-            '交易: 豪赌 · 下间淘金 · 结算待同步'
+            '交易: 豪赌 · 下间淘金 · 双赏金 · 结算待同步'
         ],
         'resolved trade event rooms should keep a stable merged fallback line when settlement text is missing'
     );
@@ -1792,9 +1804,9 @@ function testRunEventRoomHudLines() {
         [
             '事件房: 疗愈泉眼',
             '治疗 · 已触发',
-            '治疗: 净泉啜饮 · 下间缓冲 · 生命+36, 净化'
+            '治疗: 净泉啜饮 · 下间缓冲 · 双低压 · 生命+36, 净化'
         ],
-        'resolved healing event rooms should merge the chosen label, next-room pacing profile, and actual settlement delta'
+        'resolved healing event rooms should merge the chosen label, richer next-room preview, and actual settlement delta'
     );
 
     const resolvedHealingDoubleFallbackLines = buildRunEventRoomHudLines({
@@ -1810,7 +1822,7 @@ function testRunEventRoomHudLines() {
         [
             '事件房: 疗愈泉眼',
             '治疗 · 已触发',
-            '治疗: 未知选项 · 下间缓冲 · 结算待同步'
+            '治疗: 未知选项 · 下间缓冲 · 双低压 · 结算待同步'
         ],
         'resolved healing event rooms should keep a stable merged fallback line when both stored fragments are missing but the chosen route remains known'
     );
@@ -2091,6 +2103,11 @@ function testRunEventEncounterRoutingHooks() {
         source,
         /GameState\.runEventRoom = settlement\.eventRoom;[\s\S]*?GameState\.refreshRunEffects\(\);[\s\S]*?const encounterProfile = this\._syncRunEventEncounterProfile\(\);[\s\S]*?this\._showRunEventSettlementFeedback\(settlement,\s*startGold,\s*startHp,\s*encounterProfile\);/,
         'run-event settlement should immediately apply the chosen encounter profile and expose it in the settlement feedback'
+    );
+    assert.match(
+        source,
+        /_showRunEventSettlementFeedback\(settlement,\s*startGold,\s*startHp,\s*encounterProfile\)\s*{[\s\S]*?const encounterPreview = formatRunEventRoomChoiceEncounterPreview\(settlement\.choice\);[\s\S]*?if \(encounterPreview\) \{[\s\S]*?lines\.push\(\{[\s\S]*?text:\s*encounterPreview,[\s\S]*?color:/,
+        'settlement feedback should reuse the shared encounter preview string instead of only surfacing the abstract profile label'
     );
     assert.match(
         source,
