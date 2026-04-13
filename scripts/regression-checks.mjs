@@ -5777,6 +5777,7 @@ function testBossHudReadability() {
 function testBossMechanicDiversityHooks() {
     const { BOSSES } = loadDataConstants();
     const source = loadGameSource();
+    const readme = loadReadmeSource();
 
     assert.ok(
         BOSSES.wrath.phases.some(phase => Array.isArray(phase.attacks) && phase.attacks.includes('magmaRing')),
@@ -5785,6 +5786,10 @@ function testBossMechanicDiversityHooks() {
     assert.ok(
         BOSSES.pride.phases.some(phase => Array.isArray(phase.attacks) && phase.attacks.includes('bladeOrbit')),
         'pride should add bladeOrbit into its later-phase attack pool'
+    );
+    assert.ok(
+        BOSSES.gluttony.phases.some(phase => Array.isArray(phase.attacks) && phase.attacks.includes('hungerTide')),
+        'gluttony should add hungerTide into its phase-3 attack pool'
     );
 
     assert.match(
@@ -5799,6 +5804,11 @@ function testBossMechanicDiversityHooks() {
     );
     assert.match(
         source,
+        /hungerTide:\s*'饥潮奔涌'/,
+        'attack display names should expose the localized hungerTide label'
+    );
+    assert.match(
+        source,
         /magmaRing:\s*'反制: 保持在火环安全带内，等收束后再贴近'/,
         'magmaRing should advertise a dedicated counter hint'
     );
@@ -5806,6 +5816,11 @@ function testBossMechanicDiversityHooks() {
         source,
         /bladeOrbit:\s*'反制: 先绕 Boss 小步走位，再穿过飞剑空档'/,
         'bladeOrbit should advertise a dedicated counter hint'
+    );
+    assert.match(
+        source,
+        /hungerTide:\s*'反制: 留翻滚穿潮，别在边线耗光体力'/,
+        'hungerTide should advertise a dedicated counter hint'
     );
     assert.match(
         source,
@@ -5819,6 +5834,16 @@ function testBossMechanicDiversityHooks() {
     );
     assert.match(
         source,
+        /hungerTide:\s*1500/,
+        'hungerTide should define a counter window for the telegraph HUD'
+    );
+    assert.match(
+        source,
+        /hungerTide:\s*\{\s*key:\s*'slow',\s*durationMs:\s*1600\s*\}/,
+        'hungerTide should apply a short slow when the sludge wall clips the player'
+    );
+    assert.match(
+        source,
         /SPECIAL:\s*\[[^\]]*'bladeOrbit'[^\]]*\]/,
         'bladeOrbit should be classified as a SPECIAL boss attack'
     );
@@ -5829,6 +5854,11 @@ function testBossMechanicDiversityHooks() {
     );
     assert.match(
         source,
+        /HAZARD:\s*\[[^\]]*'hungerTide'[^\]]*\]/,
+        'hungerTide should be classified as a HAZARD boss attack'
+    );
+    assert.match(
+        source,
         /else if \(atk === 'bladeOrbit'\)/,
         'Boss special attack executor should expose a bladeOrbit branch'
     );
@@ -5836,6 +5866,26 @@ function testBossMechanicDiversityHooks() {
         source,
         /else if \(atk === 'magmaRing'\)/,
         'Boss hazard executor should expose a magmaRing branch'
+    );
+    assert.match(
+        source,
+        /else if \(atk === 'hungerTide'\)/,
+        'Boss hazard executor should expose a hungerTide branch'
+    );
+    assert.match(
+        source,
+        /else if \(atk === 'hungerTide'\)[\s\S]*?this\.attackData\.waveCount = 3;[\s\S]*?direction:\s*i % 2 === 0 \? 1 : -1,[\s\S]*?launchAt:\s*time \+ i \* 420,[\s\S]*?time - wave\.lastHit >= 480/,
+        'hungerTide should build three staggered alternating sludge walls with a repeat-hit guard instead of a one-frame damage check'
+    );
+    assert.match(
+        readme,
+        /`深渊巨口` 末阶段会追加 `饥潮奔涌`，让三道污潮从两侧轮番卷入，逼迫玩家预留一次翻滚穿潮，擦潮还会吃到短 `slow`/,
+        'README should document the new Gluttony hungerTide mechanic and its stamina-preservation test'
+    );
+    assert.match(
+        source,
+        /“深渊巨口”末阶段会追加“饥潮奔涌”：三道污潮会从两侧轮番卷入，逼玩家留一次翻滚穿潮；擦潮还会吃到短 slow，别把体力耗在边线/,
+        'help overlay should document the new Gluttony hungerTide mechanic and its stamina-preservation test'
     );
 }
 

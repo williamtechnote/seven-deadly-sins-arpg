@@ -215,6 +215,7 @@ const ATTACK_DISPLAY_NAMES = {
     illusion: '幻影风暴',
     sleepFog: '沉眠迷雾',
     coinTrap: '贪金陷阱',
+    hungerTide: '饥潮奔涌',
     treasureStorm: '宝藏风暴',
     consume: '吞噬暴走',
     nightmare: '梦魇压制',
@@ -234,6 +235,7 @@ const ATTACK_COUNTER_HINTS = {
     illusion: '反制: 先躲弹幕，再找本体',
     sleepFog: '反制: 迅速离开雾区，避免持续减速',
     coinTrap: '反制: 不要站角落，留翻滚路径',
+    hungerTide: '反制: 留翻滚穿潮，别在边线耗光体力',
     treasureStorm: '反制: 沿边绕圈，等待间隙反打',
     consume: '反制: 远离正面并保留一次翻滚',
     nightmare: '反制: 先保命，等压制结束再输出',
@@ -253,6 +255,7 @@ const ATTACK_COUNTER_WINDOW_MS = {
     illusion: 1700,
     sleepFog: 1800,
     coinTrap: 1400,
+    hungerTide: 1500,
     treasureStorm: 1700,
     consume: 1300,
     nightmare: 1600,
@@ -272,6 +275,7 @@ const ATTACK_COUNTER_WINDOW_START_OFFSET_MS = {
     illusion: 0,
     sleepFog: 0,
     coinTrap: 0,
+    hungerTide: 0,
     treasureStorm: 0,
     consume: 0,
     nightmare: 0,
@@ -303,7 +307,8 @@ const BOSS_ATTACK_STATUS_ON_HIT = {
     bite: { key: 'bleed', durationMs: 2400 },
     firePunch: { key: 'burn', durationMs: 1600 },
     sleepFog: { key: 'slow', durationMs: 2200 },
-    magmaRing: { key: 'burn', durationMs: 2400 }
+    magmaRing: { key: 'burn', durationMs: 2400 },
+    hungerTide: { key: 'slow', durationMs: 1600 }
 };
 
 const UI_WARNING_THRESHOLDS = {
@@ -325,6 +330,7 @@ const MAJOR_BOSS_PHASE_ATTACKS = new Set([
     'mirageDance',
     'illusion',
     'coinTrap',
+    'hungerTide',
     'sleepFog',
     'treasureStorm',
     'consume',
@@ -4216,7 +4222,7 @@ const BOSS_ATTACK_TYPES = {
     CONE: ['flameBreath', 'charge', 'lunge', 'dash'],
     SPECIAL: ['mirror', 'copyWeapon', 'shapeShift', 'reverseControl', 'illusion', 'bladeOrbit', 'mirageDance'],
     BUFF: ['berserk', 'nightmare', 'treasureStorm', 'consume', 'divineStrike'],
-    HAZARD: ['summonSpider', 'coinTrap', 'sleepFog', 'magmaRing']
+    HAZARD: ['summonSpider', 'coinTrap', 'sleepFog', 'magmaRing', 'hungerTide']
 };
 
 function getAttackType(attackName) {
@@ -5251,6 +5257,88 @@ class Boss {
             }
             if (elapsed >= 1900) {
                 if (this.attackData.ring && this.attackData.ring.active) this.attackData.ring.destroy();
+                this._finishAttack(time);
+            }
+        } else if (atk === 'hungerTide') {
+            if (!this.attackData.started) {
+                this.attackData.started = true;
+                this.sprite.body.setVelocity(0, 0);
+                const wb = this.scene.physics.world.bounds;
+                const wallWidth = 96;
+                const wallSpeed = 430;
+                const waveTop = wb.y + 72;
+                const waveHeight = Math.max(180, wb.height - 144);
+                this.attackData.waveCount = 3;
+                this.attackData.wallWidth = wallWidth;
+                this.attackData.waveTop = waveTop;
+                this.attackData.waveHeight = waveHeight;
+                this.attackData.waves = [];
+                for (let i = 0; i < this.attackData.waveCount; i++) {
+                    const g = this.scene.add.graphics();
+                    g.setDepth(8);
+                    this.attackData.waves.push({
+                        g,
+                        direction: i % 2 === 0 ? 1 : -1,
+                        launchAt: time + i * 420,
+                        x: i % 2 === 0 ? wb.x - wallWidth - 24 : wb.right + wallWidth + 24,
+                        lastHit: 0
+                    });
+                }
+            }
+            const wb = this.scene.physics.world.bounds;
+            const wallWidth = this.attackData.wallWidth;
+            const waveTop = this.attackData.waveTop;
+            const waveHeight = this.attackData.waveHeight;
+            const wallSpeed = 430;
+            const dangerHalfWidth = wallWidth / 2 + 14;
+            for (const wave of this.attackData.waves) {
+                if (!wave.g.active) continue;
+                wave.g.clear();
+                if (time < wave.launchAt) {
+                    const blinkAlpha = Math.floor((wave.launchAt - time) / 90) % 2 === 0 ? 0.22 : 0.44;
+                    const warningWidth = 24;
+                    const warningX = wave.direction > 0 ? wb.x + 8 : wb.right - warningWidth - 8;
+                    wave.g.fillStyle(0xF0D78A, blinkAlpha);
+                    wave.g.fillRect(warningX, waveTop, warningWidth, waveHeight);
+                    wave.g.fillStyle(this.config.color, 0.18);
+                    wave.g.fillRect(warningX, waveTop, warningWidth, waveHeight);
+                    continue;
+                }
+                wave.x += wave.direction * wallSpeed * delta / 1000;
+                const drawX = wave.x - wallWidth / 2;
+                wave.g.fillStyle(this.config.color, 0.36);
+                wave.g.fillRect(drawX, waveTop, wallWidth, waveHeight);
+                wave.g.fillStyle(0xF3D98A, 0.78);
+                wave.g.fillRect(
+                    wave.direction > 0 ? drawX + wallWidth - 10 : drawX,
+                    waveTop,
+                    10,
+                    waveHeight
+                );
+                wave.g.fillStyle(0xB96B3C, 0.22);
+                wave.g.fillRect(drawX + 12, waveTop + 16, Math.max(20, wallWidth - 24), Math.max(32, waveHeight - 32));
+                const insideWallX = Math.abs(player.x - wave.x) <= dangerHalfWidth;
+                const insideWallY = player.y >= waveTop - 12 && player.y <= waveTop + waveHeight + 12;
+                if (
+                    insideWallX
+                    && insideWallY
+                    && !player.isInvincible
+                    && time - wave.lastHit >= 480
+                ) {
+                    wave.lastHit = time;
+                    this._dealDamageToPlayer(player, this.damage * 0.3, atk);
+                }
+                const passedArena = wave.direction > 0
+                    ? wave.x - wallWidth / 2 > wb.right + 36
+                    : wave.x + wallWidth / 2 < wb.x - 36;
+                if (passedArena) {
+                    wave.g.destroy();
+                }
+            }
+            if (elapsed >= 3200) {
+                for (const wave of this.attackData.waves) {
+                    if (wave.g.active) wave.g.destroy();
+                }
                 this._finishAttack(time);
             }
         } else {
@@ -8199,11 +8287,12 @@ class HelpScene extends Phaser.Scene {
         const riskRewardHelpLine = '若已选“绝境修习”，普攻行会在生命高于 45% 时显示“绝境<45%”，压进阈值后改成“绝境+40%”，真正带着这段低血爆发命中时还会补一个“绝境”浮字；若已选“守心修习”，闪避行会在生命高于 70% 时显示“守心-18%”，跌出阈值后改成“守心>70%”，而当这段高血减伤真实挡下一击时，玩家身旁还会补一个“守心”提示';
         const comboLinkHelpLine = '若已选“催锋修习”，特攻行会常驻显示“催锋-0.2s/击”，普攻命中真的把特攻冷却压短时会浮出“催锋-0.2s”，若刚好直接转好则还会短促切成“催锋就绪”；若已选“回身修习”，闪避行会常驻显示“回身-0.3s/特攻”，特攻命中真的把闪避冷却压短时会浮出“回身-0.3s”，若刚好直接转好则还会短促切成“回身就绪”';
         const counterattackHelpLine = '若已选“追猎修习”，普攻行会先显示“追猎待闪”，翻滚收招后改成“追猎1.4s”这类剩余窗口提示，真正把这段窗口兑现成强化普攻命中时，还会补一个更亮的“追猎斩”浮字与 hit pulse；若已选“调息修习”，特攻行会常驻显示“调息+6”，且只有在特攻命中后真的回到体力时，体力条才会同步短促抬亮并脉冲一下';
+        const gluttonyHungerTideHelpLine = '“深渊巨口”末阶段会追加“饥潮奔涌”：三道污潮会从两侧轮番卷入，逼玩家留一次翻滚穿潮；擦潮还会吃到短 slow，别把体力耗在边线';
         const sections = [
             { title: '移动', items: ['WASD  —  八方向移动'] },
             { title: '瞄准', items: ['I / J / K / L  —  键盘双轴瞄准（保留上次朝向）', '当前瞄准会显示在 HUD 左下角'] },
             { title: '战斗', items: ['U / 鼠标左键  —  普通攻击', 'O / 鼠标右键  —  特殊攻击', '左下角行动行会显示冷却；若只差体力，则会显示“差2体/0.1s”这类自然回复 ETA；若冷却转好后仍差体力，则会预告“0.3s后差8体/0.5s”；若正处于翻滚锁定，则会继续预告“翻滚中 -> 就绪”这类翻滚后的下一状态；当任一动作刚切进“就绪”时，只有对应那一项会短促闪亮一下；若已选“连斩修习”，普攻行会常驻显示“连斩-18%”，而当减 CD 真正把“普攻 U”从“冷却”或翻滚后的冷却预告推回“就绪”时，还会短促切成“连斩就绪”；当更短普攻 CD 真正压出更快的下一次普攻命中时，命中处还会补一个短促的“连斩”浮字与轻 hit pulse；若已选“游步修习”，闪避行会常驻显示“游步-20%/-18%”，翻滚锁定时也会继续挂在下一状态预告前；若已选“复苏祷言”，闪避行会常驻显示“复苏+35%”，翻滚锁定时也会继续挂在下一状态预告前，真正因自然回体转好时还会短促切成“复苏就绪”；若已选“迅击祷言”，特攻行会常驻显示“迅击-22%”，翻滚锁定时也会继续挂在下一状态预告前；若已选“回息修习”，普攻行会常驻显示“回体+4”；若已选“借势修习”，特攻行会常驻显示“借势待闪”，翻滚收招后会切成“借势1.6s”这类剩余时间；若已选“催锋修习”，特攻行会常驻显示“催锋-0.2s/击”，普攻命中真的把特攻冷却压短时会浮出“催锋-0.2s”，若刚好直接转好则还会短促切成“催锋就绪”；若已选“回身修习”，闪避行会常驻显示“回身-0.3s/特攻”，特攻命中真的把闪避冷却压短时会浮出“回身-0.3s”，若刚好直接转好则还会短促切成“回身就绪”；若已选“追猎修习”，普攻行会先显示“追猎待闪”，翻滚收招后改成“追猎1.4s”这类剩余窗口提示，真正把这段窗口兑现成强化普攻命中时，还会补一个更亮的“追猎斩”浮字与 hit pulse；若已选“调息修习”，特攻行会常驻显示“调息+6”，且只有在特攻命中后真的回到体力时，体力条才会同步短促抬亮并脉冲一下；若已选“绝境修习”，普攻行会会在生命高于 45% 时显示“绝境<45%”，压进阈值后改成“绝境+40%”，真正带着这段低血爆发命中时还会补一个“绝境”浮字；若已选“守心修习”，闪避行会会在生命高于 70% 时显示“守心-18%”，跌出阈值后改成“守心>70%”，而当这段高血减伤真实挡下一击时，玩家身旁还会补一个“守心”提示；若已选“游步修习”，闪避行会常驻显示“游步-20%/-18%”，而当减 CD / 减耗真正把翻滚从“冷却”、“差体”或翻滚后的下一状态推回“就绪”时，还会短促切成“游步就绪”；当减耗真正把“闪避 Space”从“差体”或翻滚后预告推回“就绪”时，体力条也会同步短促抬亮一下；若 Boss 战切到专用 HUD，则顶部血条会收紧，但左下角当前瞄准 / 武器 / 行动行与右下快捷栏仍保持稳定底边留白；若 Boss 的“反制窗口”起点实际晚于 telegraph 进度条开头，条内还会补一枚“起跳刻度”，避免把整段条体误读成从第一帧起就能反制；若 Boss 的“反制窗口”从第一帧开放、却会在 telegraph 进度条清空前提早收束，条内还会补一枚“收束刻度”，避免把剩余条体误读成还在可反制；“收束刻度”右侧剩余条体也会压成更暗的“尾段残影”，提醒那一截只剩读招倒计时，不再代表可反制窗口；一旦倒计时已经走进这段“尾段残影”，第二行“反制窗口”也会同步切成更低饱和的“已收束提示”，第三行 hint 则会把原本的“反制:”/“反制提示:”前缀改写成更明确的“收束后处理:”或“闪避提示:”，并同步降成更柔和的琥珀色，避免窗口已过后仍把旧提示读成“现在还能反制”；若第二、三行都已切进收束态，第一行“类型 | 攻击名”也会同步压成更低饱和的暖灰白；若第一、二、三行都已切进收束态，进度条左侧仍存活的主色填充也会同步降一档 alpha，避免剩余倒计时继续冒充“当前节奏仍在可反制主拍”；若 Boss telegraph 已进入“尾段残影”区间且主色填充已同步降档 alpha，还会在进度头部补一枚更细的暖色“当前倒计时头标”，避免整段主色一起变淡后，余光里更难抓到剩余读招进度；若 Boss telegraph 刚从可反制主拍切进“尾段残影”且新的“当前倒计时头标”首次出现，头标还会追加约 120ms 的短促暖闪，避免余光里漏掉“反制窗刚收束，后面只剩读招倒计时”的节奏切换；若这段短促暖闪刚结束且剩余读招倒计时已低于约 220ms，头标外侧还会续上一层更弱的暖色余辉，避免最后半拍又失去剩余时长重心；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 120ms，还会把“当前倒计时头标”的内芯略微收窄提亮，避免最后一瞬被外侧余辉吃掉读秒重心；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 80ms，还会把“当前倒计时头标”外侧那层弱暖色余辉略微收短贴边，避免最后一瞬外辉继续压过内芯的终点定位；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 40ms，还会把“当前倒计时头标”外层余辉 alpha 继续压低并钳在条体终点内侧，避免清零前最后一帧仍把条尾看成还有额外余量；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 20ms，还会把“当前倒计时头标”的主芯高度略微收短贴边，避免清零前最后半拍仍像保留完整读秒柱；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 10ms，还会把“当前倒计时头标”外壳的上下帽沿也略微压短，避免清零前最后一闪仍像保留整段完整高度；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 5ms，还会把“当前倒计时头标”外壳 alpha 也轻压一档，避免清零前最后一闪仍像保留整枚完整头标；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 2ms，还会把“当前倒计时头标”内芯 alpha 也轻压一档，避免最后一点亮芯仍像保留完整撞线；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”的内芯与外壳再同步收窄半拍，避免清零前最后一粒亮点仍像保留完整撞线厚度；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”外侧残余暖辉也同步压成更贴边的极细收尾，避免最终同步收窄后外辉仍比真正落点更宽；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”外侧残余暖辉 alpha 也同步轻压半拍，避免最后一圈外辉仍像悬着未收；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”外侧残余暖辉的上下高度也同步压短半拍，避免最后一圈外辉仍像保留完整包边；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”外侧残余暖辉的圆角也同步收紧半拍，避免最后一圈外辉仍像保留完整包边端帽；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”内层残余暖辉的左右宽度也同步收窄半拍，避免最后一丝内辉仍像保留完整胶囊腰身；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”内层残余暖辉的上下高度也同步压短半拍，避免最后一丝内辉仍像保留完整立柱；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”内层残余暖辉 alpha 也同步轻压半拍，避免最后一丝暖辉仍像悬着未收；若 Boss telegraph 已进入“尾段残影”区间且剩余读招倒计时已低于约 1ms，还会把“当前倒计时头标”内层残余暖辉的圆角也同步收紧半拍，避免最后一丝内辉仍像保留完整胶囊端帽；若 Boss 的“反制窗口”只落在 telegraph 进度条本体中段，条内还会补一段“窗口高亮区段”，避免还要自己心算真正可反制跨度；若 Boss 的“反制窗口”会拖到 telegraph 进度条终点之后，条尾还会额外补一枚“超出尾标”，避免把条体清空误读成反制窗也已经结束'] },
-            { title: '战斗补充', items: [disciplineAttackReadyHelpLine, disciplineReadyHelpLine, prayerReadyHelpLine, weaponRoutingHelpLine, riskRewardHelpLine, comboLinkHelpLine, counterattackHelpLine, telegraphLateGlowColorTempHelpLine, telegraphLateGlowInnerColorTempHelpLine, telegraphHeadContrastHelpLine, telegraphHeadColorTempHelpLine, telegraphHeadSaturationHelpLine, telegraphHeadEdgeSoftHelpLine, telegraphHeadEdgeHighlightHelpLine, telegraphHeadEdgeBalanceHelpLine, telegraphHeadEdgeBrightnessHelpLine, telegraphHeadEdgeWarmthHelpLine, telegraphHeadEdgeSaturationHelpLine, telegraphHeadEdgeFeatherHelpLine, telegraphHeadEdgeAlphaHelpLine, telegraphHeadEdgeWarmCoolAlphaHelpLine] },
+            { title: '战斗补充', items: [disciplineAttackReadyHelpLine, disciplineReadyHelpLine, prayerReadyHelpLine, weaponRoutingHelpLine, riskRewardHelpLine, comboLinkHelpLine, counterattackHelpLine, gluttonyHungerTideHelpLine, telegraphLateGlowColorTempHelpLine, telegraphLateGlowInnerColorTempHelpLine, telegraphHeadContrastHelpLine, telegraphHeadColorTempHelpLine, telegraphHeadSaturationHelpLine, telegraphHeadEdgeSoftHelpLine, telegraphHeadEdgeHighlightHelpLine, telegraphHeadEdgeBalanceHelpLine, telegraphHeadEdgeBrightnessHelpLine, telegraphHeadEdgeWarmthHelpLine, telegraphHeadEdgeSaturationHelpLine, telegraphHeadEdgeFeatherHelpLine, telegraphHeadEdgeAlphaHelpLine, telegraphHeadEdgeWarmCoolAlphaHelpLine] },
             { title: '防御', items: ['Space  —  闪避翻滚（无敌帧）'] },
             { title: '武器', items: ['Q / E  —  切换武器'] },
             { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位，并提示“快捷栏N：+<短名>”；若临时拿不到显式短名则会沿用道具名生成“快捷栏N：+生命”这类短句；提示现在会优先按 Phaser 文本实际宽度钳制，因此“快捷栏N：+HP恢复”这类混排会尽量保留更多有效信息；若当前环境拿不到真实测量结果则回退为宽度权重估算；若道具名词干过长则会截成“快捷栏N：+圣疗秘…”这类省略短句；快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”；若拿不到显式短名则改用“快捷栏1：狂战→净化”这类道具名短句；若这些道具名过长则同样会截成“快捷栏1：古代狂…→神圣净…”这类省略短句', '净化药剂/狂战油在铁匠制作成功时也会直接装入快捷栏，并沿用同一套“快捷栏N：+净化”/“快捷栏1：狂战→净化”提示；制作行现在还会直接补“入1”/“覆盖1：狂战→净化”这类快捷栏预告，让玩家在点前就知道会落在哪格、会不会顶掉现有补给；并额外补一条“净化药剂x2 · 差15金”这类批量回执，直接交代本次做了几份、又是因金币还是材料耗尽才停下；若这条制作成功回执还要再拼上快捷栏落位提示，底部消息会先按实际宽度把“快捷栏1：狂战→净化”收束成“覆盖1：狂战→净化”/“入1”这类短后缀，并把“净化药剂x2 · 差15金”这类做了几份/为何停下信息留在前面；若制作失败提示碰上长材料名或后续 richer error copy，底部消息也会先按实际宽度把“材料不足: 懒惰之精华”收束成“材料不足: 懒惰”/“材料不足”，把 blocker 留在前面；若强化成功提示触发时，底部消息会优先读出“强化成功! Lv.1→Lv.2 · 本次伤害+4/特攻-0.2s/体耗-2 · 消耗2个暴怒之精华”这类带升级段位、收益与材料锚点的回执；若像“强化成功! Lv.2→Lv.3 · 本次伤害+5/特攻-0.2s/体耗-1 · 累计伤害+9/特攻-0.3s/体耗-3 · 消耗2个暴怒之精华”这类末级升级累计总览也放得下，还会优先把整把武器的累计现况与本次花费一起钉在回执尾段；若中宽档位放不下完整累计总览，则会先保住“强化成功! Lv.2→Lv.3 · 本次伤害+5/特攻-0.2s/体耗-1 · 累计+9/特攻-0.3s · 消耗2个暴怒”或至少“强化成功! Lv.2→Lv.3 · 本次伤害+5/特攻-0.2s/体耗-1 · 累计伤害+9 · 消耗2个暴怒”这类累计+消耗双锚点，再继续退回只保留累计首段的旧梯子；若行宽再继续吃紧，才会退回“强化成功! Lv.1→Lv.2 · 本次伤害+4/特攻-0.2s/体耗-2”、“强化成功! Lv.1→Lv.2 · 本次伤害+4”或“强化成功! Lv.1→Lv.2”，优先把成功结论与升级段位留在前；材料不足路径也会先把“材料不足! 需要2个暴怒之精华”收束成“材料不足! 需要2个暴怒”/“材料不足! 需要2个”，把 blocker 留在前面；若窄窗口下“[强化] 250金+2暴怒之精华”这类强化按钮过长，按钮文案也会先按实际宽度把精华名收束成“[强化] 250金+2暴怒”/“[强化] 250金+2个”，并把“[强化]”与金币/材料成本留在前，避免长精华名继续挤窄按钮可读区；铁匠强化行现在也会在点按钮前直接显示“可强化/差50金/差2个暴怒之精华”这类短标签，blocked 时“[强化]”会同步降色停用，避免继续把 upgrade 决策留到失败提示才揭晓；Lv.3 武器右侧动作位不再留空，会直接显示“已满级”/“满阶”这类短标签，并沿用同一宽度护栏，避免把空白误读成未解锁、渲染缺失或还能继续强化；铁匠强化行现在也会在点按钮前直接补上“本次伤害+4/特攻-0.2s/体耗-2”这类短收益摘要；若武器已升过但还没满级，强化行还会优先补“累计+下次 · 累计伤害+4/本次伤害+5”这类双层短摘要，让玩家在同一行同时读到已购成长与下一跳收益；若行宽再吃紧，会先收束成“累计+4/下次+5”这类紧凑双层锚点，再继续退到“累计伤害+4/本次伤害+5”、“累计伤害+4”或“本次伤害+5”，避免非满级阶段过早丢掉双层语义；若武器已满级，强化行也不会退回只剩武器名，而会改为常驻显示“已满级 · 累计伤害+9/特攻-0.3s/体耗-3”这类累计已购收益；若行宽继续吃紧，会先收束成“满阶 · 累计伤害+9”，避免满级后又读不出这把武器已经买到了哪些成长；若窄窗口下长材料名、“拥有”、“可做xN/差15金”与预告同场出现，制作行会先按实际宽度收束，优先压掉“拥有”、再把材料名压成“嫉妒x1”/“懒惰x1”这类紧凑读法，尽量把决策提示留在“[制作]”前；若制作行显示“可做xN”，点击一次“[制作]”还会直接做到当前上限', '背包悬停说明也会按实际文本宽度贴边，因此靠近屏幕右缘时不会继续沿用固定 200px 估算', '净化药剂/狂战油可在铁匠制作'] },

@@ -1,8 +1,11 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
+- [ ] Boss 机制多样性：`深渊巨口` phase 3 `饥潮奔涌`：当前 portal / run-start posture 已会把暴食读成 `留体拆潮`，但真正进 Boss 房后 phase 3 仍只有 `bite / vomit / devour / consume`，缺少一条把“预留翻滚穿潮”落成实战的 authored mechanic；为 `深渊巨口` 补一个会从两侧轮番卷入的 `饥潮奔涌` hazard，要求玩家保留一次翻滚穿过潮墙，并在擦潮时附带短 `slow`，把姿态提示真正兑现成 phase-3 的体力 / 走位考题
 
 ## Next Up
+- [ ] Boss 机制多样性后续评估：若 `深渊巨口` 的 `饥潮奔涌` 已能稳定把 `留体拆潮` 落到 phase 3 的体力 / 穿潮决策，再评估是否给 `梦境蛛后` 也补一条更明确的 phase-3 区域压场 mechanic，而不是继续只靠 `sleepFog / nightmare` 的泛压制提示
+- [ ] 首拍目标预告宽度后续评估：若 `下间高压 · 先拆夹角` / `下间缓冲 · 先稳前排` 已能在 shrine preview 与已触发摘要里稳定回答第一拍问题，再评估是否只在更宽档位补回 `三敌齐压 / 双低压 / 双赏金` 这类 staging anchor，而不是把两层 forecast 永久塞进同一条窄文案
 - [ ] Hub 上轮战报余波：若 portal hover 的 `选门回顾` 已能稳定把 `目标哪扇门 / 上轮路线收官 / 源于哪次抉择` 压进同一块 decision surface，下一步再评估是否还需要额外的 run-history 入口，还是让 `上轮战报 + 选门回顾` 成为足够轻量的 route memory 终点
 
 ## Blocked

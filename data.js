@@ -119,7 +119,7 @@ const BOSSES = {
         phases: [
             { hpPercent: 1.0, attacks: ['bite', 'vomit'] },
             { hpPercent: 0.6, attacks: ['bite', 'vomit', 'devour'] },
-            { hpPercent: 0.3, attacks: ['bite', 'vomit', 'devour', 'consume'] }
+            { hpPercent: 0.3, attacks: ['bite', 'vomit', 'devour', 'consume', 'hungerTide'] }
         ],
         defeatDialog: [
             { speaker: '深渊巨口', text: '还是……好饿……永远填不满……' },
