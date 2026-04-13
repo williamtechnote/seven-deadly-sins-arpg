@@ -96,6 +96,7 @@ const {
     buildRunEventEncounterFormationSlots,
     buildRunEventEncounterPayoffPresentation,
     buildRunEventEncounterEntryPreview,
+    buildRunEventEncounterStagingReceipt,
     buildRunEventEncounterObjectiveCue,
     buildRunEventEncounterSourceCue,
     buildRunEventEncounterClearRecap,
@@ -3895,6 +3896,7 @@ class LevelScene extends Phaser.Scene {
         const recommendationReason = typeof settlement.eventRoom.selectedChoiceRecommendationReason === 'string'
             ? settlement.eventRoom.selectedChoiceRecommendationReason.trim()
             : '';
+        const stagingReceipt = buildRunEventEncounterStagingReceipt(encounterProfile, settlement.eventRoom, RUN_EVENT_ROOM_POOL);
         const lines = [{ text: settlement.choice.label, color: style.accentColor }];
 
         if (recommendationReason) {
@@ -3926,9 +3928,9 @@ class LevelScene extends Phaser.Scene {
                 });
             });
         }
-        if (encounterProfile && encounterProfile.previewLabel) {
+        if (stagingReceipt) {
             lines.push({
-                text: encounterProfile.previewLabel,
+                text: stagingReceipt,
                 color: encounterProfile.key === 'windfall'
                     ? '#FFD27A'
                     : (encounterProfile.key === 'pressure' ? '#FFB3A7' : '#9FE3FF')
