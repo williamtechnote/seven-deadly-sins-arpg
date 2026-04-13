@@ -79,6 +79,7 @@ const {
     buildRunEventEncounterFormationSlots,
     buildRunEventEncounterPayoffPresentation,
     buildRunEventEncounterEntryPreview,
+    buildRunEventEncounterObjectiveCue,
     buildRunEventEncounterSourceCue,
     buildRunEventEncounterClearRecap,
     buildRunEventEncounterBossDoorRecap,
@@ -2521,6 +2522,36 @@ function testRunEventEncounterProfileHelpers() {
     );
 }
 
+function testRunEventEncounterObjectiveCueHelpers() {
+    assert.equal(typeof buildRunEventEncounterObjectiveCue, 'function', 'event room encounter objective cue helper should be exported');
+
+    assert.equal(
+        buildRunEventEncounterObjectiveCue({ key: 'breather', encounterLabel: '缓冲战' }),
+        '先稳前排',
+        'breather routes should resolve to a stabilize-first room-entry objective cue'
+    );
+    assert.equal(
+        buildRunEventEncounterObjectiveCue({ key: 'pressure', encounterLabel: '高压战' }),
+        '先拆夹角',
+        'pressure routes should resolve to a flank-breaking room-entry objective cue'
+    );
+    assert.equal(
+        buildRunEventEncounterObjectiveCue({ key: 'windfall', encounterLabel: '淘金战' }),
+        '先盯后排',
+        'windfall routes should resolve to a bounty-chase room-entry objective cue'
+    );
+    assert.equal(
+        buildRunEventEncounterObjectiveCue({ key: 'unknown', encounterLabel: '未知战' }),
+        '',
+        'unknown encounter profiles should stay silent instead of inventing an entry objective'
+    );
+    assert.equal(
+        buildRunEventEncounterObjectiveCue(null),
+        '',
+        'missing encounter profiles should keep the entry objective helper silent'
+    );
+}
+
 function testRunEventEncounterRosterHelpers() {
     const enemyPool = ['soldier', 'archer', 'brute'];
     const enemyDefs = {
@@ -4494,8 +4525,13 @@ function testRunEventEncounterRoutingHooks() {
     );
     assert.match(
         source,
-        /_syncRunEventEncounterProfile\(\)\s*{[\s\S]*?this\._runEventEncounterProfileClearRecapKey = '';\s*this\._runEventEncounterSourceCueShown = \{\s*engage:\s*false,\s*stabilize:\s*false,\s*bounty:\s*false\s*\};\s*this\._runEventEncounterProfileKey = profile\.key;/,
-        'applying a routed encounter profile should reset the one-shot source-cue moments before the new room-3 contract starts'
+        /_maybeAnnounceRunEventEncounterProfile\(\)\s*{[\s\S]*?const encounterObjectiveCue = buildRunEventEncounterObjectiveCue\(profile\);[\s\S]*?if \(encounterObjectiveCue\) {[\s\S]*?this\._runEventEncounterObjectiveCueShownKey = profile\.key;[\s\S]*?this\.time\.delayedCall\(420,\s*\(\)\s*=>\s*{[\s\S]*?this\._showFloatingText\([\s\S]*?encounterObjectiveCue[\s\S]*?}\s*\);[\s\S]*?}/,
+        'LevelScene should follow the entry preview with a delayed one-shot objective cue derived from the shared encounter helper'
+    );
+    assert.match(
+        source,
+        /_syncRunEventEncounterProfile\(\)\s*{[\s\S]*?this\._runEventEncounterProfileClearRecapKey = '';\s*this\._runEventEncounterObjectiveCueShownKey = '';\s*this\._runEventEncounterSourceCueShown = \{\s*engage:\s*false,\s*stabilize:\s*false,\s*bounty:\s*false\s*\};\s*this\._runEventEncounterProfileKey = profile\.key;/,
+        'applying a routed encounter profile should reset the one-shot objective/source cue moments before the new room-3 contract starts'
     );
     assert.match(
         source,
@@ -12859,6 +12895,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /半拍后还会再补一次 `先稳前排` \/ `先拆夹角` \/ `先盯后排` 这类首拍目标 cue，把 routed encounter 继续收束成第一拍战术/,
+        'README should document the delayed room-3 objective cue that turns encounter identity into an immediate first action'
+    );
+    assert.match(
+        source,
         /当这个高赏金目标死亡时，还会立刻补一条 `赏金\+X` 与更亮的金币爆点，而 `高压战 \/ 缓冲战` 继续维持更平均、更平稳的掉金反馈/,
         'README should document the kill-time bounty receipt and the steadier non-windfall gold feedback'
     );
@@ -14463,6 +14504,11 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
+        /当进房预告落下半拍后，系统还会再补一次“先稳前排”\/“先拆夹角”\/“先盯后排”这类首拍目标 cue，把 routed encounter 继续收束成第一拍战术，而不是只停在房型说明/,
+        'help overlay should document the delayed room-3 objective cue that converts route identity into a first-action instruction'
+    );
+    assert.match(
+        source,
         /当清场浮字淡出后，Boss 门标签也会继续保留“缓冲路线 · 稳线迎战”\/“高压路线 · 顶压迎战”\/“淘金路线 · 带赏迎战”这类 run-arc 回顾，让这段路线怎样改写了整段推进节奏不会在进 Boss 前立刻断掉/,
         'help overlay should document the persistent Boss-door run-arc recap that keeps the routed segment readable into the boss handoff'
     );
@@ -15469,6 +15515,7 @@ function main() {
     runTest('control-routing event room', testControlRoutingEventRoom);
     runTest('run event room choice helpers', testRunEventRoomChoiceHelpers);
     runTest('run event encounter profile helpers', testRunEventEncounterProfileHelpers);
+    runTest('run event encounter objective cue helpers', testRunEventEncounterObjectiveCueHelpers);
     runTest('run event encounter roster helpers', testRunEventEncounterRosterHelpers);
     runTest('run event encounter formation helpers', testRunEventEncounterFormationHelpers);
     runTest('run event encounter payoff helpers', testRunEventEncounterPayoffHelpers);
