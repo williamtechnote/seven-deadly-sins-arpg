@@ -785,6 +785,7 @@
         selectedWeaponKey: 'sword',
         runModifiers: [],
         runEventRoom: null,
+        lastRunSummary: null,
         quickSlots: [null, null, null, null]
     };
 
@@ -799,6 +800,7 @@
             selectedWeaponKey: DEFAULT_SAVE_DATA.selectedWeaponKey,
             runModifiers: [],
             runEventRoom: null,
+            lastRunSummary: null,
             quickSlots: [...DEFAULT_SAVE_DATA.quickSlots]
         };
     }
@@ -808,6 +810,17 @@
         muted: false,
         volume: 100
     };
+
+    const HUB_PORTAL_TARGET_CUES = Object.freeze({
+        pride: '稳线读招',
+        envy: '追影拆位',
+        wrath: '回体扛压',
+        sloth: '拉稳开刃',
+        greed: '追赏断后',
+        gluttony: '留体拆潮',
+        lust: '稳拍反制',
+        final: '全备赴渊'
+    });
 
     function clampInt(value, min, max, fallback) {
         const n = Number(value);
@@ -825,6 +838,44 @@
     function sanitizeStringArray(value) {
         if (!Array.isArray(value)) return [];
         return value.filter(v => typeof v === 'string');
+    }
+
+    function normalizeLastRunSummary(summary) {
+        if (!summary || typeof summary !== 'object') return null;
+        const bossLabel = typeof summary.bossLabel === 'string' ? summary.bossLabel.trim() : '';
+        const routeRecap = typeof summary.routeRecap === 'string' ? summary.routeRecap.trim() : '';
+        const choiceLabel = typeof summary.choiceLabel === 'string' ? summary.choiceLabel.trim() : '';
+        const recommendationReason = typeof summary.recommendationReason === 'string'
+            ? summary.recommendationReason.trim()
+            : '';
+        if (!bossLabel && !routeRecap && !choiceLabel && !recommendationReason) return null;
+        return {
+            bossLabel,
+            routeRecap,
+            choiceLabel,
+            recommendationReason
+        };
+    }
+
+    function normalizeHubPortalTarget(target) {
+        if (typeof target === 'string') {
+            const label = target.trim();
+            if (!label) return null;
+            return {
+                label,
+                bossKey: '',
+                bossCue: ''
+            };
+        }
+        if (!target || typeof target !== 'object') return null;
+        const label = typeof target.label === 'string' ? target.label.trim() : '';
+        const bossKey = typeof target.bossKey === 'string' ? target.bossKey.trim() : '';
+        if (!label) return null;
+        return {
+            label,
+            bossKey,
+            bossCue: bossKey && HUB_PORTAL_TARGET_CUES[bossKey] ? HUB_PORTAL_TARGET_CUES[bossKey] : ''
+        };
     }
 
     function resolveKeyboardAimState(input) {
@@ -2751,20 +2802,9 @@
         };
     }
 
-    function formatRunEventEncounterObjectivePreview(profile) {
-        const safeProfile = profile && typeof profile === 'object' ? profile : {};
-        const profileKey = typeof safeProfile.key === 'string' ? safeProfile.key.trim() : '';
-        const previewLabel = typeof safeProfile.previewLabel === 'string' ? safeProfile.previewLabel.trim() : '';
-        if (!previewLabel) return '';
-        if (profileKey === 'breather') return `${previewLabel} · 双低压`;
-        if (profileKey === 'pressure') return `${previewLabel} · 三敌齐压`;
-        if (profileKey === 'windfall') return `${previewLabel} · 双赏金`;
-        return previewLabel;
-    }
-
     function formatRunEventRoomChoiceEncounterPreview(choice) {
         const profile = getRunEventRoomChoiceEncounterProfile(choice);
-        return formatRunEventEncounterObjectivePreview(profile);
+        return profile ? profile.previewLabel : '';
     }
 
     function buildRunEventRoomChoicePreview(choice) {
@@ -2825,8 +2865,8 @@
         const selectedWeaponKey = typeof safeState.selectedWeaponKey === 'string' ? safeState.selectedWeaponKey : '';
         const weaponStatus = getWeaponSpecialStatus(selectedWeaponKey);
         const inventory = normalizeInventory(safeState.inventory);
-        const negativeStatuses = Array.isArray(safeState.negativeStatuses) ? safeState.negativeStatuses : [];
         const runModifierBias = getRunModifierTagBias(safeState.runModifiers);
+        const negativeStatuses = Array.isArray(safeState.negativeStatuses) ? safeState.negativeStatuses : [];
 
         let hpDelta = 0;
         if (effect.type === 'hpForGold') {
@@ -2994,6 +3034,7 @@
         const selectedWeaponKey = typeof safeState.selectedWeaponKey === 'string' ? safeState.selectedWeaponKey : '';
         const weaponStatus = getWeaponSpecialStatus(selectedWeaponKey);
         const inventory = normalizeInventory(safeState.inventory);
+        const runModifierBias = getRunModifierTagBias(safeState.runModifiers);
         const negativeStatuses = Array.isArray(safeState.negativeStatuses)
             ? safeState.negativeStatuses.filter(status => typeof status === 'string' && status.trim())
             : [];
@@ -3057,6 +3098,13 @@
             }
             if (currentHpRatio >= 0.7) {
                 return buildRecommendation('composureLesson', '高血稳定');
+            }
+            return null;
+        }
+
+        if (hasChoice('renewalPrayer') && hasChoice('tempoPrayer')) {
+            if (runModifierBias.has('节奏')) {
+                return buildRecommendation('tempoPrayer', '当前局已偏节奏');
             }
             return null;
         }
@@ -3225,6 +3273,13 @@
                     sourceCueMoment: 'stabilize'
                 };
             }
+            if (normalizedRoom.selectedChoiceKey === 'fieldTonic' && recommendationReason === '当前可负担') {
+                return {
+                    echo: '趁价备净',
+                    sourceCue: '趁价备净',
+                    sourceCueMoment: 'stabilize'
+                };
+            }
             if (normalizedRoom.selectedChoiceKey === 'vitalSurge' && recommendationReason === '缺口更大') {
                 return {
                     echo: '回线稳场',
@@ -3289,6 +3344,13 @@
                 return {
                     echo: '抢拍开刃',
                     sourceCue: '抢拍开刃',
+                    sourceCueMoment: 'engage'
+                };
+            }
+            if (normalizedRoom.selectedChoiceKey === 'tempoPrayer' && recommendationReason === '当前局已偏节奏') {
+                return {
+                    echo: '顺势抢压',
+                    sourceCue: '顺势抢压',
                     sourceCueMoment: 'engage'
                 };
             }
@@ -3368,21 +3430,6 @@
                     sourceCueMoment: 'bounty'
                 };
             }
-            if (normalizedRoom.selectedChoiceKey === 'executionLesson' && recommendationReason === '减速目标已现') {
-                return {
-                    echo: '减速追赏',
-                    sourceCue: '减速追赏',
-                    sourceCueMoment: 'bounty'
-                };
-            }
-            if (normalizedRoom.selectedChoiceKey === 'executionLesson'
-                && (recommendationReason === '可接破势终结' || recommendationReason === '当前可追终结')) {
-                return {
-                    echo: '终结追赏',
-                    sourceCue: '终结追赏',
-                    sourceCueMoment: 'bounty'
-                };
-            }
         }
 
         return null;
@@ -3409,6 +3456,48 @@
         const recommendationFeedback = getRunEventEncounterRecommendationFeedback(normalizedRoom, profile, poolOverride);
         if (recommendationFeedback) return recommendationFeedback;
         return getRunEventEncounterBaselineRouteFeedback(normalizedRoom.selectedChoiceKey, profileKey);
+    }
+
+    function getRunEventEncounterPayoffMoment(profile, runEventRoom, poolOverride) {
+        const feedback = getRunEventEncounterFeedback(runEventRoom, profile, poolOverride);
+        const feedbackMoment = feedback && typeof feedback.sourceCueMoment === 'string'
+            ? feedback.sourceCueMoment.trim()
+            : '';
+        if (feedbackMoment) return feedbackMoment;
+
+        const profileKey = profile && typeof profile === 'object' && typeof profile.key === 'string'
+            ? profile.key.trim()
+            : '';
+        if (profileKey === 'pressure') return 'engage';
+        if (profileKey === 'breather') return 'stabilize';
+        if (profileKey === 'windfall') return 'bounty';
+        return '';
+    }
+
+    function formatRunEventEncounterPayoffTimingLabel(profile, runEventRoom, poolOverride) {
+        const moment = getRunEventEncounterPayoffMoment(profile, runEventRoom, poolOverride);
+        if (moment === 'engage') return '首拍兑现';
+        if (moment === 'stabilize') return '稳场兑现';
+        if (moment === 'bounty') return '追赏兑现';
+        return '';
+    }
+
+    function formatRunEventRoomChoiceEncounterTiming(choice, poolOverride) {
+        const safeChoice = choice && typeof choice === 'object' ? choice : {};
+        const profile = getRunEventRoomChoiceEncounterProfile(safeChoice);
+        if (!profile) return '';
+        const profileKey = typeof profile.key === 'string' ? profile.key.trim() : '';
+        const choiceKey = typeof safeChoice.key === 'string' ? safeChoice.key.trim() : '';
+        const baselineFeedback = choiceKey && profileKey
+            ? getRunEventEncounterBaselineRouteFeedback(choiceKey, profileKey)
+            : null;
+        const moment = baselineFeedback && typeof baselineFeedback.sourceCueMoment === 'string'
+            ? baselineFeedback.sourceCueMoment.trim()
+            : getRunEventEncounterPayoffMoment(profile, null, poolOverride);
+        if (moment === 'engage') return '首拍兑现';
+        if (moment === 'stabilize') return '稳场兑现';
+        if (moment === 'bounty') return '追赏兑现';
+        return '';
     }
 
     function getRunEventEncounterRecommendationEcho(runEventRoom, profile, poolOverride) {
@@ -3443,11 +3532,6 @@
         return `${encounterLabel} · ${tacticalSuffix}${recommendationEcho ? ` · ${recommendationEcho}` : ''}`;
     }
 
-    function buildRunEventEncounterStagingReceipt(profile, runEventRoom, poolOverride) {
-        const entryPreview = buildRunEventEncounterEntryPreview(profile, runEventRoom, poolOverride);
-        return entryPreview ? `遭遇: ${entryPreview}` : '';
-    }
-
     function buildRunEventEncounterClearRecap(profile, runEventRoom, poolOverride) {
         const safeProfile = profile && typeof profile === 'object' ? profile : {};
         const profileKey = typeof safeProfile.key === 'string' ? safeProfile.key.trim() : '';
@@ -3467,6 +3551,42 @@
         return `${encounterLabel} · ${recapSuffix}${recommendationEcho ? ` · ${recommendationEcho}` : ''}`;
     }
 
+    function buildRunEventEncounterBossDoorRecap(profile, runEventRoom, poolOverride) {
+        const safeProfile = profile && typeof profile === 'object' ? profile : {};
+        const profileKey = typeof safeProfile.key === 'string' ? safeProfile.key.trim() : '';
+        const routeLabel = profileKey === 'breather'
+            ? '缓冲路线'
+            : (profileKey === 'pressure'
+                ? '高压路线'
+                : (profileKey === 'windfall' ? '淘金路线' : ''));
+        const payoffMoment = getRunEventEncounterPayoffMoment(safeProfile, runEventRoom, poolOverride);
+        const recapSuffix = payoffMoment === 'stabilize'
+            ? '稳线迎战'
+            : (payoffMoment === 'engage'
+                ? '顶压迎战'
+                : (payoffMoment === 'bounty' ? '带赏迎战' : ''));
+        if (!routeLabel || !recapSuffix) return '';
+        return `${routeLabel} · ${recapSuffix}`;
+    }
+
+    function buildRunEventEncounterBossOpeningEcho(profile, runEventRoom, poolOverride) {
+        const safeProfile = profile && typeof profile === 'object' ? profile : {};
+        const profileKey = typeof safeProfile.key === 'string' ? safeProfile.key.trim() : '';
+        const routeLabel = profileKey === 'breather'
+            ? '缓冲路线'
+            : (profileKey === 'pressure'
+                ? '高压路线'
+                : (profileKey === 'windfall' ? '淘金路线' : ''));
+        const payoffMoment = getRunEventEncounterPayoffMoment(safeProfile, runEventRoom, poolOverride);
+        const openerSuffix = payoffMoment === 'stabilize'
+            ? '稳线开局'
+            : (payoffMoment === 'engage'
+                ? '抢势开局'
+                : (payoffMoment === 'bounty' ? '带赏开局' : ''));
+        if (!routeLabel || !openerSuffix) return '';
+        return `${routeLabel} · ${openerSuffix}`;
+    }
+
     function buildRunEventEncounterBossVictoryRecap(profile, runEventRoom, poolOverride) {
         const safeProfile = profile && typeof profile === 'object' ? profile : {};
         const profileKey = typeof safeProfile.key === 'string' ? safeProfile.key.trim() : '';
@@ -3475,13 +3595,71 @@
             : (profileKey === 'pressure'
                 ? '高压路线'
                 : (profileKey === 'windfall' ? '淘金路线' : ''));
-        const recapSuffix = profileKey === 'breather'
-            ? '稳线收束'
-            : (profileKey === 'pressure'
-                ? '顶压收束'
-                : (profileKey === 'windfall' ? '带赏收束' : ''));
-        if (!routeLabel || !recapSuffix) return '';
-        return `${routeLabel} · ${recapSuffix}`;
+        const payoffMoment = getRunEventEncounterPayoffMoment(safeProfile, runEventRoom, poolOverride);
+        const victorySuffix = payoffMoment === 'stabilize'
+            ? '稳线收官'
+            : (payoffMoment === 'engage'
+                ? '顶压收官'
+                : (payoffMoment === 'bounty' ? '带赏收官' : ''));
+        if (!routeLabel || !victorySuffix) return '';
+        return `${routeLabel} · ${victorySuffix}`;
+    }
+
+    function buildHubLastRunSummary(summary) {
+        const normalizedSummary = normalizeLastRunSummary(summary);
+        const lines = [];
+        if (normalizedSummary && normalizedSummary.bossLabel) {
+            lines.push(normalizedSummary.bossLabel);
+        }
+        if (normalizedSummary && normalizedSummary.routeRecap) {
+            lines.push(normalizedSummary.routeRecap);
+        }
+        if (normalizedSummary && normalizedSummary.choiceLabel) {
+            lines.push(`源于 ${normalizedSummary.choiceLabel}${normalizedSummary.recommendationReason ? ` · ${normalizedSummary.recommendationReason}` : ''}`);
+        }
+        return {
+            visible: lines.length > 0,
+            title: '上轮战报',
+            lines
+        };
+    }
+
+    function buildHubPortalChoiceSummary(summary, targetLabel) {
+        const normalizedSummary = normalizeLastRunSummary(summary);
+        const normalizedTarget = normalizeHubPortalTarget(targetLabel);
+        if (!normalizedTarget) {
+            return {
+                visible: false,
+                title: '选门参考',
+                lines: []
+            };
+        }
+
+        const lines = [`目标 ${normalizedTarget.label}`];
+        if (normalizedTarget.bossCue) {
+            lines.push(`门前 ${normalizedTarget.bossCue}`);
+        }
+        const lastRunAnchor = normalizedSummary
+            ? (normalizedSummary.routeRecap || normalizedSummary.bossLabel)
+            : '';
+        if (lastRunAnchor) {
+            lines.push(`上轮 ${lastRunAnchor}`);
+        }
+        if (normalizedSummary && normalizedSummary.choiceLabel) {
+            lines.push(`源于 ${normalizedSummary.choiceLabel}${normalizedSummary.recommendationReason ? ` · ${normalizedSummary.recommendationReason}` : ''}`);
+        }
+        if (lines.length <= 1) {
+            return {
+                visible: false,
+                title: '选门参考',
+                lines: []
+            };
+        }
+        return {
+            visible: true,
+            title: '选门参考',
+            lines
+        };
     }
 
     function buildCompactRunEventResolutionText(runEventRoom, choice) {
@@ -3563,7 +3741,6 @@
                 typeLabel: '',
                 routeLines: [],
                 routeSummary: '',
-                stagingReceipt: '',
                 resolutionText: ''
             };
         }
@@ -3584,11 +3761,15 @@
         const resolvedChoiceLabel = normalizedRoom.selectedChoiceLabel
             || (!forceHealingDoubleFallback && selectedChoice ? selectedChoice.label : '')
             || (normalizedRoom.resolved ? '未知选项' : '');
-        const encounterProfile = normalizedRoom.resolved && selectedChoice
-            ? getRunEventRoomChoiceEncounterProfile(selectedChoice)
-            : null;
         const encounterPreview = normalizedRoom.resolved && selectedChoice
             ? formatRunEventRoomChoiceEncounterPreview(selectedChoice)
+            : '';
+        const encounterTiming = normalizedRoom.resolved && selectedChoice
+            ? formatRunEventEncounterPayoffTimingLabel(
+                getRunEventEncounterProfile(normalizedRoom, poolOverride),
+                normalizedRoom,
+                poolOverride
+            )
             : '';
         const visibleChoices = normalizedRoom.resolved
             ? []
@@ -3596,14 +3777,16 @@
         const routeLines = normalizedRoom.resolved
             ? (
                 resolvedChoiceLabel
-                    ? [`${resolvedPrefix}: ${resolvedChoiceLabel}${recommendationReason ? ` · ${recommendationReason}` : ''}${encounterPreview ? ` · ${encounterPreview}` : ''}`.trim()]
+                    ? [`${resolvedPrefix}: ${resolvedChoiceLabel}${recommendationReason ? ` · ${recommendationReason}` : ''}${encounterPreview ? ` · ${encounterPreview}` : ''}${encounterTiming ? ` · ${encounterTiming}` : ''}`.trim()]
                     : []
             )
-            : visibleChoices.map(choice => buildRunEventRoomChoicePreview(choice));
-        const stagingReceipt = normalizedRoom.resolved
-            ? buildRunEventEncounterStagingReceipt(encounterProfile, normalizedRoom, poolOverride)
-            : '';
-        const routeSummary = [...routeLines, stagingReceipt].filter(Boolean).join('\n');
+            : visibleChoices.map((choice) => {
+                const preview = buildRunEventRoomChoicePreview(choice);
+                const nextRoomPreview = formatRunEventRoomChoiceEncounterPreview(choice);
+                const nextRoomTiming = formatRunEventRoomChoiceEncounterTiming(choice, poolOverride);
+                return `${preview}${nextRoomPreview ? ` · ${nextRoomPreview}` : ''}${nextRoomTiming ? ` · ${nextRoomTiming}` : ''}`.trim();
+            });
+        const routeSummary = routeLines.join('\n');
         const resolutionText = normalizedRoom.resolved
             ? (
                 normalizedRoom.resolutionText
@@ -3620,7 +3803,6 @@
             typeLabel: `类型 ${getRunEventRoomTypeLabel(normalizedRoom.type)}`,
             routeLines,
             routeSummary,
-            stagingReceipt,
             resolutionText
         };
     }
@@ -3638,14 +3820,6 @@
             const selectedLine = Array.isArray(summary.routeLines) && summary.routeLines.length > 0
                 ? summary.routeLines[0]
                 : '';
-            if (summary.stagingReceipt) {
-                if (selectedLine) lines.push(selectedLine);
-                lines.push(summary.stagingReceipt);
-                if (summary.resolutionText) {
-                    lines.push(`结算: ${summary.resolutionText}`);
-                }
-                return lines;
-            }
             if (selectedLine && summary.resolutionText) {
                 lines.push(`${selectedLine} · ${summary.resolutionText}`);
             } else if (selectedLine) {
@@ -3680,10 +3854,14 @@
         const recommendationReason = typeof normalizedRoom.selectedChoiceRecommendationReason === 'string'
             ? normalizedRoom.selectedChoiceRecommendationReason.trim()
             : '';
-        const encounterPreview = selectedChoice
-            ? formatRunEventRoomChoiceEncounterPreview(selectedChoice)
+        const encounterTiming = selectedChoice
+            ? formatRunEventEncounterPayoffTimingLabel(
+                getRunEventEncounterProfile(normalizedRoom, poolOverride),
+                normalizedRoom,
+                poolOverride
+            )
             : '';
-        return `${getRunEventRoomResolvedPrefix(normalizedRoom.type)}: ${resolvedChoiceLabel}${recommendationReason ? ` · ${recommendationReason}` : ''}${encounterPreview ? ` · ${encounterPreview}` : ''}`.trim();
+        return `${getRunEventRoomResolvedPrefix(normalizedRoom.type)}: ${resolvedChoiceLabel}${recommendationReason ? ` · ${recommendationReason}` : ''}${encounterTiming ? ` · ${encounterTiming}` : ''}`.trim();
     }
 
     function buildRunEventRoomWorldLabel(runEventRoom, poolOverride) {
@@ -5196,6 +5374,7 @@
             selectedWeaponKey,
             runModifiers: normalizeRunModifiers(data.runModifiers),
             runEventRoom: normalizeRunEventRoom(data.runEventRoom),
+            lastRunSummary: normalizeLastRunSummary(data.lastRunSummary),
             quickSlots: normalizeQuickSlots(data.quickSlots)
         };
     }
@@ -5933,6 +6112,16 @@
                 if (compactSpendAnchor) {
                     pushVariant(`强化成功! ${levelTransition} · ${benefitSummary} · ${cumulativeBenefitSummary} · ${compactSpendAnchor}`);
                 }
+                if (compactCumulativeAnchor) {
+                    if (compactSpendAnchor) {
+                        pushVariant(`强化成功! ${levelTransition} · ${benefitSummary} · ${compactCumulativeAnchor} · ${compactSpendAnchor}`);
+                    }
+                }
+                if (cumulativePrimaryAnchor) {
+                    if (compactSpendAnchor) {
+                        pushVariant(`强化成功! ${levelTransition} · ${benefitSummary} · ${cumulativePrimaryAnchor} · ${compactSpendAnchor}`);
+                    }
+                }
                 pushVariant(`强化成功! ${levelTransition} · ${benefitSummary} · ${cumulativeBenefitSummary}`);
                 if (compactCumulativeAnchor) {
                     pushVariant(`强化成功! ${levelTransition} · ${benefitSummary} · ${compactCumulativeAnchor}`);
@@ -6095,13 +6284,17 @@
         buildRunEventEncounterRoster,
         buildRunEventEncounterFormationSlots,
         buildRunEventEncounterPayoffPresentation,
-        formatRunEventEncounterObjectivePreview,
         buildRunEventEncounterEntryPreview,
-        buildRunEventEncounterStagingReceipt,
         buildRunEventEncounterSourceCue,
         buildRunEventEncounterClearRecap,
+        buildRunEventEncounterBossDoorRecap,
+        buildRunEventEncounterBossOpeningEcho,
         buildRunEventEncounterBossVictoryRecap,
+        buildHubLastRunSummary,
+        buildHubPortalChoiceSummary,
+        formatRunEventEncounterPayoffTimingLabel,
         formatRunEventRoomChoiceEncounterPreview,
+        formatRunEventRoomChoiceEncounterTiming,
         getRunEventRoomChoiceAffordabilityLabel,
         getRunEventRoomChoiceFailureMessage,
         getRunEventEncounterProfile,

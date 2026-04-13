@@ -1,19 +1,24 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Boss 胜利 route 收束回顾：当前 shrine route 已经能把第三房从 choice preview、进房预告、关键 payoff 一路接到清场短回顾，但 Boss 真正倒下后，胜利总结仍只剩通用奖励；补一条 `缓冲路线 · 稳线收束` / `高压路线 · 顶压收束` / `淘金路线 · 带赏收束` 这类共享短 recap，让这段 routed segment 在奖励结算时真正闭环，而不是停在第三房清场
-- [ ] 资源 / 结算型 route recommendation encounter echo 深化：当 `祈愿圣坛 / 赌徒圣坛 / 战备商柜` 的 baseline anchor 跑通后，再评估是否把 `当前局已偏节奏 / 可净化N层 / 当前可负担` 这类更偏 run-state / affordability 的 reason 也筛进更窄的 encounter echo，避免只剩 baseline identity、却还没把“为什么是现在”继续接进 routed combat
+- [ ] Hub 选门参考前瞻化：当前 portal focus 已能把 `目标 Boss / 上轮路线收官 / 源头抉择` 压进同一块 decision surface，但它仍主要回答“上轮发生了什么”；下一步要让同一块卡片再补一条极短 `门前姿态`，把 `稳线读招 / 追影拆位 / 回体扛压 / 稳拍反制` 这类目标 Boss posture 也压进选门瞬间，让选门不只是在回忆上一局，而是在计划下一局
 
 ## Next Up
-- [ ] 事件房 resolved summary 宽度收束：objective preview 进到 choice panel / 已触发 HUD / 结算浮字 后，再观察是否需要把 `双低压 / 三敌齐压 / 双赏金` 与 staging receipt 做更细的宽度预算，避免后续再把宽档信息重新挤回抽象 route 名
+- [ ] Hub 记忆桥后续评估：若 portal focus 的 `选门参考` 已能把 `上轮路线收官 / 源头抉择 / 当前目标 Boss` 稳定压进选门时刻，再评估是否仍需要额外的 run-history 入口，还是让 `上轮战报 + 选门参考` 成为足够轻量的 route memory 终点
 
 ## Blocked
 - [x] 仓库交付闭环：源仓库自带未提交修改 + 未跟踪 plan 文件会在整合 `origin/main` 时阻塞 merge；现已通过归档/提交历史改动解除该 blocker（完成：2026-04-07 11:52 +08）
 
 ## Completed
-- [x] 事件房遭遇 objective preview：choice panel / 已触发 HUD / 结算浮字 现在都会把 routed room 从 `下间缓冲 / 下间高压 / 下间淘金` 升级成 `下间缓冲 · 双低压` / `下间高压 · 三敌齐压` / `下间淘金 · 双赏金` 这类更具体的 objective preview，让玩家在进第三房前就能先读懂这条路线要求的是“先稳住 / 先扛住 / 先追赏”（完成：2026-04-13 09:17 +08）
-- [x] 事件房遭遇 staging receipt：已触发后的 HUD / 结算浮字 现在会补 `遭遇: 缓冲战 · 双拍缓冲 · 游步回拍` 这类 shared staging receipt，把已选路线、战术 suffix 与仍强相关的 recommendation echo 在进第三房前先再次钉稳，避免 route identity 还要等真正进房才完整闭环（完成：2026-04-13 08:14 +08）
+- [x] 传送门选门参考：`上轮战报` 现在不再只停在 Hub 左上角常驻块；当玩家真正贴近任一传送门做下一次选门时，画面还会补一个 compact `选门参考`，把 `目标 Boss / 上轮路线收官 / 源头抉择` 压进同一块 decision surface，让 hub-return memory bridge 真正延续到 portal focus，而不必直接膨胀成 full run-history（完成：2026-04-13 11:19 +08）
+- [x] Hub 上轮战报回顾：Boss 胜利 settlement 现在已经能保留 `缓冲路线 / 高压路线 / 淘金路线` 的收官 recap，但场景一切回 Hub，玩家又得自己回忆“刚才是哪条路线、为什么值”；现已把这段短 run-arc 压成持久的 `上轮战报` 小块，至少保住 `已讨伐谁 / 哪条路线收官 / 源于哪次抉择`，让下一次选门前还能直接比较这条路线究竟怎样改写了上一段推进（完成：2026-04-13 12:08 +08）
+- [x] Boss 胜利 settlement route recap：当前 shrine route 已能一路从 choice / resolve / 第三房入口 / 首个 payoff / clear recap / Boss 门 / Boss 开场串成完整 handoff，但 Boss 真正倒下后，胜利结算又只剩通用掉落与印记；现已把 `缓冲路线 / 高压路线 / 淘金路线` 再接进 Boss 胜利回执，补成 `稳线收官 / 顶压收官 / 带赏收官` 这类共享收束语，让这段短 run-arc 在 settlement 也有明确终点（完成：2026-04-13 10:57 +08）
+- [x] Boss 开场 route echo：当前 shrine route 已经能一路延伸到第三房 clear 与 Boss 门标签，但玩家真正踏进 Boss 房后，这段短 run-arc 仍会在第一拍重新失声；现已把 `缓冲路线 / 高压路线 / 淘金路线` 再接成 Boss 开场一次性的 `稳线开局 / 抢势开局 / 带赏开局` 共享短 cue，让 route identity 真正跨过 handoff 而不是停在门口（完成：2026-04-13 10:20 +08）
+- [x] Boss 门前 run-arc 回顾：当前 shrine route 已经把第三房的 choice / receipt / entry / source cue / clear 闭成单房反馈，但 clear 浮字一消失，Boss 门又只剩 `Boss: <name>`；现已把 `下间缓冲 / 下间高压 / 下间淘金` 继续接进 Boss 门标签，并用 `缓冲路线 · 稳线迎战` / `高压路线 · 顶压迎战` / `淘金路线 · 带赏迎战` 这类共享短句把这段路线怎样改写了整段推进节奏保留下来，避免 payoff 看起来像只影响了一间房（完成：2026-04-13 11:05 +08）
+- [x] 资源 / 结算型 route recommendation encounter echo 深化：`祈愿圣坛 / 赌徒圣坛 / 战备商柜` 的高置信 reason 现在不再只停在 baseline anchor；当 persisted recommendation 仍和 routed encounter 强相关时，`净泉啜饮 / 战地净化包` 的 `可净化N层 / 当前可负担` 会继续兑现成 `净化后稳场 / 趁价备净`，`迅击祷言` 的 `当前局已偏节奏` 也会继续兑现成 `顺势抢压`，并一起落到第三房 entry / clear / source cue，让 resource / settlement route 也能继续回答“为什么就是现在”（完成：2026-04-13 10:02 +08）
+- [x] 铁匠强化成功回执累计+消耗双锚点：later-upgrade 成功提示在放不下完整 `累计伤害+9 / 特攻-0.3s / 体耗-3 · 消耗2个暴怒之精华` 时，现在会先保住 `累计+9 / 特攻-0.3s · 消耗2个暴怒` 或至少 `累计伤害+9 · 消耗2个暴怒` 这类“累计现况 + 本次花费”双锚点，再继续退回旧的 payoff-first 梯子，让玩家在中宽档位仍能同时读懂整把武器现况与这次付出的材料成本（完成：2026-04-13 09:47 +08）
 - [x] build-facing blessing route recommendation 情境深化：`武备圣坛 / 烙痕圣坛` 现在不再只会把 `当前持近战 / 当前持远程 / 当前武器可触发` 这类 loadout-only reason 持久化；当 loadout 与 live combat state 同时支持 routed encounter 时，choice panel / resolved receipt / room-3 entry / clear / source cue 也会一起接进 `近战更宜压线 / 远程更宜追赏 / 灼烧更宜稳场 / 挂血更宜抢势` 这类 why-now reason，并继续兑现成 `贴身压阵 / 远程追赏 / 灼烧稳场 / 挂血抢势`，让 build route 不只回答“拿对了武器”，也回答“为什么现在就该选它”（完成：2026-04-13 08:23 +08）
+- [x] 事件房 route payoff timing：choice panel / 侧栏事件房摘要 / 已触发后的祭坛世界标签现在都会补 `首拍兑现 / 稳场兑现 / 追赏兑现` 这类极短时机签，并与 `下间缓冲 / 下间高压 / 下间淘金` 一起说明这条路线会在下一房的哪一拍真正开始回本（完成：2026-04-13 09:10 +08）
 - [x] 行动型 blessing route recommendation 遭遇兑现：`战技 / 镇压 / 战势 / 连携 / 反击` 的高置信 recommendation reason 现在会继续兑现到第三房 entry / clear / 首个关键战斗节点，并把 `普攻卡拍 / 闪避卡拍 / 当前更宜控场 / 当前可追终结 / 特攻待借势 / 特攻待连段 / 闪避待回身 / 可立即追猎 / 当前更缺回线 / 当前更缺回体` 压成 `抢拍开刃 / 游步回拍 / 先控稳场 / 破势收赏 / 借势抢压 / 连段催锋 / 回身回拍 / 追猎收赏 / 回线稳场 / 回体稳线` 这类 why-now echo，让 action recommendation 不只停在选前脚注，也会延续到 routed encounter feedback（完成：2026-04-13 07:40 +08）
 - [x] 资源 / 结算型 route 第三房锚点扩展：`祈愿圣坛 / 赌徒圣坛 / 战备商柜` 现在会把 `复苏回拍 / 迅击抢拍 / 豪赌追赏 / 稳押收赏 / 净包稳场 / 狂油抢势` 接进第三房 entry / clear / source cue，并让 `稳押` 在 persisted `当前更宜稳押` 仍强相关时升级成 `留本追赏`，让 resource / settlement route 也能把“为什么现在选它”带进下一房第一段交手（完成：2026-04-13 07:12 +08）
 - [x] 行动型 blessing route 上下文 recommendation：`战技 / 镇压 / 战势 / 连携 / 反击` 现在会把 live combat bottleneck 接进 choice-panel shared recommendation helper，并在高置信场景下给出 `普攻卡拍 / 闪避卡拍 / 当前更宜控场 / 特攻待借势 / 特攻待连段 / 闪避待回身 / 可立即追猎 / 当前更缺回体` 这类 action-context reason；同一条 reason 也会在选中对应路线时持久化进 resolved receipt，让 recommendation judgement 能从选前脚注延续到选后确认（完成：2026-04-13 06:39 +08）
