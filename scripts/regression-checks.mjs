@@ -79,10 +79,13 @@ const {
     buildRunEventEncounterFormationSlots,
     buildRunEventEncounterPayoffPresentation,
     buildRunEventEncounterEntryPreview,
-    buildRunEventEncounterStagingReceipt,
     buildRunEventEncounterSourceCue,
     buildRunEventEncounterClearRecap,
+    buildRunEventEncounterBossDoorRecap,
+    buildRunEventEncounterBossOpeningEcho,
     buildRunEventEncounterBossVictoryRecap,
+    buildHubLastRunSummary,
+    formatRunEventEncounterPayoffTimingLabel,
     buildRunEventRoomChoiceRecommendation,
     buildCraftRecipeAffordance,
     buildCraftRecipeRowLabel,
@@ -90,8 +93,8 @@ const {
     buildCraftRecipeBatchReceipt,
     buildCraftRecipeFailureMessage,
     buildCraftRecipeSuccessMessage,
-    formatRunEventEncounterObjectivePreview,
     formatRunEventRoomChoiceEncounterPreview,
+    formatRunEventRoomChoiceEncounterTiming,
     getRunEventEncounterProfile,
     getRunChallengeSafeSidebarLabel,
     getRunChallengeInProgressInvalidTargetVisibleFallbacks,
@@ -494,7 +497,7 @@ function testWeaponUpgradeMessageHelpers() {
         'later upgrade success messages should keep the current-step payoff, cumulative post-upgrade total, and spent material anchor together when width allows'
     );
 
-    const mediumSuccessWithCompactCumulativeTarget = '强化成功! Lv.2→Lv.3 · 本次伤害+5 / 特攻-0.2s / 体耗-1 · 累计+9 / 特攻-0.3s';
+    const mediumSuccessWithCompactCumulativeSpendTarget = '强化成功! Lv.2→Lv.3 · 本次伤害+5 / 特攻-0.2s / 体耗-1 · 累计+9 / 特攻-0.3s · 消耗2个暴怒';
     assert.equal(
         buildWeaponUpgradeSuccessMessage({
             weaponKey: 'sword',
@@ -503,14 +506,14 @@ function testWeaponUpgradeMessageHelpers() {
             cost: { essence: 2 },
             requiredMaterialKey: 'wrathEssence'
         }, ITEMS, WEAPONS, WEAPON_SCALING, {
-            maxWidth: measureTextWidth(mediumSuccessWithCompactCumulativeTarget),
+            maxWidth: measureTextWidth(mediumSuccessWithCompactCumulativeSpendTarget),
             measureTextWidth
         }),
-        mediumSuccessWithCompactCumulativeTarget,
-        'later upgrade success messages should preserve a compact cumulative anchor at medium widths before they drop back to payoff-only copy'
+        mediumSuccessWithCompactCumulativeSpendTarget,
+        'later upgrade success messages should preserve a compact cumulative-plus-spend anchor at medium widths before they drop back to cumulative-only or payoff-only copy'
     );
 
-    const tightSuccessWithCumulativeAnchorTarget = '强化成功! Lv.2→Lv.3 · 本次伤害+5 / 特攻-0.2s / 体耗-1 · 累计伤害+9';
+    const tightSuccessWithCumulativeSpendAnchorTarget = '强化成功! Lv.2→Lv.3 · 本次伤害+5 / 特攻-0.2s / 体耗-1 · 累计伤害+9 · 消耗2个暴怒';
     assert.equal(
         buildWeaponUpgradeSuccessMessage({
             weaponKey: 'sword',
@@ -519,11 +522,27 @@ function testWeaponUpgradeMessageHelpers() {
             cost: { essence: 2 },
             requiredMaterialKey: 'wrathEssence'
         }, ITEMS, WEAPONS, WEAPON_SCALING, {
-            maxWidth: measureTextWidth(tightSuccessWithCumulativeAnchorTarget),
+            maxWidth: measureTextWidth(tightSuccessWithCumulativeSpendAnchorTarget),
             measureTextWidth
         }),
-        tightSuccessWithCumulativeAnchorTarget,
-        'later upgrade success messages should keep at least the cumulative first segment before they fall back to the older payoff ladder'
+        tightSuccessWithCumulativeSpendAnchorTarget,
+        'later upgrade success messages should keep at least one cumulative segment plus a compact spend anchor before they fall back to the older payoff ladder'
+    );
+
+    const ultraTightSuccessWithCumulativeAnchorTarget = '强化成功! Lv.2→Lv.3 · 本次伤害+5 / 特攻-0.2s / 体耗-1 · 累计伤害+9';
+    assert.equal(
+        buildWeaponUpgradeSuccessMessage({
+            weaponKey: 'sword',
+            level: 2,
+            nextLevel: 3,
+            cost: { essence: 2 },
+            requiredMaterialKey: 'wrathEssence'
+        }, ITEMS, WEAPONS, WEAPON_SCALING, {
+            maxWidth: measureTextWidth(ultraTightSuccessWithCumulativeAnchorTarget),
+            measureTextWidth
+        }),
+        ultraTightSuccessWithCumulativeAnchorTarget,
+        'later upgrade success messages should still keep the cumulative first segment once the compact spend anchor no longer fits'
     );
 
     const fullSuccessWithMaterialTarget = '强化成功! Lv.1→Lv.2 · 本次伤害+4 / 特攻-0.2s / 体耗-2 · 消耗2个暴怒之精华';
@@ -865,6 +884,12 @@ function testSaveLoadIntegrity() {
         selectedWeaponKey: 'hammer',
         runModifiers: ['frenziedFoes', 'fortuneWindfall'],
         runEventRoom: resolvedEventRoom,
+        lastRunSummary: {
+            bossLabel: '已讨伐 色欲 · 色欲魔窟',
+            routeRecap: '淘金路线 · 带赏收官',
+            choiceLabel: '豪赌',
+            recommendationReason: '当前更宜稳押'
+        },
         quickSlots: ['hpPotion', null, 'staminaPotion', null]
     };
 
@@ -892,11 +917,85 @@ function testSaveLoadIntegrity() {
             resolutionText: '失去 30 生命，获得 120 金币',
             encounterProfilePending: false
         },
+        lastRunSummary: {
+            bossLabel: '已讨伐 色欲 · 色欲魔窟',
+            routeRecap: '淘金路线 · 带赏收官',
+            choiceLabel: '豪赌',
+            recommendationReason: '当前更宜稳押'
+        },
         quickSlots: ['hpPotion', null, 'staminaPotion', null]
     }, 'serialized+deserialized state should stay stable');
 
     const corrupted = deserializeSaveData('this is not json');
     assert.deepEqual(corrupted, DEFAULT_SAVE_DATA, 'corrupted save should fallback to defaults');
+}
+
+function testHubLastRunSummaryHelper() {
+    assert.equal(typeof buildHubLastRunSummary, 'function', 'hub last-run summary helper should be exported');
+
+    assert.deepEqual(
+        buildHubLastRunSummary({
+            bossLabel: '已讨伐 色欲 · 色欲魔窟',
+            routeRecap: '淘金路线 · 带赏收官',
+            choiceLabel: '豪赌',
+            recommendationReason: '当前更宜稳押'
+        }),
+        {
+            visible: true,
+            title: '上轮战报',
+            lines: [
+                '已讨伐 色欲 · 色欲魔窟',
+                '淘金路线 · 带赏收官',
+                '源于 豪赌 · 当前更宜稳押'
+            ]
+        },
+        'hub last-run summary helper should keep boss, route, and routed choice reason in a compact three-line block'
+    );
+
+    assert.deepEqual(
+        buildHubLastRunSummary({
+            bossLabel: '已讨伐 傲慢 · 傲慢战场',
+            routeRecap: '高压路线 · 顶压收官',
+            choiceLabel: '借势修习',
+            recommendationReason: ''
+        }),
+        {
+            visible: true,
+            title: '上轮战报',
+            lines: [
+                '已讨伐 傲慢 · 傲慢战场',
+                '高压路线 · 顶压收官',
+                '源于 借势修习'
+            ]
+        },
+        'hub last-run summary helper should keep the source choice line even when no recommendation reason was stored'
+    );
+
+    assert.deepEqual(
+        buildHubLastRunSummary({
+            bossLabel: '已讨伐 暴怒 · 暴怒刑场',
+            routeRecap: '缓冲路线 · 稳线收官'
+        }),
+        {
+            visible: true,
+            title: '上轮战报',
+            lines: [
+                '已讨伐 暴怒 · 暴怒刑场',
+                '缓冲路线 · 稳线收官'
+            ]
+        },
+        'hub last-run summary helper should stay readable with a two-line fallback when only boss and route recap exist'
+    );
+
+    assert.deepEqual(
+        buildHubLastRunSummary(null),
+        {
+            visible: false,
+            title: '上轮战报',
+            lines: []
+        },
+        'hub last-run summary helper should stay hidden when no recap payload exists'
+    );
 }
 
 function testStatusEffectLogic() {
@@ -1185,10 +1284,10 @@ function testCombatDisciplineEventRoom() {
     assert.deepEqual(
         unresolvedSummary.routeLines,
         [
-            '连斩修习: 普攻冷却-18%',
-            '游步修习: 闪避冷却-20%, 闪避体力消耗-18%'
+            '连斩修习: 普攻冷却-18% · 下间高压 · 首拍兑现',
+            '游步修习: 闪避冷却-20%, 闪避体力消耗-18% · 下间缓冲 · 稳场兑现'
         ],
-        'combat discipline shrine HUD summary should surface both style routes compactly'
+        'combat discipline shrine HUD summary should surface both style routes alongside their routed payoff timing'
     );
 }
 
@@ -1253,10 +1352,10 @@ function testCombatFlowEventRoom() {
     assert.deepEqual(
         unresolvedSummary.routeLines,
         [
-            '回息修习: 普攻命中回体+4',
-            '借势修习: 闪避后1.6s内特攻伤害+35%'
+            '回息修习: 普攻命中回体+4 · 下间缓冲 · 稳场兑现',
+            '借势修习: 闪避后1.6s内特攻伤害+35% · 下间高压 · 首拍兑现'
         ],
-        'combat flow shrine HUD summary should surface both route identities compactly'
+        'combat flow shrine HUD summary should surface both route identities alongside their routed payoff timing'
     );
 }
 
@@ -1315,10 +1414,10 @@ function testComboLinkEventRoom() {
     assert.deepEqual(
         unresolvedSummary.routeLines,
         [
-            '催锋修习: 普攻命中特攻冷却-200ms',
-            '回身修习: 特攻命中闪避冷却-300ms'
+            '催锋修习: 普攻命中特攻冷却-200ms · 下间高压 · 首拍兑现',
+            '回身修习: 特攻命中闪避冷却-300ms · 下间缓冲 · 稳场兑现'
         ],
-        'combo link shrine HUD summary should surface both combo-routing identities compactly'
+        'combo link shrine HUD summary should surface both combo-routing identities alongside their routed payoff timing'
     );
 }
 
@@ -1383,10 +1482,10 @@ function testCounterattackEventRoom() {
     assert.deepEqual(
         unresolvedSummary.routeLines,
         [
-            '追猎修习: 闪避后1.4s内普攻伤害+28%',
-            '调息修习: 特攻命中回体+6'
+            '追猎修习: 闪避后1.4s内普攻伤害+28% · 下间淘金 · 追赏兑现',
+            '调息修习: 特攻命中回体+6 · 下间缓冲 · 稳场兑现'
         ],
-        'counterattack shrine HUD summary should surface both follow-up identities compactly'
+        'counterattack shrine HUD summary should surface both follow-up identities alongside their routed payoff timing'
     );
 }
 
@@ -1493,10 +1592,10 @@ function testWeaponRoutingEventRoom() {
     assert.deepEqual(
         unresolvedSummary.routeLines,
         [
-            '压阵修习: 近战武器普攻冷却-18%',
-            '离弦修习: 远程武器特攻冷却-22%'
+            '压阵修习: 近战武器普攻冷却-18% · 下间高压 · 首拍兑现',
+            '离弦修习: 远程武器特攻冷却-22% · 下间淘金 · 追赏兑现'
         ],
-        'weapon-routing shrine HUD summary should surface both weapon-routing identities compactly'
+        'weapon-routing shrine HUD summary should surface both weapon-routing identities alongside their routed payoff timing'
     );
 }
 
@@ -1567,10 +1666,10 @@ function testRiskRewardEventRoom() {
     assert.deepEqual(
         unresolvedSummary.routeLines,
         [
-            '绝境修习 [爆发/冒险]: 生命<45%时伤害+40%',
-            '守心修习 [续航/稳健]: 生命>70%时承伤-18%'
+            '绝境修习 [爆发/冒险]: 生命<45%时伤害+40% · 下间高压 · 首拍兑现',
+            '守心修习 [续航/稳健]: 生命>70%时承伤-18% · 下间缓冲 · 稳场兑现'
         ],
-        'risk/reward shrine HUD summary should surface both HP-threshold identities compactly and now expose their encounter-routing intent tags'
+        'risk/reward shrine HUD summary should surface both HP-threshold identities alongside their encounter-routing intent tags and payoff timing'
     );
 }
 
@@ -1691,10 +1790,10 @@ function testStatusRoutingEventRoom() {
     assert.deepEqual(
         unresolvedSummary.routeLines,
         [
-            '余烬修习: 灼烧持续时间+45%, 灼烧伤害+30%',
-            '血痕修习: 流血持续时间+40%, 流血伤害+25%'
+            '余烬修习: 灼烧持续时间+45%, 灼烧伤害+30% · 下间缓冲 · 稳场兑现',
+            '血痕修习: 流血持续时间+40%, 流血伤害+25% · 下间高压 · 首拍兑现'
         ],
-        'status-routing shrine HUD summary should surface both abnormal-status identities compactly'
+        'status-routing shrine HUD summary should surface both abnormal-status identities alongside their routed payoff timing'
     );
 }
 
@@ -1754,10 +1853,10 @@ function testControlRoutingEventRoom() {
     assert.deepEqual(
         unresolvedSummary.routeLines,
         [
-            '镇步修习: 减速持续时间+45%',
-            '破势修习: 对减速目标伤害+28%, Boss破招窗口终结'
+            '镇步修习: 减速持续时间+45% · 下间缓冲 · 稳场兑现',
+            '破势修习: 对减速目标伤害+28%, Boss破招窗口终结 · 下间淘金 · 追赏兑现'
         ],
-        'control-routing shrine HUD summary should surface both slow/control identities compactly'
+        'control-routing shrine HUD summary should surface both slow/control identities alongside their routed payoff timing'
     );
 }
 
@@ -1808,7 +1907,7 @@ const ACTION_ROUTE_ENCOUNTER_CASES = Object.freeze([
         roomKey: 'combatDisciplineShrine',
         choiceKey: 'flurryLesson',
         expectedProfileKey: 'pressure',
-        expectedPreview: '下间高压 · 三敌齐压',
+        expectedPreview: '下间高压',
         expectedEntry: '高压战 · 三向成压 · 连斩抢拍',
         expectedClear: '高压战 · 顶住成压 · 连斩抢拍',
         expectedSourceCue: '连斩抢拍',
@@ -1818,7 +1917,7 @@ const ACTION_ROUTE_ENCOUNTER_CASES = Object.freeze([
         roomKey: 'combatDisciplineShrine',
         choiceKey: 'ghostStepLesson',
         expectedProfileKey: 'breather',
-        expectedPreview: '下间缓冲 · 双低压',
+        expectedPreview: '下间缓冲',
         expectedEntry: '缓冲战 · 双拍缓冲 · 游步整拍',
         expectedClear: '缓冲战 · 稳住出清 · 游步整拍',
         expectedSourceCue: '游步整拍',
@@ -1828,7 +1927,7 @@ const ACTION_ROUTE_ENCOUNTER_CASES = Object.freeze([
         roomKey: 'controlRoutingShrine',
         choiceKey: 'crushingLesson',
         expectedProfileKey: 'breather',
-        expectedPreview: '下间缓冲 · 双低压',
+        expectedPreview: '下间缓冲',
         expectedEntry: '缓冲战 · 双拍缓冲 · 镇步控场',
         expectedClear: '缓冲战 · 稳住出清 · 镇步控场',
         expectedSourceCue: '镇步控场',
@@ -1838,7 +1937,7 @@ const ACTION_ROUTE_ENCOUNTER_CASES = Object.freeze([
         roomKey: 'controlRoutingShrine',
         choiceKey: 'executionLesson',
         expectedProfileKey: 'windfall',
-        expectedPreview: '下间淘金 · 双赏金',
+        expectedPreview: '下间淘金',
         expectedEntry: '淘金战 · 后排赏金 · 破势追杀',
         expectedClear: '淘金战 · 赏金到手 · 破势追杀',
         expectedSourceCue: '破势追杀',
@@ -1848,7 +1947,7 @@ const ACTION_ROUTE_ENCOUNTER_CASES = Object.freeze([
         roomKey: 'combatFlowShrine',
         choiceKey: 'breathingLesson',
         expectedProfileKey: 'breather',
-        expectedPreview: '下间缓冲 · 双低压',
+        expectedPreview: '下间缓冲',
         expectedEntry: '缓冲战 · 双拍缓冲 · 回息稳场',
         expectedClear: '缓冲战 · 稳住出清 · 回息稳场',
         expectedSourceCue: '回息稳场',
@@ -1858,7 +1957,7 @@ const ACTION_ROUTE_ENCOUNTER_CASES = Object.freeze([
         roomKey: 'combatFlowShrine',
         choiceKey: 'momentumLesson',
         expectedProfileKey: 'pressure',
-        expectedPreview: '下间高压 · 三敌齐压',
+        expectedPreview: '下间高压',
         expectedEntry: '高压战 · 三向成压 · 借势重击',
         expectedClear: '高压战 · 顶住成压 · 借势重击',
         expectedSourceCue: '借势重击',
@@ -1868,7 +1967,7 @@ const ACTION_ROUTE_ENCOUNTER_CASES = Object.freeze([
         roomKey: 'comboLinkShrine',
         choiceKey: 'sharpeningLesson',
         expectedProfileKey: 'pressure',
-        expectedPreview: '下间高压 · 三敌齐压',
+        expectedPreview: '下间高压',
         expectedEntry: '高压战 · 三向成压 · 催锋连段',
         expectedClear: '高压战 · 顶住成压 · 催锋连段',
         expectedSourceCue: '催锋连段',
@@ -1878,7 +1977,7 @@ const ACTION_ROUTE_ENCOUNTER_CASES = Object.freeze([
         roomKey: 'comboLinkShrine',
         choiceKey: 'reversalStepLesson',
         expectedProfileKey: 'breather',
-        expectedPreview: '下间缓冲 · 双低压',
+        expectedPreview: '下间缓冲',
         expectedEntry: '缓冲战 · 双拍缓冲 · 回身整拍',
         expectedClear: '缓冲战 · 稳住出清 · 回身整拍',
         expectedSourceCue: '回身整拍',
@@ -1888,7 +1987,7 @@ const ACTION_ROUTE_ENCOUNTER_CASES = Object.freeze([
         roomKey: 'counterattackShrine',
         choiceKey: 'pursuitLesson',
         expectedProfileKey: 'windfall',
-        expectedPreview: '下间淘金 · 双赏金',
+        expectedPreview: '下间淘金',
         expectedEntry: '淘金战 · 后排赏金 · 追猎追赏',
         expectedClear: '淘金战 · 赏金到手 · 追猎追赏',
         expectedSourceCue: '追猎追赏',
@@ -1898,7 +1997,7 @@ const ACTION_ROUTE_ENCOUNTER_CASES = Object.freeze([
         roomKey: 'counterattackShrine',
         choiceKey: 'focusLesson',
         expectedProfileKey: 'breather',
-        expectedPreview: '下间缓冲 · 双低压',
+        expectedPreview: '下间缓冲',
         expectedEntry: '缓冲战 · 双拍缓冲 · 调息回线',
         expectedClear: '缓冲战 · 稳住出清 · 调息回线',
         expectedSourceCue: '调息回线',
@@ -2069,7 +2168,6 @@ const RESOURCE_ROUTE_ENCOUNTER_CASES = Object.freeze([
 function testRunEventEncounterProfileHelpers() {
     assert.equal(typeof getRunEventRoomChoiceEncounterProfile, 'function', 'event room encounter profile helper should be exported');
     assert.equal(typeof buildRunEventEncounterRoster, 'function', 'event room encounter roster helper should be exported');
-    assert.equal(typeof formatRunEventEncounterObjectivePreview, 'function', 'event room encounter objective-preview helper should be exported');
     assert.equal(typeof formatRunEventRoomChoiceEncounterPreview, 'function', 'event room encounter preview helper should be exported');
     assert.equal(typeof getRunEventEncounterProfile, 'function', 'resolved event room encounter helper should be exported');
     assert.equal(typeof buildRunEventEncounterEntryPreview, 'function', 'event room encounter entry preview helper should be exported');
@@ -2077,45 +2175,42 @@ function testRunEventEncounterProfileHelpers() {
     const healingChoice = getRunEventRoomChoices('healingFountain').find(choice => choice.key === 'purifyingSip');
     const healingProfile = getRunEventRoomChoiceEncounterProfile(healingChoice);
     assert.equal(healingProfile.key, 'breather', 'healing/cleanse routes should bias the next room toward a breather profile');
-    assert.equal(formatRunEventEncounterObjectivePreview(healingProfile), '下间缓冲 · 双低压', 'breather profiles should expose a compact low-pressure objective preview');
-    assert.equal(formatRunEventRoomChoiceEncounterPreview(healingChoice), '下间缓冲 · 双低压', 'healing/cleanse routes should preview the breather encounter objective');
+    assert.equal(formatRunEventRoomChoiceEncounterPreview(healingChoice), '下间缓冲', 'healing/cleanse routes should preview the breather encounter');
 
     const prayerChoice = getRunEventRoomChoices('prayerShrine').find(choice => choice.key === 'tempoPrayer');
     const prayerProfile = getRunEventRoomChoiceEncounterProfile(prayerChoice);
     assert.equal(prayerProfile.key, 'pressure', 'tempo/burst routes should bias the next room toward a pressure profile');
-    assert.equal(formatRunEventEncounterObjectivePreview(prayerProfile), '下间高压 · 三敌齐压', 'pressure profiles should expose a compact three-front objective preview');
-    assert.equal(formatRunEventRoomChoiceEncounterPreview(prayerChoice), '下间高压 · 三敌齐压', 'tempo/burst routes should preview the pressure encounter objective');
+    assert.equal(formatRunEventRoomChoiceEncounterPreview(prayerChoice), '下间高压', 'tempo/burst routes should preview the pressure encounter');
 
     const desperationChoice = getRunEventRoomChoices('riskRewardShrine').find(choice => choice.key === 'desperationLesson');
     const desperationProfile = getRunEventRoomChoiceEncounterProfile(desperationChoice);
     assert.equal(desperationProfile.key, 'pressure', 'low-HP burst routes should now bias the next room toward a pressure profile');
-    assert.equal(formatRunEventRoomChoiceEncounterPreview(desperationChoice), '下间高压 · 三敌齐压', 'low-HP burst routes should preview the pressure encounter objective once they participate in routing');
+    assert.equal(formatRunEventRoomChoiceEncounterPreview(desperationChoice), '下间高压', 'low-HP burst routes should preview the pressure encounter once they participate in routing');
 
     const composureChoice = getRunEventRoomChoices('riskRewardShrine').find(choice => choice.key === 'composureLesson');
     const composureProfile = getRunEventRoomChoiceEncounterProfile(composureChoice);
     assert.equal(composureProfile.key, 'breather', 'high-HP guard routes should now bias the next room toward a breather profile');
-    assert.equal(formatRunEventRoomChoiceEncounterPreview(composureChoice), '下间缓冲 · 双低压', 'high-HP guard routes should preview the breather encounter objective once they participate in routing');
+    assert.equal(formatRunEventRoomChoiceEncounterPreview(composureChoice), '下间缓冲', 'high-HP guard routes should preview the breather encounter once they participate in routing');
 
     const vanguardChoice = getRunEventRoomChoices('weaponRoutingShrine').find(choice => choice.key === 'vanguardLesson');
     const vanguardProfile = getRunEventRoomChoiceEncounterProfile(vanguardChoice);
     assert.equal(vanguardProfile.key, 'pressure', 'melee weapon-routing routes should bias the next room toward a pressure profile');
-    assert.equal(formatRunEventRoomChoiceEncounterPreview(vanguardChoice), '下间高压 · 三敌齐压', 'melee weapon-routing routes should preview the pressure encounter objective');
+    assert.equal(formatRunEventRoomChoiceEncounterPreview(vanguardChoice), '下间高压', 'melee weapon-routing routes should preview the pressure encounter');
 
     const longshotChoice = getRunEventRoomChoices('weaponRoutingShrine').find(choice => choice.key === 'longshotLesson');
     const longshotProfile = getRunEventRoomChoiceEncounterProfile(longshotChoice);
     assert.equal(longshotProfile.key, 'windfall', 'ranged weapon-routing routes should bias the next room toward a windfall profile');
-    assert.equal(formatRunEventEncounterObjectivePreview(longshotProfile), '下间淘金 · 双赏金', 'windfall profiles should expose a compact double-bounty objective preview');
-    assert.equal(formatRunEventRoomChoiceEncounterPreview(longshotChoice), '下间淘金 · 双赏金', 'ranged weapon-routing routes should preview the windfall encounter objective');
+    assert.equal(formatRunEventRoomChoiceEncounterPreview(longshotChoice), '下间淘金', 'ranged weapon-routing routes should preview the windfall encounter');
 
     const emberChoice = getRunEventRoomChoices('statusRoutingShrine').find(choice => choice.key === 'emberLesson');
     const emberProfile = getRunEventRoomChoiceEncounterProfile(emberChoice);
     assert.equal(emberProfile.key, 'breather', 'burn status routes should bias the next room toward a breather profile');
-    assert.equal(formatRunEventRoomChoiceEncounterPreview(emberChoice), '下间缓冲 · 双低压', 'burn status routes should preview the breather encounter objective');
+    assert.equal(formatRunEventRoomChoiceEncounterPreview(emberChoice), '下间缓冲', 'burn status routes should preview the breather encounter');
 
     const bloodtraceChoice = getRunEventRoomChoices('statusRoutingShrine').find(choice => choice.key === 'bloodtraceLesson');
     const bloodtraceProfile = getRunEventRoomChoiceEncounterProfile(bloodtraceChoice);
     assert.equal(bloodtraceProfile.key, 'pressure', 'bleed status routes should bias the next room toward a pressure profile');
-    assert.equal(formatRunEventRoomChoiceEncounterPreview(bloodtraceChoice), '下间高压 · 三敌齐压', 'bleed status routes should preview the pressure encounter objective');
+    assert.equal(formatRunEventRoomChoiceEncounterPreview(bloodtraceChoice), '下间高压', 'bleed status routes should preview the pressure encounter');
 
     ACTION_ROUTE_ENCOUNTER_CASES.forEach(({ roomKey, choiceKey, expectedProfileKey, expectedPreview }) => {
         const choice = getRunEventRoomChoices(roomKey).find(item => item.key === choiceKey);
@@ -2136,7 +2231,7 @@ function testRunEventEncounterProfileHelpers() {
     const gambleProfile = getRunEventRoomChoiceEncounterProfile(gambleChoice);
     assert.equal(gambleProfile.key, 'windfall', 'economy routes should bias the next room toward a windfall profile');
     assert.equal(gambleProfile.enemyGoldMultiplier, 1.5, 'windfall routes should scale the next room gold drops');
-    assert.equal(formatRunEventRoomChoiceEncounterPreview(gambleChoice), '下间淘金 · 双赏金', 'economy routes should preview the windfall encounter objective');
+    assert.equal(formatRunEventRoomChoiceEncounterPreview(gambleChoice), '下间淘金', 'economy routes should preview the windfall encounter');
 
     const resolvedProfile = getRunEventEncounterProfile({
         key: 'prayerShrine',
@@ -2166,6 +2261,34 @@ function testRunEventEncounterProfileHelpers() {
         ),
         '缓冲战 · 双拍缓冲 · 净化后稳场',
         'breather entry previews should append a short recommendation echo when a cleanse route recommendation still explains the routed encounter'
+    );
+    assert.equal(
+        buildRunEventEncounterEntryPreview(
+            { key: 'pressure', encounterLabel: '高压战' },
+            {
+                key: 'prayerShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'tempoPrayer',
+                selectedChoiceRecommendationReason: '当前局已偏节奏'
+            }
+        ),
+        '高压战 · 三向成压 · 顺势抢压',
+        'tempo prayer should upgrade its routed entry cue when tempo bias is the high-confidence reason behind the pressure route'
+    );
+    assert.equal(
+        buildRunEventEncounterEntryPreview(
+            { key: 'breather', encounterLabel: '缓冲战' },
+            {
+                key: 'supplyCache',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'fieldTonic',
+                selectedChoiceRecommendationReason: '当前可负担'
+            }
+        ),
+        '缓冲战 · 双拍缓冲 · 趁价备净',
+        'field tonic should upgrade its routed entry cue when current affordability is what justified buying the support item now'
     );
     assert.equal(
         buildRunEventEncounterEntryPreview(
@@ -2398,49 +2521,6 @@ function testRunEventEncounterProfileHelpers() {
     );
 }
 
-function testRunEventEncounterStagingReceiptHelpers() {
-    assert.equal(typeof buildRunEventEncounterStagingReceipt, 'function', 'event room encounter staging receipt helper should be exported');
-
-    assert.equal(
-        buildRunEventEncounterStagingReceipt({ key: 'pressure', encounterLabel: '高压战' }),
-        '遭遇: 高压战 · 三向成压',
-        'staging receipts should restate the pressure contract before room 3 begins'
-    );
-    assert.equal(
-        buildRunEventEncounterStagingReceipt(
-            { key: 'breather', encounterLabel: '缓冲战' },
-            {
-                key: 'healingFountain',
-                discovered: true,
-                resolved: true,
-                selectedChoiceKey: 'purifyingSip',
-                selectedChoiceRecommendationReason: '可净化2层'
-            }
-        ),
-        '遭遇: 缓冲战 · 双拍缓冲 · 净化后稳场',
-        'staging receipts should carry the still-relevant recommendation echo when it still explains the routed encounter'
-    );
-    assert.equal(
-        buildRunEventEncounterStagingReceipt(
-            { key: 'windfall', encounterLabel: '淘金战' },
-            {
-                key: 'gamblersShrine',
-                discovered: true,
-                resolved: true,
-                selectedChoiceKey: 'carefulWager',
-                selectedChoiceRecommendationReason: '当前更宜稳押'
-            }
-        ),
-        '遭遇: 淘金战 · 后排赏金 · 留本追赏',
-        'staging receipts should reuse the shared routed-encounter vocabulary instead of inventing a separate settlement-only label'
-    );
-    assert.equal(
-        buildRunEventEncounterStagingReceipt({ key: 'unknown', encounterLabel: '未知战' }),
-        '',
-        'unknown encounter profiles should stay silent instead of inventing a staged receipt'
-    );
-}
-
 function testRunEventEncounterRosterHelpers() {
     const enemyPool = ['soldier', 'archer', 'brute'];
     const enemyDefs = {
@@ -2606,20 +2686,6 @@ function testRunEventEncounterClearRecapHelpers() {
     );
     assert.equal(
         buildRunEventEncounterClearRecap(
-            { key: 'windfall', encounterLabel: '淘金战' },
-            {
-                key: 'weaponRoutingShrine',
-                discovered: true,
-                resolved: true,
-                selectedChoiceKey: 'longshotLesson',
-                selectedChoiceRecommendationReason: '远程更宜追赏'
-            }
-        ),
-        '淘金战 · 赏金到手 · 远程追赏',
-        'windfall clear recaps should also accept the newer contextual longshot reason when it still explains the routed bounty room'
-    );
-    assert.equal(
-        buildRunEventEncounterClearRecap(
             { key: 'breather', encounterLabel: '缓冲战' },
             {
                 key: 'statusRoutingShrine',
@@ -2721,6 +2787,90 @@ function testRunEventEncounterClearRecapHelpers() {
         'careful wager should upgrade its clear recap when the safer-gamble recommendation reason still explains the routed bounty room'
     );
     assert.equal(
+        buildRunEventEncounterClearRecap(
+            { key: 'pressure', encounterLabel: '高压战' },
+            {
+                key: 'prayerShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'tempoPrayer',
+                selectedChoiceRecommendationReason: '当前局已偏节奏'
+            }
+        ),
+        '高压战 · 顶住成压 · 顺势抢压',
+        'tempo prayer should upgrade its routed clear recap when tempo bias still explains the pressure room'
+    );
+    assert.equal(
+        buildRunEventEncounterClearRecap(
+            { key: 'breather', encounterLabel: '缓冲战' },
+            {
+                key: 'supplyCache',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'fieldTonic',
+                selectedChoiceRecommendationReason: '当前可负担'
+            }
+        ),
+        '缓冲战 · 稳住出清 · 趁价备净',
+        'field tonic should upgrade its routed clear recap when affordability is the reason that made the stabilize-first route sensible'
+    );
+    assert.equal(
+        buildRunEventEncounterClearRecap(
+            { key: 'pressure', encounterLabel: '高压战' },
+            {
+                key: 'weaponRoutingShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'vanguardLesson',
+                selectedChoiceRecommendationReason: '近战更宜压线'
+            }
+        ),
+        '高压战 · 顶住成压 · 贴身压阵',
+        'pressure clear recaps should also accept the newer contextual vanguard reason when it still explains the routed room'
+    );
+    assert.equal(
+        buildRunEventEncounterClearRecap(
+            { key: 'windfall', encounterLabel: '淘金战' },
+            {
+                key: 'weaponRoutingShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'longshotLesson',
+                selectedChoiceRecommendationReason: '远程更宜追赏'
+            }
+        ),
+        '淘金战 · 赏金到手 · 远程追赏',
+        'windfall clear recaps should also accept the newer contextual longshot reason when it still explains the routed room'
+    );
+    assert.equal(
+        buildRunEventEncounterClearRecap(
+            { key: 'breather', encounterLabel: '缓冲战' },
+            {
+                key: 'statusRoutingShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'emberLesson',
+                selectedChoiceRecommendationReason: '灼烧更宜稳场'
+            }
+        ),
+        '缓冲战 · 稳住出清 · 灼烧稳场',
+        'breather clear recaps should also accept the newer contextual ember reason when it still explains the routed room'
+    );
+    assert.equal(
+        buildRunEventEncounterClearRecap(
+            { key: 'pressure', encounterLabel: '高压战' },
+            {
+                key: 'statusRoutingShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'bloodtraceLesson',
+                selectedChoiceRecommendationReason: '挂血更宜抢势'
+            }
+        ),
+        '高压战 · 顶住成压 · 挂血抢势',
+        'pressure clear recaps should also accept the newer contextual bloodtrace reason when it still explains the routed room'
+    );
+    assert.equal(
         buildRunEventEncounterClearRecap({ key: 'unknown', encounterLabel: '未知战' }),
         '',
         'unknown encounter profiles should stay silent instead of inventing a clear recap'
@@ -2732,33 +2882,93 @@ function testRunEventEncounterClearRecapHelpers() {
     );
 }
 
+function testRunEventEncounterBossDoorRecapHelpers() {
+    assert.equal(typeof buildRunEventEncounterBossDoorRecap, 'function', 'event room Boss-door recap helper should be exported');
+
+    assert.equal(
+        buildRunEventEncounterBossDoorRecap({ key: 'breather', encounterLabel: '缓冲战' }),
+        '缓冲路线 · 稳线迎战',
+        'breather routes should preserve a stability-first run-arc recap at the Boss door'
+    );
+    assert.equal(
+        buildRunEventEncounterBossDoorRecap({ key: 'pressure', encounterLabel: '高压战' }),
+        '高压路线 · 顶压迎战',
+        'pressure routes should preserve a pressure-first run-arc recap at the Boss door'
+    );
+    assert.equal(
+        buildRunEventEncounterBossDoorRecap({ key: 'windfall', encounterLabel: '淘金战' }),
+        '淘金路线 · 带赏迎战',
+        'windfall routes should preserve a bounty-first run-arc recap at the Boss door'
+    );
+    assert.equal(
+        buildRunEventEncounterBossDoorRecap({ key: 'unknown', encounterLabel: '未知战' }),
+        '',
+        'unknown encounter profiles should stay silent instead of inventing a Boss-door run-arc recap'
+    );
+    assert.equal(
+        buildRunEventEncounterBossDoorRecap(null),
+        '',
+        'missing encounter profiles should keep the Boss-door run-arc recap helper silent'
+    );
+}
+
+function testRunEventEncounterBossOpeningEchoHelpers() {
+    assert.equal(typeof buildRunEventEncounterBossOpeningEcho, 'function', 'event room Boss-opening echo helper should be exported');
+
+    assert.equal(
+        buildRunEventEncounterBossOpeningEcho({ key: 'breather', encounterLabel: '缓冲战' }),
+        '缓冲路线 · 稳线开局',
+        'breather routes should carry a stability-first echo into the first boss-opening beat'
+    );
+    assert.equal(
+        buildRunEventEncounterBossOpeningEcho({ key: 'pressure', encounterLabel: '高压战' }),
+        '高压路线 · 抢势开局',
+        'pressure routes should carry a pressure-first echo into the first boss-opening beat'
+    );
+    assert.equal(
+        buildRunEventEncounterBossOpeningEcho({ key: 'windfall', encounterLabel: '淘金战' }),
+        '淘金路线 · 带赏开局',
+        'windfall routes should carry a bounty-first echo into the first boss-opening beat'
+    );
+    assert.equal(
+        buildRunEventEncounterBossOpeningEcho({ key: 'unknown', encounterLabel: '未知战' }),
+        '',
+        'unknown encounter profiles should stay silent instead of inventing a Boss-opening echo'
+    );
+    assert.equal(
+        buildRunEventEncounterBossOpeningEcho(null),
+        '',
+        'missing encounter profiles should keep the Boss-opening echo helper silent'
+    );
+}
+
 function testRunEventEncounterBossVictoryRecapHelpers() {
-    assert.equal(typeof buildRunEventEncounterBossVictoryRecap, 'function', 'event room encounter boss-victory recap helper should be exported');
+    assert.equal(typeof buildRunEventEncounterBossVictoryRecap, 'function', 'event room Boss-victory recap helper should be exported');
 
     assert.equal(
         buildRunEventEncounterBossVictoryRecap({ key: 'breather', encounterLabel: '缓冲战' }),
-        '缓冲路线 · 稳线收束',
-        'breather routes should preserve a stability-first run-arc recap at boss victory'
+        '缓冲路线 · 稳线收官',
+        'breather routes should close the routed segment with a stability-first Boss-victory recap'
     );
     assert.equal(
         buildRunEventEncounterBossVictoryRecap({ key: 'pressure', encounterLabel: '高压战' }),
-        '高压路线 · 顶压收束',
-        'pressure routes should preserve a pressure-first run-arc recap at boss victory'
+        '高压路线 · 顶压收官',
+        'pressure routes should close the routed segment with a pressure-first Boss-victory recap'
     );
     assert.equal(
         buildRunEventEncounterBossVictoryRecap({ key: 'windfall', encounterLabel: '淘金战' }),
-        '淘金路线 · 带赏收束',
-        'windfall routes should preserve a bounty-first run-arc recap at boss victory'
+        '淘金路线 · 带赏收官',
+        'windfall routes should close the routed segment with a bounty-first Boss-victory recap'
     );
     assert.equal(
         buildRunEventEncounterBossVictoryRecap({ key: 'unknown', encounterLabel: '未知战' }),
         '',
-        'unknown encounter profiles should stay silent instead of inventing a boss-victory run-arc recap'
+        'unknown encounter profiles should stay silent instead of inventing a Boss-victory recap'
     );
     assert.equal(
         buildRunEventEncounterBossVictoryRecap(null),
         '',
-        'missing encounter profiles should keep the boss-victory recap helper silent'
+        'missing encounter profiles should keep the Boss-victory recap helper silent'
     );
 }
 
@@ -2823,7 +3033,7 @@ function testRunEventEncounterSourceCueHelpers() {
             'engage'
         ),
         '贴身压阵',
-        'pressure source cues should also accept the newer contextual vanguard reason on the first pressure-contact beat'
+        'pressure source cues should also accept the newer contextual vanguard reason when it still explains the routed room'
     );
     assert.equal(
         buildRunEventEncounterSourceCue(
@@ -2842,6 +3052,21 @@ function testRunEventEncounterSourceCueHelpers() {
     );
     assert.equal(
         buildRunEventEncounterSourceCue(
+            { key: 'windfall', encounterLabel: '淘金战' },
+            {
+                key: 'weaponRoutingShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'longshotLesson',
+                selectedChoiceRecommendationReason: '远程更宜追赏'
+            },
+            'bounty'
+        ),
+        '远程追赏',
+        'windfall source cues should also accept the newer contextual longshot reason when it still explains the routed room'
+    );
+    assert.equal(
+        buildRunEventEncounterSourceCue(
             { key: 'breather', encounterLabel: '缓冲战' },
             {
                 key: 'statusRoutingShrine',
@@ -2857,6 +3082,21 @@ function testRunEventEncounterSourceCueHelpers() {
     );
     assert.equal(
         buildRunEventEncounterSourceCue(
+            { key: 'breather', encounterLabel: '缓冲战' },
+            {
+                key: 'statusRoutingShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'emberLesson',
+                selectedChoiceRecommendationReason: '灼烧更宜稳场'
+            },
+            'stabilize'
+        ),
+        '灼烧稳场',
+        'breather source cues should also accept the newer contextual ember reason when it still explains the routed room'
+    );
+    assert.equal(
+        buildRunEventEncounterSourceCue(
             { key: 'pressure', encounterLabel: '高压战' },
             {
                 key: 'statusRoutingShrine',
@@ -2869,6 +3109,21 @@ function testRunEventEncounterSourceCueHelpers() {
         ),
         '挂血抢势',
         'pressure source cues should fire on the first pressure-contact beat when a bleed route recommendation still explains the routed room'
+    );
+    assert.equal(
+        buildRunEventEncounterSourceCue(
+            { key: 'pressure', encounterLabel: '高压战' },
+            {
+                key: 'statusRoutingShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'bloodtraceLesson',
+                selectedChoiceRecommendationReason: '挂血更宜抢势'
+            },
+            'engage'
+        ),
+        '挂血抢势',
+        'pressure source cues should also accept the newer contextual bloodtrace reason when it still explains the routed room'
     );
     assert.equal(
         buildRunEventEncounterSourceCue(
@@ -2960,6 +3215,36 @@ function testRunEventEncounterSourceCueHelpers() {
     );
     assert.equal(
         buildRunEventEncounterSourceCue(
+            { key: 'pressure', encounterLabel: '高压战' },
+            {
+                key: 'prayerShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'tempoPrayer',
+                selectedChoiceRecommendationReason: '当前局已偏节奏'
+            },
+            'engage'
+        ),
+        '顺势抢压',
+        'tempo prayer should upgrade its pressure-contact source cue when tempo bias is the reason that made the routed room fit'
+    );
+    assert.equal(
+        buildRunEventEncounterSourceCue(
+            { key: 'breather', encounterLabel: '缓冲战' },
+            {
+                key: 'supplyCache',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'fieldTonic',
+                selectedChoiceRecommendationReason: '当前可负担'
+            },
+            'stabilize'
+        ),
+        '趁价备净',
+        'field tonic should upgrade its stabilize-beat source cue when the item was recommended because it was affordable right now'
+    );
+    assert.equal(
+        buildRunEventEncounterSourceCue(
             { key: 'breather', encounterLabel: '缓冲战' },
             {
                 key: 'healingFountain',
@@ -3016,112 +3301,6 @@ function testRunEventRoomChoiceRecommendation() {
         }),
         '建议 1：绝境修习 · 已处绝境线',
         'recommendation helper should elevate the low-HP route when the player is already under its damage threshold'
-    );
-
-    const weaponRoutingChoices = getRunEventRoomChoices('weaponRoutingShrine');
-    assert.equal(
-        buildRunEventRoomChoiceRecommendation(weaponRoutingChoices, {
-            playerHp: 98,
-            playerMaxHp: 120,
-            selectedWeaponKey: 'sword',
-            attackCooldownMs: 1250,
-            specialCooldownMs: 220,
-            dodgeCooldownMs: 260,
-            stamina: 24,
-            staminaRegenPerSecond: 12,
-            attackStaminaCost: 8,
-            specialStaminaCost: 18,
-            dodgeStaminaCost: 10
-        }),
-        '建议 1：压阵修习 · 近战更宜压线',
-        'recommendation helper should elevate vanguard only when a melee loadout also clearly wants a pressure-oriented cadence fix'
-    );
-    assert.equal(
-        buildRunEventRoomChoiceRecommendation(weaponRoutingChoices, {
-            playerHp: 102,
-            playerMaxHp: 120,
-            selectedWeaponKey: 'staff',
-            attackCooldownMs: 180,
-            specialCooldownMs: 1450,
-            dodgeCooldownMs: 180,
-            stamina: 26,
-            staminaRegenPerSecond: 12,
-            attackStaminaCost: 8,
-            specialStaminaCost: 18,
-            dodgeStaminaCost: 10
-        }),
-        '建议 2：离弦修习 · 远程更宜追赏',
-        'recommendation helper should elevate longshot only when a ranged loadout also clearly wants the bounty-chase special payoff'
-    );
-    assert.equal(
-        buildRunEventRoomChoiceRecommendation(weaponRoutingChoices, {
-            playerHp: 102,
-            playerMaxHp: 120,
-            selectedWeaponKey: 'sword',
-            attackCooldownMs: 180,
-            specialCooldownMs: 220,
-            dodgeCooldownMs: 160,
-            stamina: 26,
-            staminaRegenPerSecond: 12,
-            attackStaminaCost: 8,
-            specialStaminaCost: 18,
-            dodgeStaminaCost: 10
-        }),
-        '',
-        'weapon-routing recommendations should stay silent when the loadout fits but the live state does not create a clear tactical edge'
-    );
-
-    const statusRoutingChoices = getRunEventRoomChoices('statusRoutingShrine');
-    assert.equal(
-        buildRunEventRoomChoiceRecommendation(statusRoutingChoices, {
-            playerHp: 68,
-            playerMaxHp: 120,
-            selectedWeaponKey: 'staff',
-            attackCooldownMs: 260,
-            specialCooldownMs: 420,
-            dodgeCooldownMs: 980,
-            stamina: 18,
-            staminaRegenPerSecond: 11,
-            attackStaminaCost: 10,
-            specialStaminaCost: 20,
-            dodgeStaminaCost: 14
-        }),
-        '建议 1：余烬修习 · 灼烧更宜稳场',
-        'recommendation helper should elevate ember only when a burn-capable loadout also clearly wants a stabilize-first routed room'
-    );
-    assert.equal(
-        buildRunEventRoomChoiceRecommendation(statusRoutingChoices, {
-            playerHp: 108,
-            playerMaxHp: 120,
-            selectedWeaponKey: 'sword',
-            attackCooldownMs: 180,
-            specialCooldownMs: 260,
-            dodgeCooldownMs: 200,
-            stamina: 28,
-            staminaRegenPerSecond: 12,
-            attackStaminaCost: 8,
-            specialStaminaCost: 18,
-            dodgeStaminaCost: 10
-        }),
-        '建议 2：血痕修习 · 挂血更宜抢势',
-        'recommendation helper should elevate bloodtrace only when a bleed-capable loadout also supports immediate pressure'
-    );
-    assert.equal(
-        buildRunEventRoomChoiceRecommendation(statusRoutingChoices, {
-            playerHp: 106,
-            playerMaxHp: 120,
-            selectedWeaponKey: 'staff',
-            attackCooldownMs: 180,
-            specialCooldownMs: 220,
-            dodgeCooldownMs: 160,
-            stamina: 28,
-            staminaRegenPerSecond: 12,
-            attackStaminaCost: 8,
-            specialStaminaCost: 18,
-            dodgeStaminaCost: 10
-        }),
-        '',
-        'status-routing recommendations should stay silent when the weapon can trigger the route but the live state does not justify a clear stabilize or pressure read'
     );
 
     const combatDisciplineChoices = getRunEventRoomChoices('combatDisciplineShrine');
@@ -3301,15 +3480,114 @@ function testRunEventRoomChoiceRecommendation() {
         buildRunEventRoomChoiceRecommendation(prayerChoices, {
             playerHp: 100,
             playerMaxHp: 120,
+            runModifiers: [{ key: 'arcaneTempo', effects: { playerSpecialCooldownMultiplier: 0.82 } }]
+        }),
+        '建议 2：迅击祷言 · 当前局已偏节奏',
+        'recommendation helper should elevate tempo prayer when the current run is already strongly biased toward tempo payoffs'
+    );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(prayerChoices, {
+            playerHp: 100,
+            playerMaxHp: 120,
             selectedWeaponKey: 'sword'
         }),
         '',
         'recommendation helper should stay silent when neither visible option has a clear contextual edge'
     );
+
+    const weaponRoutingChoices = getRunEventRoomChoices('weaponRoutingShrine');
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(weaponRoutingChoices, {
+            playerHp: 98,
+            playerMaxHp: 120,
+            selectedWeaponKey: 'sword',
+            attackCooldownMs: 1250,
+            specialCooldownMs: 220,
+            dodgeCooldownMs: 260,
+            stamina: 24,
+            staminaRegenPerSecond: 12,
+            attackStaminaCost: 8,
+            specialStaminaCost: 18,
+            dodgeStaminaCost: 10
+        }),
+        '建议 1：压阵修习 · 近战更宜压线',
+        'recommendation helper should elevate vanguard when melee loadout and live combat state both point toward a pressure-first route'
+    );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(weaponRoutingChoices, {
+            playerHp: 100,
+            playerMaxHp: 120,
+            selectedWeaponKey: 'staff',
+            attackCooldownMs: 180,
+            specialCooldownMs: 1450,
+            dodgeCooldownMs: 180,
+            stamina: 26,
+            staminaRegenPerSecond: 12,
+            attackStaminaCost: 8,
+            specialStaminaCost: 18,
+            dodgeStaminaCost: 10
+        }),
+        '建议 2：离弦修习 · 远程更宜追赏',
+        'recommendation helper should elevate longshot when ranged loadout and live combat state both point toward a bounty-chase route'
+    );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(weaponRoutingChoices, {
+            playerHp: 100,
+            playerMaxHp: 120,
+            selectedWeaponKey: 'sword',
+            attackCooldownMs: 180,
+            specialCooldownMs: 220,
+            dodgeCooldownMs: 220,
+            stamina: 24,
+            staminaRegenPerSecond: 12,
+            attackStaminaCost: 8,
+            specialStaminaCost: 18,
+            dodgeStaminaCost: 10
+        }),
+        '',
+        'recommendation helper should stay silent for build routes when the loadout fits but the live combat state does not create a strong reason-now signal'
+    );
+
+    const statusRoutingChoices = getRunEventRoomChoices('statusRoutingShrine');
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(statusRoutingChoices, {
+            playerHp: 68,
+            playerMaxHp: 120,
+            selectedWeaponKey: 'staff',
+            attackCooldownMs: 260,
+            specialCooldownMs: 420,
+            dodgeCooldownMs: 980,
+            stamina: 18,
+            staminaRegenPerSecond: 11,
+            attackStaminaCost: 10,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 14
+        }),
+        '建议 1：余烬修习 · 灼烧更宜稳场',
+        'recommendation helper should elevate ember when a burn-capable loadout currently wants a stabilize-first room'
+    );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(statusRoutingChoices, {
+            playerHp: 108,
+            playerMaxHp: 120,
+            selectedWeaponKey: 'sword',
+            attackCooldownMs: 180,
+            specialCooldownMs: 260,
+            dodgeCooldownMs: 200,
+            stamina: 28,
+            staminaRegenPerSecond: 12,
+            attackStaminaCost: 8,
+            specialStaminaCost: 18,
+            dodgeStaminaCost: 10
+        }),
+        '建议 2：血痕修习 · 挂血更宜抢势',
+        'recommendation helper should elevate bloodtrace when a bleed-capable loadout currently supports immediate pressure follow-up'
+    );
 }
 
 function testRunEventRoomChoicePanelPreview() {
     assert.equal(typeof buildRunEventRoomChoicePanelPreview, 'function', 'event room choice panel preview helper should be exported');
+    assert.equal(typeof formatRunEventRoomChoiceEncounterTiming, 'function', 'event room choice timing helper should be exported');
 
     const healingChoice = getRunEventRoomChoices('healingFountain').find(choice => choice.key === 'purifyingSip');
     assert.equal(
@@ -3435,6 +3713,21 @@ function testRunEventRoomChoicePanelPreview() {
         '净泉啜饮 [续航/净化]: 生命+30%, 净化 · 预估生命+6 · 无负面可净化',
         'panel preview should surface limited healing plus the lack of cleanse value when the player is already healthy and clean'
     );
+    assert.equal(
+        formatRunEventRoomChoiceEncounterTiming(tempoChoice),
+        '首拍兑现',
+        'choice timing helper should describe pressure routes as engage-first payoffs before selection'
+    );
+    assert.equal(
+        formatRunEventRoomChoiceEncounterTiming(healingChoice),
+        '稳场兑现',
+        'choice timing helper should describe breather routes as stabilize-first payoffs before selection'
+    );
+    assert.equal(
+        formatRunEventRoomChoiceEncounterTiming(hedgeChoice),
+        '追赏兑现',
+        'choice timing helper should describe windfall routes as bounty-first payoffs before selection'
+    );
 }
 
 function testRunEventRoomChoiceAffordabilityLabel() {
@@ -3463,6 +3756,7 @@ function testRunEventRoomChoiceAffordabilityLabel() {
 function testRunEventRoomHudSummary() {
     assert.equal(typeof buildRunEventRoomHudSummary, 'function', 'event room HUD summary helper should be exported');
     assert.equal(typeof buildRunEventRoomHudLines, 'function', 'event room HUD line builder should be exported');
+    assert.equal(typeof formatRunEventEncounterPayoffTimingLabel, 'function', 'event room resolved timing helper should be exported');
 
     const unknownTypePool = [
         {
@@ -3492,10 +3786,10 @@ function testRunEventRoomHudSummary() {
     assert.deepEqual(
         unresolvedSummary.routeLines,
         [
-            '战地净化包 [补给/净化]: 金币-45, 净化药剂x1',
-            '狂战补给 [补给/爆发]: 金币-60, 狂战油x1'
+            '战地净化包 [补给/净化]: 金币-45, 净化药剂x1 · 下间缓冲 · 稳场兑现',
+            '狂战补给 [补给/爆发]: 金币-60, 狂战油x1 · 下间高压 · 首拍兑现'
         ],
-        'HUD summary should split unresolved routes into one compact line per choice and expose tactical intent tags'
+        'HUD summary should split unresolved routes into one compact line per choice while exposing both routed encounter identity and payoff timing'
     );
 
     const resolvedSummary = buildRunEventRoomHudSummary({
@@ -3509,13 +3803,8 @@ function testRunEventRoomHudSummary() {
     assert.equal(resolvedSummary.metaLabel, '祝福 · 已触发', 'HUD summary should keep the compressed blessing metadata');
     assert.deepEqual(
         resolvedSummary.routeLines,
-        ['效果: 迅击祷言 · 下间高压 · 三敌齐压'],
-        'resolved blessing summary should keep the chosen-route prefix while surfacing the routed encounter objective preview'
-    );
-    assert.equal(
-        resolvedSummary.stagingReceipt,
-        '遭遇: 高压战 · 三向成压 · 迅击抢拍',
-        'resolved blessing summary should expose the staged encounter receipt separately from the compact route line'
+        ['效果: 迅击祷言 · 下间高压 · 首拍兑现'],
+        'resolved blessing summary should keep the chosen-route prefix while surfacing the next-room pacing profile and its payoff timing'
     );
     assert.equal(
         resolvedSummary.resolutionText,
@@ -3537,13 +3826,8 @@ function testRunEventRoomHudSummary() {
     );
     assert.deepEqual(
         resolvedRiskBuffSummary.routeLines,
-        ['效果: 猩红锋契 · 下间高压 · 三敌齐压'],
-        'resolved risk-buff summary should keep the shared effect prefix while surfacing the routed encounter objective preview'
-    );
-    assert.equal(
-        resolvedRiskBuffSummary.stagingReceipt,
-        '遭遇: 高压战 · 三向成压',
-        'resolved risk-buff summary should surface the staged encounter receipt when the chosen route still maps to a known routed room'
+        ['效果: 猩红锋契 · 下间高压 · 首拍兑现'],
+        'resolved risk-buff summary should keep the shared effect prefix while surfacing the next-room pacing profile and its payoff timing'
     );
     const resolvedTradeSummary = buildRunEventRoomHudSummary({
         key: 'gamblersShrine',
@@ -3560,13 +3844,8 @@ function testRunEventRoomHudSummary() {
     );
     assert.deepEqual(
         resolvedTradeSummary.routeLines,
-        ['交易: 豪赌 · 下间淘金 · 双赏金'],
-        'resolved trade summary should keep the trade-specific chosen-route prefix while surfacing the routed encounter objective preview'
-    );
-    assert.equal(
-        resolvedTradeSummary.stagingReceipt,
-        '遭遇: 淘金战 · 后排赏金 · 豪赌追赏',
-        'resolved trade summary should expose the staged windfall receipt separately from the compact route line'
+        ['交易: 豪赌 · 下间淘金 · 追赏兑现'],
+        'resolved trade summary should keep the trade-specific chosen-route prefix while surfacing the next-room pacing profile and its payoff timing'
     );
 
     const resolvedSupplySummary = buildRunEventRoomHudSummary({
@@ -3594,13 +3873,8 @@ function testRunEventRoomHudSummary() {
     });
     assert.deepEqual(
         resolvedHealingSummary.routeLines,
-        ['治疗: 净泉啜饮 · 可净化2层 · 下间缓冲 · 双低压'],
-        'resolved healing summary should keep the healing-specific chosen-route prefix while carrying the persisted recommendation receipt ahead of the routed encounter objective preview'
-    );
-    assert.equal(
-        resolvedHealingSummary.stagingReceipt,
-        '遭遇: 缓冲战 · 双拍缓冲 · 净化后稳场',
-        'resolved healing summary should expose the staged encounter receipt when the recommendation echo still explains the routed breather room'
+        ['治疗: 净泉啜饮 · 可净化2层 · 下间缓冲 · 稳场兑现'],
+        'resolved healing summary should keep the healing-specific chosen-route prefix while carrying the persisted recommendation receipt ahead of the next-room pacing profile and payoff timing'
     );
     assert.equal(
         resolvedHealingSummary.resolutionText,
@@ -3618,13 +3892,8 @@ function testRunEventRoomHudSummary() {
     });
     assert.deepEqual(
         resolvedHealingDoubleFallbackSummary.routeLines,
-        ['治疗: 未知选项 · 下间缓冲 · 双低压'],
-        'resolved healing summary should keep the healing prefix, unknown-option fallback, and routed encounter objective preview when the choice key is still known'
-    );
-    assert.equal(
-        resolvedHealingDoubleFallbackSummary.stagingReceipt,
-        '遭遇: 缓冲战 · 双拍缓冲',
-        'resolved healing summary should still stage the routed encounter when the choice key survives even if the stored label is missing'
+        ['治疗: 未知选项 · 下间缓冲 · 稳场兑现'],
+        'resolved healing summary should keep the healing prefix, unknown-option fallback, next-room pacing profile, and payoff timing when the choice key is still known'
     );
     assert.equal(
         resolvedHealingDoubleFallbackSummary.resolutionText,
@@ -3646,11 +3915,6 @@ function testRunEventRoomHudSummary() {
         'resolved blessing summary should keep the effect prefix even when the stored option label is missing'
     );
     assert.equal(
-        resolvedBlessingMissingLabelSummary.stagingReceipt,
-        '',
-        'resolved blessing summary should stay silent when the persisted choice no longer resolves to a routed encounter contract'
-    );
-    assert.equal(
         resolvedBlessingMissingLabelSummary.resolutionText,
         '特攻冷却-22%',
         'resolved blessing summary should still compact the stored settlement text when the chosen label is missing'
@@ -3666,13 +3930,8 @@ function testRunEventRoomHudSummary() {
     });
     assert.deepEqual(
         resolvedTradeMissingSettlementSummary.routeLines,
-        ['交易: 豪赌 · 下间淘金 · 双赏金'],
-        'resolved trade summary should keep the trade prefix and routed encounter objective preview when settlement text is missing'
-    );
-    assert.equal(
-        resolvedTradeMissingSettlementSummary.stagingReceipt,
-        '遭遇: 淘金战 · 后排赏金 · 豪赌追赏',
-        'resolved trade summary should keep the staged encounter receipt even when settlement text is missing'
+        ['交易: 豪赌 · 下间淘金 · 追赏兑现'],
+        'resolved trade summary should keep the trade prefix, next-room pacing profile, and payoff timing when settlement text is missing'
     );
     assert.equal(
         resolvedTradeMissingSettlementSummary.resolutionText,
@@ -3693,11 +3952,6 @@ function testRunEventRoomHudSummary() {
         resolvedUnknownSummary.routeLines,
         ['已选: 封印索引 · 旧档理由'],
         'resolved unknown-type summary should fall back to the persisted chosen label and carry the compact recommendation receipt with the generic 已选 prefix'
-    );
-    assert.equal(
-        resolvedUnknownSummary.stagingReceipt,
-        '',
-        'resolved unknown-type summary should not invent a staged encounter receipt'
     );
     assert.equal(
         resolvedUnknownSummary.resolutionText,
@@ -3761,6 +4015,28 @@ function testRunEventRoomHudSummary() {
         '结算待同步',
         'resolved unknown-type summary should keep a stable settlement placeholder when both stored fragments are missing'
     );
+    assert.equal(
+        formatRunEventEncounterPayoffTimingLabel(
+            getRunEventEncounterProfile({
+                key: 'prayerShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'tempoPrayer',
+                selectedChoiceLabel: '迅击祷言',
+                resolutionText: '特攻冷却 -22%'
+            }),
+            {
+                key: 'prayerShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'tempoPrayer',
+                selectedChoiceLabel: '迅击祷言',
+                resolutionText: '特攻冷却 -22%'
+            }
+        ),
+        '首拍兑现',
+        'resolved timing helper should describe pressure routes as engage-first payoffs after selection'
+    );
 }
 
 function testRunEventRoomHudLines() {
@@ -3793,10 +4069,10 @@ function testRunEventRoomHudLines() {
         [
             '事件房: 战备商柜',
             '交易 · 已发现',
-            '战地净化包 [补给/净化]: 金币-45, 净化药剂x1',
-            '狂战补给 [补给/爆发]: 金币-60, 狂战油x1'
+            '战地净化包 [补给/净化]: 金币-45, 净化药剂x1 · 下间缓冲 · 稳场兑现',
+            '狂战补给 [补给/爆发]: 金币-60, 狂战油x1 · 下间高压 · 首拍兑现'
         ],
-        'unresolved event rooms should keep one line per available route and surface tactical intent tags'
+        'unresolved event rooms should keep one line per available route while surfacing tactical intent, routed encounter identity, and payoff timing'
     );
 
     const resolvedLines = buildRunEventRoomHudLines({
@@ -3812,11 +4088,9 @@ function testRunEventRoomHudLines() {
         [
             '事件房: 祈愿圣坛',
             '祝福 · 已触发',
-            '效果: 迅击祷言 · 下间高压 · 三敌齐压',
-            '遭遇: 高压战 · 三向成压 · 迅击抢拍',
-            '结算: 特攻冷却-22%'
+            '效果: 迅击祷言 · 下间高压 · 首拍兑现 · 特攻冷却-22%'
         ],
-        'resolved blessing event rooms should split the compact route line, staged encounter receipt, and settlement into a more readable resolved stack'
+        'resolved blessing event rooms should merge the chosen route, next-room pacing profile, payoff timing, and compact settlement into one line'
     );
 
     const resolvedTradeLines = buildRunEventRoomHudLines({
@@ -3832,11 +4106,9 @@ function testRunEventRoomHudLines() {
         [
             '事件房: 赌徒圣坛',
             '交易 · 已触发',
-            '交易: 豪赌 · 下间淘金 · 双赏金',
-            '遭遇: 淘金战 · 后排赏金 · 豪赌追赏',
-            '结算: 生命-30, 金币+120'
+            '交易: 豪赌 · 下间淘金 · 追赏兑现 · 生命-30, 金币+120'
         ],
-        'resolved trade event rooms should keep the chosen route compact, then stage the routed encounter before the settlement delta'
+        'resolved trade event rooms should merge the chosen label, next-room pacing profile, payoff timing, and actual settlement delta'
     );
 
     const resolvedTradeMissingSettlementLines = buildRunEventRoomHudLines({
@@ -3852,11 +4124,9 @@ function testRunEventRoomHudLines() {
         [
             '事件房: 赌徒圣坛',
             '交易 · 已触发',
-            '交易: 豪赌 · 下间淘金 · 双赏金',
-            '遭遇: 淘金战 · 后排赏金 · 豪赌追赏',
-            '结算: 结算待同步'
+            '交易: 豪赌 · 下间淘金 · 追赏兑现 · 结算待同步'
         ],
-        'resolved trade event rooms should keep a stable staged fallback stack when settlement text is missing'
+        'resolved trade event rooms should keep a stable merged fallback line when settlement text is missing but payoff timing is known'
     );
 
     const resolvedHealingLines = buildRunEventRoomHudLines({
@@ -3873,11 +4143,9 @@ function testRunEventRoomHudLines() {
         [
             '事件房: 疗愈泉眼',
             '治疗 · 已触发',
-            '治疗: 净泉啜饮 · 可净化2层 · 下间缓冲 · 双低压',
-            '遭遇: 缓冲战 · 双拍缓冲 · 净化后稳场',
-            '结算: 生命+36, 净化'
+            '治疗: 净泉啜饮 · 可净化2层 · 下间缓冲 · 稳场兑现 · 生命+36, 净化'
         ],
-        'resolved healing event rooms should stage the routed breather receipt between the chosen route line and the compact settlement delta'
+        'resolved healing event rooms should merge the chosen label, persisted recommendation receipt, next-room pacing profile, payoff timing, and actual settlement delta'
     );
 
     const resolvedHealingDoubleFallbackLines = buildRunEventRoomHudLines({
@@ -3893,11 +4161,9 @@ function testRunEventRoomHudLines() {
         [
             '事件房: 疗愈泉眼',
             '治疗 · 已触发',
-            '治疗: 未知选项 · 下间缓冲 · 双低压',
-            '遭遇: 缓冲战 · 双拍缓冲',
-            '结算: 结算待同步'
+            '治疗: 未知选项 · 下间缓冲 · 稳场兑现 · 结算待同步'
         ],
-        'resolved healing event rooms should keep a stable staged fallback stack when the chosen route survives but stored text is missing'
+        'resolved healing event rooms should keep a stable merged fallback line when both stored fragments are missing but the chosen route and payoff timing remain known'
     );
 
     const resolvedUnknownLines = buildRunEventRoomHudLines({
@@ -4007,8 +4273,8 @@ function testRunEventRoomWorldLabel() {
     });
     assert.equal(
         resolvedBlessingLabel,
-        '祈愿圣坛 · 效果: 迅击祷言 · 当前持远程 · 下间高压 · 三敌齐压',
-        'resolved altar labels should append the compact chosen-route summary, persisted recommendation receipt, and routed encounter objective preview for known room types'
+        '祈愿圣坛 · 效果: 迅击祷言 · 当前持远程 · 首拍兑现',
+        'resolved altar labels should append the compact chosen-route summary, persisted recommendation receipt, and payoff timing for known room types'
     );
 
     const resolvedBlessingMissingLabel = buildRunEventRoomWorldLabel({
@@ -4173,8 +4439,8 @@ function testRunEventEncounterRoutingHooks() {
     );
     assert.match(
         source,
-        /_openRunEventChoicePanel\(\)\s*{[\s\S]*?const previewState = this\._buildRunEventChoicePreviewState\(\);[\s\S]*?const encounterPreview = formatRunEventRoomChoiceEncounterPreview\(choice\);[\s\S]*?textNode\.setText\(`\$\{index \+ 1\}\. \$\{previewText\}\$\{encounterPreview \? ` · \$\{encounterPreview\}` : ''\}\$\{affordabilityLabel \? ` · \$\{affordabilityLabel\}` : ''\}`\);/,
-        'run-event choice panel should pass the full route context and append the next-room encounter preview tag'
+        /_openRunEventChoicePanel\(\)\s*{[\s\S]*?const previewState = this\._buildRunEventChoicePreviewState\(\);[\s\S]*?const encounterPreview = formatRunEventRoomChoiceEncounterPreview\(choice\);[\s\S]*?const encounterTiming = formatRunEventRoomChoiceEncounterTiming\(choice,\s*RUN_EVENT_ROOM_POOL\);[\s\S]*?textNode\.setText\(`\$\{index \+ 1\}\. \$\{previewText\}\$\{encounterPreview \? ` · \$\{encounterPreview\}` : ''\}\$\{encounterTiming \? ` · \$\{encounterTiming\}` : ''\}\$\{affordabilityLabel \? ` · \$\{affordabilityLabel\}` : ''\}`\);/,
+        'run-event choice panel should pass the full route context and append both the next-room encounter preview tag and the shared payoff-timing label'
     );
     assert.match(
         source,
@@ -4190,16 +4456,6 @@ function testRunEventEncounterRoutingHooks() {
         source,
         /_showRunEventSettlementFeedback\(settlement,\s*startGold,\s*startHp,\s*encounterProfile\)\s*{[\s\S]*?const recommendationReason = typeof settlement\.eventRoom\.selectedChoiceRecommendationReason === 'string'[\s\S]*?selectedChoiceRecommendationReason\.trim\(\)[\s\S]*?if \(recommendationReason\) \{[\s\S]*?lines\.push\(\{\s*text:\s*recommendationReason,/,
         'settlement floating feedback should surface the persisted compact recommendation receipt when one was stored during event-room resolution'
-    );
-    assert.match(
-        source,
-        /_showRunEventSettlementFeedback\(settlement,\s*startGold,\s*startHp,\s*encounterProfile\)\s*{[\s\S]*?const encounterObjectivePreview = formatRunEventEncounterObjectivePreview\(encounterProfile\);[\s\S]*?if \(encounterObjectivePreview\) \{[\s\S]*?lines\.push\(\{\s*text:\s*encounterObjectivePreview,/,
-        'settlement floating feedback should surface the shared routed encounter objective preview before the richer staging receipt'
-    );
-    assert.match(
-        source,
-        /_showRunEventSettlementFeedback\(settlement,\s*startGold,\s*startHp,\s*encounterProfile\)\s*{[\s\S]*?const encounterStagingReceipt = buildRunEventEncounterStagingReceipt\(encounterProfile,\s*settlement\.eventRoom,\s*RUN_EVENT_ROOM_POOL\);[\s\S]*?if \(encounterStagingReceipt\) \{[\s\S]*?lines\.push\(\{\s*text:\s*encounterStagingReceipt,/,
-        'settlement floating feedback should consume the shared staging helper instead of only surfacing the thin next-room preview label'
     );
     assert.match(
         source,
@@ -4270,6 +4526,41 @@ function testRunEventEncounterRoutingHooks() {
         source,
         /this\._maybeShowRunEventEncounterClearRecap\(\);[\s\S]*?const room3AllDead = this\.room3Enemies\.every\(e => !e\.isAlive\);[\s\S]*?if \(room3AllDead\) this\.bossDoor\.setAlpha\(1\);/,
         'LevelScene update should trigger the shared clear recap before promoting the Boss door to the cleared state'
+    );
+    assert.match(
+        source,
+        /_refreshBossDoorLabel\(\)\s*{[\s\S]*?const room3AllDead = this\.room3Enemies\.every\(e => !e\.isAlive\);[\s\S]*?const profile = getRunEventEncounterProfile\(GameState\.runEventRoom,\s*RUN_EVENT_ROOM_POOL\);[\s\S]*?const bossDoorRecap = room3AllDead \? buildRunEventEncounterBossDoorRecap\(profile,\s*GameState\.runEventRoom,\s*RUN_EVENT_ROOM_POOL\) : ''[\s\S]*?this\.bossDoorLabel\.setText\(bossDoorRecap \? `\$\{this\._bossDoorBaseLabel\}\\n\$\{bossDoorRecap\}` : this\._bossDoorBaseLabel\);/,
+        'LevelScene should compose the Boss-door label from the shared run-arc recap only after room 3 is fully cleared'
+    );
+    assert.match(
+        source,
+        /this\._refreshBossDoorLabel\(\);[\s\S]*?if \(room3AllDead\) this\.bossDoor\.setAlpha\(1\);/,
+        'LevelScene update should refresh the Boss-door run-arc label before promoting the door into its cleared state'
+    );
+    assert.match(
+        source,
+        /this\.scene\.start\('BossScene',\s*\{\s*bossKey:\s*this\.bossKey,\s*runEventEncounterProfile:\s*getRunEventEncounterProfile\(GameState\.runEventRoom,\s*RUN_EVENT_ROOM_POOL\)\s*\}\);/,
+        'LevelScene should pass the routed encounter profile into BossScene when the cleared Boss door is entered'
+    );
+    assert.match(
+        source,
+        /this\._bossOpeningRouteEchoShown = false;[\s\S]*?this\._bossOpeningRouteEcho = buildRunEventEncounterBossOpeningEcho\(\s*data\.runEventEncounterProfile,\s*GameState\.runEventRoom,\s*RUN_EVENT_ROOM_POOL\s*\);/,
+        'BossScene should resolve the shared boss-opening route echo from the scene payload at create time'
+    );
+    assert.match(
+        source,
+        /this\._bossOpeningRouteEcho = buildRunEventEncounterBossOpeningEcho\([\s\S]*?\);\s*this\._bossVictoryRouteRecap = buildRunEventEncounterBossVictoryRecap\(\s*data\.runEventEncounterProfile,\s*GameState\.runEventRoom,\s*RUN_EVENT_ROOM_POOL\s*\);/,
+        'BossScene should also resolve the shared Boss-victory route recap from the same scene payload at create time'
+    );
+    assert.match(
+        source,
+        /if \(!this\._bossOpeningRouteEchoShown && this\._bossOpeningRouteEcho\) {[\s\S]*?this\._bossOpeningRouteEchoShown = true;[\s\S]*?showFloatingCombatText\(\s*this,\s*this\.player\.x,\s*this\.player\.y - 72,\s*this\._bossOpeningRouteEcho,/,
+        'BossScene should show the shared boss-opening route echo once near fight start and stay silent when no route echo exists'
+    );
+    assert.match(
+        source,
+        /const lines = \['Victory!'\];[\s\S]*?if \(this\._bossVictoryRouteRecap\) {\s*lines\.push\(this\._bossVictoryRouteRecap\);\s*}/,
+        'BossScene victory settlement should append the shared Boss-victory route recap to the existing reward lines when a routed segment exists'
     );
 }
 
@@ -4691,8 +4982,8 @@ function testBlacksmithUpgradeMessageHooks() {
     );
     assert.match(
         coreSource,
-        /function buildWeaponUpgradeSuccessMessage\(result,\s*itemCatalog,\s*weapons,\s*scalingOverride,\s*options\)\s*{[\s\S]*?buildWeaponUpgradeBenefitSummary\(\s*safeResult\.weaponKey,\s*safeResult\.level,\s*safeResult\.nextLevel,\s*safeWeapons,\s*safeScaling,[\s\S]*?labelPrefix:\s*'本次'[\s\S]*?const cumulativeBenefitSummary = toLevel > 2\s*\? buildWeaponUpgradeBenefitSummary\(\s*safeResult\.weaponKey,\s*1,\s*toLevel,\s*safeWeapons,\s*safeScaling,[\s\S]*?labelPrefix:\s*'累计'[\s\S]*?\)\s*:\s*''[\s\S]*?const cumulativeSegments = cumulativeBenefitSummary\.split\(' \/ '\)\.map\(segment => segment\.trim\(\)\)\.filter\(Boolean\)[\s\S]*?const compactCumulativeAnchor = [\s\S]*?const cumulativePrimaryAnchor = cumulativeSegments\[0\] \|\| ''[\s\S]*?if \(levelTransition && cumulativeBenefitSummary\) {[\s\S]*?pushVariant\(`强化成功! \$\{levelTransition\} · \$\{benefitSummary\} · \$\{cumulativeBenefitSummary\} · \$\{fullSpendAnchor\}`\);[\s\S]*?pushVariant\(`强化成功! \$\{levelTransition\} · \$\{benefitSummary\} · \$\{cumulativeBenefitSummary\}`\);[\s\S]*?pushVariant\(`强化成功! \$\{levelTransition\} · \$\{benefitSummary\} · \$\{compactCumulativeAnchor\}`\);[\s\S]*?pushVariant\(`强化成功! \$\{levelTransition\} · \$\{benefitSummary\} · \$\{cumulativePrimaryAnchor\}`\);[\s\S]*?}[\s\S]*?pushVariant\(`强化成功! \$\{levelTransition\} · \$\{benefitSummary\} · \$\{fullSpendAnchor\}`\)/,
-        'shared upgrade success helper should derive compact cumulative anchor variants from the same shared benefit-summary contract before it falls back to the older payoff/material ladder'
+        /function buildWeaponUpgradeSuccessMessage\(result,\s*itemCatalog,\s*weapons,\s*scalingOverride,\s*options\)\s*{[\s\S]*?buildWeaponUpgradeBenefitSummary\(\s*safeResult\.weaponKey,\s*safeResult\.level,\s*safeResult\.nextLevel,\s*safeWeapons,\s*safeScaling,[\s\S]*?labelPrefix:\s*'本次'[\s\S]*?const cumulativeBenefitSummary = toLevel > 2\s*\? buildWeaponUpgradeBenefitSummary\(\s*safeResult\.weaponKey,\s*1,\s*toLevel,\s*safeWeapons,\s*safeScaling,[\s\S]*?labelPrefix:\s*'累计'[\s\S]*?\)\s*:\s*''[\s\S]*?const cumulativeSegments = cumulativeBenefitSummary\.split\(' \/ '\)\.map\(segment => segment\.trim\(\)\)\.filter\(Boolean\)[\s\S]*?const compactCumulativeAnchor = [\s\S]*?const cumulativePrimaryAnchor = cumulativeSegments\[0\] \|\| ''[\s\S]*?const compactSpendAnchor = spentCount > 0[\s\S]*?if \(levelTransition && cumulativeBenefitSummary\) {[\s\S]*?pushVariant\(`强化成功! \$\{levelTransition\} · \$\{benefitSummary\} · \$\{cumulativeBenefitSummary\} · \$\{fullSpendAnchor\}`\);[\s\S]*?pushVariant\(`强化成功! \$\{levelTransition\} · \$\{benefitSummary\} · \$\{cumulativeBenefitSummary\} · \$\{compactSpendAnchor\}`\);[\s\S]*?pushVariant\(`强化成功! \$\{levelTransition\} · \$\{benefitSummary\} · \$\{compactCumulativeAnchor\} · \$\{compactSpendAnchor\}`\);[\s\S]*?pushVariant\(`强化成功! \$\{levelTransition\} · \$\{benefitSummary\} · \$\{cumulativePrimaryAnchor\} · \$\{compactSpendAnchor\}`\);[\s\S]*?pushVariant\(`强化成功! \$\{levelTransition\} · \$\{benefitSummary\} · \$\{cumulativeBenefitSummary\}`\);[\s\S]*?pushVariant\(`强化成功! \$\{levelTransition\} · \$\{benefitSummary\} · \$\{compactCumulativeAnchor\}`\);[\s\S]*?pushVariant\(`强化成功! \$\{levelTransition\} · \$\{benefitSummary\} · \$\{cumulativePrimaryAnchor\}`\);[\s\S]*?}[\s\S]*?pushVariant\(`强化成功! \$\{levelTransition\} · \$\{benefitSummary\} · \$\{fullSpendAnchor\}`\)/,
+        'shared upgrade success helper should derive compact cumulative-plus-spend anchor variants from the same shared benefit-summary contract before it falls back to the older payoff/material ladder'
     );
     assert.match(
         coreSource,
@@ -12568,11 +12859,6 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /而在真正跨进第三房前，choice panel \/ 已触发 HUD \/ 结算浮字 也会先把 `下间缓冲 · 双低压` \/ `下间高压 · 三敌齐压` \/ `下间淘金 · 双赏金` 这类 objective preview 压到玩家眼前/,
-        'README should document the new objective-preview layer that forecasts the first tactical ask before room entry'
-    );
-    assert.match(
-        source,
         /当这个高赏金目标死亡时，还会立刻补一条 `赏金\+X` 与更亮的金币爆点，而 `高压战 \/ 缓冲战` 继续维持更平均、更平稳的掉金反馈/,
         'README should document the kill-time bounty receipt and the steadier non-windfall gold feedback'
     );
@@ -12583,8 +12869,18 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /当 Boss 真正倒下时，胜利总结还会再补 `缓冲路线 · 稳线收束` \/ `高压路线 · 顶压收束` \/ `淘金路线 · 带赏收束` 这类极短 recap/,
-        'README should document the boss-victory route recap that closes the routed segment inside the reward summary'
+        /当清场浮字淡出后，Boss 门标签也会继续保留 `缓冲路线 · 稳线迎战` \/ `高压路线 · 顶压迎战` \/ `淘金路线 · 带赏迎战` 这类 run-arc 回顾/,
+        'README should document the persistent Boss-door run-arc recap that survives after the room-clear floating text fades'
+    );
+    assert.match(
+        source,
+        /真正踏进 Boss 房后的第一拍，还会再补一次 `缓冲路线 · 稳线开局` \/ `高压路线 · 抢势开局` \/ `淘金路线 · 带赏开局` 这类共享 opener/,
+        'README should document the one-shot Boss-opening route echo that extends the routed segment into the next major fight'
+    );
+    assert.match(
+        source,
+        /回到 Hub 后，画面上还会保留一个小型 `上轮战报`，至少会把 `已讨伐谁 \/ 哪条路线收官 \/ 源于哪次抉择` 继续钉在下一次选门前/,
+        'README should document the hub-visible last-run recap that preserves the route memory bridge after Boss victory'
     );
     assert.match(
         source,
@@ -12803,6 +13099,16 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /`迅击祷言` 若本身就是因为 `当前局已偏节奏` 才被推荐，还会继续把 routed `高压战` 压成 `顺势抢压`；`战地净化包` 若是因为 `当前可负担` 才成立，也会把 routed `缓冲战` 继续压成 `趁价备净`/,
+        'README should document the newly added tempo-bias and affordability why-now echoes for resource routes'
+    );
+    assert.match(
+        source,
+        /choice panel \/ 侧栏事件房摘要 \/ 已触发后的祭坛世界标签现在还会继续补 `首拍兑现 \/ 稳场兑现 \/ 追赏兑现` 这类极短时机签/,
+        'README should document the new routed payoff-timing labels across the choice panel, sidebar summary, and resolved shrine label'
+    );
+    assert.match(
+        source,
         /若已选 `连斩修习`，`普攻 U` 会常驻显示 `连斩-18%`，而当减 CD 真正把 `普攻 U` 从 `冷却` 或翻滚后的冷却预告推回 `就绪` 时，还会短促切成 `连斩就绪`/,
         'README should document the combat-discipline attack-ready payoff cue alongside the persistent route label'
     );
@@ -12893,8 +13199,8 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /若强化成功提示触发时，底部消息会优先读出“强化成功! Lv\.1→Lv\.2 · 本次伤害\+4 \/ 特攻-0.2s \/ 体耗-2 · 消耗2个暴怒之精华”这类带升级段位、收益与材料锚点的回执；若像“强化成功! Lv\.2→Lv\.3 · 本次伤害\+5 \/ 特攻-0.2s \/ 体耗-1 · 累计伤害\+9 \/ 特攻-0.3s \/ 体耗-3”这类末级升级累计总览也放得下，还会优先把整把武器的累计现况一起钉在回执尾段；若中宽档位放不下完整累计总览，则会先收束成“强化成功! Lv\.2→Lv\.3 · 本次伤害\+5 \/ 特攻-0.2s \/ 体耗-1 · 累计\+9 \/ 特攻-0.3s”或至少保住“强化成功! Lv\.2→Lv\.3 · 本次伤害\+5 \/ 特攻-0.2s \/ 体耗-1 · 累计伤害\+9”这类累计首段锚点；若行宽再继续吃紧，才会退回“强化成功! Lv\.1→Lv\.2 · 本次伤害\+4 \/ 特攻-0.2s \/ 体耗-2”、“强化成功! Lv\.1→Lv\.2 · 本次伤害\+4”或“强化成功! Lv\.1→Lv\.2”，优先把成功结论与升级段位留在前；材料不足路径也会先把“材料不足! 需要2个暴怒之精华”收束成“材料不足! 需要2个暴怒”\/“材料不足! 需要2个”，把 blocker 留在前面/,
-        'README should document that later-upgrade success toasts now preserve a medium-width cumulative anchor before they fall back to the older level/payoff ladder'
+        /若强化成功提示触发时，底部消息会优先读出“强化成功! Lv\.1→Lv\.2 · 本次伤害\+4 \/ 特攻-0.2s \/ 体耗-2 · 消耗2个暴怒之精华”这类带升级段位、收益与材料锚点的回执；若像“强化成功! Lv\.2→Lv\.3 · 本次伤害\+5 \/ 特攻-0.2s \/ 体耗-1 · 累计伤害\+9 \/ 特攻-0.3s \/ 体耗-3 · 消耗2个暴怒之精华”这类末级升级累计总览也放得下，还会优先把整把武器的累计现况与本次花费一起钉在回执尾段；若中宽档位放不下完整累计总览，则会先保住“强化成功! Lv\.2→Lv\.3 · 本次伤害\+5 \/ 特攻-0.2s \/ 体耗-1 · 累计\+9 \/ 特攻-0.3s · 消耗2个暴怒”或至少“强化成功! Lv\.2→Lv\.3 · 本次伤害\+5 \/ 特攻-0.2s \/ 体耗-1 · 累计伤害\+9 · 消耗2个暴怒”这类累计\+消耗双锚点，再继续退回只保留累计首段的旧梯子；若行宽再继续吃紧，才会退回“强化成功! Lv\.1→Lv\.2 · 本次伤害\+4 \/ 特攻-0.2s \/ 体耗-2”、“强化成功! Lv\.1→Lv\.2 · 本次伤害\+4”或“强化成功! Lv\.1→Lv\.2”，优先把成功结论与升级段位留在前；材料不足路径也会先把“材料不足! 需要2个暴怒之精华”收束成“材料不足! 需要2个暴怒”\/“材料不足! 需要2个”，把 blocker 留在前面/,
+        'README should document that later-upgrade success toasts now preserve compact cumulative-plus-spend anchors before they fall back to the older level/payoff ladder'
     );
     assert.match(
         source,
@@ -12943,6 +13249,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /同一套 shared recommendation 现在也会在 `祈愿圣坛` 给出 `建议 2：迅击祷言 · 当前局已偏节奏` 这类节奏偏向脚注/,
+        'README should document the new tempo-bias recommendation footer for prayer shrine choices'
+    );
+    assert.match(
+        source,
         /`战技 \/ 镇压 \/ 战势 \/ 连携 \/ 反击` 这些行动型 blessing route 也会把 live combat state 接进同一套 recommendation helper，并在高置信场景下给出 `建议 1\/2：连斩修习 · 普攻卡拍` \/ `游步修习 · 闪避卡拍` \/ `镇步修习 · 当前更宜控场` \/ `借势修习 · 特攻待借势` \/ `催锋修习 · 特攻待连段` \/ `回身修习 · 闪避待回身` \/ `追猎修习 · 可立即追猎` \/ `调息修习 · 当前更缺回体` 这类脚注/,
         'README should document that action-route recommendations now use live combat bottlenecks before selection'
     );
@@ -12964,22 +13275,12 @@ function testReadmeKeyboardInventoryLoop() {
     assert.match(
         source,
         /`武备圣坛 \/ 烙痕圣坛` 这批 build-facing route 现在也不再只看“当前持近战 \/ 当前持远程 \/ 当前武器可触发”这类静态 loadout fit；当 live combat state 同样指向 routed encounter 的节奏时，choice panel 也会给出 `建议 1\/2：压阵修习 · 近战更宜压线` \/ `离弦修习 · 远程更宜追赏` \/ `余烬修习 · 灼烧更宜稳场` \/ `血痕修习 · 挂血更宜抢势`/,
-        'README should document the new contextual build-route recommendation reasons before selection'
+        'README should document that build-facing route recommendations now use loadout plus live combat context before selection'
     );
     assert.match(
         source,
         /其余行动型 blessing route 现在也会接进同一套 ladder：`战技圣坛` 的 `连斩修习 \/ 游步修习`、`镇压圣坛` 的 `镇步修习 \/ 破势修习`、`战势圣坛` 的 `回息修习 \/ 借势修习`、`连携圣坛` 的 `催锋修习 \/ 回身修习`、`反击圣坛` 的 `追猎修习 \/ 调息修习` 也会分别导向 `下间缓冲 \/ 下间高压 \/ 下间淘金`，并在没有高置信 recommendation receipt 时继续补 `连斩抢拍 \/ 游步整拍 \/ 镇步控场 \/ 破势追杀 \/ 回息稳场 \/ 借势重击 \/ 催锋连段 \/ 回身整拍 \/ 追猎追赏 \/ 调息回线`/,
         'README should document the new action-route encounter ladder and baseline anchors for non-recommendation blessing routes'
-    );
-    assert.match(
-        source,
-        /`战技 \/ 镇压 \/ 战势 \/ 连携 \/ 反击` 这些行动型 blessing route 也会把 live combat state 接进同一套 recommendation helper，并在高置信场景下给出 `建议 1\/2：连斩修习 · 普攻卡拍` \/ `游步修习 · 闪避卡拍` \/ `镇步修习 · 当前更宜控场` \/ `借势修习 · 特攻待借势` \/ `催锋修习 · 特攻待连段` \/ `回身修习 · 闪避待回身` \/ `追猎修习 · 可立即追猎` \/ `调息修习 · 当前更缺回体` 这类脚注/,
-        'README should document that action-route recommendations now use live combat bottlenecks before selection'
-    );
-    assert.match(
-        source,
-        /当这些 action recommendation 的 persisted reason 仍和 routed encounter 强相关时，第三房入口 \/ 清场 \/ 首个关键战斗节点还会继续补 `高压战 · 三向成压 · 抢拍开刃` \/ `缓冲战 · 双拍缓冲 · 游步回拍` \/ `淘金战 · 后排赏金 · 破势收赏` 这类更窄的 why-now echo/,
-        'README should document that action-route recommendation reasons now continue into narrower routed room-3 echoes'
     );
     assert.match(
         source,
@@ -13652,8 +13953,8 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /若强化成功提示触发时，底部消息会优先读出“强化成功! Lv\.1→Lv\.2 · 本次伤害\+4\/特攻-0.2s\/体耗-2 · 消耗2个暴怒之精华”这类带升级段位、收益与材料锚点的回执；若像“强化成功! Lv\.2→Lv\.3 · 本次伤害\+5\/特攻-0.2s\/体耗-1 · 累计伤害\+9\/特攻-0.3s\/体耗-3”这类末级升级累计总览也放得下，还会优先把整把武器的累计现况一起钉在回执尾段；若中宽档位放不下完整累计总览，则会先收束成“强化成功! Lv\.2→Lv\.3 · 本次伤害\+5\/特攻-0.2s\/体耗-1 · 累计\+9\/特攻-0.3s”或至少保住“强化成功! Lv\.2→Lv\.3 · 本次伤害\+5\/特攻-0.2s\/体耗-1 · 累计伤害\+9”这类累计首段锚点；若行宽再继续吃紧，才会退回“强化成功! Lv\.1→Lv\.2 · 本次伤害\+4\/特攻-0.2s\/体耗-2”、“强化成功! Lv\.1→Lv\.2 · 本次伤害\+4”或“强化成功! Lv\.1→Lv\.2”，优先把成功结论与升级段位留在前；材料不足路径也会先把“材料不足! 需要2个暴怒之精华”收束成“材料不足! 需要2个暴怒”\/“材料不足! 需要2个”，把 blocker 留在前面/,
-        'help overlay should explain that later-upgrade success toasts now preserve a medium-width cumulative anchor before they fall back to the older level/payoff ladder'
+        /若强化成功提示触发时，底部消息会优先读出“强化成功! Lv\.1→Lv\.2 · 本次伤害\+4\/特攻-0.2s\/体耗-2 · 消耗2个暴怒之精华”这类带升级段位、收益与材料锚点的回执；若像“强化成功! Lv\.2→Lv\.3 · 本次伤害\+5\/特攻-0.2s\/体耗-1 · 累计伤害\+9\/特攻-0.3s\/体耗-3 · 消耗2个暴怒之精华”这类末级升级累计总览也放得下，还会优先把整把武器的累计现况与本次花费一起钉在回执尾段；若中宽档位放不下完整累计总览，则会先保住“强化成功! Lv\.2→Lv\.3 · 本次伤害\+5\/特攻-0.2s\/体耗-1 · 累计\+9\/特攻-0.3s · 消耗2个暴怒”或至少“强化成功! Lv\.2→Lv\.3 · 本次伤害\+5\/特攻-0.2s\/体耗-1 · 累计伤害\+9 · 消耗2个暴怒”这类累计\+消耗双锚点，再继续退回只保留累计首段的旧梯子；若行宽再继续吃紧，才会退回“强化成功! Lv\.1→Lv\.2 · 本次伤害\+4\/特攻-0.2s\/体耗-2”、“强化成功! Lv\.1→Lv\.2 · 本次伤害\+4”或“强化成功! Lv\.1→Lv\.2”，优先把成功结论与升级段位留在前；材料不足路径也会先把“材料不足! 需要2个暴怒之精华”收束成“材料不足! 需要2个暴怒”\/“材料不足! 需要2个”，把 blocker 留在前面/,
+        'help overlay should explain that later-upgrade success toasts now preserve compact cumulative-plus-spend anchors before they fall back to the older level/payoff ladder'
     );
     assert.match(
         source,
@@ -13694,6 +13995,16 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /资源与结算路线现在也会把第三房继续钉成更具体的战术短句：“复苏祷言 \/ 迅击祷言 \/ 豪赌 \/ 稳押 \/ 战地净化包 \/ 狂战补给”会分别补“复苏回拍 \/ 迅击抢拍 \/ 豪赌追赏 \/ 稳押收赏 \/ 净包稳场 \/ 狂油抢势”；若“稳押”本身是因为“当前更宜稳押”才成立，还会继续升级成“留本追赏”/,
         'help overlay should explain the resource-route anchor ladder and the narrower safer-gamble recommendation override'
+    );
+    assert.match(
+        source,
+        /若“迅击祷言”本身就是因为“当前局已偏节奏”才被推荐，还会继续把 routed “高压战”压成“顺势抢压”；若“战地净化包”是因为“当前可负担”才成立，也会把 routed “缓冲战”继续压成“趁价备净”/,
+        'help overlay should explain the newly added tempo-bias and affordability why-now echoes for resource routes'
+    );
+    assert.match(
+        source,
+        /choice panel \/ 侧栏事件房摘要 \/ 已触发后的祭坛世界标签现在还会继续补“首拍兑现 \/ 稳场兑现 \/ 追赏兑现”这类极短时机签/,
+        'help overlay should explain the new routed payoff-timing labels across the choice panel, sidebar summary, and resolved shrine label'
     );
     assert.match(
         source,
@@ -14152,13 +14463,13 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /当 Boss 真正倒下时，胜利总结还会再补“缓冲路线 · 稳线收束”\/“高压路线 · 顶压收束”\/“淘金路线 · 带赏收束”这类极短 recap，把 routed segment 和通用奖励放进同一屏闭环/,
-        'help overlay should document the boss-victory route recap that closes the routed segment inside the reward summary'
+        /当清场浮字淡出后，Boss 门标签也会继续保留“缓冲路线 · 稳线迎战”\/“高压路线 · 顶压迎战”\/“淘金路线 · 带赏迎战”这类 run-arc 回顾，让这段路线怎样改写了整段推进节奏不会在进 Boss 前立刻断掉/,
+        'help overlay should document the persistent Boss-door run-arc recap that keeps the routed segment readable into the boss handoff'
     );
     assert.match(
         source,
-        /而在真正跨进第三房前，choice panel \/ 已触发 HUD \/ 结算浮字 也会先把“下间缓冲 · 双低压”\/“下间高压 · 三敌齐压”\/“下间淘金 · 双赏金”这类 objective preview 压到玩家眼前，让人先看懂这条路线要求的是“先稳住”还是“先追赏”/,
-        'help overlay should document the new objective-preview layer that forecasts the first tactical ask before room entry'
+        /真正踏进 Boss 房后的第一拍，还会再补一次“缓冲路线 · 稳线开局”\/“高压路线 · 抢势开局”\/“淘金路线 · 带赏开局”这类共享 opener，把这段 route identity 真正接进 Boss 开局/,
+        'help overlay should document the one-shot Boss-opening route echo that carries route identity into the boss opener'
     );
     assert.match(
         source,
@@ -14187,23 +14498,8 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /战技\/镇压\/战势\/连携\/反击这些行动型 blessing route 也会把 live combat state 接进同一套 recommendation helper，并在高置信场景下给出“建议 1\/2：连斩修习 · 普攻卡拍”\/“游步修习 · 闪避卡拍”\/“镇步修习 · 当前更宜控场”\/“借势修习 · 特攻待借势”\/“催锋修习 · 特攻待连段”\/“回身修习 · 闪避待回身”\/“追猎修习 · 可立即追猎”\/“调息修习 · 当前更缺回体”这类脚注/,
-        'help overlay should document that action-route recommendations now use live combat bottlenecks before selection'
-    );
-    assert.match(
-        source,
-        /若这些 action recommendation 的 persisted reason 仍和 routed encounter 强相关，第三房还会继续把“普攻卡拍\/闪避卡拍\/当前可追终结\/特攻待借势\/特攻待连段\/可立即追猎”压成“抢拍开刃\/游步回拍\/破势收赏\/借势抢压\/连段催锋\/追猎收赏”这类更窄的 why-now echo/,
-        'help overlay should document the narrower action-route why-now echoes that now continue into room-3 combat'
-    );
-    assert.match(
-        source,
         /若 recommendation 来自压阵\/离弦\/余烬\/血痕这些 build-facing 路线，还会对应补“贴身压阵”\/“远程追赏”\/“灼烧稳场”\/“挂血抢势”/,
         'help overlay should document the build-facing route recommendation cues that now land during room-3 combat'
-    );
-    assert.match(
-        source,
-        /武备\/烙痕这些 build-facing route 也会在高置信场景下给出“建议 1\/2：压阵修习 · 近战更宜压线”\/“离弦修习 · 远程更宜追赏”\/“余烬修习 · 灼烧更宜稳场”\/“血痕修习 · 挂血更宜抢势”/,
-        'help overlay should document the new contextual build-route recommendation reasons before selection'
     );
     assert.match(
         source,
@@ -14212,8 +14508,18 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
+        /祈愿圣坛现在也会在明显节奏偏向时给出“建议 2：迅击祷言 · 当前局已偏节奏”这类脚注/,
+        'help overlay should document the new tempo-bias recommendation footer for prayer shrine choices'
+    );
+    assert.match(
+        source,
         /战技\/镇压\/战势\/连携\/反击这些行动型 blessing route 也会把 live combat state 接进同一套 recommendation helper，并在高置信场景下给出“建议 1\/2：连斩修习 · 普攻卡拍”\/“游步修习 · 闪避卡拍”\/“镇步修习 · 当前更宜控场”\/“借势修习 · 特攻待借势”\/“催锋修习 · 特攻待连段”\/“回身修习 · 闪避待回身”\/“追猎修习 · 可立即追猎”\/“调息修习 · 当前更缺回体”这类脚注/,
         'help overlay should document that action-route recommendations now use live combat bottlenecks before selection'
+    );
+    assert.match(
+        source,
+        /武备\/烙痕这些 build-facing route 也会在高置信场景下给出“建议 1\/2：压阵修习 · 近战更宜压线”\/“离弦修习 · 远程更宜追赏”\/“余烬修习 · 灼烧更宜稳场”\/“血痕修习 · 挂血更宜抢势”/,
+        'help overlay should document that build-facing recommendations now use why-now context instead of static loadout fit alone'
     );
     assert.match(
         source,
@@ -14957,25 +15263,6 @@ function testBossHudLayoutAndVictoryGuards() {
     );
 }
 
-function testBossVictoryRouteRecapHooks() {
-    const source = loadGameSource();
-    assert.match(
-        source,
-        /this\.scene\.start\('BossScene',\s*\{\s*bossKey:\s*this\.bossKey,\s*runEventEncounterProfile:\s*getRunEventEncounterProfile\(GameState\.runEventRoom,\s*RUN_EVENT_ROOM_POOL\)\s*\}\);/,
-        'LevelScene should pass the routed encounter profile into BossScene when entering the cleared Boss door'
-    );
-    assert.match(
-        source,
-        /this\._bossVictoryRouteRecap = buildRunEventEncounterBossVictoryRecap\(\s*data\.runEventEncounterProfile,\s*GameState\.runEventRoom,\s*RUN_EVENT_ROOM_POOL\s*\);/,
-        'BossScene should resolve the shared boss-victory route recap from the scene payload at create time'
-    );
-    assert.match(
-        source,
-        /const lines = \['Victory!'\];[\s\S]*?if \(this\._bossVictoryRouteRecap\) {[\s\S]*?lines\.push\(this\._bossVictoryRouteRecap\);[\s\S]*?}/,
-        'BossScene victory summary should append the shared route recap before the generic reward lines when a routed segment exists'
-    );
-}
-
 function testBossVictoryCombatCleanup() {
     const source = loadGameSource();
     assert.match(
@@ -15138,6 +15425,25 @@ function testHubPortalTransitionSafetyHooks() {
     );
 }
 
+function testHubLastRunSummaryRuntimeHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /this\._hubLastRunSummary = buildHubLastRunSummary\(GameState\.lastRunSummary\);/,
+        'HubScene should build the fixed-position last-run recap block from the shared helper'
+    );
+    assert.match(
+        source,
+        /if \(this\._hubLastRunSummary\.visible\)[\s\S]*?this\.add\.text\([\s\S]*?this\._hubLastRunSummary\.title[\s\S]*?this\.add\.text\([\s\S]*?this\._hubLastRunSummary\.lines\.join\('\\n'\)/,
+        'HubScene should render both the last-run recap title and multiline detail block when a recap exists'
+    );
+    assert.match(
+        source,
+        /GameState\.lastRunSummary = \{[\s\S]*?bossLabel:[\s\S]*?routeRecap:[\s\S]*?choiceLabel:[\s\S]*?recommendationReason:/,
+        'BossScene victory flow should persist a structured last-run summary before saving'
+    );
+}
+
 function main() {
     runTest('weapon scaling monotonicity', testWeaponScalingMonotonicity);
     runTest('sword early reach baseline', testSwordEarlyReachBaseline);
@@ -15149,6 +15455,7 @@ function main() {
     runTest('weapon upgrade row label', testWeaponUpgradeRowLabel);
     runTest('weapon upgrade message helpers', testWeaponUpgradeMessageHelpers);
     runTest('save/load integrity', testSaveLoadIntegrity);
+    runTest('hub last-run summary helper', testHubLastRunSummaryHelper);
     runTest('status effect logic', testStatusEffectLogic);
     runTest('run modifier selection/effects', testRunModifierSelectionAndEffects);
     runTest('run event room selection', testRunEventRoomSelection);
@@ -15165,8 +15472,10 @@ function main() {
     runTest('run event encounter roster helpers', testRunEventEncounterRosterHelpers);
     runTest('run event encounter formation helpers', testRunEventEncounterFormationHelpers);
     runTest('run event encounter payoff helpers', testRunEventEncounterPayoffHelpers);
-    runTest('run event encounter staging receipt helpers', testRunEventEncounterStagingReceiptHelpers);
     runTest('run event encounter clear recap helpers', testRunEventEncounterClearRecapHelpers);
+    runTest('run event encounter Boss-door recap helpers', testRunEventEncounterBossDoorRecapHelpers);
+    runTest('run event encounter Boss-opening echo helpers', testRunEventEncounterBossOpeningEchoHelpers);
+    runTest('run event encounter Boss-victory recap helpers', testRunEventEncounterBossVictoryRecapHelpers);
     runTest('run event encounter source cue helpers', testRunEventEncounterSourceCueHelpers);
     runTest('run event room choice recommendation', testRunEventRoomChoiceRecommendation);
     runTest('run event room choice panel preview', testRunEventRoomChoicePanelPreview);
@@ -15223,7 +15532,6 @@ function main() {
     runTest('run-event prompt measurement hooks', testRunEventPromptMeasurementHooks);
     runTest('run-event world-label measurement hooks', testRunEventWorldLabelMeasurementHooks);
     runTest('fixed sidebar measurement hooks', testSidebarMeasurementHooks);
-    runTest('run-event boss victory recap helper', testRunEventEncounterBossVictoryRecapHelpers);
     runTest('README lust phase-local cooldowns', testReadmeLustPhaseLocalCooldowns);
     runTest('README lust post-mirage spacing', testReadmeLustPostMirageSpacing);
     runTest('README lust special recovery', testReadmeLustSpecialRecovery);
@@ -15249,7 +15557,6 @@ function main() {
     runTest('priority text stack layout helper', testPriorityTextStackLayoutHelper);
     runTest('player death freeze hook', testPlayerDeathFreezeHook);
     runTest('boss HUD layout and victory guards', testBossHudLayoutAndVictoryGuards);
-    runTest('boss victory route recap hooks', testBossVictoryRouteRecapHooks);
     runTest('boss victory combat cleanup', testBossVictoryCombatCleanup);
     runTest('pause weapon info layout guards', testPauseWeaponInfoLayoutGuards);
     runTest('boss HUD measurement hooks', testBossHudMeasurementHooks);
@@ -15259,6 +15566,7 @@ function main() {
     runTest('boss victory sync-error fallback', testBossVictorySyncErrorFallback);
     runTest('boss victory watchdog loop', testBossVictoryWatchdogLoop);
     runTest('hub portal transition safety hooks', testHubPortalTransitionSafetyHooks);
+    runTest('hub last-run summary runtime hooks', testHubLastRunSummaryRuntimeHooks);
     console.log('All regression checks passed.');
 }
 
