@@ -90,6 +90,7 @@ const {
     buildHubLastRunSummary,
     buildHubPortalChoiceSummary,
     buildRunStartTargetCue,
+    buildFirstCombatTargetCue,
     formatRunEventEncounterPayoffTimingLabel,
     buildRunEventRoomChoiceRecommendation,
     buildCraftRecipeAffordance,
@@ -1067,6 +1068,40 @@ function testRunStartTargetCueHelper() {
         buildRunStartTargetCue(null),
         '',
         'run-start target cue helper should stay silent when no target payload exists'
+    );
+}
+
+function testFirstCombatTargetCueHelper() {
+    assert.equal(typeof buildFirstCombatTargetCue, 'function', 'first-combat target cue helper should be exported');
+
+    assert.equal(
+        buildFirstCombatTargetCue({
+            label: '色欲 幻梦花园',
+            bossKey: 'lust'
+        }),
+        '首战 稳拍反制',
+        'first-combat target cue helper should compress the boss-aware target posture into a shorter combat-facing wake-up cue'
+    );
+
+    assert.equal(
+        buildFirstCombatTargetCue({
+            label: '暴怒 熔岩锻炉',
+            bossKey: 'wrath'
+        }),
+        '首战 回体扛压',
+        'first-combat target cue helper should reuse the same sustain-heavy boss posture vocabulary'
+    );
+
+    assert.equal(
+        buildFirstCombatTargetCue('傲慢 · 天空神殿'),
+        '',
+        'first-combat target cue helper should stay silent for legacy string targets without a boss-aware cue'
+    );
+
+    assert.equal(
+        buildFirstCombatTargetCue(null),
+        '',
+        'first-combat target cue helper should stay silent when no target payload exists'
     );
 }
 
@@ -6011,6 +6046,11 @@ function testReadmeRunStartAndFirstShrinePostureDocs() {
     );
     assert.match(
         source,
+        /若开局 seed 先把玩家落进首段普通战斗，首个房间刚被敌群唤醒时也会再补一次 `首战 稳拍反制` \/ `首战 回体扛压` 这类短 cue/,
+        'README should document the first-combat wake-up cue that keeps boss posture alive on combat-opening seeds'
+    );
+    assert.match(
+        source,
         /祭坛世界标签与靠近提示也会继续补 `祈愿圣坛 · 目标 稳拍反制` \/ `按F效果 · 稳拍反制` 这类短句/,
         'README should document the first-shrine posture handoff that keeps the same boss cue alive at the first actionable shrine'
     );
@@ -6020,8 +6060,8 @@ function testHelpOverlayRunStartAndFirstShrinePostureDocs() {
     const source = loadGameSource();
     assert.match(
         source,
-        /真正踏进关卡后的第一秒，还会补一次“目标 色欲 · 稳拍反制”\/“目标 暴怒 · 回体扛压”这类一次性开局提示；贴近首个未结算事件房时，祭坛也会继续补“按F效果 · 稳拍反制”\/“祈愿圣坛 · 目标 稳拍反制”这类目标姿态提示/,
-        'help overlay should document both the run-start target cue and the first-shrine posture handoff'
+        /真正踏进关卡后的第一秒，还会补一次“目标 色欲 · 稳拍反制”\/“目标 暴怒 · 回体扛压”这类一次性开局提示；若开局 seed 先把玩家落进首段普通战斗，首个房间刚被敌群唤醒时也会再补一次“首战 稳拍反制”\/“首战 回体扛压”这类短 cue；贴近首个未结算事件房时，祭坛也会继续补“按F效果 · 稳拍反制”\/“祈愿圣坛 · 目标 稳拍反制”这类目标姿态提示/,
+        'help overlay should document the run-start cue, first-combat wake-up cue, and first-shrine posture handoff as one early-run ladder'
     );
 }
 
@@ -15960,6 +16000,40 @@ function testRunStartTargetCueRuntimeHooks() {
     );
 }
 
+function testFirstCombatTargetCueRuntimeHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /buildFirstCombatTargetCue,/,
+        'game.js should import the shared first-combat target cue helper from GameCore'
+    );
+    assert.match(
+        source,
+        /const boss = BOSSES\[bossKey\];[\s\S]*?this\._runStartTargetCue = buildRunStartTargetCue\(\{\s*label:\s*`\$\{boss\.sin\} \$\{boss\.area\}`,\s*bossKey\s*\}\);[\s\S]*?this\._firstCombatTargetCue = buildFirstCombatTargetCue\(\{\s*label:\s*`\$\{boss\.sin\} \$\{boss\.area\}`,\s*bossKey\s*\}\);/,
+        'LevelScene should derive the first-combat target cue from the same boss-aware target payload used at run start'
+    );
+    assert.match(
+        source,
+        /this\._firstCombatTargetCueShown = false;/,
+        'LevelScene should track whether the first-combat target cue has already been shown'
+    );
+    assert.match(
+        source,
+        /this\.room1Enemies = this\.enemies\.slice\(0,\s*3\);/,
+        'LevelScene should keep a room-1 enemy slice available for first-combat wake-up checks'
+    );
+    assert.match(
+        source,
+        /_maybeShowFirstCombatTargetCue\(\)\s*{[\s\S]*?if \(!this\._firstCombatTargetCue \|\| this\._firstCombatTargetCueShown\) return;[\s\S]*?const room1WakeUp = this\.room1Enemies\.some\(enemy => enemy && enemy\.isAlive && enemy\.state !== 'patrol'\);[\s\S]*?if \(!room1WakeUp\) return;[\s\S]*?this\._firstCombatTargetCueShown = true;[\s\S]*?this\._showFloatingText\(\s*this\.player\.x,\s*this\.player\.y - 96,\s*this\._firstCombatTargetCue,\s*'#ffe7b8'\s*\);[\s\S]*?}/,
+        'LevelScene should show the first-combat target cue once when room 1 enemies first wake up from patrol'
+    );
+    assert.match(
+        source,
+        /update\(time,\s*delta\)\s*{[\s\S]*?this\._updateRunEventEncounterHint\(\);[\s\S]*?this\._maybeShowRunStartTargetCue\(\);[\s\S]*?this\.player\.update\(time,\s*delta\);[\s\S]*?for \(const enemy of this\.enemies\) \{[\s\S]*?enemy\.update\(time,\s*delta,\s*this\.player\);[\s\S]*?}\s*this\._maybeShowFirstCombatTargetCue\(\);/,
+        'LevelScene update should evaluate the first-combat target cue after enemy states have been refreshed for the frame'
+    );
+}
+
 function main() {
     runTest('weapon scaling monotonicity', testWeaponScalingMonotonicity);
     runTest('sword early reach baseline', testSwordEarlyReachBaseline);
@@ -15974,6 +16048,7 @@ function main() {
     runTest('hub last-run summary helper', testHubLastRunSummaryHelper);
     runTest('hub portal choice summary helper', testHubPortalChoiceSummaryHelper);
     runTest('run-start target cue helper', testRunStartTargetCueHelper);
+    runTest('first-combat target cue helper', testFirstCombatTargetCueHelper);
     runTest('status effect logic', testStatusEffectLogic);
     runTest('run modifier selection/effects', testRunModifierSelectionAndEffects);
     runTest('run event room selection', testRunEventRoomSelection);
@@ -16090,6 +16165,7 @@ function main() {
     runTest('hub portal choice summary runtime hooks', testHubPortalChoiceSummaryRuntimeHooks);
     runTest('help overlay run-start and first-shrine posture docs', testHelpOverlayRunStartAndFirstShrinePostureDocs);
     runTest('run-start target cue runtime hooks', testRunStartTargetCueRuntimeHooks);
+    runTest('first-combat target cue runtime hooks', testFirstCombatTargetCueRuntimeHooks);
     console.log('All regression checks passed.');
 }
 

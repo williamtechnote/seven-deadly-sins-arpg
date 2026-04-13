@@ -3721,6 +3721,12 @@
         return `目标 ${shortLabel} · ${normalizedTarget.bossCue}`;
     }
 
+    function buildFirstCombatTargetCue(target) {
+        const normalizedTarget = normalizeHubPortalTarget(target);
+        if (!normalizedTarget || !normalizedTarget.bossCue) return '';
+        return `首战 ${normalizedTarget.bossCue}`;
+    }
+
     function buildCompactRunEventResolutionText(runEventRoom, choice) {
         const normalizedRoom = runEventRoom && typeof runEventRoom === 'object' ? runEventRoom : {};
         const safeChoice = choice && typeof choice === 'object' ? choice : {};
@@ -6382,6 +6388,7 @@
         buildHubLastRunSummary,
         buildHubPortalChoiceSummary,
         buildRunStartTargetCue,
+        buildFirstCombatTargetCue,
         formatRunEventEncounterPayoffTimingLabel,
         formatRunEventRoomChoiceEncounterPreview,
         formatRunEventRoomChoiceEncounterTiming,

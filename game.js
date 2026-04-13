@@ -106,6 +106,7 @@ const {
     buildHubLastRunSummary,
     buildHubPortalChoiceSummary,
     buildRunStartTargetCue,
+    buildFirstCombatTargetCue,
     formatRunEventRoomChoiceEncounterPreview,
     formatRunEventRoomChoiceEncounterTiming,
     buildRunChallengeCompletedFeedbackText,
@@ -3077,7 +3078,9 @@ class LevelScene extends Phaser.Scene {
         const boss = BOSSES[bossKey];
         this.bossKey = bossKey;
         this._runStartTargetCue = buildRunStartTargetCue({ label: `${boss.sin} ${boss.area}`, bossKey });
+        this._firstCombatTargetCue = buildFirstCombatTargetCue({ label: `${boss.sin} ${boss.area}`, bossKey });
         this._runStartTargetCueShown = false;
+        this._firstCombatTargetCueShown = false;
         AudioSystem.bindSceneInput(this);
         GameState.ensureRunModifiers();
 
@@ -3148,6 +3151,7 @@ class LevelScene extends Phaser.Scene {
         spawnInRoom(rooms[1], 4);
         spawnInRoom(rooms[2], 2);
 
+        this.room1Enemies = this.enemies.slice(0, 3);
         this.room3Enemies = this.enemies.filter((_, i) => i >= 7);
 
         // Boss door at far right of Room 3
@@ -3398,6 +3402,15 @@ class LevelScene extends Phaser.Scene {
             if (!this.player || !this.player.active || !this.scene.isActive()) return;
             this._showFloatingText(this.player.x, this.player.y - 84, this._runStartTargetCue, '#ffe7b8');
         });
+    }
+
+    _maybeShowFirstCombatTargetCue() {
+        if (!this._firstCombatTargetCue || this._firstCombatTargetCueShown) return;
+        const room1WakeUp = this.room1Enemies.some(enemy => enemy && enemy.isAlive && enemy.state !== 'patrol');
+        if (!room1WakeUp) return;
+        if (!this.player || !this.player.active || !this.scene.isActive()) return;
+        this._firstCombatTargetCueShown = true;
+        this._showFloatingText(this.player.x, this.player.y - 96, this._firstCombatTargetCue, '#ffe7b8');
     }
 
     _getRunEventRoomVisualConfig(eventRoom) {
@@ -4222,6 +4235,8 @@ class LevelScene extends Phaser.Scene {
                 }
             }
         }
+
+        this._maybeShowFirstCombatTargetCue();
 
         this._maybeShowRunEventEncounterClearRecap();
 
@@ -8373,7 +8388,7 @@ class HelpScene extends Phaser.Scene {
                 items: [
                     'F — NPC / 事件房交互',
                     '贴近传送门时，若 Hub 已保存上轮路线，还会补一个“选门回顾”，把目标门、上轮收官与源头抉择压进同一块小卡片',
-                    '真正踏进关卡后的第一秒，还会补一次“目标 色欲 · 稳拍反制”/“目标 暴怒 · 回体扛压”这类一次性开局提示；贴近首个未结算事件房时，祭坛也会继续补“按F效果 · 稳拍反制”/“祈愿圣坛 · 目标 稳拍反制”这类目标姿态提示',
+                    '真正踏进关卡后的第一秒，还会补一次“目标 色欲 · 稳拍反制”/“目标 暴怒 · 回体扛压”这类一次性开局提示；若开局 seed 先把玩家落进首段普通战斗，首个房间刚被敌群唤醒时也会再补一次“首战 稳拍反制”/“首战 回体扛压”这类短 cue；贴近首个未结算事件房时，祭坛也会继续补“按F效果 · 稳拍反制”/“祈愿圣坛 · 目标 稳拍反制”这类目标姿态提示',
                     '事件房祭坛靠近提示也会按 Phaser 文本实际宽度贴在当前视口内，因此贴近屏幕边缘时不会被裁出画面',
                     '事件房导向的第三房路线现在会按 preview 宽度分层：更宽的 surface 会先补“下间缓冲 · 双低压 · 先稳前排”/“下间高压 · 三敌齐压 · 先拆夹角”/“下间淘金 · 双赏金 · 先盯后排”这类 layered forecast，较窄的 surface 则继续保留“下间缓冲 · 先稳前排”/“下间高压 · 先拆夹角”/“下间淘金 · 先盯后排”；进房时再补“缓冲战 · 双拍缓冲”/“高压战 · 三向成压”/“淘金战 · 后排赏金”，真正清场时再补“缓冲战 · 稳住出清”/“高压战 · 顶住成压”/“淘金战 · 赏金到手”这类短回顾；若已存储的 recommendation reason 仍和 routed encounter 强相关，入口/清场短句还会继续补“缓冲战 · 双拍缓冲 · 净化后稳场”/“高压战 · 三向成压 · 压线抢势”/“淘金战 · 后排赏金 · 血线够追赏”这类更短 echo，命途圣坛的“绝境修习”/“守心修习”也会一起接进“下间高压”/“下间缓冲”；同一套 routed encounter contract 现也开始吃进 build-facing 路线，武备圣坛的“压阵修习”/“离弦修习”会分别导向“下间高压”/“下间淘金”，烙痕圣坛的“余烬修习”/“血痕修习”则会分别导向“下间缓冲”/“下间高压”；其余行动型 blessing route 也会继续把第三房压成“缓冲/高压/淘金”，并在没有 recommendation receipt 时补“连斩抢拍”/“游步整拍”/“镇步控场”/“破势追杀”/“回息稳场”/“借势重击”/“催锋连段”/“回身整拍”/“追猎追赏”/“调息回线”这类 baseline anchor；当进房预告落下半拍后，系统还会再补一次“先稳前排”/“先拆夹角”/“先盯后排”这类首拍目标 cue，把 routed encounter 继续收束成第一拍战术，而不是只停在房型说明',
                     '当清场浮字淡出后，Boss 门标签也会继续保留“缓冲路线 · 稳线迎战”/“高压路线 · 顶压迎战”/“淘金路线 · 带赏迎战”这类 run-arc 回顾，让这段路线怎样改写了整段推进节奏不会在进 Boss 前立刻断掉；真正踏进 Boss 房后的第一拍，还会再补一次“缓冲路线 · 稳线开局”/“高压路线 · 抢势开局”/“淘金路线 · 带赏开局”这类共享 opener，把这段 route identity 真正接进 Boss 开局',
