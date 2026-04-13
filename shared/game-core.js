@@ -811,6 +811,17 @@
         volume: 100
     };
 
+    const HUB_PORTAL_TARGET_CUES = Object.freeze({
+        pride: '稳线读招',
+        envy: '追影拆位',
+        wrath: '回体扛压',
+        sloth: '拉稳开刃',
+        greed: '追赏断后',
+        gluttony: '留体拆潮',
+        lust: '稳拍反制',
+        final: '全备赴渊'
+    });
+
     function clampInt(value, min, max, fallback) {
         const n = Number(value);
         if (!Number.isFinite(n)) return fallback;
@@ -844,6 +855,33 @@
             choiceLabel,
             recommendationReason
         };
+    }
+
+    function normalizeHubPortalTarget(target) {
+        if (typeof target === 'string') {
+            const label = target.trim();
+            if (!label) return null;
+            return {
+                label,
+                bossKey: '',
+                bossCue: ''
+            };
+        }
+        if (!target || typeof target !== 'object') return null;
+        const label = typeof target.label === 'string' ? target.label.trim() : '';
+        const bossKey = typeof target.bossKey === 'string' ? target.bossKey.trim() : '';
+        if (!label) return null;
+        return {
+            label,
+            bossKey,
+            bossCue: bossKey && HUB_PORTAL_TARGET_CUES[bossKey] ? HUB_PORTAL_TARGET_CUES[bossKey] : ''
+        };
+    }
+
+    function getTargetBossCue(target) {
+        if (!target || typeof target !== 'object') return '';
+        const bossKey = typeof target.bossKey === 'string' ? target.bossKey.trim() : '';
+        return bossKey && HUB_PORTAL_TARGET_CUES[bossKey] ? HUB_PORTAL_TARGET_CUES[bossKey] : '';
     }
 
     function resolveKeyboardAimState(input) {
@@ -3675,6 +3713,14 @@
         };
     }
 
+    function buildRunStartTargetCue(target) {
+        const normalizedTarget = normalizeHubPortalTarget(target);
+        if (!normalizedTarget || !normalizedTarget.bossCue) return '';
+        const shortLabel = normalizedTarget.label.split(/\s+/).find(Boolean) || normalizedTarget.label;
+        if (!shortLabel) return '';
+        return `目标 ${shortLabel} · ${normalizedTarget.bossCue}`;
+    }
+
     function buildCompactRunEventResolutionText(runEventRoom, choice) {
         const normalizedRoom = runEventRoom && typeof runEventRoom === 'object' ? runEventRoom : {};
         const safeChoice = choice && typeof choice === 'object' ? choice : {};
@@ -3899,7 +3945,7 @@
         return `${getRunEventRoomResolvedPrefix(normalizedRoom.type)}: ${resolvedChoiceLabel}${recommendationReason ? ` · ${recommendationReason}` : ''}${encounterTiming ? ` · ${encounterTiming}` : ''}`.trim();
     }
 
-    function buildRunEventRoomWorldLabel(runEventRoom, poolOverride) {
+    function buildRunEventRoomWorldLabel(runEventRoom, poolOverride, targetContext) {
         const persistedRoom = runEventRoom && typeof runEventRoom === 'object' ? runEventRoom : null;
         const persistedName = persistedRoom && typeof persistedRoom.name === 'string'
             ? persistedRoom.name.trim()
@@ -3911,18 +3957,23 @@
                 ? `${persistedName} · 已结算`
                 : persistedName;
         }
-        if (!normalizedRoom.resolved) return normalizedRoom.name;
+        if (!normalizedRoom.resolved) {
+            const bossCue = getTargetBossCue(targetContext);
+            return bossCue ? `${normalizedRoom.name} · 目标 ${bossCue}` : normalizedRoom.name;
+        }
 
         const selectedLine = buildRunEventRoomWorldLabelRouteLine(normalizedRoom, poolOverride);
         if (selectedLine) return `${normalizedRoom.name} · ${selectedLine}`;
         return `${normalizedRoom.name} · 已结算`;
     }
 
-    function buildRunEventRoomPromptLabel(runEventRoom, poolOverride) {
+    function buildRunEventRoomPromptLabel(runEventRoom, poolOverride, targetContext) {
         const normalizedRoom = normalizeRunEventRoom(runEventRoom, poolOverride);
         if (!normalizedRoom) return '按F抉择';
         const prefix = getRunEventRoomResolvedPrefix(normalizedRoom.type);
-        return prefix === '已选' ? '按F抉择' : `按F${prefix}`;
+        const baseLabel = prefix === '已选' ? '按F抉择' : `按F${prefix}`;
+        const bossCue = getTargetBossCue(targetContext);
+        return bossCue ? `${baseLabel} · ${bossCue}` : baseLabel;
     }
 
     function pickRunModifiers(randomFn, count, poolOverride) {
@@ -6330,6 +6381,7 @@
         buildRunEventEncounterBossVictoryRecap,
         buildHubLastRunSummary,
         buildHubPortalChoiceSummary,
+        buildRunStartTargetCue,
         formatRunEventEncounterPayoffTimingLabel,
         formatRunEventRoomChoiceEncounterPreview,
         formatRunEventRoomChoiceEncounterTiming,

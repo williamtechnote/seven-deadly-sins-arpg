@@ -89,6 +89,7 @@ const {
     buildRunEventEncounterBossVictoryRecap,
     buildHubLastRunSummary,
     buildHubPortalChoiceSummary,
+    buildRunStartTargetCue,
     formatRunEventEncounterPayoffTimingLabel,
     buildRunEventRoomChoiceRecommendation,
     buildCraftRecipeAffordance,
@@ -1032,6 +1033,40 @@ function testHubPortalChoiceSummaryHelper() {
             lines: []
         },
         'hub portal choice summary helper should stay hidden when there is no last-run recap to resurface'
+    );
+}
+
+function testRunStartTargetCueHelper() {
+    assert.equal(typeof buildRunStartTargetCue, 'function', 'run-start target cue helper should be exported');
+
+    assert.equal(
+        buildRunStartTargetCue({
+            label: '色欲 幻梦花园',
+            bossKey: 'lust'
+        }),
+        '目标 色欲 · 稳拍反制',
+        'run-start target cue helper should compress the boss-aware portal framing into one short level-entry cue'
+    );
+
+    assert.equal(
+        buildRunStartTargetCue({
+            label: '暴怒 熔岩锻炉',
+            bossKey: 'wrath'
+        }),
+        '目标 暴怒 · 回体扛压',
+        'run-start target cue helper should reuse the same boss posture vocabulary for sustain-heavy bosses'
+    );
+
+    assert.equal(
+        buildRunStartTargetCue('傲慢 · 天空神殿'),
+        '',
+        'run-start target cue helper should stay silent for legacy string targets without a boss-aware cue'
+    );
+
+    assert.equal(
+        buildRunStartTargetCue(null),
+        '',
+        'run-start target cue helper should stay silent when no target payload exists'
     );
 }
 
@@ -4538,6 +4573,17 @@ function testRunEventRoomWorldLabel() {
         'resolved altar labels should keep the type prefix and unknown-option fallback when the stored route label is missing'
     );
 
+    const unresolvedBlessingLabel = buildRunEventRoomWorldLabel(
+        { key: 'prayerShrine', discovered: true, resolved: false },
+        RUN_EVENT_ROOM_POOL,
+        { bossKey: 'lust' }
+    );
+    assert.equal(
+        unresolvedBlessingLabel,
+        '祈愿圣坛 · 目标 稳拍反制',
+        'unresolved altar labels should keep the target boss posture alive at the first shrine when a boss cue is available'
+    );
+
     const resolvedUnknownRouteLine = buildRunEventRoomWorldLabelRouteLine({
         key: 'mysteryArchive',
         discovered: true,
@@ -4661,9 +4707,27 @@ function testRunEventRoomPromptLabel() {
         'healing event rooms should show the healing short tag in the shrine prompt'
     );
     assert.equal(
+        buildRunEventRoomPromptLabel(
+            { key: 'healingFountain', discovered: true, resolved: false },
+            RUN_EVENT_ROOM_POOL,
+            { bossKey: 'lust' }
+        ),
+        '按F治疗 · 稳拍反制',
+        'event-room prompts should keep the target boss posture alive at the first shrine when a boss cue is available'
+    );
+    assert.equal(
         buildRunEventRoomPromptLabel({ key: 'prayerShrine', discovered: true, resolved: false }),
         '按F效果',
         'blessing event rooms should show the effect short tag in the shrine prompt'
+    );
+    assert.equal(
+        buildRunEventRoomPromptLabel(
+            { key: 'prayerShrine', discovered: true, resolved: false },
+            RUN_EVENT_ROOM_POOL,
+            { bossKey: 'wrath' }
+        ),
+        '按F效果 · 回体扛压',
+        'event-room prompts should reuse the same portal posture vocabulary for blessing shrines when the target boss rewards steadier sustain'
     );
     assert.equal(
         buildRunEventRoomPromptLabel({ key: 'bloodContract', discovered: true, resolved: false }),
@@ -5886,6 +5950,29 @@ function testBossMechanicDiversityHooks() {
         source,
         /“深渊巨口”末阶段会追加“饥潮奔涌”：三道污潮会从两侧轮番卷入，逼玩家留一次翻滚穿潮；擦潮还会吃到短 slow，别把体力耗在边线/,
         'help overlay should document the new Gluttony hungerTide mechanic and its stamina-preservation test'
+    );
+}
+
+function testReadmeRunStartAndFirstShrinePostureDocs() {
+    const source = loadReadmeSource();
+    assert.match(
+        source,
+        /真正踏进关卡后的第一秒，还会补一次 `目标 色欲 · 稳拍反制` \/ `目标 暴怒 · 回体扛压` 这类一次性的开局目标 cue/,
+        'README should document the one-shot run-start target cue that carries the boss posture into level entry'
+    );
+    assert.match(
+        source,
+        /祭坛世界标签与靠近提示也会继续补 `祈愿圣坛 · 目标 稳拍反制` \/ `按F效果 · 稳拍反制` 这类短句/,
+        'README should document the first-shrine posture handoff that keeps the same boss cue alive at the first actionable shrine'
+    );
+}
+
+function testHelpOverlayRunStartAndFirstShrinePostureDocs() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /真正踏进关卡后的第一秒，还会补一次“目标 色欲 · 稳拍反制”\/“目标 暴怒 · 回体扛压”这类一次性开局提示；贴近首个未结算事件房时，祭坛也会继续补“按F效果 · 稳拍反制”\/“祈愿圣坛 · 目标 稳拍反制”这类目标姿态提示/,
+        'help overlay should document both the run-start target cue and the first-shrine posture handoff'
     );
 }
 
@@ -15785,6 +15872,45 @@ function testHubPortalChoiceSummaryRuntimeHooks() {
     );
 }
 
+function testRunStartTargetCueRuntimeHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /buildRunStartTargetCue,/,
+        'game.js should import the shared run-start target cue helper from GameCore'
+    );
+    assert.match(
+        source,
+        /const boss = BOSSES\[bossKey\];[\s\S]*?this\._runStartTargetCue = buildRunStartTargetCue\(\{\s*label:\s*`\$\{boss\.sin\} \$\{boss\.area\}`,\s*bossKey\s*\}\);/,
+        'LevelScene should derive the run-start target cue from the current boss target when the run scene is created'
+    );
+    assert.match(
+        source,
+        /this\._runStartTargetCueShown = false;/,
+        'LevelScene should track whether the run-start target cue has already been shown'
+    );
+    assert.match(
+        source,
+        /_maybeShowRunStartTargetCue\(\)\s*{[\s\S]*?if \(!this\._runStartTargetCue \|\| this\._runStartTargetCueShown\) return;[\s\S]*?this\._runStartTargetCueShown = true;[\s\S]*?this\.time\.delayedCall\(220,\s*\(\)\s*=>\s*\{[\s\S]*?this\._showFloatingText\(\s*this\.player\.x,\s*this\.player\.y - 84,\s*this\._runStartTargetCue,\s*'#ffe7b8'\s*\);[\s\S]*?\}\);[\s\S]*?}/,
+        'LevelScene should show the run-start target cue once, shortly after scene entry, using the shared floating-text channel'
+    );
+    assert.match(
+        source,
+        /_createRunEventEncounter\(anchorRoom\)\s*{[\s\S]*?buildRunEventRoomPromptLabel\(eventRoom,\s*RUN_EVENT_ROOM_POOL,\s*\{\s*bossKey:\s*this\.bossKey\s*\}\)/,
+        'LevelScene should pass the current boss posture into the first shrine prompt when creating the event-room altar'
+    );
+    assert.match(
+        source,
+        /_refreshRunEventEncounterState\(\)\s*{[\s\S]*?buildRunEventRoomWorldLabel\(eventRoom,\s*RUN_EVENT_ROOM_POOL,\s*\{\s*bossKey:\s*this\.bossKey\s*\}\)[\s\S]*?buildRunEventRoomPromptLabel\(eventRoom,\s*RUN_EVENT_ROOM_POOL,\s*\{\s*bossKey:\s*this\.bossKey\s*\}\)/,
+        'LevelScene should keep both the shrine world label and the proximity prompt aligned with the target boss posture during event-room refresh'
+    );
+    assert.match(
+        source,
+        /update\(time,\s*delta\)\s*{[\s\S]*?this\._updateRunEventEncounterHint\(\);[\s\S]*?this\._maybeShowRunStartTargetCue\(\);[\s\S]*?this\.player\.update\(time,\s*delta\);/,
+        'LevelScene update should trigger the one-shot run-start target cue before normal gameplay updates continue'
+    );
+}
+
 function main() {
     runTest('weapon scaling monotonicity', testWeaponScalingMonotonicity);
     runTest('sword early reach baseline', testSwordEarlyReachBaseline);
@@ -15798,6 +15924,7 @@ function main() {
     runTest('save/load integrity', testSaveLoadIntegrity);
     runTest('hub last-run summary helper', testHubLastRunSummaryHelper);
     runTest('hub portal choice summary helper', testHubPortalChoiceSummaryHelper);
+    runTest('run-start target cue helper', testRunStartTargetCueHelper);
     runTest('status effect logic', testStatusEffectLogic);
     runTest('run modifier selection/effects', testRunModifierSelectionAndEffects);
     runTest('run event room selection', testRunEventRoomSelection);
@@ -15875,6 +16002,7 @@ function main() {
     runTest('run-event prompt measurement hooks', testRunEventPromptMeasurementHooks);
     runTest('run-event world-label measurement hooks', testRunEventWorldLabelMeasurementHooks);
     runTest('fixed sidebar measurement hooks', testSidebarMeasurementHooks);
+    runTest('README run-start and first-shrine posture docs', testReadmeRunStartAndFirstShrinePostureDocs);
     runTest('README lust phase-local cooldowns', testReadmeLustPhaseLocalCooldowns);
     runTest('README lust post-mirage spacing', testReadmeLustPostMirageSpacing);
     runTest('README lust special recovery', testReadmeLustSpecialRecovery);
@@ -15911,6 +16039,8 @@ function main() {
     runTest('hub portal transition safety hooks', testHubPortalTransitionSafetyHooks);
     runTest('hub last-run summary runtime hooks', testHubLastRunSummaryRuntimeHooks);
     runTest('hub portal choice summary runtime hooks', testHubPortalChoiceSummaryRuntimeHooks);
+    runTest('help overlay run-start and first-shrine posture docs', testHelpOverlayRunStartAndFirstShrinePostureDocs);
+    runTest('run-start target cue runtime hooks', testRunStartTargetCueRuntimeHooks);
     console.log('All regression checks passed.');
 }
 
