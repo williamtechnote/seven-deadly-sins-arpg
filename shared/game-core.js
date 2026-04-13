@@ -2751,9 +2751,20 @@
         };
     }
 
+    function formatRunEventEncounterObjectivePreview(profile) {
+        const safeProfile = profile && typeof profile === 'object' ? profile : {};
+        const profileKey = typeof safeProfile.key === 'string' ? safeProfile.key.trim() : '';
+        const previewLabel = typeof safeProfile.previewLabel === 'string' ? safeProfile.previewLabel.trim() : '';
+        if (!previewLabel) return '';
+        if (profileKey === 'breather') return `${previewLabel} · 双低压`;
+        if (profileKey === 'pressure') return `${previewLabel} · 三敌齐压`;
+        if (profileKey === 'windfall') return `${previewLabel} · 双赏金`;
+        return previewLabel;
+    }
+
     function formatRunEventRoomChoiceEncounterPreview(choice) {
         const profile = getRunEventRoomChoiceEncounterProfile(choice);
-        return profile ? profile.previewLabel : '';
+        return formatRunEventEncounterObjectivePreview(profile);
     }
 
     function buildRunEventRoomChoicePreview(choice) {
@@ -3652,7 +3663,10 @@
         const recommendationReason = typeof normalizedRoom.selectedChoiceRecommendationReason === 'string'
             ? normalizedRoom.selectedChoiceRecommendationReason.trim()
             : '';
-        return `${getRunEventRoomResolvedPrefix(normalizedRoom.type)}: ${resolvedChoiceLabel}${recommendationReason ? ` · ${recommendationReason}` : ''}`.trim();
+        const encounterPreview = selectedChoice
+            ? formatRunEventRoomChoiceEncounterPreview(selectedChoice)
+            : '';
+        return `${getRunEventRoomResolvedPrefix(normalizedRoom.type)}: ${resolvedChoiceLabel}${recommendationReason ? ` · ${recommendationReason}` : ''}${encounterPreview ? ` · ${encounterPreview}` : ''}`.trim();
     }
 
     function buildRunEventRoomWorldLabel(runEventRoom, poolOverride) {
@@ -6064,6 +6078,7 @@
         buildRunEventEncounterRoster,
         buildRunEventEncounterFormationSlots,
         buildRunEventEncounterPayoffPresentation,
+        formatRunEventEncounterObjectivePreview,
         buildRunEventEncounterEntryPreview,
         buildRunEventEncounterStagingReceipt,
         buildRunEventEncounterSourceCue,
