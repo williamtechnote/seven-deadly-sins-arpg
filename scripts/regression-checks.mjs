@@ -85,6 +85,8 @@ const {
     buildRunEventEncounterBossOpeningEcho,
     buildRunEventEncounterBossVictoryRecap,
     buildHubLastRunSummary,
+    buildHubPortalChoiceSummary,
+    buildRunStartTargetCue,
     formatRunEventEncounterPayoffTimingLabel,
     buildRunEventRoomChoiceRecommendation,
     buildCraftRecipeAffordance,
@@ -998,6 +1000,127 @@ function testHubLastRunSummaryHelper() {
     );
 }
 
+function testHubPortalChoiceSummaryHelper() {
+    assert.equal(typeof buildHubPortalChoiceSummary, 'function', 'hub portal choice summary helper should be exported');
+
+    assert.deepEqual(
+        buildHubPortalChoiceSummary({
+            bossLabel: '已讨伐 色欲 · 色欲魔窟',
+            routeRecap: '淘金路线 · 带赏收官',
+            choiceLabel: '豪赌',
+            recommendationReason: '当前更宜稳押'
+        }, {
+            label: '傲慢 天空神殿',
+            bossKey: 'pride'
+        }),
+        {
+            visible: true,
+            title: '选门参考',
+            lines: [
+                '目标 傲慢 天空神殿',
+                '门前 稳线读招',
+                '上轮 淘金路线 · 带赏收官',
+                '源于 豪赌 · 当前更宜稳押'
+            ]
+        },
+        'hub portal choice summary helper should keep target, boss posture, route, and routed source reason in one compact decision card'
+    );
+
+    assert.deepEqual(
+        buildHubPortalChoiceSummary({
+            bossLabel: '已讨伐 暴怒 · 暴怒刑场',
+            routeRecap: '',
+            choiceLabel: '',
+            recommendationReason: ''
+        }, {
+            label: '色欲 幻梦花园',
+            bossKey: 'lust'
+        }),
+        {
+            visible: true,
+            title: '选门参考',
+            lines: [
+                '目标 色欲 幻梦花园',
+                '门前 稳拍反制',
+                '上轮 已讨伐 暴怒 · 暴怒刑场'
+            ]
+        },
+        'hub portal choice summary helper should fall back to the previous boss recap when no route recap survives and still keep the target cue'
+    );
+
+    assert.deepEqual(
+        buildHubPortalChoiceSummary(null, {
+            label: '色欲 幻梦花园',
+            bossKey: 'lust'
+        }),
+        {
+            visible: true,
+            title: '选门参考',
+            lines: [
+                '目标 色欲 幻梦花园',
+                '门前 稳拍反制'
+            ]
+        },
+        'hub portal choice summary helper should stay useful with target-only framing when no last-run summary exists'
+    );
+
+    assert.deepEqual(
+        buildHubPortalChoiceSummary(null, '傲慢 · 傲慢王庭'),
+        {
+            visible: false,
+            title: '选门参考',
+            lines: []
+        },
+        'hub portal choice summary helper should stay hidden for legacy string payloads when no last-run summary exists'
+    );
+
+    assert.deepEqual(
+        buildHubPortalChoiceSummary({
+            bossLabel: '已讨伐 暴食 · 暴食盛宴'
+        }, ''),
+        {
+            visible: false,
+            title: '选门参考',
+            lines: []
+        },
+        'hub portal choice summary helper should stay hidden when no portal target is in focus'
+    );
+}
+
+function testRunStartTargetCueHelper() {
+    assert.equal(typeof buildRunStartTargetCue, 'function', 'run-start target cue helper should be exported');
+
+    assert.equal(
+        buildRunStartTargetCue({
+            label: '色欲 幻梦花园',
+            bossKey: 'lust'
+        }),
+        '目标 色欲 · 稳拍反制',
+        'run-start target cue helper should compress the boss-aware portal framing into one short level-entry cue'
+    );
+
+    assert.equal(
+        buildRunStartTargetCue({
+            label: '暴怒 熔岩锻炉',
+            bossKey: 'wrath'
+        }),
+        '目标 暴怒 · 回体扛压',
+        'run-start target cue helper should reuse the same boss posture vocabulary for sustain-heavy bosses'
+    );
+
+    assert.equal(
+        buildRunStartTargetCue('傲慢 · 天空神殿'),
+        '',
+        'run-start target cue helper should stay silent for legacy string targets without a boss-aware cue'
+    );
+
+    assert.equal(
+        buildRunStartTargetCue(null),
+        '',
+        'run-start target cue helper should stay silent when no target payload exists'
+    );
+}
+
 function testStatusEffectLogic() {
     assert.ok(STATUS_EFFECT_DEFS.burn, 'burn status should exist');
     assert.ok(STATUS_EFFECT_DEFS.bleed, 'bleed status should exist');
@@ -1197,6 +1320,23 @@ function testRunEventRoomSelection() {
     const prayerEffects = buildRunEventRoomEffects(prayerSettlement.eventRoom);
     assert.equal(prayerEffects.playerSpecialCooldownMultiplier, 0.78, 'tempo prayer should shorten special cooldowns');
     assert.match(prayerSettlement.eventRoom.resolutionText, /冷却/, 'prayer shrine summary should mention the cooldown buff');
+
+    const recommendedPrayerSettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 100,
+        playerMaxHp: 120,
+        bossKey: 'wrath',
+        selectedWeaponKey: 'sword'
+    }, {
+        key: 'prayerShrine',
+        discovered: true,
+        resolved: false
+    }, 'renewalPrayer');
+    assert.equal(
+        recommendedPrayerSettlement.eventRoom.selectedChoiceRecommendationReason,
+        '目标Boss更宜回体',
+        'prayer shrine resolution should persist the boss-aware sustain reason when renewal prayer earned the recommendation'
+    );
 }
 
 function testCombatDisciplineEventRoom() {
@@ -2038,6 +2178,16 @@ const ACTION_ROUTE_RECOMMENDATION_ECHO_CASES = Object.freeze([
     },
     {
         roomKey: 'controlRoutingShrine',
+        choiceKey: 'crushingLesson',
+        reason: '目标Boss更宜控场',
+        expectedProfileKey: 'breather',
+        expectedEntry: '缓冲战 · 双拍缓冲 · 先控稳场',
+        expectedClear: '缓冲战 · 稳住出清 · 先控稳场',
+        expectedSourceCue: '先控稳场',
+        moment: 'stabilize'
+    },
+    {
+        roomKey: 'controlRoutingShrine',
         choiceKey: 'executionLesson',
         reason: '当前可追终结',
         expectedProfileKey: 'windfall',
@@ -2067,9 +2217,29 @@ const ACTION_ROUTE_RECOMMENDATION_ECHO_CASES = Object.freeze([
         moment: 'engage'
     },
     {
+        roomKey: 'combatFlowShrine',
+        choiceKey: 'momentumLesson',
+        reason: '目标Boss更宜借势',
+        expectedProfileKey: 'pressure',
+        expectedEntry: '高压战 · 三向成压 · 借势抢压',
+        expectedClear: '高压战 · 顶住成压 · 借势抢压',
+        expectedSourceCue: '借势抢压',
+        moment: 'engage'
+    },
+    {
         roomKey: 'comboLinkShrine',
         choiceKey: 'sharpeningLesson',
         reason: '特攻待连段',
+        expectedProfileKey: 'pressure',
+        expectedEntry: '高压战 · 三向成压 · 连段催锋',
+        expectedClear: '高压战 · 顶住成压 · 连段催锋',
+        expectedSourceCue: '连段催锋',
+        moment: 'engage'
+    },
+    {
+        roomKey: 'comboLinkShrine',
+        choiceKey: 'sharpeningLesson',
+        reason: '目标Boss更宜连段',
         expectedProfileKey: 'pressure',
         expectedEntry: '高压战 · 三向成压 · 连段催锋',
         expectedClear: '高压战 · 顶住成压 · 连段催锋',
@@ -2098,8 +2268,28 @@ const ACTION_ROUTE_RECOMMENDATION_ECHO_CASES = Object.freeze([
     },
     {
         roomKey: 'counterattackShrine',
+        choiceKey: 'pursuitLesson',
+        reason: '目标Boss更宜追猎',
+        expectedProfileKey: 'windfall',
+        expectedEntry: '淘金战 · 后排赏金 · 追猎收赏',
+        expectedClear: '淘金战 · 赏金到手 · 追猎收赏',
+        expectedSourceCue: '追猎收赏',
+        moment: 'bounty'
+    },
+    {
+        roomKey: 'counterattackShrine',
         choiceKey: 'focusLesson',
         reason: '当前更缺回体',
+        expectedProfileKey: 'breather',
+        expectedEntry: '缓冲战 · 双拍缓冲 · 回体稳线',
+        expectedClear: '缓冲战 · 稳住出清 · 回体稳线',
+        expectedSourceCue: '回体稳线',
+        moment: 'stabilize'
+    },
+    {
+        roomKey: 'counterattackShrine',
+        choiceKey: 'focusLesson',
+        reason: '目标Boss更宜回体',
         expectedProfileKey: 'breather',
         expectedEntry: '缓冲战 · 双拍缓冲 · 回体稳线',
         expectedClear: '缓冲战 · 稳住出清 · 回体稳线',
@@ -2364,6 +2554,20 @@ function testRunEventEncounterProfileHelpers() {
         buildRunEventEncounterEntryPreview(
             { key: 'breather', encounterLabel: '缓冲战' },
             {
+                key: 'prayerShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'renewalPrayer',
+                selectedChoiceRecommendationReason: '目标Boss更宜回体'
+            }
+        ),
+        '缓冲战 · 双拍缓冲 · 回体稳线',
+        'breather entry previews should also accept boss-aware sustain reasons when the chosen prayer was recommended for the current boss posture'
+    );
+    assert.equal(
+        buildRunEventEncounterEntryPreview(
+            { key: 'breather', encounterLabel: '缓冲战' },
+            {
                 key: 'statusRoutingShrine',
                 discovered: true,
                 resolved: true,
@@ -2387,6 +2591,34 @@ function testRunEventEncounterProfileHelpers() {
         ),
         '缓冲战 · 双拍缓冲 · 灼烧稳场',
         'breather entry previews should also accept the newer contextual ember reason when it still explains the routed room'
+    );
+    assert.equal(
+        buildRunEventEncounterEntryPreview(
+            { key: 'breather', encounterLabel: '缓冲战' },
+            {
+                key: 'riskRewardShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'composureLesson',
+                selectedChoiceRecommendationReason: '目标Boss更宜回体'
+            }
+        ),
+        '缓冲战 · 双拍缓冲 · 守心稳场',
+        'breather entry previews should accept boss-aware sustain reasons for threshold routes when composure was chosen for the target boss posture'
+    );
+    assert.equal(
+        buildRunEventEncounterEntryPreview(
+            { key: 'breather', encounterLabel: '缓冲战' },
+            {
+                key: 'statusRoutingShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'emberLesson',
+                selectedChoiceRecommendationReason: '目标Boss更宜控场'
+            }
+        ),
+        '缓冲战 · 双拍缓冲 · 灼烧稳场',
+        'breather entry previews should accept boss-aware control reasons for burn-status routes when the target boss posture still explains the calmer room'
     );
     assert.equal(
         buildRunEventEncounterEntryPreview(
@@ -2415,6 +2647,34 @@ function testRunEventEncounterProfileHelpers() {
         ),
         '高压战 · 三向成压 · 挂血抢势',
         'pressure entry previews should also accept the newer contextual bloodtrace reason when it still explains the routed room'
+    );
+    assert.equal(
+        buildRunEventEncounterEntryPreview(
+            { key: 'pressure', encounterLabel: '高压战' },
+            {
+                key: 'riskRewardShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'desperationLesson',
+                selectedChoiceRecommendationReason: '目标Boss更宜压线'
+            }
+        ),
+        '高压战 · 三向成压 · 压线抢势',
+        'pressure entry previews should accept boss-aware pressure reasons for threshold routes when desperation was chosen for the target boss posture'
+    );
+    assert.equal(
+        buildRunEventEncounterEntryPreview(
+            { key: 'pressure', encounterLabel: '高压战' },
+            {
+                key: 'statusRoutingShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'bloodtraceLesson',
+                selectedChoiceRecommendationReason: '目标Boss更宜压线'
+            }
+        ),
+        '高压战 · 三向成压 · 挂血抢势',
+        'pressure entry previews should accept boss-aware pressure reasons for bleed-status routes when the target boss posture still explains the aggressive room'
     );
     assert.equal(
         buildRunEventEncounterEntryPreview(
@@ -2700,6 +2960,34 @@ function testRunEventEncounterClearRecapHelpers() {
     );
     assert.equal(
         buildRunEventEncounterClearRecap(
+            { key: 'breather', encounterLabel: '缓冲战' },
+            {
+                key: 'riskRewardShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'composureLesson',
+                selectedChoiceRecommendationReason: '目标Boss更宜回体'
+            }
+        ),
+        '缓冲战 · 稳住出清 · 守心稳场',
+        'breather clear recaps should accept boss-aware sustain reasons for threshold routes when composure still explains the routed room'
+    );
+    assert.equal(
+        buildRunEventEncounterClearRecap(
+            { key: 'breather', encounterLabel: '缓冲战' },
+            {
+                key: 'statusRoutingShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'emberLesson',
+                selectedChoiceRecommendationReason: '目标Boss更宜控场'
+            }
+        ),
+        '缓冲战 · 稳住出清 · 灼烧稳场',
+        'breather clear recaps should accept boss-aware control reasons for burn-status routes when the target boss posture still explains the calmer room'
+    );
+    assert.equal(
+        buildRunEventEncounterClearRecap(
             { key: 'pressure', encounterLabel: '高压战' },
             {
                 key: 'statusRoutingShrine',
@@ -2711,6 +2999,34 @@ function testRunEventEncounterClearRecapHelpers() {
         ),
         '高压战 · 顶住成压 · 挂血抢势',
         'pressure clear recaps should append the shared recommendation echo when a bleed route recommendation still explains the routed pressure room'
+    );
+    assert.equal(
+        buildRunEventEncounterClearRecap(
+            { key: 'pressure', encounterLabel: '高压战' },
+            {
+                key: 'riskRewardShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'desperationLesson',
+                selectedChoiceRecommendationReason: '目标Boss更宜压线'
+            }
+        ),
+        '高压战 · 顶住成压 · 压线抢势',
+        'pressure clear recaps should accept boss-aware pressure reasons for threshold routes when desperation still explains the routed room'
+    );
+    assert.equal(
+        buildRunEventEncounterClearRecap(
+            { key: 'pressure', encounterLabel: '高压战' },
+            {
+                key: 'statusRoutingShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'bloodtraceLesson',
+                selectedChoiceRecommendationReason: '目标Boss更宜压线'
+            }
+        ),
+        '高压战 · 顶住成压 · 挂血抢势',
+        'pressure clear recaps should accept boss-aware pressure reasons for bleed-status routes when the target boss posture still explains the aggressive room'
     );
     assert.equal(
         buildRunEventEncounterClearRecap({ key: 'windfall', encounterLabel: '淘金战' }),
@@ -3097,6 +3413,36 @@ function testRunEventEncounterSourceCueHelpers() {
     );
     assert.equal(
         buildRunEventEncounterSourceCue(
+            { key: 'breather', encounterLabel: '缓冲战' },
+            {
+                key: 'riskRewardShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'composureLesson',
+                selectedChoiceRecommendationReason: '目标Boss更宜回体'
+            },
+            'stabilize'
+        ),
+        '守心稳场',
+        'breather source cues should accept boss-aware sustain reasons for threshold routes when composure still explains the routed room'
+    );
+    assert.equal(
+        buildRunEventEncounterSourceCue(
+            { key: 'breather', encounterLabel: '缓冲战' },
+            {
+                key: 'statusRoutingShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'emberLesson',
+                selectedChoiceRecommendationReason: '目标Boss更宜控场'
+            },
+            'stabilize'
+        ),
+        '灼烧稳场',
+        'breather source cues should accept boss-aware control reasons for burn-status routes when the target boss posture still explains the calmer room'
+    );
+    assert.equal(
+        buildRunEventEncounterSourceCue(
             { key: 'pressure', encounterLabel: '高压战' },
             {
                 key: 'statusRoutingShrine',
@@ -3124,6 +3470,36 @@ function testRunEventEncounterSourceCueHelpers() {
         ),
         '挂血抢势',
         'pressure source cues should also accept the newer contextual bloodtrace reason when it still explains the routed room'
+    );
+    assert.equal(
+        buildRunEventEncounterSourceCue(
+            { key: 'pressure', encounterLabel: '高压战' },
+            {
+                key: 'riskRewardShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'desperationLesson',
+                selectedChoiceRecommendationReason: '目标Boss更宜压线'
+            },
+            'engage'
+        ),
+        '压线抢势',
+        'pressure source cues should accept boss-aware pressure reasons for threshold routes when desperation still explains the routed room'
+    );
+    assert.equal(
+        buildRunEventEncounterSourceCue(
+            { key: 'pressure', encounterLabel: '高压战' },
+            {
+                key: 'statusRoutingShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'bloodtraceLesson',
+                selectedChoiceRecommendationReason: '目标Boss更宜压线'
+            },
+            'engage'
+        ),
+        '挂血抢势',
+        'pressure source cues should accept boss-aware pressure reasons for bleed-status routes when the target boss posture still explains the aggressive room'
     );
     assert.equal(
         buildRunEventEncounterSourceCue(
@@ -3302,6 +3678,24 @@ function testRunEventRoomChoiceRecommendation() {
         '建议 1：绝境修习 · 已处绝境线',
         'recommendation helper should elevate the low-HP route when the player is already under its damage threshold'
     );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(riskRewardChoices, {
+            playerHp: 72,
+            playerMaxHp: 120,
+            bossKey: 'pride'
+        }),
+        '建议 1：绝境修习 · 目标Boss更宜压线',
+        'recommendation helper should use the current boss posture as a tiebreaker for threshold routes when the target fight rewards a pressure-first answer'
+    );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(riskRewardChoices, {
+            playerHp: 72,
+            playerMaxHp: 120,
+            bossKey: 'wrath'
+        }),
+        '建议 2：守心修习 · 目标Boss更宜回体',
+        'recommendation helper should use the current boss posture as a tiebreaker for threshold sustain routes when the target fight rewards steadier survivability'
+    );
 
     const combatDisciplineChoices = getRunEventRoomChoices('combatDisciplineShrine');
     assert.equal(
@@ -3335,6 +3729,23 @@ function testRunEventRoomChoiceRecommendation() {
         }),
         '建议 2：游步修习 · 闪避卡拍',
         'recommendation helper should elevate ghost step when dodge recovery is the clear live bottleneck'
+    );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(combatDisciplineChoices, {
+            playerHp: 96,
+            playerMaxHp: 120,
+            bossKey: 'lust',
+            attackCooldownMs: 220,
+            specialCooldownMs: 260,
+            dodgeCooldownMs: 240,
+            stamina: 24,
+            staminaRegenPerSecond: 12,
+            attackStaminaCost: 8,
+            specialStaminaCost: 18,
+            dodgeStaminaCost: 10
+        }),
+        '建议 2：游步修习 · 目标Boss更宜稳拍',
+        'recommendation helper should use the current boss posture as a tiebreaker for combat-discipline routes when no stronger live bottleneck is present'
     );
 
     const controlChoices = getRunEventRoomChoices('controlRoutingShrine');
@@ -3372,6 +3783,24 @@ function testRunEventRoomChoiceRecommendation() {
         '建议 2：破势修习 · 当前可追终结',
         'recommendation helper should elevate the execution route when the current weapon and live state both support an immediate chase-to-kill posture'
     );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(controlChoices, {
+            playerHp: 90,
+            playerMaxHp: 120,
+            bossKey: 'gluttony',
+            selectedWeaponKey: 'hammer',
+            attackCooldownMs: 220,
+            specialCooldownMs: 260,
+            dodgeCooldownMs: 220,
+            stamina: 24,
+            staminaRegenPerSecond: 12,
+            attackStaminaCost: 12,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 14
+        }),
+        '建议 1：镇步修习 · 目标Boss更宜控场',
+        'recommendation helper should extend boss-posture tiebreakers into control routes when the current boss clearly rewards a slower control-first answer'
+    );
 
     const flowChoices = getRunEventRoomChoices('combatFlowShrine');
     assert.equal(
@@ -3405,6 +3834,23 @@ function testRunEventRoomChoiceRecommendation() {
         }),
         '建议 2：借势修习 · 特攻待借势',
         'recommendation helper should elevate momentum when dodge is ready but the special payoff is still clearly waiting to be cashed in'
+    );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(flowChoices, {
+            playerHp: 96,
+            playerMaxHp: 120,
+            bossKey: 'lust',
+            attackCooldownMs: 220,
+            specialCooldownMs: 260,
+            dodgeCooldownMs: 220,
+            stamina: 24,
+            staminaRegenPerSecond: 10,
+            attackStaminaCost: 8,
+            specialStaminaCost: 18,
+            dodgeStaminaCost: 10
+        }),
+        '建议 2：借势修习 · 目标Boss更宜借势',
+        'recommendation helper should extend boss-posture tiebreakers into combat-flow routes when the target fight rewards dodge-into-special punishes'
     );
 
     const comboChoices = getRunEventRoomChoices('comboLinkShrine');
@@ -3440,6 +3886,23 @@ function testRunEventRoomChoiceRecommendation() {
         '建议 2：回身修习 · 闪避待回身',
         'recommendation helper should elevate reversal step when special is ready but dodge is the current bottleneck'
     );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(comboChoices, {
+            playerHp: 96,
+            playerMaxHp: 120,
+            bossKey: 'envy',
+            attackCooldownMs: 220,
+            specialCooldownMs: 260,
+            dodgeCooldownMs: 220,
+            stamina: 24,
+            staminaRegenPerSecond: 10,
+            attackStaminaCost: 8,
+            specialStaminaCost: 18,
+            dodgeStaminaCost: 10
+        }),
+        '建议 1：催锋修习 · 目标Boss更宜连段',
+        'recommendation helper should extend boss-posture tiebreakers into combo-link routes when the target fight rewards sustained chained pressure'
+    );
 
     const counterChoices = getRunEventRoomChoices('counterattackShrine');
     assert.equal(
@@ -3474,6 +3937,40 @@ function testRunEventRoomChoiceRecommendation() {
         '建议 2：调息修习 · 当前更缺回体',
         'recommendation helper should elevate focus when the player is clearly missing the stamina to keep the special loop stable'
     );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(counterChoices, {
+            playerHp: 96,
+            playerMaxHp: 120,
+            bossKey: 'greed',
+            attackCooldownMs: 220,
+            specialCooldownMs: 260,
+            dodgeCooldownMs: 220,
+            stamina: 24,
+            staminaRegenPerSecond: 10,
+            attackStaminaCost: 8,
+            specialStaminaCost: 18,
+            dodgeStaminaCost: 10
+        }),
+        '建议 1：追猎修习 · 目标Boss更宜追猎',
+        'recommendation helper should extend boss-posture tiebreakers into counter routes when the target fight rewards an explicit chase-and-punish posture'
+    );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(counterChoices, {
+            playerHp: 96,
+            playerMaxHp: 120,
+            bossKey: 'wrath',
+            attackCooldownMs: 220,
+            specialCooldownMs: 820,
+            dodgeCooldownMs: 220,
+            stamina: 24,
+            staminaRegenPerSecond: 10,
+            attackStaminaCost: 8,
+            specialStaminaCost: 18,
+            dodgeStaminaCost: 10
+        }),
+        '建议 2：调息修习 · 目标Boss更宜回体',
+        'recommendation helper should extend boss-posture tiebreakers into counter sustain routes when the target fight clearly rewards extra stamina recovery'
+    );
 
     const prayerChoices = getRunEventRoomChoices('prayerShrine');
     assert.equal(
@@ -3493,6 +3990,16 @@ function testRunEventRoomChoiceRecommendation() {
         }),
         '',
         'recommendation helper should stay silent when neither visible option has a clear contextual edge'
+    );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(prayerChoices, {
+            playerHp: 100,
+            playerMaxHp: 120,
+            bossKey: 'wrath',
+            selectedWeaponKey: 'sword'
+        }),
+        '建议 1：复苏祷言 · 目标Boss更宜回体',
+        'recommendation helper should use the current boss posture as a tiebreaker for prayer routes when the target fight clearly asks for sustain'
     );
 
     const weaponRoutingChoices = getRunEventRoomChoices('weaponRoutingShrine');
@@ -3547,6 +4054,24 @@ function testRunEventRoomChoiceRecommendation() {
         '',
         'recommendation helper should stay silent for build routes when the loadout fits but the live combat state does not create a strong reason-now signal'
     );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(weaponRoutingChoices, {
+            playerHp: 100,
+            playerMaxHp: 120,
+            bossKey: 'greed',
+            selectedWeaponKey: 'staff',
+            attackCooldownMs: 220,
+            specialCooldownMs: 260,
+            dodgeCooldownMs: 220,
+            stamina: 26,
+            staminaRegenPerSecond: 12,
+            attackStaminaCost: 8,
+            specialStaminaCost: 18,
+            dodgeStaminaCost: 10
+        }),
+        '建议 2：离弦修习 · 目标Boss更宜追后',
+        'recommendation helper should use the current boss posture as a tiebreaker for weapon-routing routes when the target fight rewards ranged chase pressure'
+    );
 
     const statusRoutingChoices = getRunEventRoomChoices('statusRoutingShrine');
     assert.equal(
@@ -3582,6 +4107,42 @@ function testRunEventRoomChoiceRecommendation() {
         }),
         '建议 2：血痕修习 · 挂血更宜抢势',
         'recommendation helper should elevate bloodtrace when a bleed-capable loadout currently supports immediate pressure follow-up'
+    );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(statusRoutingChoices, {
+            playerHp: 100,
+            playerMaxHp: 120,
+            bossKey: 'gluttony',
+            selectedWeaponKey: 'staff',
+            attackCooldownMs: 620,
+            specialCooldownMs: 480,
+            dodgeCooldownMs: 560,
+            stamina: 26,
+            staminaRegenPerSecond: 12,
+            attackStaminaCost: 10,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 14
+        }),
+        '建议 1：余烬修习 · 目标Boss更宜控场',
+        'recommendation helper should use the current boss posture as a tiebreaker for burn-status routes when the target fight rewards a calmer control-first posture'
+    );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(statusRoutingChoices, {
+            playerHp: 96,
+            playerMaxHp: 120,
+            bossKey: 'pride',
+            selectedWeaponKey: 'sword',
+            attackCooldownMs: 620,
+            specialCooldownMs: 480,
+            dodgeCooldownMs: 560,
+            stamina: 26,
+            staminaRegenPerSecond: 12,
+            attackStaminaCost: 8,
+            specialStaminaCost: 18,
+            dodgeStaminaCost: 10
+        }),
+        '建议 2：血痕修习 · 目标Boss更宜压线',
+        'recommendation helper should use the current boss posture as a tiebreaker for bleed-status routes when the target fight rewards immediate pressure'
     );
 }
 
@@ -4434,8 +4995,8 @@ function testRunEventEncounterRoutingHooks() {
     const source = loadGameSource();
     assert.match(
         source,
-        /_buildRunEventChoicePreviewState\(\)\s*{[\s\S]*?selectedWeaponKey:\s*this\.player\.currentWeaponKey,[\s\S]*?negativeStatuses:\s*Object\.keys\(this\.player\.activeStatusEffects \|\| \{\}\),[\s\S]*?runModifiers:\s*\(GameState\.runModifiers \|\| \[\]\)\.map\(key => getRunModifierByKey\(key\)\),[\s\S]*?attackCooldownMs:\s*this\.player\.attackCooldown,[\s\S]*?specialCooldownMs:\s*this\.player\.specialCooldown,[\s\S]*?dodgeCooldownMs:\s*this\.player\.dodgeCooldownTimer,[\s\S]*?stamina:\s*this\.player\.stamina,[\s\S]*?staminaRegenPerSecond,[\s\S]*?dodgeStaminaCost:\s*Math\.max\(1,\s*Math\.round\(GAME_CONFIG\.PLAYER\.dodgeStaminaCost \* \(runEffects\.playerDodgeStaminaCostMultiplier \|\| 1\)\)\)/,
-        'run-event preview-state builder should pass the full route and live combat context into shared recommendation helpers'
+        /_buildRunEventChoicePreviewState\(\)\s*{[\s\S]*?selectedWeaponKey:\s*this\.player\.currentWeaponKey,[\s\S]*?bossKey:\s*this\.bossKey,[\s\S]*?negativeStatuses:\s*Object\.keys\(this\.player\.activeStatusEffects \|\| \{\}\),[\s\S]*?runModifiers:\s*\(GameState\.runModifiers \|\| \[\]\)\.map\(key => getRunModifierByKey\(key\)\),[\s\S]*?attackCooldownMs:\s*this\.player\.attackCooldown,[\s\S]*?specialCooldownMs:\s*this\.player\.specialCooldown,[\s\S]*?dodgeCooldownMs:\s*this\.player\.dodgeCooldownTimer,[\s\S]*?stamina:\s*this\.player\.stamina,[\s\S]*?staminaRegenPerSecond,[\s\S]*?dodgeStaminaCost:\s*Math\.max\(1,\s*Math\.round\(GAME_CONFIG\.PLAYER\.dodgeStaminaCost \* \(runEffects\.playerDodgeStaminaCostMultiplier \|\| 1\)\)\)/,
+        'run-event preview-state builder should pass boss target, route state, and live combat context into shared recommendation helpers'
     );
     assert.match(
         source,
@@ -12884,6 +13445,16 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /当玩家真正贴近任一传送门时，画面还会再补一个 compact `选门参考`[\s\S]*?`门前 稳线读招` \/ `门前 追影拆位` \/ `门前 回体扛压` \/ `门前 稳拍反制`/,
+        'README should document the boss-facing portal target cues that frame the next run posture at portal focus'
+    );
+    assert.match(
+        source,
+        /真正踏进关卡后的第一秒，还会补一次 `目标 色欲 · 稳拍反制` \/ `目标 暴怒 · 回体扛压` 这类一次性的开局目标 cue/,
+        'README should document the one-shot run-start target cue that carries portal posture into level entry'
+    );
+    assert.match(
+        source,
         /Tab.*背包/,
         'README should keep the backpack key binding visible'
     );
@@ -13254,6 +13825,16 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /当前目标 Boss 也会在少量高置信场景下折进同一套 footer：例如 `复苏祷言 \/ 游步修习 \/ 离弦修习` 现在也能分别给出 `目标Boss更宜回体 \/ 稳拍 \/ 追后` 这类 matchup-aware reason/,
+        'README should document the new boss-aware recommendation footer examples'
+    );
+    assert.match(
+        source,
+        /补充：`命途圣坛 \/ 烙痕圣坛` 现在也会沿用同一套 boss-posture ladder。若当前血线还没压进 `绝境 \/ 守心` 阈值，或 burn\/bleed loadout 也还没有强到足以单独解释当前 live state，`绝境修习 \/ 守心修习 \/ 余烬修习 \/ 血痕修习` 也会分别给出 `目标Boss更宜压线 \/ 回体 \/ 控场 \/ 压线` 这类脚注/,
+        'README should document the new threshold/status boss-posture tiebreakers'
+    );
+    assert.match(
+        source,
         /`战技 \/ 镇压 \/ 战势 \/ 连携 \/ 反击` 这些行动型 blessing route 也会把 live combat state 接进同一套 recommendation helper，并在高置信场景下给出 `建议 1\/2：连斩修习 · 普攻卡拍` \/ `游步修习 · 闪避卡拍` \/ `镇步修习 · 当前更宜控场` \/ `借势修习 · 特攻待借势` \/ `催锋修习 · 特攻待连段` \/ `回身修习 · 闪避待回身` \/ `追猎修习 · 可立即追猎` \/ `调息修习 · 当前更缺回体` 这类脚注/,
         'README should document that action-route recommendations now use live combat bottlenecks before selection'
     );
@@ -13276,6 +13857,21 @@ function testReadmeKeyboardInventoryLoop() {
         source,
         /`武备圣坛 \/ 烙痕圣坛` 这批 build-facing route 现在也不再只看“当前持近战 \/ 当前持远程 \/ 当前武器可触发”这类静态 loadout fit；当 live combat state 同样指向 routed encounter 的节奏时，choice panel 也会给出 `建议 1\/2：压阵修习 · 近战更宜压线` \/ `离弦修习 · 远程更宜追赏` \/ `余烬修习 · 灼烧更宜稳场` \/ `血痕修习 · 挂血更宜抢势`/,
         'README should document that build-facing route recommendations now use loadout plus live combat context before selection'
+    );
+    assert.match(
+        source,
+        /若这些 boss-aware reason 仍和 routed encounter 强相关，`复苏祷言 \/ 游步修习 \/ 离弦修习` 也会继续压成 `回体稳线 \/ 游步稳拍 \/ 远程断后` 这类更窄 echo/,
+        'README should document that boss-aware recommendation reasons continue into routed encounter echoes'
+    );
+    assert.match(
+        source,
+        /同一套 Boss posture 现在也会继续折进更细颗粒的 action route：`镇步修习 \/ 借势修习 \/ 催锋修习 \/ 追猎修习 \/ 调息修习` 也会在少量高置信场景下分别给出 `目标Boss更宜控场 \/ 借势 \/ 连段 \/ 追猎 \/ 回体` 这类脚注/,
+        'README should document the extended boss-aware action-route recommendation footer examples'
+    );
+    assert.match(
+        source,
+        /当这些 action-route boss-aware reason 仍和 routed encounter 强相关时，第三房入口 \/ 清场 \/ 首个关键战斗节点也会继续压成 `先控稳场 \/ 借势抢压 \/ 连段催锋 \/ 追猎收赏 \/ 回体稳线` 这类更窄 echo/,
+        'README should document the routed encounter echoes for the extended boss-aware action-route reasons'
     );
     assert.match(
         source,
@@ -14473,6 +15069,11 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
+        /传送门的“选门参考”若已经给出“门前 稳线读招”\/“门前 回体扛压”\/“门前 稳拍反制”这类 Boss posture，真正踏进关卡后的第一秒还会再补一次“目标 傲慢 · 稳线读招”\/“目标 暴怒 · 回体扛压”\/“目标 色欲 · 稳拍反制”这类一次性开局提示/,
+        'help overlay should document the one-shot run-start target cue that keeps portal posture alive after the scene transition'
+    );
+    assert.match(
+        source,
         /若已存储的 recommendation reason 仍和 routed encounter 强相关，入口\/清场短句还会继续补“缓冲战 · 双拍缓冲 · 净化后稳场”\/“高压战 · 三向成压 · 压线抢势”\/“淘金战 · 后排赏金 · 血线够追赏”这类更短 echo，命途圣坛的“绝境修习”\/“守心修习”也会一起接进“下间高压”\/“下间缓冲”/,
         'help overlay should document the new routed encounter echo and threshold-shrine routing extension'
     );
@@ -14520,6 +15121,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /武备\/烙痕这些 build-facing route 也会在高置信场景下给出“建议 1\/2：压阵修习 · 近战更宜压线”\/“离弦修习 · 远程更宜追赏”\/“余烬修习 · 灼烧更宜稳场”\/“血痕修习 · 挂血更宜抢势”/,
         'help overlay should document that build-facing recommendations now use why-now context instead of static loadout fit alone'
+    );
+    assert.match(
+        source,
+        /命途\/烙痕这些 threshold\/status route 也会在较安静但高置信的场景下复用同一套 Boss posture：若当前血线还没压进“绝境\/守心”阈值，或 burn\/bleed loadout 也还没有强到足以单独解释当前 live state，choice panel 也会补“建议 1\/2：绝境修习 · 目标Boss更宜压线”\/“守心修习 · 目标Boss更宜回体”\/“余烬修习 · 目标Boss更宜控场”\/“血痕修习 · 目标Boss更宜压线”/,
+        'help overlay should document the new threshold/status boss-posture recommendation ladder'
     );
     assert.match(
         source,
@@ -15444,6 +16050,64 @@ function testHubLastRunSummaryRuntimeHooks() {
     );
 }
 
+function testHubPortalChoiceRuntimeHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /buildHubPortalChoiceSummary,/,
+        'game.js should import the shared hub portal choice helper from GameCore'
+    );
+    assert.match(
+        source,
+        /this\._hubPortalChoicePanel = this\.add\.rectangle\(/,
+        'HubScene should create a dedicated portal-focus decision panel'
+    );
+    assert.match(
+        source,
+        /this\._hubPortalChoiceSummary = buildHubPortalChoiceSummary\(GameState\.lastRunSummary,\s*\{\s*label:\s*targetLabel,\s*bossKey:\s*focusedPortal\.bossKey\s*\}\);/,
+        'HubScene should rebuild portal-focus copy from the shared helper and current boss-aware portal target'
+    );
+    assert.match(
+        source,
+        /this\._hubPortalChoiceTitleText\.setText\(this\._hubPortalChoiceSummary\.title\);[\s\S]*?this\._hubPortalChoiceBodyText\.setText\(this\._hubPortalChoiceSummary\.lines\.join\('\\n'\)\);/,
+        'HubScene should update both portal-focus title and multiline detail text from the shared helper output'
+    );
+    assert.match(
+        source,
+        /const portalFocusRadius = 96;[\s\S]*?if \(distance < portalFocusRadius && distance < nearestDistance\)/,
+        'HubScene should only surface portal-focus copy for the nearest in-range portal'
+    );
+}
+
+function testRunStartTargetCueRuntimeHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /buildRunStartTargetCue,/,
+        'game.js should import the shared run-start target cue helper from GameCore'
+    );
+    assert.match(
+        source,
+        /const boss = BOSSES\[bossKey\];[\s\S]*?this\._runStartTargetCue = buildRunStartTargetCue\(\{\s*label:\s*`\$\{boss\.sin\} \$\{boss\.area\}`,\s*bossKey\s*\}\);/,
+        'LevelScene should derive the run-start target cue from the current boss target when the run scene is created'
+    );
+    assert.match(
+        source,
+        /this\._runStartTargetCueShown = false;/,
+        'LevelScene should track whether the run-start target cue has already been shown'
+    );
+    assert.match(
+        source,
+        /_maybeShowRunStartTargetCue\(\)\s*{[\s\S]*?if \(!this\._runStartTargetCue \|\| this\._runStartTargetCueShown\) return;[\s\S]*?this\._runStartTargetCueShown = true;[\s\S]*?this\.time\.delayedCall\(220,\s*\(\)\s*=>\s*\{[\s\S]*?this\._showFloatingText\(\s*this\.player\.x,\s*this\.player\.y - 84,\s*this\._runStartTargetCue,\s*'#ffe7b8'\s*\);[\s\S]*?\}\);[\s\S]*?}/,
+        'LevelScene should show the run-start target cue once, shortly after scene entry, using the shared floating-text channel'
+    );
+    assert.match(
+        source,
+        /update\(time,\s*delta\)\s*{[\s\S]*?this\._maybeShowRunStartTargetCue\(\);[\s\S]*?this\.player\.update\(time,\s*delta\);/,
+        'LevelScene update should trigger the one-shot run-start target cue before normal gameplay updates continue'
+    );
+}
+
 function main() {
     runTest('weapon scaling monotonicity', testWeaponScalingMonotonicity);
     runTest('sword early reach baseline', testSwordEarlyReachBaseline);
@@ -15456,6 +16120,8 @@ function main() {
     runTest('weapon upgrade message helpers', testWeaponUpgradeMessageHelpers);
     runTest('save/load integrity', testSaveLoadIntegrity);
     runTest('hub last-run summary helper', testHubLastRunSummaryHelper);
+    runTest('hub portal choice summary helper', testHubPortalChoiceSummaryHelper);
+    runTest('run-start target cue helper', testRunStartTargetCueHelper);
     runTest('status effect logic', testStatusEffectLogic);
     runTest('run modifier selection/effects', testRunModifierSelectionAndEffects);
     runTest('run event room selection', testRunEventRoomSelection);
@@ -15567,6 +16233,8 @@ function main() {
     runTest('boss victory watchdog loop', testBossVictoryWatchdogLoop);
     runTest('hub portal transition safety hooks', testHubPortalTransitionSafetyHooks);
     runTest('hub last-run summary runtime hooks', testHubLastRunSummaryRuntimeHooks);
+    runTest('hub portal choice runtime hooks', testHubPortalChoiceRuntimeHooks);
+    runTest('run-start target cue runtime hooks', testRunStartTargetCueRuntimeHooks);
     console.log('All regression checks passed.');
 }
 

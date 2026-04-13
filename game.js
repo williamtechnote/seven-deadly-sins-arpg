@@ -102,6 +102,8 @@ const {
     buildRunEventEncounterBossOpeningEcho,
     buildRunEventEncounterBossVictoryRecap,
     buildHubLastRunSummary,
+    buildHubPortalChoiceSummary,
+    buildRunStartTargetCue,
     formatRunEventRoomChoiceEncounterPreview,
     formatRunEventRoomChoiceEncounterTiming,
     buildRunChallengeCompletedFeedbackText,
@@ -2854,6 +2856,29 @@ class HubScene extends Phaser.Scene {
                 lineSpacing: 4
             }).setScrollFactor(0).setDepth(97);
         }
+        const portalChoiceX = 16;
+        const portalChoiceY = this.cameras.main.height - 100;
+        this._hubPortalChoiceSummary = {
+            visible: false,
+            title: '选门参考',
+            lines: []
+        };
+        this._hubPortalChoicePanel = this.add.rectangle(portalChoiceX, portalChoiceY, 300, 82, 0x0b1220, 0.88)
+            .setOrigin(0, 0)
+            .setScrollFactor(0)
+            .setDepth(96)
+            .setVisible(false);
+        this._hubPortalChoiceTitleText = this.add.text(portalChoiceX + 12, portalChoiceY + 10, this._hubPortalChoiceSummary.title, {
+            fontSize: '14px',
+            fill: '#7ed7ff',
+            fontStyle: 'bold'
+        }).setScrollFactor(0).setDepth(97).setVisible(false);
+        this._hubPortalChoiceBodyText = this.add.text(portalChoiceX + 12, portalChoiceY + 32, '', {
+            fontSize: '13px',
+            fill: '#d7e2f2',
+            lineSpacing: 4
+        }).setScrollFactor(0).setDepth(97).setVisible(false);
+        this._refreshHubPortalChoiceSummary();
         this.scene.launch('UIScene');
 
         GameState.save();
@@ -2960,6 +2985,39 @@ class HubScene extends Phaser.Scene {
         this._miniMapDynamic.strokeCircle(playerPos.x, playerPos.y, 6);
     }
 
+    _refreshHubPortalChoiceSummary() {
+        const portalFocusRadius = 96;
+        let focusedPortal = null;
+        let nearestDistance = Number.POSITIVE_INFINITY;
+        this.portals.forEach(portal => {
+            const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, portal.x, portal.y);
+            if (distance < portalFocusRadius && distance < nearestDistance) {
+                nearestDistance = distance;
+                focusedPortal = portal;
+            }
+        });
+        const targetLabel = focusedPortal && focusedPortal.label && typeof focusedPortal.label.text === 'string'
+            ? focusedPortal.label.text.replace(/\s*✓$/, '').trim()
+            : '';
+        this._hubPortalChoiceSummary = buildHubPortalChoiceSummary(GameState.lastRunSummary, {
+            label: targetLabel,
+            bossKey: focusedPortal.bossKey
+        });
+        const visible = !!this._hubPortalChoiceSummary.visible;
+        this._hubPortalChoicePanel.setVisible(visible);
+        this._hubPortalChoiceTitleText.setVisible(visible);
+        this._hubPortalChoiceBodyText.setVisible(visible);
+        if (!visible) return;
+        const panelHeight = 30 + this._hubPortalChoiceSummary.lines.length * 20;
+        const panelY = this.cameras.main.height - panelHeight - 16;
+        this._hubPortalChoicePanel.setPosition(16, panelY);
+        this._hubPortalChoicePanel.setSize(300, panelHeight);
+        this._hubPortalChoiceTitleText.setPosition(28, panelY + 10);
+        this._hubPortalChoiceBodyText.setPosition(28, panelY + 32);
+        this._hubPortalChoiceTitleText.setText(this._hubPortalChoiceSummary.title);
+        this._hubPortalChoiceBodyText.setText(this._hubPortalChoiceSummary.lines.join('\n'));
+    }
+
     _flushPortalTransition() {
         if (!this._portalTransitioning || !this._pendingPortalBossKey) return false;
         const bossKey = this._pendingPortalBossKey;
@@ -2998,6 +3056,7 @@ class HubScene extends Phaser.Scene {
         });
         this.nearestNpc = nearest;
         this._updateMiniMap();
+        this._refreshHubPortalChoiceSummary();
 
         const ui = this.scene.get('UIScene');
         if (ui && ui.updateHUD) ui.updateHUD(this.player, '净罪庇护所');
@@ -3016,6 +3075,8 @@ class LevelScene extends Phaser.Scene {
         const bossKey = data.bossKey || 'wrath';
         const boss = BOSSES[bossKey];
         this.bossKey = bossKey;
+        this._runStartTargetCue = buildRunStartTargetCue({ label: `${boss.sin} ${boss.area}`, bossKey });
+        this._runStartTargetCueShown = false;
         AudioSystem.bindSceneInput(this);
         GameState.ensureRunModifiers();
 
@@ -3328,6 +3389,15 @@ class LevelScene extends Phaser.Scene {
         });
     }
 
+    _maybeShowRunStartTargetCue() {
+        if (!this._runStartTargetCue || this._runStartTargetCueShown) return;
+        this._runStartTargetCueShown = true;
+        this.time.delayedCall(220, () => {
+            if (!this.player || !this.player.active || !this.scene.isActive()) return;
+            this._showFloatingText(this.player.x, this.player.y - 84, this._runStartTargetCue, '#ffe7b8');
+        });
+    }
+
     _getRunEventRoomVisualConfig(eventRoom) {
         const type = eventRoom && typeof eventRoom.type === 'string' ? eventRoom.type : 'trade';
         if (type === 'healing') {
@@ -3571,6 +3641,7 @@ class LevelScene extends Phaser.Scene {
             playerHp: this.player.hp,
             playerMaxHp: this.player.maxHp,
             selectedWeaponKey: this.player.currentWeaponKey,
+            bossKey: this.bossKey,
             inventory: GameState.inventory,
             negativeStatuses: Object.keys(this.player.activeStatusEffects || {}),
             runModifiers: (GameState.runModifiers || []).map(key => getRunModifierByKey(key)),
@@ -3927,6 +3998,7 @@ class LevelScene extends Phaser.Scene {
     update(time, delta) {
         if (this.playerDead) return;
 
+        this._maybeShowRunStartTargetCue();
         this._updateRunEventEncounterHint();
         this.player.update(time, delta);
         this._maybeAnnounceRunEventEncounterProfile();
@@ -8145,11 +8217,13 @@ class HelpScene extends Phaser.Scene {
                     'F — NPC / 事件房交互',
                     '事件房祭坛靠近提示也会按 Phaser 文本实际宽度贴在当前视口内，因此贴近屏幕边缘时不会被裁出画面',
                     '事件房导向的第三房路线现在不只会在 shrine 结算时预告“下间缓冲”/“下间高压”/“下间淘金”，进房时补“缓冲战 · 双拍缓冲”/“高压战 · 三向成压”/“淘金战 · 后排赏金”，还会在真正清场时再补“缓冲战 · 稳住出清”/“高压战 · 顶住成压”/“淘金战 · 赏金到手”这类短回顾；若已存储的 recommendation reason 仍和 routed encounter 强相关，入口/清场短句还会继续补“缓冲战 · 双拍缓冲 · 净化后稳场”/“高压战 · 三向成压 · 压线抢势”/“淘金战 · 后排赏金 · 血线够追赏”这类更短 echo，命途圣坛的“绝境修习”/“守心修习”也会一起接进“下间高压”/“下间缓冲”；同一套 routed encounter contract 现也开始吃进 build-facing 路线，武备圣坛的“压阵修习”/“离弦修习”会分别导向“下间高压”/“下间淘金”，烙痕圣坛的“余烬修习”/“血痕修习”则会分别导向“下间缓冲”/“下间高压”；其余行动型 blessing route 也会继续把第三房压成“缓冲/高压/淘金”，并在没有 recommendation receipt 时补“连斩抢拍”/“游步整拍”/“镇步控场”/“破势追杀”/“回息稳场”/“借势重击”/“催锋连段”/“回身整拍”/“追猎追赏”/“调息回线”这类 baseline anchor',
+                    '传送门的“选门参考”若已经给出“门前 稳线读招”/“门前 回体扛压”/“门前 稳拍反制”这类 Boss posture，真正踏进关卡后的第一秒还会再补一次“目标 傲慢 · 稳线读招”/“目标 暴怒 · 回体扛压”/“目标 色欲 · 稳拍反制”这类一次性开局提示，让 scene transition 后不会立刻失声',
                     '当清场浮字淡出后，Boss 门标签也会继续保留“缓冲路线 · 稳线迎战”/“高压路线 · 顶压迎战”/“淘金路线 · 带赏迎战”这类 run-arc 回顾，让这段路线怎样改写了整段推进节奏不会在进 Boss 前立刻断掉；真正踏进 Boss 房后的第一拍，还会再补一次“缓冲路线 · 稳线开局”/“高压路线 · 抢势开局”/“淘金路线 · 带赏开局”这类共享 opener，把这段 route identity 真正接进 Boss 开局',
                     '事件房导向的第三房路线现在不只会在 shrine 结算时预告“下间缓冲”/“下间高压”/“下间淘金”，进房时补“缓冲战 · 双拍缓冲”/“高压战 · 三向成压”/“淘金战 · 后排赏金”，还会在真正清场时再补“缓冲战 · 稳住出清”/“高压战 · 顶住成压”/“淘金战 · 赏金到手”这类短回顾；若已存储的 recommendation reason 仍和 routed encounter 强相关，入口/清场短句还会继续补“缓冲战 · 双拍缓冲 · 净化后稳场”/“高压战 · 三向成压 · 压线抢势”/“淘金战 · 后排赏金 · 血线够追赏”这类更短 echo，命途圣坛的“绝境修习”/“守心修习”也会一起接进“下间高压”/“下间缓冲”；同一套 routed encounter contract 现也开始吃进 build-facing 路线，武备圣坛的“压阵修习”/“离弦修习”会分别导向“下间高压”/“下间淘金”，烙痕圣坛的“余烬修习”/“血痕修习”则会分别导向“下间缓冲”/“下间高压”；其余行动型 blessing route 也会继续把第三房压成“缓冲/高压/淘金”，并在没有 recommendation receipt 时补“连斩抢拍”/“游步整拍”/“镇步控场”/“破势追杀”/“回息稳场”/“借势重击”/“催锋连段”/“回身整拍”/“追猎追赏”/“调息回线”这类 baseline anchor',
                     '资源与结算路线现在也会把第三房继续钉成更具体的战术短句：“复苏祷言 / 迅击祷言 / 豪赌 / 稳押 / 战地净化包 / 狂战补给”会分别补“复苏回拍 / 迅击抢拍 / 豪赌追赏 / 稳押收赏 / 净包稳场 / 狂油抢势”；若“稳押”本身是因为“当前更宜稳押”才成立，还会继续升级成“留本追赏”；若“迅击祷言”本身就是因为“当前局已偏节奏”才被推荐，还会继续把 routed “高压战”压成“顺势抢压”；若“战地净化包”是因为“当前可负担”才成立，也会把 routed “缓冲战”继续压成“趁价备净”',
                     '当第三房真正开始兑现这条 recommendation 时，系统还会只在首个稳场节点/首个高压接敌/首个赏金兑现点再补一次“净化后稳场”/“压线抢势”/“血线够追赏”这类战中 source cue；若 recommendation 来自压阵/离弦/余烬/血痕这些 build-facing 路线，还会对应补“贴身压阵”/“远程追赏”/“灼烧稳场”/“挂血抢势”，把“为什么推荐这条”接到实际交手瞬间；即使没有 recommendation receipt，战技/镇压/战势/连携/反击这些行动型 blessing route 也会在同一拍点补“连斩抢拍”/“游步整拍”/“镇步控场”/“破势追杀”/“回息稳场”/“借势重击”/“催锋连段”/“回身整拍”/“追猎追赏”/“调息回线”',
                     '事件房 choice panel 若出现明显上下文倾向，还会在底部脚注补“建议 1/2：净泉啜饮 · 可净化2层”这类短推荐，但不会改动原有 1/2 顺序；若玩家真的选了这条高置信路线，已触发后的 HUD / 祭坛世界标签 / 结算浮字也会继续补“治疗: 净泉啜饮 · 可净化2层”这类极短确认；祈愿圣坛现在也会在明显节奏偏向时给出“建议 2：迅击祷言 · 当前局已偏节奏”这类脚注；若玩家真的选了这条高置信路线，已触发后的 HUD / 祭坛世界标签 / 结算浮字也会继续补“效果: 迅击祷言 · 当前局已偏节奏”这类极短确认；choice panel / 侧栏事件房摘要 / 已触发后的祭坛世界标签现在还会继续补“首拍兑现 / 稳场兑现 / 追赏兑现”这类极短时机签，让玩家在选前与选后都知道这条路线会在下一房的开压、稳场或追赏节点开始回本；战技/镇压/战势/连携/反击这些行动型 blessing route 也会把 live combat state 接进同一套 recommendation helper，并在高置信场景下给出“建议 1/2：连斩修习 · 普攻卡拍”/“游步修习 · 闪避卡拍”/“镇步修习 · 当前更宜控场”/“借势修习 · 特攻待借势”/“催锋修习 · 特攻待连段”/“回身修习 · 闪避待回身”/“追猎修习 · 可立即追猎”/“调息修习 · 当前更缺回体”这类脚注；武备/烙痕这些 build-facing route 也会在高置信场景下给出“建议 1/2：压阵修习 · 近战更宜压线”/“离弦修习 · 远程更宜追赏”/“余烬修习 · 灼烧更宜稳场”/“血痕修习 · 挂血更宜抢势”，不再只停在静态 loadout fit',
+                    '命途/烙痕这些 threshold/status route 也会在较安静但高置信的场景下复用同一套 Boss posture：若当前血线还没压进“绝境/守心”阈值，或 burn/bleed loadout 也还没有强到足以单独解释当前 live state，choice panel 也会补“建议 1/2：绝境修习 · 目标Boss更宜压线”/“守心修习 · 目标Boss更宜回体”/“余烬修习 · 目标Boss更宜控场”/“血痕修习 · 目标Boss更宜压线”；若这些理由仍和 routed encounter 强相关，room-3 还会继续把它们兑现成“压线抢势”/“守心稳场”/“灼烧稳场”/“挂血抢势”这类短 echo',
                     '若这些 action recommendation 的 persisted reason 仍和 routed encounter 强相关，第三房还会继续把“普攻卡拍/闪避卡拍/当前可追终结/特攻待借势/特攻待连段/可立即追猎”压成“抢拍开刃/游步回拍/破势收赏/借势抢压/连段催锋/追猎收赏”这类更窄的 why-now echo',
                     '右侧固定侧栏里的章节标题、区域名、本局词缀、本局挑战与事件房摘要会优先按 Phaser 文本实际宽度钳制，并按实际文本高度动态纵向排布，避免长标题 / 长路线结算继续互相顶出 HUD',
                     '这些 compact / ultra-compact / ultra-tight 分档会按实际显示尺寸触发，而不再只依赖固定逻辑画布尺寸',

@@ -811,6 +811,29 @@
         volume: 100
     };
 
+    const HUB_PORTAL_TARGET_CUES = Object.freeze({
+        pride: '稳线读招',
+        envy: '追影拆位',
+        wrath: '回体扛压',
+        sloth: '拉稳开刃',
+        greed: '追赏断后',
+        gluttony: '留体拆潮',
+        lust: '稳拍反制',
+        final: '全备赴渊'
+    });
+
+    const BOSS_MATCHUP_RECOMMENDATION_REASONS = Object.freeze({
+        sustain: '目标Boss更宜回体',
+        reposition: '目标Boss更宜拆位',
+        measuredDodge: '目标Boss更宜稳拍',
+        pressure: '目标Boss更宜压线',
+        chaseBackline: '目标Boss更宜追后',
+        control: '目标Boss更宜控场',
+        momentum: '目标Boss更宜借势',
+        combo: '目标Boss更宜连段',
+        hunt: '目标Boss更宜追猎'
+    });
+
     function clampInt(value, min, max, fallback) {
         const n = Number(value);
         if (!Number.isFinite(n)) return fallback;
@@ -843,6 +866,27 @@
             routeRecap,
             choiceLabel,
             recommendationReason
+        };
+    }
+
+    function normalizeHubPortalTarget(target) {
+        if (typeof target === 'string') {
+            const label = target.trim();
+            if (!label) return null;
+            return {
+                label,
+                bossKey: '',
+                bossCue: ''
+            };
+        }
+        if (!target || typeof target !== 'object') return null;
+        const label = typeof target.label === 'string' ? target.label.trim() : '';
+        const bossKey = typeof target.bossKey === 'string' ? target.bossKey.trim() : '';
+        if (!label) return null;
+        return {
+            label,
+            bossKey,
+            bossCue: bossKey && HUB_PORTAL_TARGET_CUES[bossKey] ? HUB_PORTAL_TARGET_CUES[bossKey] : ''
         };
     }
 
@@ -3000,6 +3044,7 @@
         const missingHp = Math.max(0, playerMaxHp - currentHp);
         const currentGold = clampInt(safeState.gold, 0, Number.MAX_SAFE_INTEGER, 0);
         const selectedWeaponKey = typeof safeState.selectedWeaponKey === 'string' ? safeState.selectedWeaponKey : '';
+        const bossKey = typeof safeState.bossKey === 'string' ? safeState.bossKey.trim() : '';
         const weaponStatus = getWeaponSpecialStatus(selectedWeaponKey);
         const inventory = normalizeInventory(safeState.inventory);
         const runModifierBias = getRunModifierTagBias(safeState.runModifiers);
@@ -3067,12 +3112,24 @@
             if (currentHpRatio >= 0.7) {
                 return buildRecommendation('composureLesson', '高血稳定');
             }
+            if (bossKey === 'pride') {
+                return buildRecommendation('desperationLesson', BOSS_MATCHUP_RECOMMENDATION_REASONS.pressure);
+            }
+            if (bossKey === 'wrath' || bossKey === 'gluttony') {
+                return buildRecommendation('composureLesson', BOSS_MATCHUP_RECOMMENDATION_REASONS.sustain);
+            }
             return null;
         }
 
         if (hasChoice('renewalPrayer') && hasChoice('tempoPrayer')) {
             if (runModifierBias.has('节奏')) {
                 return buildRecommendation('tempoPrayer', '当前局已偏节奏');
+            }
+            if (bossKey === 'wrath' || bossKey === 'gluttony') {
+                return buildRecommendation('renewalPrayer', BOSS_MATCHUP_RECOMMENDATION_REASONS.sustain);
+            }
+            if (bossKey === 'envy') {
+                return buildRecommendation('tempoPrayer', BOSS_MATCHUP_RECOMMENDATION_REASONS.reposition);
             }
             return null;
         }
@@ -3084,6 +3141,12 @@
             if (isRangedLoadout && wantsWindfallChase) {
                 return buildRecommendation('longshotLesson', '远程更宜追赏');
             }
+            if (isMeleeLoadout && (bossKey === 'pride' || bossKey === 'wrath')) {
+                return buildRecommendation('vanguardLesson', BOSS_MATCHUP_RECOMMENDATION_REASONS.pressure);
+            }
+            if (isRangedLoadout && bossKey === 'greed') {
+                return buildRecommendation('longshotLesson', BOSS_MATCHUP_RECOMMENDATION_REASONS.chaseBackline);
+            }
             return null;
         }
 
@@ -3093,6 +3156,13 @@
             }
             if (weaponStatus && weaponStatus.key === 'bleed' && supportsPressureFollowup) {
                 return buildRecommendation('bloodtraceLesson', '挂血更宜抢势');
+            }
+            if (weaponStatus && weaponStatus.key === 'burn'
+                && (bossKey === 'wrath' || bossKey === 'gluttony')) {
+                return buildRecommendation('emberLesson', BOSS_MATCHUP_RECOMMENDATION_REASONS.control);
+            }
+            if (weaponStatus && weaponStatus.key === 'bleed' && bossKey === 'pride') {
+                return buildRecommendation('bloodtraceLesson', BOSS_MATCHUP_RECOMMENDATION_REASONS.pressure);
             }
             return null;
         }
@@ -3105,6 +3175,9 @@
             if (actionState.dodge.recoveryMs >= 900
                 && actionState.dodge.recoveryMs >= actionState.attack.recoveryMs + 400) {
                 return buildRecommendation('ghostStepLesson', '闪避卡拍');
+            }
+            if (bossKey === 'pride' || bossKey === 'lust') {
+                return buildRecommendation('ghostStepLesson', BOSS_MATCHUP_RECOMMENDATION_REASONS.measuredDodge);
             }
             return null;
         }
@@ -3119,6 +3192,9 @@
                     && actionState.dodge.recoveryMs <= 400) {
                     return buildRecommendation('executionLesson', '当前可追终结');
                 }
+                if (bossKey === 'wrath' || bossKey === 'gluttony') {
+                    return buildRecommendation('crushingLesson', BOSS_MATCHUP_RECOMMENDATION_REASONS.control);
+                }
             }
             return null;
         }
@@ -3132,6 +3208,9 @@
             if (actionState.dodge.isReady && actionState.special.recoveryMs >= 900) {
                 return buildRecommendation('momentumLesson', '特攻待借势');
             }
+            if (bossKey === 'pride' || bossKey === 'lust') {
+                return buildRecommendation('momentumLesson', BOSS_MATCHUP_RECOMMENDATION_REASONS.momentum);
+            }
             return null;
         }
 
@@ -3141,6 +3220,9 @@
             }
             if (actionState.special.isReady && actionState.dodge.recoveryMs >= 1000) {
                 return buildRecommendation('reversalStepLesson', '闪避待回身');
+            }
+            if (bossKey === 'envy') {
+                return buildRecommendation('sharpeningLesson', BOSS_MATCHUP_RECOMMENDATION_REASONS.combo);
             }
             return null;
         }
@@ -3155,6 +3237,12 @@
             if (actionState.special.missingStamina > 0
                 || (actionState.special.recoveryMs <= 500 && actionState.stamina <= 10)) {
                 return buildRecommendation('focusLesson', '当前更缺回体');
+            }
+            if (bossKey === 'greed' || bossKey === 'envy') {
+                return buildRecommendation('pursuitLesson', BOSS_MATCHUP_RECOMMENDATION_REASONS.hunt);
+            }
+            if (bossKey === 'wrath' || bossKey === 'gluttony') {
+                return buildRecommendation('focusLesson', BOSS_MATCHUP_RECOMMENDATION_REASONS.sustain);
             }
             return null;
         }
@@ -3233,6 +3321,14 @@
         if (!profileKey) return null;
 
         if (profileKey === 'breather') {
+            if (normalizedRoom.selectedChoiceKey === 'renewalPrayer'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.sustain) {
+                return {
+                    echo: '回体稳线',
+                    sourceCue: '回体稳线',
+                    sourceCueMoment: 'stabilize'
+                };
+            }
             if ((normalizedRoom.selectedChoiceKey === 'purifyingSip' || normalizedRoom.selectedChoiceKey === 'fieldTonic')
                 && /^可净化\d+层$/.test(recommendationReason)) {
                 return {
@@ -3262,7 +3358,23 @@
                     sourceCueMoment: 'stabilize'
                 };
             }
+            if (normalizedRoom.selectedChoiceKey === 'ghostStepLesson'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.measuredDodge) {
+                return {
+                    echo: '游步稳拍',
+                    sourceCue: '游步稳拍',
+                    sourceCueMoment: 'stabilize'
+                };
+            }
             if (normalizedRoom.selectedChoiceKey === 'crushingLesson' && recommendationReason === '当前更宜控场') {
+                return {
+                    echo: '先控稳场',
+                    sourceCue: '先控稳场',
+                    sourceCueMoment: 'stabilize'
+                };
+            }
+            if (normalizedRoom.selectedChoiceKey === 'crushingLesson'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.control) {
                 return {
                     echo: '先控稳场',
                     sourceCue: '先控稳场',
@@ -3290,7 +3402,23 @@
                     sourceCueMoment: 'stabilize'
                 };
             }
+            if (normalizedRoom.selectedChoiceKey === 'focusLesson'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.sustain) {
+                return {
+                    echo: '回体稳线',
+                    sourceCue: '回体稳线',
+                    sourceCueMoment: 'stabilize'
+                };
+            }
             if (normalizedRoom.selectedChoiceKey === 'composureLesson' && recommendationReason === '高血稳定') {
+                return {
+                    echo: '守心稳场',
+                    sourceCue: '守心稳场',
+                    sourceCueMoment: 'stabilize'
+                };
+            }
+            if (normalizedRoom.selectedChoiceKey === 'composureLesson'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.sustain) {
                 return {
                     echo: '守心稳场',
                     sourceCue: '守心稳场',
@@ -3305,9 +3433,25 @@
                     sourceCueMoment: 'stabilize'
                 };
             }
+            if (normalizedRoom.selectedChoiceKey === 'emberLesson'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.control) {
+                return {
+                    echo: '灼烧稳场',
+                    sourceCue: '灼烧稳场',
+                    sourceCueMoment: 'stabilize'
+                };
+            }
         }
 
         if (profileKey === 'pressure') {
+            if (normalizedRoom.selectedChoiceKey === 'tempoPrayer'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.reposition) {
+                return {
+                    echo: '拆位抢拍',
+                    sourceCue: '拆位抢拍',
+                    sourceCueMoment: 'engage'
+                };
+            }
             if (normalizedRoom.selectedChoiceKey === 'flurryLesson' && recommendationReason === '普攻卡拍') {
                 return {
                     echo: '抢拍开刃',
@@ -3329,6 +3473,14 @@
                     sourceCueMoment: 'engage'
                 };
             }
+            if (normalizedRoom.selectedChoiceKey === 'desperationLesson'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.pressure) {
+                return {
+                    echo: '压线抢势',
+                    sourceCue: '压线抢势',
+                    sourceCueMoment: 'engage'
+                };
+            }
             if (normalizedRoom.selectedChoiceKey === 'momentumLesson' && recommendationReason === '特攻待借势') {
                 return {
                     echo: '借势抢压',
@@ -3336,7 +3488,23 @@
                     sourceCueMoment: 'engage'
                 };
             }
+            if (normalizedRoom.selectedChoiceKey === 'momentumLesson'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.momentum) {
+                return {
+                    echo: '借势抢压',
+                    sourceCue: '借势抢压',
+                    sourceCueMoment: 'engage'
+                };
+            }
             if (normalizedRoom.selectedChoiceKey === 'sharpeningLesson' && recommendationReason === '特攻待连段') {
+                return {
+                    echo: '连段催锋',
+                    sourceCue: '连段催锋',
+                    sourceCueMoment: 'engage'
+                };
+            }
+            if (normalizedRoom.selectedChoiceKey === 'sharpeningLesson'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.combo) {
                 return {
                     echo: '连段催锋',
                     sourceCue: '连段催锋',
@@ -3351,8 +3519,24 @@
                     sourceCueMoment: 'engage'
                 };
             }
+            if (normalizedRoom.selectedChoiceKey === 'vanguardLesson'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.pressure) {
+                return {
+                    echo: '贴身压阵',
+                    sourceCue: '贴身压阵',
+                    sourceCueMoment: 'engage'
+                };
+            }
             if (normalizedRoom.selectedChoiceKey === 'bloodtraceLesson'
                 && (recommendationReason === '当前武器可触发' || recommendationReason === '挂血更宜抢势')) {
+                return {
+                    echo: '挂血抢势',
+                    sourceCue: '挂血抢势',
+                    sourceCueMoment: 'engage'
+                };
+            }
+            if (normalizedRoom.selectedChoiceKey === 'bloodtraceLesson'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.pressure) {
                 return {
                     echo: '挂血抢势',
                     sourceCue: '挂血抢势',
@@ -3391,7 +3575,23 @@
                     sourceCueMoment: 'bounty'
                 };
             }
+            if (normalizedRoom.selectedChoiceKey === 'longshotLesson'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.chaseBackline) {
+                return {
+                    echo: '远程断后',
+                    sourceCue: '远程断后',
+                    sourceCueMoment: 'bounty'
+                };
+            }
             if (normalizedRoom.selectedChoiceKey === 'pursuitLesson' && recommendationReason === '可立即追猎') {
+                return {
+                    echo: '追猎收赏',
+                    sourceCue: '追猎收赏',
+                    sourceCueMoment: 'bounty'
+                };
+            }
+            if (normalizedRoom.selectedChoiceKey === 'pursuitLesson'
+                && recommendationReason === BOSS_MATCHUP_RECOMMENDATION_REASONS.hunt) {
                 return {
                     echo: '追猎收赏',
                     sourceCue: '追猎收赏',
@@ -3590,6 +3790,52 @@
             title: '上轮战报',
             lines
         };
+    }
+
+    function buildHubPortalChoiceSummary(summary, targetLabel) {
+        const normalizedSummary = normalizeLastRunSummary(summary);
+        const normalizedTarget = normalizeHubPortalTarget(targetLabel);
+        if (!normalizedTarget) {
+            return {
+                visible: false,
+                title: '选门参考',
+                lines: []
+            };
+        }
+
+        const lines = [`目标 ${normalizedTarget.label}`];
+        if (normalizedTarget.bossCue) {
+            lines.push(`门前 ${normalizedTarget.bossCue}`);
+        }
+        const lastRunAnchor = normalizedSummary
+            ? (normalizedSummary.routeRecap || normalizedSummary.bossLabel)
+            : '';
+        if (lastRunAnchor) {
+            lines.push(`上轮 ${lastRunAnchor}`);
+        }
+        if (normalizedSummary && normalizedSummary.choiceLabel) {
+            lines.push(`源于 ${normalizedSummary.choiceLabel}${normalizedSummary.recommendationReason ? ` · ${normalizedSummary.recommendationReason}` : ''}`);
+        }
+        if (lines.length <= 1) {
+            return {
+                visible: false,
+                title: '选门参考',
+                lines: []
+            };
+        }
+        return {
+            visible: true,
+            title: '选门参考',
+            lines
+        };
+    }
+
+    function buildRunStartTargetCue(target) {
+        const normalizedTarget = normalizeHubPortalTarget(target);
+        if (!normalizedTarget || !normalizedTarget.bossCue) return '';
+        const shortLabel = normalizedTarget.label.split(/\s+/).find(Boolean) || normalizedTarget.label;
+        if (!shortLabel) return '';
+        return `目标 ${shortLabel} · ${normalizedTarget.bossCue}`;
     }
 
     function buildCompactRunEventResolutionText(runEventRoom, choice) {
@@ -6221,6 +6467,8 @@
         buildRunEventEncounterBossOpeningEcho,
         buildRunEventEncounterBossVictoryRecap,
         buildHubLastRunSummary,
+        buildHubPortalChoiceSummary,
+        buildRunStartTargetCue,
         formatRunEventEncounterPayoffTimingLabel,
         formatRunEventRoomChoiceEncounterPreview,
         formatRunEventRoomChoiceEncounterTiming,

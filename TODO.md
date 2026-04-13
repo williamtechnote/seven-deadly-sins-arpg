@@ -3,12 +3,20 @@
 ## Active
 
 ## Next Up
-- [ ] Hub 上轮战报余波：若 `上轮战报` 已经能稳定保留 `已讨伐谁 / 哪条路线收官 / 源于哪次抉择`，下一步再评估是否需要把同一段 recap 继续接进 portal hover / run-history，还是保持 Hub 单块作为 route memory bridge 的终点
+- [ ] 开局目标姿态后续评估：若一次性的 `目标 色欲 · 稳拍反制` 这类开局 cue 已能稳定把 portal posture 带进关卡第一秒，再评估是否要把同一姿态继续接到首个事件房靠近提示 / 第一段关卡标题，而不是新增常驻 Boss HUD 块
+- [ ] Hub 记忆桥后续评估：若 portal focus 的 `选门参考` 已能把 `上轮路线收官 / 源头抉择 / 当前目标 Boss` 稳定压进选门时刻，再评估是否仍需要额外的 run-history 入口，还是让 `上轮战报 + 选门参考` 成为足够轻量的 route memory 终点
+- [ ] 命途 / 烙痕 Boss 姿态后续评估：若 `守心稳场 / 压线抢势 / 灼烧稳场 / 挂血抢势` 这批 threshold/status matchup echo 已能稳定解释 `命途 / 烙痕` 的 choice footer 与 routed encounter handoff，再评估是否还要把同一层 posture 继续扩到 forge / consumable 之类更间接的战前抉择，而不是重新膨胀成更多独立 Boss 文案
 
 ## Blocked
 - [x] 仓库交付闭环：源仓库自带未提交修改 + 未跟踪 plan 文件会在整合 `origin/main` 时阻塞 merge；现已通过归档/提交历史改动解除该 blocker（完成：2026-04-07 11:52 +08）
 
 ## Completed
+- [x] 命途 / 烙痕接入 Boss 姿态权重：当前 boss posture tiebreaker 已经覆盖 `祈愿 / 战技 / 镇压 / 战势 / 连携 / 反击 / 武备`，但 `命途圣坛 / 烙痕圣坛` 在中性血线或较安静的 live state 下仍只剩阈值 / loadout 提示；现已让 `绝境修习 / 守心修习 / 余烬修习 / 血痕修习` 也能在高置信 matchup 下复用 `目标Boss更宜压线 / 回体 / 控场` 这类脚注，并继续兑现到 `压线抢势 / 守心稳场 / 灼烧稳场 / 挂血抢势` 这类 routed encounter echo，让 threshold / status 路线也接回同一条 matchup ladder（完成：2026-04-13 13:15 +08）
+- [x] 关卡开局目标姿态提示：Hub 的 `选门参考` 已能在选门时压住 `目标 Boss / 门前姿态 / 上轮路线收官`，但真正踏进关卡后，这层 framing 仍会随场景切换一起失声；现已补一个一次性的 `目标 色欲 · 稳拍反制` / `目标 暴怒 · 回体扛压` 这类开局目标 cue，让 portal posture 真正跨过 scene transition 落到 run 第一秒，而不是只停在 Hub 卡片（完成：2026-04-13 12:07 +08）
+- [x] 事件房 Boss 姿态权重扩到细颗粒 action route：shared recommendation 现在不只会把 `当前目标 Boss` 折进 `复苏祷言 / 游步修习 / 离弦修习`；当 `镇压 / 战势 / 连携 / 反击` 这批更细颗粒 action route 遇到高置信对位时，也会继续补 `目标Boss更宜控场 / 借势 / 连段 / 追猎 / 回体` 这类 why-now reason，并把它们继续兑现到 `先控稳场 / 借势抢压 / 连段催锋 / 追猎收赏 / 回体稳线` 这类 routed encounter echo，让 boss posture 真正延续到更细颗粒的战斗路线，而不是停在较粗的 blessing lane（完成：2026-04-13 11:53 +08）
+- [x] 事件房推荐接入 Boss 姿态权重：shared recommendation 现在不再只会看血线 / 冷却 / 武器 / 状态；当 `祈愿圣坛 / 战技圣坛 / 武备圣坛` 遇到高置信对位时，也会把 `当前目标 Boss` 折成 `目标Boss更宜回体 / 稳拍 / 追后` 这类 why-now reason，并继续兑现到 `回体稳线 / 游步稳拍 / 远程断后` 这类 routed encounter echo，让 matchup framing 真正从 choice footer 延续到战斗确认（完成：2026-04-13 11:44 +08）
+- [x] Hub 选门参考前瞻化：portal focus 现在不再只把 `目标 Boss / 上轮路线收官 / 源头抉择` 压成回顾卡片；同一块 `选门参考` 还会补 `门前 稳线读招 / 追影拆位 / 回体扛压 / 稳拍反制` 这类目标 Boss posture，让选门瞬间同时保住上轮 route memory 与下一门战斗姿态，即使还没有 `上轮战报` 也至少能先读到 `目标 + 门前姿态`（完成：2026-04-13 11:33 +08）
+- [x] 传送门选门参考：`上轮战报` 现在不再只停在 Hub 左上角常驻块；当玩家真正贴近任一传送门做下一次选门时，画面还会补一个 compact `选门参考`，把 `目标 Boss / 上轮路线收官 / 源头抉择` 压进同一块 decision surface，让 hub-return memory bridge 真正延续到 portal focus，而不必直接膨胀成 full run-history（完成：2026-04-13 11:19 +08）
 - [x] Hub 上轮战报回顾：Boss 胜利 settlement 现在已经能保留 `缓冲路线 / 高压路线 / 淘金路线` 的收官 recap，但场景一切回 Hub，玩家又得自己回忆“刚才是哪条路线、为什么值”；现已把这段短 run-arc 压成持久的 `上轮战报` 小块，至少保住 `已讨伐谁 / 哪条路线收官 / 源于哪次抉择`，让下一次选门前还能直接比较这条路线究竟怎样改写了上一段推进（完成：2026-04-13 12:08 +08）
 - [x] Boss 胜利 settlement route recap：当前 shrine route 已能一路从 choice / resolve / 第三房入口 / 首个 payoff / clear recap / Boss 门 / Boss 开场串成完整 handoff，但 Boss 真正倒下后，胜利结算又只剩通用掉落与印记；现已把 `缓冲路线 / 高压路线 / 淘金路线` 再接进 Boss 胜利回执，补成 `稳线收官 / 顶压收官 / 带赏收官` 这类共享收束语，让这段短 run-arc 在 settlement 也有明确终点（完成：2026-04-13 10:57 +08）
 - [x] Boss 开场 route echo：当前 shrine route 已经能一路延伸到第三房 clear 与 Boss 门标签，但玩家真正踏进 Boss 房后，这段短 run-arc 仍会在第一拍重新失声；现已把 `缓冲路线 / 高压路线 / 淘金路线` 再接成 Boss 开场一次性的 `稳线开局 / 抢势开局 / 带赏开局` 共享短 cue，让 route identity 真正跨过 handoff 而不是停在门口（完成：2026-04-13 10:20 +08）
