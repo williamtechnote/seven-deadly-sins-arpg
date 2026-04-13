@@ -1421,6 +1421,30 @@ function testWeaponRoutingEventRoom() {
     assert.equal(vanguardEffects.playerMeleeAttackCooldownMultiplier, 0.82, 'vanguard lesson should only speed up melee normal attacks');
     assert.match(vanguardSettlement.eventRoom.resolutionText, /近战武器普攻冷却 -18%/, 'melee routing summary should mention melee-only attack cadence');
 
+    const recommendedVanguardSettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 98,
+        playerMaxHp: 120,
+        selectedWeaponKey: 'sword',
+        attackCooldownMs: 1250,
+        specialCooldownMs: 220,
+        dodgeCooldownMs: 260,
+        stamina: 24,
+        staminaRegenPerSecond: 12,
+        attackStaminaCost: 8,
+        specialStaminaCost: 18,
+        dodgeStaminaCost: 10
+    }, {
+        key: 'weaponRoutingShrine',
+        discovered: true,
+        resolved: false
+    }, 'vanguardLesson');
+    assert.equal(
+        recommendedVanguardSettlement.eventRoom.selectedChoiceRecommendationReason,
+        '近战更宜压线',
+        'weapon-routing resolution should persist the contextual pressure-fit reason when vanguard earned the recommendation'
+    );
+
     const longshotSettlement = resolveRunEventRoomChoice({
         gold: 95,
         playerHp: 84,
@@ -1434,6 +1458,30 @@ function testWeaponRoutingEventRoom() {
     const longshotEffects = buildRunEventRoomEffects(longshotSettlement.eventRoom);
     assert.equal(longshotEffects.playerRangedSpecialCooldownMultiplier, 0.78, 'longshot lesson should only speed up ranged specials');
     assert.match(longshotSettlement.eventRoom.resolutionText, /远程武器特攻冷却 -22%/, 'ranged routing summary should mention ranged-only special cadence');
+
+    const recommendedLongshotSettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 102,
+        playerMaxHp: 120,
+        selectedWeaponKey: 'staff',
+        attackCooldownMs: 180,
+        specialCooldownMs: 1450,
+        dodgeCooldownMs: 180,
+        stamina: 26,
+        staminaRegenPerSecond: 12,
+        attackStaminaCost: 8,
+        specialStaminaCost: 18,
+        dodgeStaminaCost: 10
+    }, {
+        key: 'weaponRoutingShrine',
+        discovered: true,
+        resolved: false
+    }, 'longshotLesson');
+    assert.equal(
+        recommendedLongshotSettlement.eventRoom.selectedChoiceRecommendationReason,
+        '远程更宜追赏',
+        'weapon-routing resolution should persist the contextual windfall-fit reason when longshot earned the recommendation'
+    );
 
     const unresolvedSummary = buildRunEventRoomHudSummary({
         key: 'weaponRoutingShrine',
@@ -1569,6 +1617,30 @@ function testStatusRoutingEventRoom() {
     assert.match(emberSettlement.eventRoom.resolutionText, /灼烧持续时间 \+45%/, 'burn route summary should mention longer burn duration');
     assert.match(emberSettlement.eventRoom.resolutionText, /灼烧伤害 \+30%/, 'burn route summary should mention stronger burn damage');
 
+    const recommendedEmberSettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 68,
+        playerMaxHp: 120,
+        selectedWeaponKey: 'staff',
+        attackCooldownMs: 260,
+        specialCooldownMs: 420,
+        dodgeCooldownMs: 980,
+        stamina: 18,
+        staminaRegenPerSecond: 11,
+        attackStaminaCost: 10,
+        specialStaminaCost: 20,
+        dodgeStaminaCost: 14
+    }, {
+        key: 'statusRoutingShrine',
+        discovered: true,
+        resolved: false
+    }, 'emberLesson');
+    assert.equal(
+        recommendedEmberSettlement.eventRoom.selectedChoiceRecommendationReason,
+        '灼烧更宜稳场',
+        'status-routing resolution should persist the contextual breather-fit reason when ember earned the recommendation'
+    );
+
     const bloodtraceSettlement = resolveRunEventRoomChoice({
         gold: 95,
         playerHp: 84,
@@ -1584,6 +1656,30 @@ function testStatusRoutingEventRoom() {
     assert.equal(bloodtraceEffects.playerBleedStatusDamageMultiplier, 1.25, 'bloodtrace lesson should boost bleed damage');
     assert.match(bloodtraceSettlement.eventRoom.resolutionText, /流血持续时间 \+40%/, 'bleed route summary should mention longer bleed duration');
     assert.match(bloodtraceSettlement.eventRoom.resolutionText, /流血伤害 \+25%/, 'bleed route summary should mention stronger bleed damage');
+
+    const recommendedBloodtraceSettlement = resolveRunEventRoomChoice({
+        gold: 95,
+        playerHp: 108,
+        playerMaxHp: 120,
+        selectedWeaponKey: 'sword',
+        attackCooldownMs: 180,
+        specialCooldownMs: 260,
+        dodgeCooldownMs: 200,
+        stamina: 28,
+        staminaRegenPerSecond: 12,
+        attackStaminaCost: 8,
+        specialStaminaCost: 18,
+        dodgeStaminaCost: 10
+    }, {
+        key: 'statusRoutingShrine',
+        discovered: true,
+        resolved: false
+    }, 'bloodtraceLesson');
+    assert.equal(
+        recommendedBloodtraceSettlement.eventRoom.selectedChoiceRecommendationReason,
+        '挂血更宜抢势',
+        'status-routing resolution should persist the contextual pressure-fit reason when bloodtrace earned the recommendation'
+    );
 
     const unresolvedSummary = buildRunEventRoomHudSummary({
         key: 'statusRoutingShrine',
@@ -2095,6 +2191,20 @@ function testRunEventEncounterProfileHelpers() {
     );
     assert.equal(
         buildRunEventEncounterEntryPreview(
+            { key: 'pressure', encounterLabel: '高压战' },
+            {
+                key: 'weaponRoutingShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'vanguardLesson',
+                selectedChoiceRecommendationReason: '近战更宜压线'
+            }
+        ),
+        '高压战 · 三向成压 · 贴身压阵',
+        'pressure entry previews should also accept the newer contextual vanguard reason when it still explains the routed room'
+    );
+    assert.equal(
+        buildRunEventEncounterEntryPreview(
             { key: 'windfall', encounterLabel: '淘金战' },
             {
                 key: 'weaponRoutingShrine',
@@ -2106,6 +2216,20 @@ function testRunEventEncounterProfileHelpers() {
         ),
         '淘金战 · 后排赏金 · 远程追赏',
         'windfall entry previews should append a short recommendation echo when a ranged routing recommendation still explains the routed room'
+    );
+    assert.equal(
+        buildRunEventEncounterEntryPreview(
+            { key: 'windfall', encounterLabel: '淘金战' },
+            {
+                key: 'weaponRoutingShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'longshotLesson',
+                selectedChoiceRecommendationReason: '远程更宜追赏'
+            }
+        ),
+        '淘金战 · 后排赏金 · 远程追赏',
+        'windfall entry previews should also accept the newer contextual longshot reason when it still explains the routed room'
     );
     assert.equal(
         buildRunEventEncounterEntryPreview(
@@ -2123,6 +2247,20 @@ function testRunEventEncounterProfileHelpers() {
     );
     assert.equal(
         buildRunEventEncounterEntryPreview(
+            { key: 'breather', encounterLabel: '缓冲战' },
+            {
+                key: 'statusRoutingShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'emberLesson',
+                selectedChoiceRecommendationReason: '灼烧更宜稳场'
+            }
+        ),
+        '缓冲战 · 双拍缓冲 · 灼烧稳场',
+        'breather entry previews should also accept the newer contextual ember reason when it still explains the routed room'
+    );
+    assert.equal(
+        buildRunEventEncounterEntryPreview(
             { key: 'pressure', encounterLabel: '高压战' },
             {
                 key: 'statusRoutingShrine',
@@ -2134,6 +2272,20 @@ function testRunEventEncounterProfileHelpers() {
         ),
         '高压战 · 三向成压 · 挂血抢势',
         'pressure entry previews should append a short recommendation echo when a bleed route recommendation still explains the routed room'
+    );
+    assert.equal(
+        buildRunEventEncounterEntryPreview(
+            { key: 'pressure', encounterLabel: '高压战' },
+            {
+                key: 'statusRoutingShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'bloodtraceLesson',
+                selectedChoiceRecommendationReason: '挂血更宜抢势'
+            }
+        ),
+        '高压战 · 三向成压 · 挂血抢势',
+        'pressure entry previews should also accept the newer contextual bloodtrace reason when it still explains the routed room'
     );
     assert.equal(
         buildRunEventEncounterEntryPreview(
@@ -2448,6 +2600,20 @@ function testRunEventEncounterClearRecapHelpers() {
     );
     assert.equal(
         buildRunEventEncounterClearRecap(
+            { key: 'windfall', encounterLabel: '淘金战' },
+            {
+                key: 'weaponRoutingShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'longshotLesson',
+                selectedChoiceRecommendationReason: '远程更宜追赏'
+            }
+        ),
+        '淘金战 · 赏金到手 · 远程追赏',
+        'windfall clear recaps should also accept the newer contextual longshot reason when it still explains the routed bounty room'
+    );
+    assert.equal(
+        buildRunEventEncounterClearRecap(
             { key: 'breather', encounterLabel: '缓冲战' },
             {
                 key: 'statusRoutingShrine',
@@ -2607,6 +2773,21 @@ function testRunEventEncounterSourceCueHelpers() {
         ),
         '贴身压阵',
         'pressure source cues should fire on the first pressure-contact beat when a melee routing recommendation still explains the routed room'
+    );
+    assert.equal(
+        buildRunEventEncounterSourceCue(
+            { key: 'pressure', encounterLabel: '高压战' },
+            {
+                key: 'weaponRoutingShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'vanguardLesson',
+                selectedChoiceRecommendationReason: '近战更宜压线'
+            },
+            'engage'
+        ),
+        '贴身压阵',
+        'pressure source cues should also accept the newer contextual vanguard reason on the first pressure-contact beat'
     );
     assert.equal(
         buildRunEventEncounterSourceCue(
@@ -2799,6 +2980,112 @@ function testRunEventRoomChoiceRecommendation() {
         }),
         '建议 1：绝境修习 · 已处绝境线',
         'recommendation helper should elevate the low-HP route when the player is already under its damage threshold'
+    );
+
+    const weaponRoutingChoices = getRunEventRoomChoices('weaponRoutingShrine');
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(weaponRoutingChoices, {
+            playerHp: 98,
+            playerMaxHp: 120,
+            selectedWeaponKey: 'sword',
+            attackCooldownMs: 1250,
+            specialCooldownMs: 220,
+            dodgeCooldownMs: 260,
+            stamina: 24,
+            staminaRegenPerSecond: 12,
+            attackStaminaCost: 8,
+            specialStaminaCost: 18,
+            dodgeStaminaCost: 10
+        }),
+        '建议 1：压阵修习 · 近战更宜压线',
+        'recommendation helper should elevate vanguard only when a melee loadout also clearly wants a pressure-oriented cadence fix'
+    );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(weaponRoutingChoices, {
+            playerHp: 102,
+            playerMaxHp: 120,
+            selectedWeaponKey: 'staff',
+            attackCooldownMs: 180,
+            specialCooldownMs: 1450,
+            dodgeCooldownMs: 180,
+            stamina: 26,
+            staminaRegenPerSecond: 12,
+            attackStaminaCost: 8,
+            specialStaminaCost: 18,
+            dodgeStaminaCost: 10
+        }),
+        '建议 2：离弦修习 · 远程更宜追赏',
+        'recommendation helper should elevate longshot only when a ranged loadout also clearly wants the bounty-chase special payoff'
+    );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(weaponRoutingChoices, {
+            playerHp: 102,
+            playerMaxHp: 120,
+            selectedWeaponKey: 'sword',
+            attackCooldownMs: 180,
+            specialCooldownMs: 220,
+            dodgeCooldownMs: 160,
+            stamina: 26,
+            staminaRegenPerSecond: 12,
+            attackStaminaCost: 8,
+            specialStaminaCost: 18,
+            dodgeStaminaCost: 10
+        }),
+        '',
+        'weapon-routing recommendations should stay silent when the loadout fits but the live state does not create a clear tactical edge'
+    );
+
+    const statusRoutingChoices = getRunEventRoomChoices('statusRoutingShrine');
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(statusRoutingChoices, {
+            playerHp: 68,
+            playerMaxHp: 120,
+            selectedWeaponKey: 'staff',
+            attackCooldownMs: 260,
+            specialCooldownMs: 420,
+            dodgeCooldownMs: 980,
+            stamina: 18,
+            staminaRegenPerSecond: 11,
+            attackStaminaCost: 10,
+            specialStaminaCost: 20,
+            dodgeStaminaCost: 14
+        }),
+        '建议 1：余烬修习 · 灼烧更宜稳场',
+        'recommendation helper should elevate ember only when a burn-capable loadout also clearly wants a stabilize-first routed room'
+    );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(statusRoutingChoices, {
+            playerHp: 108,
+            playerMaxHp: 120,
+            selectedWeaponKey: 'sword',
+            attackCooldownMs: 180,
+            specialCooldownMs: 260,
+            dodgeCooldownMs: 200,
+            stamina: 28,
+            staminaRegenPerSecond: 12,
+            attackStaminaCost: 8,
+            specialStaminaCost: 18,
+            dodgeStaminaCost: 10
+        }),
+        '建议 2：血痕修习 · 挂血更宜抢势',
+        'recommendation helper should elevate bloodtrace only when a bleed-capable loadout also supports immediate pressure'
+    );
+    assert.equal(
+        buildRunEventRoomChoiceRecommendation(statusRoutingChoices, {
+            playerHp: 106,
+            playerMaxHp: 120,
+            selectedWeaponKey: 'staff',
+            attackCooldownMs: 180,
+            specialCooldownMs: 220,
+            dodgeCooldownMs: 160,
+            stamina: 28,
+            staminaRegenPerSecond: 12,
+            attackStaminaCost: 8,
+            specialStaminaCost: 18,
+            dodgeStaminaCost: 10
+        }),
+        '',
+        'status-routing recommendations should stay silent when the weapon can trigger the route but the live state does not justify a clear stabilize or pressure read'
     );
 
     const combatDisciplineChoices = getRunEventRoomChoices('combatDisciplineShrine');
@@ -12625,6 +12912,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /`武备圣坛 \/ 烙痕圣坛` 这批 build-facing route 现在也不再只看“当前持近战 \/ 当前持远程 \/ 当前武器可触发”这类静态 loadout fit；当 live combat state 同样指向 routed encounter 的节奏时，choice panel 也会给出 `建议 1\/2：压阵修习 · 近战更宜压线` \/ `离弦修习 · 远程更宜追赏` \/ `余烬修习 · 灼烧更宜稳场` \/ `血痕修习 · 挂血更宜抢势`/,
+        'README should document the new contextual build-route recommendation reasons before selection'
+    );
+    assert.match(
+        source,
         /其余行动型 blessing route 现在也会接进同一套 ladder：`战技圣坛` 的 `连斩修习 \/ 游步修习`、`镇压圣坛` 的 `镇步修习 \/ 破势修习`、`战势圣坛` 的 `回息修习 \/ 借势修习`、`连携圣坛` 的 `催锋修习 \/ 回身修习`、`反击圣坛` 的 `追猎修习 \/ 调息修习` 也会分别导向 `下间缓冲 \/ 下间高压 \/ 下间淘金`，并在没有高置信 recommendation receipt 时继续补 `连斩抢拍 \/ 游步整拍 \/ 镇步控场 \/ 破势追杀 \/ 回息稳场 \/ 借势重击 \/ 催锋连段 \/ 回身整拍 \/ 追猎追赏 \/ 调息回线`/,
         'README should document the new action-route encounter ladder and baseline anchors for non-recommendation blessing routes'
     );
@@ -13846,6 +14138,11 @@ function testHelpOverlayQuickSlotLoop() {
         source,
         /若 recommendation 来自压阵\/离弦\/余烬\/血痕这些 build-facing 路线，还会对应补“贴身压阵”\/“远程追赏”\/“灼烧稳场”\/“挂血抢势”/,
         'help overlay should document the build-facing route recommendation cues that now land during room-3 combat'
+    );
+    assert.match(
+        source,
+        /武备\/烙痕这些 build-facing route 也会在高置信场景下给出“建议 1\/2：压阵修习 · 近战更宜压线”\/“离弦修习 · 远程更宜追赏”\/“余烬修习 · 灼烧更宜稳场”\/“血痕修习 · 挂血更宜抢势”/,
+        'help overlay should document the new contextual build-route recommendation reasons before selection'
     );
     assert.match(
         source,

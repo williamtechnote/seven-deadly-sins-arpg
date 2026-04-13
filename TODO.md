@@ -5,12 +5,12 @@
 
 ## Next Up
 - [ ] 资源 / 结算型 route recommendation encounter echo 深化：当 `祈愿圣坛 / 赌徒圣坛 / 战备商柜` 的 baseline anchor 跑通后，再评估是否把 `当前局已偏节奏 / 可净化N层 / 当前可负担` 这类更偏 run-state / affordability 的 reason 也筛进更窄的 encounter echo，避免只剩 baseline identity、却还没把“为什么是现在”继续接进 routed combat
-- [ ] build-facing blessing route recommendation 扩圈：当前 `压阵 / 离弦 / 余烬 / 血痕` 已能把 `当前持近战 / 当前持远程 / 当前武器可触发` 这类高置信 reason 接进 routed encounter；后续可再评估是否把更细的 loadout/run-state reason 也接进 entry / clear / source cue，避免 build recommendation 仍只有最强一层 reason 能兑现
 
 ## Blocked
 - [x] 仓库交付闭环：源仓库自带未提交修改 + 未跟踪 plan 文件会在整合 `origin/main` 时阻塞 merge；现已通过归档/提交历史改动解除该 blocker（完成：2026-04-07 11:52 +08）
 
 ## Completed
+- [x] build-facing blessing route recommendation 情境深化：`武备圣坛 / 烙痕圣坛` 现在不再只会把 `当前持近战 / 当前持远程 / 当前武器可触发` 这类 loadout-only reason 持久化；当 loadout 与 live combat state 同时支持 routed encounter 时，choice panel / resolved receipt / room-3 entry / clear / source cue 也会一起接进 `近战更宜压线 / 远程更宜追赏 / 灼烧更宜稳场 / 挂血更宜抢势` 这类 why-now reason，并继续兑现成 `贴身压阵 / 远程追赏 / 灼烧稳场 / 挂血抢势`，让 build route 不只回答“拿对了武器”，也回答“为什么现在就该选它”（完成：2026-04-13 08:23 +08）
 - [x] 行动型 blessing route recommendation 遭遇兑现：`战技 / 镇压 / 战势 / 连携 / 反击` 的高置信 recommendation reason 现在会继续兑现到第三房 entry / clear / 首个关键战斗节点，并把 `普攻卡拍 / 闪避卡拍 / 当前更宜控场 / 当前可追终结 / 特攻待借势 / 特攻待连段 / 闪避待回身 / 可立即追猎 / 当前更缺回线 / 当前更缺回体` 压成 `抢拍开刃 / 游步回拍 / 先控稳场 / 破势收赏 / 借势抢压 / 连段催锋 / 回身回拍 / 追猎收赏 / 回线稳场 / 回体稳线` 这类 why-now echo，让 action recommendation 不只停在选前脚注，也会延续到 routed encounter feedback（完成：2026-04-13 07:40 +08）
 - [x] 资源 / 结算型 route 第三房锚点扩展：`祈愿圣坛 / 赌徒圣坛 / 战备商柜` 现在会把 `复苏回拍 / 迅击抢拍 / 豪赌追赏 / 稳押收赏 / 净包稳场 / 狂油抢势` 接进第三房 entry / clear / source cue，并让 `稳押` 在 persisted `当前更宜稳押` 仍强相关时升级成 `留本追赏`，让 resource / settlement route 也能把“为什么现在选它”带进下一房第一段交手（完成：2026-04-13 07:12 +08）
 - [x] 行动型 blessing route 上下文 recommendation：`战技 / 镇压 / 战势 / 连携 / 反击` 现在会把 live combat bottleneck 接进 choice-panel shared recommendation helper，并在高置信场景下给出 `普攻卡拍 / 闪避卡拍 / 当前更宜控场 / 特攻待借势 / 特攻待连段 / 闪避待回身 / 可立即追猎 / 当前更缺回体` 这类 action-context reason；同一条 reason 也会在选中对应路线时持久化进 resolved receipt，让 recommendation judgement 能从选前脚注延续到选后确认（完成：2026-04-13 06:39 +08）

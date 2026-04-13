@@ -3003,6 +3003,29 @@
                 message: `建议 ${entry.index + 1}：${label}${safeReason ? ` · ${safeReason}` : ''}`
             };
         };
+        const isMeleeLoadout = selectedWeaponKey === 'sword'
+            || selectedWeaponKey === 'hammer'
+            || selectedWeaponKey === 'dualBlades';
+        const isRangedLoadout = selectedWeaponKey === 'bow'
+            || selectedWeaponKey === 'staff';
+        const wantsPressureCadence = !!actionState
+            && actionState.attack.recoveryMs >= 900
+            && actionState.attack.recoveryMs >= actionState.special.recoveryMs + 400;
+        const wantsWindfallChase = !!actionState
+            && actionState.special.recoveryMs >= 900
+            && actionState.special.recoveryMs >= actionState.attack.recoveryMs + 500
+            && actionState.dodge.recoveryMs <= 450;
+        const wantsBreatherStabilize = !!actionState
+            && (
+                currentHpRatio <= 0.7
+                || actionState.dodge.recoveryMs >= 900
+                || actionState.attack.missingStamina > 0
+                || actionState.dodge.missingStamina > 0
+            );
+        const supportsPressureFollowup = !!actionState
+            && currentHpRatio >= 0.75
+            && actionState.attack.recoveryMs <= 450
+            && actionState.dodge.recoveryMs <= 450;
 
         if (hasChoice('vitalSurge') && hasChoice('purifyingSip')) {
             const cleanseCount = negativeStatuses.length;
@@ -3028,21 +3051,21 @@
         }
 
         if (hasChoice('vanguardLesson') && hasChoice('longshotLesson')) {
-            if (selectedWeaponKey === 'sword' || selectedWeaponKey === 'hammer') {
-                return buildRecommendation('vanguardLesson', '当前持近战');
+            if (isMeleeLoadout && wantsPressureCadence) {
+                return buildRecommendation('vanguardLesson', '近战更宜压线');
             }
-            if (selectedWeaponKey === 'bow' || selectedWeaponKey === 'staff') {
-                return buildRecommendation('longshotLesson', '当前持远程');
+            if (isRangedLoadout && wantsWindfallChase) {
+                return buildRecommendation('longshotLesson', '远程更宜追赏');
             }
             return null;
         }
 
         if (hasChoice('emberLesson') && hasChoice('bloodtraceLesson')) {
-            if (weaponStatus && weaponStatus.key === 'burn') {
-                return buildRecommendation('emberLesson', '当前武器可触发');
+            if (weaponStatus && weaponStatus.key === 'burn' && wantsBreatherStabilize) {
+                return buildRecommendation('emberLesson', '灼烧更宜稳场');
             }
-            if (weaponStatus && weaponStatus.key === 'bleed') {
-                return buildRecommendation('bloodtraceLesson', '当前武器可触发');
+            if (weaponStatus && weaponStatus.key === 'bleed' && supportsPressureFollowup) {
+                return buildRecommendation('bloodtraceLesson', '挂血更宜抢势');
             }
             return null;
         }
@@ -3240,7 +3263,8 @@
                     sourceCueMoment: 'stabilize'
                 };
             }
-            if (normalizedRoom.selectedChoiceKey === 'emberLesson' && recommendationReason === '当前武器可触发') {
+            if (normalizedRoom.selectedChoiceKey === 'emberLesson'
+                && (recommendationReason === '当前武器可触发' || recommendationReason === '灼烧更宜稳场')) {
                 return {
                     echo: '灼烧稳场',
                     sourceCue: '灼烧稳场',
@@ -3278,14 +3302,16 @@
                     sourceCueMoment: 'engage'
                 };
             }
-            if (normalizedRoom.selectedChoiceKey === 'vanguardLesson' && recommendationReason === '当前持近战') {
+            if (normalizedRoom.selectedChoiceKey === 'vanguardLesson'
+                && (recommendationReason === '当前持近战' || recommendationReason === '近战更宜压线')) {
                 return {
                     echo: '贴身压阵',
                     sourceCue: '贴身压阵',
                     sourceCueMoment: 'engage'
                 };
             }
-            if (normalizedRoom.selectedChoiceKey === 'bloodtraceLesson' && recommendationReason === '当前武器可触发') {
+            if (normalizedRoom.selectedChoiceKey === 'bloodtraceLesson'
+                && (recommendationReason === '当前武器可触发' || recommendationReason === '挂血更宜抢势')) {
                 return {
                     echo: '挂血抢势',
                     sourceCue: '挂血抢势',
@@ -3316,7 +3342,8 @@
                     sourceCueMoment: 'bounty'
                 };
             }
-            if (normalizedRoom.selectedChoiceKey === 'longshotLesson' && recommendationReason === '当前持远程') {
+            if (normalizedRoom.selectedChoiceKey === 'longshotLesson'
+                && (recommendationReason === '当前持远程' || recommendationReason === '远程更宜追赏')) {
                 return {
                     echo: '远程追赏',
                     sourceCue: '远程追赏',
