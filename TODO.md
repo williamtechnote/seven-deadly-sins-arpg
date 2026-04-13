@@ -3,12 +3,13 @@
 ## Active
 
 ## Next Up
-- [ ] Hub 上轮战报余波：若 `上轮战报` 已经能稳定保留 `已讨伐谁 / 哪条路线收官 / 源于哪次抉择`，下一步再评估是否需要把同一段 recap 继续接进 portal hover / run-history，还是保持 Hub 单块作为 route memory bridge 的终点
+- [ ] Hub 上轮战报余波：若 portal hover 的 `选门回顾` 已能稳定把 `目标哪扇门 / 上轮路线收官 / 源于哪次抉择` 压进同一块 decision surface，下一步再评估是否还需要额外的 run-history 入口，还是让 `上轮战报 + 选门回顾` 成为足够轻量的 route memory 终点
 
 ## Blocked
 - [x] 仓库交付闭环：源仓库自带未提交修改 + 未跟踪 plan 文件会在整合 `origin/main` 时阻塞 merge；现已通过归档/提交历史改动解除该 blocker（完成：2026-04-07 11:52 +08）
 
 ## Completed
+- [x] 传送门悬停路线记忆：`上轮战报` 现在不再只停在 Hub 左上角固定块；当玩家真正贴近任一传送门准备选 Boss 时，画面还会补一个 compact `选门回顾`，把 `目标哪扇门 / 上轮路线收官 / 源于哪次抉择` 压进同一块 decision surface，让上一次 route 怎样收束能在真正做下一次选门时被直接扫到，而不是还要把视线拉回角落读静态 recap（完成：2026-04-13 12:22 +08）
 - [x] Hub 上轮战报回顾：Boss 胜利 settlement 现在已经能保留 `缓冲路线 / 高压路线 / 淘金路线` 的收官 recap，但场景一切回 Hub，玩家又得自己回忆“刚才是哪条路线、为什么值”；现已把这段短 run-arc 压成持久的 `上轮战报` 小块，至少保住 `已讨伐谁 / 哪条路线收官 / 源于哪次抉择`，让下一次选门前还能直接比较这条路线究竟怎样改写了上一段推进（完成：2026-04-13 12:08 +08）
 - [x] Boss 胜利 settlement route recap：当前 shrine route 已能一路从 choice / resolve / 第三房入口 / 首个 payoff / clear recap / Boss 门 / Boss 开场串成完整 handoff，但 Boss 真正倒下后，胜利结算又只剩通用掉落与印记；现已把 `缓冲路线 / 高压路线 / 淘金路线` 再接进 Boss 胜利回执，补成 `稳线收官 / 顶压收官 / 带赏收官` 这类共享收束语，让这段短 run-arc 在 settlement 也有明确终点（完成：2026-04-13 10:57 +08）
 - [x] Boss 开场 route echo：当前 shrine route 已经能一路延伸到第三房 clear 与 Boss 门标签，但玩家真正踏进 Boss 房后，这段短 run-arc 仍会在第一拍重新失声；现已把 `缓冲路线 / 高压路线 / 淘金路线` 再接成 Boss 开场一次性的 `稳线开局 / 抢势开局 / 带赏开局` 共享短 cue，让 route identity 真正跨过 handoff 而不是停在门口（完成：2026-04-13 10:20 +08）

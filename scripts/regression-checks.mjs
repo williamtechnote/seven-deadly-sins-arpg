@@ -85,6 +85,7 @@ const {
     buildRunEventEncounterBossOpeningEcho,
     buildRunEventEncounterBossVictoryRecap,
     buildHubLastRunSummary,
+    buildHubPortalChoiceSummary,
     formatRunEventEncounterPayoffTimingLabel,
     buildRunEventRoomChoiceRecommendation,
     buildCraftRecipeAffordance,
@@ -995,6 +996,39 @@ function testHubLastRunSummaryHelper() {
             lines: []
         },
         'hub last-run summary helper should stay hidden when no recap payload exists'
+    );
+}
+
+function testHubPortalChoiceSummaryHelper() {
+    assert.equal(typeof buildHubPortalChoiceSummary, 'function', 'hub portal choice summary helper should be exported');
+
+    assert.deepEqual(
+        buildHubPortalChoiceSummary({
+            bossLabel: '已讨伐 色欲 · 色欲魔窟',
+            routeRecap: '淘金路线 · 带赏收官',
+            choiceLabel: '豪赌',
+            recommendationReason: '当前更宜稳押'
+        }, '傲慢 · 傲慢王庭'),
+        {
+            visible: true,
+            title: '选门回顾',
+            lines: [
+                '目标 傲慢 · 傲慢王庭',
+                '上轮 淘金路线 · 带赏收官',
+                '源于 豪赌 · 当前更宜稳押'
+            ]
+        },
+        'hub portal choice summary helper should surface the hovered target plus the last routed outcome in one compact card'
+    );
+
+    assert.deepEqual(
+        buildHubPortalChoiceSummary(null, '傲慢 · 傲慢王庭'),
+        {
+            visible: false,
+            title: '选门回顾',
+            lines: []
+        },
+        'hub portal choice summary helper should stay hidden when there is no last-run recap to resurface'
     );
 }
 
@@ -15444,6 +15478,30 @@ function testHubLastRunSummaryRuntimeHooks() {
     );
 }
 
+function testHubPortalChoiceSummaryRuntimeHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /this\._hubPortalChoiceSummary = \{\s*visible:\s*false,\s*title:\s*'选门回顾',\s*lines:\s*\[\]\s*\};/,
+        'HubScene should initialize a hidden portal-choice recap model before any portal is focused'
+    );
+    assert.match(
+        source,
+        /this\._hubPortalChoicePanel = this\.add\.rectangle\([\s\S]*?setVisible\(false\);[\s\S]*?this\._hubPortalChoiceTitleText = this\.add\.text\([\s\S]*?setVisible\(false\);[\s\S]*?this\._hubPortalChoiceBodyText = this\.add\.text\([\s\S]*?setVisible\(false\);/,
+        'HubScene should create a hidden portal-choice recap panel with dedicated title and body text nodes'
+    );
+    assert.match(
+        source,
+        /const portalFocusRadius = 96;[\s\S]*?this\.portals\.forEach\(portal => \{[\s\S]*?if \(distance < portalFocusRadius && distance < nearestDistance\) \{[\s\S]*?focusedPortal = portal;[\s\S]*?}\s*}\);[\s\S]*?const targetLabel = focusedPortal && focusedPortal\.label \? focusedPortal\.label\.text : '';[\s\S]*?this\._hubPortalChoiceSummary = buildHubPortalChoiceSummary\(GameState\.lastRunSummary,\s*targetLabel\);/,
+        'HubScene update should derive nearest portal focus and route it into the shared portal-choice summary helper'
+    );
+    assert.match(
+        source,
+        /this\._hubPortalChoicePanel\.setVisible\(!!summary\.visible\);[\s\S]*?this\._hubPortalChoiceTitleText\.setVisible\(!!summary\.visible\);[\s\S]*?this\._hubPortalChoiceBodyText\.setVisible\(!!summary\.visible\);/,
+        'HubScene should show or hide the portal-choice recap panel as a single unit based on shared helper visibility'
+    );
+}
+
 function main() {
     runTest('weapon scaling monotonicity', testWeaponScalingMonotonicity);
     runTest('sword early reach baseline', testSwordEarlyReachBaseline);
@@ -15456,6 +15514,7 @@ function main() {
     runTest('weapon upgrade message helpers', testWeaponUpgradeMessageHelpers);
     runTest('save/load integrity', testSaveLoadIntegrity);
     runTest('hub last-run summary helper', testHubLastRunSummaryHelper);
+    runTest('hub portal choice summary helper', testHubPortalChoiceSummaryHelper);
     runTest('status effect logic', testStatusEffectLogic);
     runTest('run modifier selection/effects', testRunModifierSelectionAndEffects);
     runTest('run event room selection', testRunEventRoomSelection);
@@ -15567,6 +15626,7 @@ function main() {
     runTest('boss victory watchdog loop', testBossVictoryWatchdogLoop);
     runTest('hub portal transition safety hooks', testHubPortalTransitionSafetyHooks);
     runTest('hub last-run summary runtime hooks', testHubLastRunSummaryRuntimeHooks);
+    runTest('hub portal choice summary runtime hooks', testHubPortalChoiceSummaryRuntimeHooks);
     console.log('All regression checks passed.');
 }
 

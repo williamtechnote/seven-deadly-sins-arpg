@@ -3592,6 +3592,34 @@
         };
     }
 
+    function buildHubPortalChoiceSummary(summary, targetLabel) {
+        const normalizedSummary = normalizeLastRunSummary(summary);
+        const target = typeof targetLabel === 'string'
+            ? targetLabel.trim()
+            : (targetLabel && typeof targetLabel.label === 'string' ? targetLabel.label.trim() : '');
+        if (!target || !normalizedSummary) {
+            return {
+                visible: false,
+                title: '选门回顾',
+                lines: []
+            };
+        }
+
+        const lines = [`目标 ${target}`];
+        const lastRunAnchor = normalizedSummary.routeRecap || normalizedSummary.bossLabel;
+        if (lastRunAnchor) {
+            lines.push(`上轮 ${lastRunAnchor}`);
+        }
+        if (normalizedSummary.choiceLabel) {
+            lines.push(`源于 ${normalizedSummary.choiceLabel}${normalizedSummary.recommendationReason ? ` · ${normalizedSummary.recommendationReason}` : ''}`);
+        }
+        return {
+            visible: lines.length > 1,
+            title: '选门回顾',
+            lines: lines.length > 1 ? lines : []
+        };
+    }
+
     function buildCompactRunEventResolutionText(runEventRoom, choice) {
         const normalizedRoom = runEventRoom && typeof runEventRoom === 'object' ? runEventRoom : {};
         const safeChoice = choice && typeof choice === 'object' ? choice : {};
@@ -6221,6 +6249,7 @@
         buildRunEventEncounterBossOpeningEcho,
         buildRunEventEncounterBossVictoryRecap,
         buildHubLastRunSummary,
+        buildHubPortalChoiceSummary,
         formatRunEventEncounterPayoffTimingLabel,
         formatRunEventRoomChoiceEncounterPreview,
         formatRunEventRoomChoiceEncounterTiming,

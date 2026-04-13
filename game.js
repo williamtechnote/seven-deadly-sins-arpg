@@ -102,6 +102,7 @@ const {
     buildRunEventEncounterBossOpeningEcho,
     buildRunEventEncounterBossVictoryRecap,
     buildHubLastRunSummary,
+    buildHubPortalChoiceSummary,
     formatRunEventRoomChoiceEncounterPreview,
     formatRunEventRoomChoiceEncounterTiming,
     buildRunChallengeCompletedFeedbackText,
@@ -2854,6 +2855,24 @@ class HubScene extends Phaser.Scene {
                 lineSpacing: 4
             }).setScrollFactor(0).setDepth(97);
         }
+        this._hubPortalChoiceSummary = { visible: false, title: '选门回顾', lines: [] };
+        const portalChoiceX = 16;
+        const portalChoiceY = this.cameras.main.height - 108;
+        this._hubPortalChoicePanel = this.add.rectangle(portalChoiceX, portalChoiceY, 296, 84, 0x0b1220, 0.88)
+            .setOrigin(0, 0)
+            .setScrollFactor(0)
+            .setDepth(96)
+            .setVisible(false);
+        this._hubPortalChoiceTitleText = this.add.text(portalChoiceX + 12, portalChoiceY + 10, this._hubPortalChoiceSummary.title, {
+            fontSize: '14px',
+            fill: '#f5d58a',
+            fontStyle: 'bold'
+        }).setScrollFactor(0).setDepth(97).setVisible(false);
+        this._hubPortalChoiceBodyText = this.add.text(portalChoiceX + 12, portalChoiceY + 32, '', {
+            fontSize: '13px',
+            fill: '#d7e2f2',
+            lineSpacing: 4
+        }).setScrollFactor(0).setDepth(97).setVisible(false);
         this.scene.launch('UIScene');
 
         GameState.save();
@@ -2960,6 +2979,19 @@ class HubScene extends Phaser.Scene {
         this._miniMapDynamic.strokeCircle(playerPos.x, playerPos.y, 6);
     }
 
+    _setHubPortalChoiceSummary(summary) {
+        if (!this._hubPortalChoicePanel || !this._hubPortalChoiceTitleText || !this._hubPortalChoiceBodyText) return;
+        summary = summary && typeof summary === 'object'
+            ? summary
+            : { visible: false, title: '选门回顾', lines: [] };
+        const lines = Array.isArray(summary.lines) ? summary.lines : [];
+        this._hubPortalChoicePanel.setVisible(!!summary.visible);
+        this._hubPortalChoiceTitleText.setVisible(!!summary.visible);
+        this._hubPortalChoiceBodyText.setVisible(!!summary.visible);
+        this._hubPortalChoiceTitleText.setText(summary.title || '选门回顾');
+        this._hubPortalChoiceBodyText.setText(lines.join('\n'));
+    }
+
     _flushPortalTransition() {
         if (!this._portalTransitioning || !this._pendingPortalBossKey) return false;
         const bossKey = this._pendingPortalBossKey;
@@ -2997,6 +3029,19 @@ class HubScene extends Phaser.Scene {
             }
         });
         this.nearestNpc = nearest;
+        const portalFocusRadius = 96;
+        let focusedPortal = null;
+        let nearestDistance = portalFocusRadius;
+        this.portals.forEach(portal => {
+            const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, portal.x, portal.y);
+            if (distance < portalFocusRadius && distance < nearestDistance) {
+                nearestDistance = distance;
+                focusedPortal = portal;
+            }
+        });
+        const targetLabel = focusedPortal && focusedPortal.label ? focusedPortal.label.text : '';
+        this._hubPortalChoiceSummary = buildHubPortalChoiceSummary(GameState.lastRunSummary, targetLabel);
+        this._setHubPortalChoiceSummary(this._hubPortalChoiceSummary);
         this._updateMiniMap();
 
         const ui = this.scene.get('UIScene');
@@ -8143,6 +8188,7 @@ class HelpScene extends Phaser.Scene {
                 title: '交互/界面',
                 items: [
                     'F — NPC / 事件房交互',
+                    '贴近传送门时，若 Hub 已保存上轮路线，还会补一个“选门回顾”，把目标门、上轮收官与源头抉择压进同一块小卡片',
                     '事件房祭坛靠近提示也会按 Phaser 文本实际宽度贴在当前视口内，因此贴近屏幕边缘时不会被裁出画面',
                     '事件房导向的第三房路线现在不只会在 shrine 结算时预告“下间缓冲”/“下间高压”/“下间淘金”，进房时补“缓冲战 · 双拍缓冲”/“高压战 · 三向成压”/“淘金战 · 后排赏金”，还会在真正清场时再补“缓冲战 · 稳住出清”/“高压战 · 顶住成压”/“淘金战 · 赏金到手”这类短回顾；若已存储的 recommendation reason 仍和 routed encounter 强相关，入口/清场短句还会继续补“缓冲战 · 双拍缓冲 · 净化后稳场”/“高压战 · 三向成压 · 压线抢势”/“淘金战 · 后排赏金 · 血线够追赏”这类更短 echo，命途圣坛的“绝境修习”/“守心修习”也会一起接进“下间高压”/“下间缓冲”；同一套 routed encounter contract 现也开始吃进 build-facing 路线，武备圣坛的“压阵修习”/“离弦修习”会分别导向“下间高压”/“下间淘金”，烙痕圣坛的“余烬修习”/“血痕修习”则会分别导向“下间缓冲”/“下间高压”；其余行动型 blessing route 也会继续把第三房压成“缓冲/高压/淘金”，并在没有 recommendation receipt 时补“连斩抢拍”/“游步整拍”/“镇步控场”/“破势追杀”/“回息稳场”/“借势重击”/“催锋连段”/“回身整拍”/“追猎追赏”/“调息回线”这类 baseline anchor',
                     '当清场浮字淡出后，Boss 门标签也会继续保留“缓冲路线 · 稳线迎战”/“高压路线 · 顶压迎战”/“淘金路线 · 带赏迎战”这类 run-arc 回顾，让这段路线怎样改写了整段推进节奏不会在进 Boss 前立刻断掉；真正踏进 Boss 房后的第一拍，还会再补一次“缓冲路线 · 稳线开局”/“高压路线 · 抢势开局”/“淘金路线 · 带赏开局”这类共享 opener，把这段 route identity 真正接进 Boss 开局',
