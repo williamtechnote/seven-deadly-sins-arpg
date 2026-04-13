@@ -82,6 +82,7 @@ const {
     buildRunEventEncounterStagingReceipt,
     buildRunEventEncounterSourceCue,
     buildRunEventEncounterClearRecap,
+    buildRunEventEncounterBossVictoryRecap,
     buildRunEventRoomChoiceRecommendation,
     buildCraftRecipeAffordance,
     buildCraftRecipeRowLabel,
@@ -2728,6 +2729,36 @@ function testRunEventEncounterClearRecapHelpers() {
         buildRunEventEncounterClearRecap(null),
         '',
         'missing encounter profiles should keep the room-clear recap helper silent'
+    );
+}
+
+function testRunEventEncounterBossVictoryRecapHelpers() {
+    assert.equal(typeof buildRunEventEncounterBossVictoryRecap, 'function', 'event room encounter boss-victory recap helper should be exported');
+
+    assert.equal(
+        buildRunEventEncounterBossVictoryRecap({ key: 'breather', encounterLabel: '缓冲战' }),
+        '缓冲路线 · 稳线收束',
+        'breather routes should preserve a stability-first run-arc recap at boss victory'
+    );
+    assert.equal(
+        buildRunEventEncounterBossVictoryRecap({ key: 'pressure', encounterLabel: '高压战' }),
+        '高压路线 · 顶压收束',
+        'pressure routes should preserve a pressure-first run-arc recap at boss victory'
+    );
+    assert.equal(
+        buildRunEventEncounterBossVictoryRecap({ key: 'windfall', encounterLabel: '淘金战' }),
+        '淘金路线 · 带赏收束',
+        'windfall routes should preserve a bounty-first run-arc recap at boss victory'
+    );
+    assert.equal(
+        buildRunEventEncounterBossVictoryRecap({ key: 'unknown', encounterLabel: '未知战' }),
+        '',
+        'unknown encounter profiles should stay silent instead of inventing a boss-victory run-arc recap'
+    );
+    assert.equal(
+        buildRunEventEncounterBossVictoryRecap(null),
+        '',
+        'missing encounter profiles should keep the boss-victory recap helper silent'
     );
 }
 
@@ -12552,6 +12583,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /当 Boss 真正倒下时，胜利总结还会再补 `缓冲路线 · 稳线收束` \/ `高压路线 · 顶压收束` \/ `淘金路线 · 带赏收束` 这类极短 recap/,
+        'README should document the boss-victory route recap that closes the routed segment inside the reward summary'
+    );
+    assert.match(
+        source,
         /Tab.*背包/,
         'README should keep the backpack key binding visible'
     );
@@ -14116,6 +14152,11 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
+        /当 Boss 真正倒下时，胜利总结还会再补“缓冲路线 · 稳线收束”\/“高压路线 · 顶压收束”\/“淘金路线 · 带赏收束”这类极短 recap，把 routed segment 和通用奖励放进同一屏闭环/,
+        'help overlay should document the boss-victory route recap that closes the routed segment inside the reward summary'
+    );
+    assert.match(
+        source,
         /而在真正跨进第三房前，choice panel \/ 已触发 HUD \/ 结算浮字 也会先把“下间缓冲 · 双低压”\/“下间高压 · 三敌齐压”\/“下间淘金 · 双赏金”这类 objective preview 压到玩家眼前，让人先看懂这条路线要求的是“先稳住”还是“先追赏”/,
         'help overlay should document the new objective-preview layer that forecasts the first tactical ask before room entry'
     );
@@ -14916,6 +14957,25 @@ function testBossHudLayoutAndVictoryGuards() {
     );
 }
 
+function testBossVictoryRouteRecapHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /this\.scene\.start\('BossScene',\s*\{\s*bossKey:\s*this\.bossKey,\s*runEventEncounterProfile:\s*getRunEventEncounterProfile\(GameState\.runEventRoom,\s*RUN_EVENT_ROOM_POOL\)\s*\}\);/,
+        'LevelScene should pass the routed encounter profile into BossScene when entering the cleared Boss door'
+    );
+    assert.match(
+        source,
+        /this\._bossVictoryRouteRecap = buildRunEventEncounterBossVictoryRecap\(\s*data\.runEventEncounterProfile,\s*GameState\.runEventRoom,\s*RUN_EVENT_ROOM_POOL\s*\);/,
+        'BossScene should resolve the shared boss-victory route recap from the scene payload at create time'
+    );
+    assert.match(
+        source,
+        /const lines = \['Victory!'\];[\s\S]*?if \(this\._bossVictoryRouteRecap\) {[\s\S]*?lines\.push\(this\._bossVictoryRouteRecap\);[\s\S]*?}/,
+        'BossScene victory summary should append the shared route recap before the generic reward lines when a routed segment exists'
+    );
+}
+
 function testBossVictoryCombatCleanup() {
     const source = loadGameSource();
     assert.match(
@@ -15163,6 +15223,7 @@ function main() {
     runTest('run-event prompt measurement hooks', testRunEventPromptMeasurementHooks);
     runTest('run-event world-label measurement hooks', testRunEventWorldLabelMeasurementHooks);
     runTest('fixed sidebar measurement hooks', testSidebarMeasurementHooks);
+    runTest('run-event boss victory recap helper', testRunEventEncounterBossVictoryRecapHelpers);
     runTest('README lust phase-local cooldowns', testReadmeLustPhaseLocalCooldowns);
     runTest('README lust post-mirage spacing', testReadmeLustPostMirageSpacing);
     runTest('README lust special recovery', testReadmeLustSpecialRecovery);
@@ -15188,6 +15249,7 @@ function main() {
     runTest('priority text stack layout helper', testPriorityTextStackLayoutHelper);
     runTest('player death freeze hook', testPlayerDeathFreezeHook);
     runTest('boss HUD layout and victory guards', testBossHudLayoutAndVictoryGuards);
+    runTest('boss victory route recap hooks', testBossVictoryRouteRecapHooks);
     runTest('boss victory combat cleanup', testBossVictoryCombatCleanup);
     runTest('pause weapon info layout guards', testPauseWeaponInfoLayoutGuards);
     runTest('boss HUD measurement hooks', testBossHudMeasurementHooks);

@@ -3467,6 +3467,23 @@
         return `${encounterLabel} · ${recapSuffix}${recommendationEcho ? ` · ${recommendationEcho}` : ''}`;
     }
 
+    function buildRunEventEncounterBossVictoryRecap(profile, runEventRoom, poolOverride) {
+        const safeProfile = profile && typeof profile === 'object' ? profile : {};
+        const profileKey = typeof safeProfile.key === 'string' ? safeProfile.key.trim() : '';
+        const routeLabel = profileKey === 'breather'
+            ? '缓冲路线'
+            : (profileKey === 'pressure'
+                ? '高压路线'
+                : (profileKey === 'windfall' ? '淘金路线' : ''));
+        const recapSuffix = profileKey === 'breather'
+            ? '稳线收束'
+            : (profileKey === 'pressure'
+                ? '顶压收束'
+                : (profileKey === 'windfall' ? '带赏收束' : ''));
+        if (!routeLabel || !recapSuffix) return '';
+        return `${routeLabel} · ${recapSuffix}`;
+    }
+
     function buildCompactRunEventResolutionText(runEventRoom, choice) {
         const normalizedRoom = runEventRoom && typeof runEventRoom === 'object' ? runEventRoom : {};
         const safeChoice = choice && typeof choice === 'object' ? choice : {};
@@ -6083,6 +6100,7 @@
         buildRunEventEncounterStagingReceipt,
         buildRunEventEncounterSourceCue,
         buildRunEventEncounterClearRecap,
+        buildRunEventEncounterBossVictoryRecap,
         formatRunEventRoomChoiceEncounterPreview,
         getRunEventRoomChoiceAffordabilityLabel,
         getRunEventRoomChoiceFailureMessage,

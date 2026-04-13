@@ -1,6 +1,7 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
+- [ ] Boss 胜利 route 收束回顾：当前 shrine route 已经能把第三房从 choice preview、进房预告、关键 payoff 一路接到清场短回顾，但 Boss 真正倒下后，胜利总结仍只剩通用奖励；补一条 `缓冲路线 · 稳线收束` / `高压路线 · 顶压收束` / `淘金路线 · 带赏收束` 这类共享短 recap，让这段 routed segment 在奖励结算时真正闭环，而不是停在第三房清场
 - [ ] 资源 / 结算型 route recommendation encounter echo 深化：当 `祈愿圣坛 / 赌徒圣坛 / 战备商柜` 的 baseline anchor 跑通后，再评估是否把 `当前局已偏节奏 / 可净化N层 / 当前可负担` 这类更偏 run-state / affordability 的 reason 也筛进更窄的 encounter echo，避免只剩 baseline identity、却还没把“为什么是现在”继续接进 routed combat
 
 ## Next Up
