@@ -95,13 +95,16 @@ const {
     buildRunEventEncounterRoster,
     buildRunEventEncounterFormationSlots,
     buildRunEventEncounterPayoffPresentation,
-    formatRunEventEncounterObjectivePreview,
     buildRunEventEncounterEntryPreview,
-    buildRunEventEncounterStagingReceipt,
     buildRunEventEncounterSourceCue,
     buildRunEventEncounterClearRecap,
+    buildRunEventEncounterBossDoorRecap,
+    buildRunEventEncounterBossOpeningEcho,
     buildRunEventEncounterBossVictoryRecap,
+    buildHubLastRunSummary,
+    buildHubPortalChoiceSummary,
     formatRunEventRoomChoiceEncounterPreview,
+    formatRunEventRoomChoiceEncounterTiming,
     buildRunChallengeCompletedFeedbackText,
     buildRunChallengeSidebarLines,
     getRunChallengeSidebarBadgeAppearance,
@@ -146,6 +149,7 @@ function cloneDefaultSaveData() {
         selectedWeaponKey: DEFAULT_SAVE_DATA.selectedWeaponKey || 'sword',
         runModifiers: [...(DEFAULT_SAVE_DATA.runModifiers || [])],
         runEventRoom: DEFAULT_SAVE_DATA.runEventRoom || null,
+        lastRunSummary: DEFAULT_SAVE_DATA.lastRunSummary || null,
         quickSlots: [...(DEFAULT_SAVE_DATA.quickSlots || [null, null, null, null])]
     };
 }
@@ -550,6 +554,7 @@ const GameState = {
     runModifiers: [],
     runEffects: { ...DEFAULT_RUN_EFFECTS },
     runEventRoom: null,
+    lastRunSummary: null,
     runChallenge: null,
     quickSlots: [null, null, null, null],
 
@@ -714,6 +719,7 @@ const GameState = {
         this.selectedWeaponKey = 'sword';
         this.rollRunModifiers();
         this.rollRunEventRoom();
+        this.lastRunSummary = base.lastRunSummary || null;
         this.rollRunChallenge();
         this.quickSlots = [null, null, null, null];
         recordTestEvent('gamestate:reset', {
@@ -743,6 +749,7 @@ const GameState = {
             selectedWeaponKey: this.selectedWeaponKey,
             runModifiers: this.runModifiers,
             runEventRoom: this.runEventRoom,
+            lastRunSummary: this.lastRunSummary,
             quickSlots: this.quickSlots
         });
         localStorage.setItem('sevenSinsSave', raw);
@@ -763,6 +770,7 @@ const GameState = {
             this.ensureRunModifiers();
             this.runEventRoom = data.runEventRoom || null;
             this.ensureRunEventRoom();
+            this.lastRunSummary = data.lastRunSummary || null;
             this.quickSlots = data.quickSlots || [null, null, null, null];
             this.ensureSelectedWeapon();
             if (!this.runChallenge) this.rollRunChallenge();
@@ -1235,8 +1243,6 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.comboDodgeReadyCueUntil = 0;
         this.prayerSpecialReadyCueUntil = 0;
         this.controlPayoffCueUntil = 0;
-        this.controlRecommendationSlowTargetUntil = 0;
-        this.controlRecommendationFinisherUntil = 0;
         this.weaponRoutingAttackReadyCueUntil = 0;
         this.weaponRoutingSpecialReadyCueUntil = 0;
         this.prayerDodgeReadyCueUntil = 0;
@@ -2828,6 +2834,50 @@ class HubScene extends Phaser.Scene {
         });
 
         this._createMiniMap();
+        this._hubLastRunSummary = buildHubLastRunSummary(GameState.lastRunSummary);
+        if (this._hubLastRunSummary.visible) {
+            const panelX = 16;
+            const panelY = 48;
+            const panelWidth = 280;
+            const panelHeight = 30 + this._hubLastRunSummary.lines.length * 22;
+            this.add.rectangle(panelX, panelY, panelWidth, panelHeight, 0x0b1220, 0.84)
+                .setOrigin(0, 0)
+                .setScrollFactor(0)
+                .setDepth(96);
+            this.add.text(panelX + 12, panelY + 10, this._hubLastRunSummary.title, {
+                fontSize: '14px',
+                fill: '#f5d58a',
+                fontStyle: 'bold'
+            }).setScrollFactor(0).setDepth(97);
+            this.add.text(panelX + 12, panelY + 32, this._hubLastRunSummary.lines.join('\n'), {
+                fontSize: '13px',
+                fill: '#d7e2f2',
+                lineSpacing: 4
+            }).setScrollFactor(0).setDepth(97);
+        }
+        const portalChoiceX = 16;
+        const portalChoiceY = this.cameras.main.height - 100;
+        this._hubPortalChoiceSummary = {
+            visible: false,
+            title: '选门参考',
+            lines: []
+        };
+        this._hubPortalChoicePanel = this.add.rectangle(portalChoiceX, portalChoiceY, 300, 82, 0x0b1220, 0.88)
+            .setOrigin(0, 0)
+            .setScrollFactor(0)
+            .setDepth(96)
+            .setVisible(false);
+        this._hubPortalChoiceTitleText = this.add.text(portalChoiceX + 12, portalChoiceY + 10, this._hubPortalChoiceSummary.title, {
+            fontSize: '14px',
+            fill: '#7ed7ff',
+            fontStyle: 'bold'
+        }).setScrollFactor(0).setDepth(97).setVisible(false);
+        this._hubPortalChoiceBodyText = this.add.text(portalChoiceX + 12, portalChoiceY + 32, '', {
+            fontSize: '13px',
+            fill: '#d7e2f2',
+            lineSpacing: 4
+        }).setScrollFactor(0).setDepth(97).setVisible(false);
+        this._refreshHubPortalChoiceSummary();
         this.scene.launch('UIScene');
 
         GameState.save();
@@ -2934,6 +2984,39 @@ class HubScene extends Phaser.Scene {
         this._miniMapDynamic.strokeCircle(playerPos.x, playerPos.y, 6);
     }
 
+    _refreshHubPortalChoiceSummary() {
+        const portalFocusRadius = 96;
+        let focusedPortal = null;
+        let nearestDistance = Number.POSITIVE_INFINITY;
+        this.portals.forEach(portal => {
+            const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, portal.x, portal.y);
+            if (distance < portalFocusRadius && distance < nearestDistance) {
+                nearestDistance = distance;
+                focusedPortal = portal;
+            }
+        });
+        const targetLabel = focusedPortal && focusedPortal.label && typeof focusedPortal.label.text === 'string'
+            ? focusedPortal.label.text.replace(/\s*✓$/, '').trim()
+            : '';
+        this._hubPortalChoiceSummary = buildHubPortalChoiceSummary(GameState.lastRunSummary, {
+            label: targetLabel,
+            bossKey: focusedPortal.bossKey
+        });
+        const visible = !!this._hubPortalChoiceSummary.visible;
+        this._hubPortalChoicePanel.setVisible(visible);
+        this._hubPortalChoiceTitleText.setVisible(visible);
+        this._hubPortalChoiceBodyText.setVisible(visible);
+        if (!visible) return;
+        const panelHeight = 30 + this._hubPortalChoiceSummary.lines.length * 20;
+        const panelY = this.cameras.main.height - panelHeight - 16;
+        this._hubPortalChoicePanel.setPosition(16, panelY);
+        this._hubPortalChoicePanel.setSize(300, panelHeight);
+        this._hubPortalChoiceTitleText.setPosition(28, panelY + 10);
+        this._hubPortalChoiceBodyText.setPosition(28, panelY + 32);
+        this._hubPortalChoiceTitleText.setText(this._hubPortalChoiceSummary.title);
+        this._hubPortalChoiceBodyText.setText(this._hubPortalChoiceSummary.lines.join('\n'));
+    }
+
     _flushPortalTransition() {
         if (!this._portalTransitioning || !this._pendingPortalBossKey) return false;
         const bossKey = this._pendingPortalBossKey;
@@ -2972,6 +3055,7 @@ class HubScene extends Phaser.Scene {
         });
         this.nearestNpc = nearest;
         this._updateMiniMap();
+        this._refreshHubPortalChoiceSummary();
 
         const ui = this.scene.get('UIScene');
         if (ui && ui.updateHUD) ui.updateHUD(this.player, '净罪庇护所');
@@ -3070,9 +3154,12 @@ class LevelScene extends Phaser.Scene {
         this.bossDoor = this.add.sprite(doorX, doorY, 'portal');
         this.bossDoor.setTint(boss.color);
         this.bossDoor.setDepth(8);
-        this.bossDoorLabel = this.add.text(doorX, doorY - 40, 'Boss: ' + boss.name, {
+        this._bossDoorBaseLabel = 'Boss: ' + boss.name;
+        this.bossDoorLabel = this.add.text(doorX, doorY - 44, this._bossDoorBaseLabel, {
             fontSize: '16px',
-            fill: '#ffffff'
+            fill: '#ffffff',
+            align: 'center',
+            lineSpacing: 2
         }).setOrigin(0.5).setDepth(8);
 
         this.physics.add.existing(this.bossDoor);
@@ -3542,6 +3629,7 @@ class LevelScene extends Phaser.Scene {
             playerHp: this.player.hp,
             playerMaxHp: this.player.maxHp,
             selectedWeaponKey: this.player.currentWeaponKey,
+            bossKey: this.bossKey,
             inventory: GameState.inventory,
             negativeStatuses: Object.keys(this.player.activeStatusEffects || {}),
             runModifiers: (GameState.runModifiers || []).map(key => getRunModifierByKey(key)),
@@ -3587,7 +3675,8 @@ class LevelScene extends Phaser.Scene {
             const affordabilityLabel = getRunEventRoomChoiceAffordabilityLabel(choice, previewState);
             const previewText = buildRunEventRoomChoicePanelPreview(choice, previewState);
             const encounterPreview = formatRunEventRoomChoiceEncounterPreview(choice);
-            textNode.setText(`${index + 1}. ${previewText}${encounterPreview ? ` · ${encounterPreview}` : ''}${affordabilityLabel ? ` · ${affordabilityLabel}` : ''}`);
+            const encounterTiming = formatRunEventRoomChoiceEncounterTiming(choice, RUN_EVENT_ROOM_POOL);
+            textNode.setText(`${index + 1}. ${previewText}${encounterPreview ? ` · ${encounterPreview}` : ''}${encounterTiming ? ` · ${encounterTiming}` : ''}${affordabilityLabel ? ` · ${affordabilityLabel}` : ''}`);
             textNode.setVisible(true);
         });
         Object.values(this.runEventChoicePanel).forEach((node) => {
@@ -3787,13 +3876,19 @@ class LevelScene extends Phaser.Scene {
         );
     }
 
+    _refreshBossDoorLabel() {
+        if (!this.bossDoorLabel || !Array.isArray(this.room3Enemies)) return;
+        const room3AllDead = this.room3Enemies.every(e => !e.isAlive);
+        const profile = getRunEventEncounterProfile(GameState.runEventRoom, RUN_EVENT_ROOM_POOL);
+        const bossDoorRecap = room3AllDead ? buildRunEventEncounterBossDoorRecap(profile, GameState.runEventRoom, RUN_EVENT_ROOM_POOL) : '';
+        this.bossDoorLabel.setText(bossDoorRecap ? `${this._bossDoorBaseLabel}\n${bossDoorRecap}` : this._bossDoorBaseLabel);
+    }
+
     _showRunEventSettlementFeedback(settlement, startGold, startHp, encounterProfile) {
         if (!this.runEventRoomShrine) return;
         const style = this._getRunEventRoomVisualConfig(settlement.eventRoom);
         const goldDelta = (settlement.nextState.gold || 0) - startGold;
         const hpDelta = (settlement.nextState.playerHp || startHp) - startHp;
-        const encounterObjectivePreview = formatRunEventEncounterObjectivePreview(encounterProfile);
-        const encounterStagingReceipt = buildRunEventEncounterStagingReceipt(encounterProfile, settlement.eventRoom, RUN_EVENT_ROOM_POOL);
         const recommendationReason = typeof settlement.eventRoom.selectedChoiceRecommendationReason === 'string'
             ? settlement.eventRoom.selectedChoiceRecommendationReason.trim()
             : '';
@@ -3828,17 +3923,9 @@ class LevelScene extends Phaser.Scene {
                 });
             });
         }
-        if (encounterObjectivePreview) {
+        if (encounterProfile && encounterProfile.previewLabel) {
             lines.push({
-                text: encounterObjectivePreview,
-                color: encounterProfile.key === 'windfall'
-                    ? '#FFD27A'
-                    : (encounterProfile.key === 'pressure' ? '#FFB3A7' : '#9FE3FF')
-            });
-        }
-        if (encounterStagingReceipt) {
-            lines.push({
-                text: encounterStagingReceipt,
+                text: encounterProfile.previewLabel,
                 color: encounterProfile.key === 'windfall'
                     ? '#FFD27A'
                     : (encounterProfile.key === 'pressure' ? '#FFB3A7' : '#9FE3FF')
@@ -3942,7 +4029,6 @@ class LevelScene extends Phaser.Scene {
                     const drops = enemy.takeDamage(hitDamage);
                     if (targetHasSlow && hb._slowBonusApplied) {
                         this.controlPayoffCueUntil = Math.max(Number(this.controlPayoffCueUntil) || 0, this.time.now + 420);
-                        this.player.controlRecommendationSlowTargetUntil = Math.max(Number(this.player.controlRecommendationSlowTargetUntil) || 0, this.time.now + 9000);
                         showHitImpactPulse(this, enemy.x, enemy.y, 0x9FE3FF, 16);
                         showFloatingCombatText(this, enemy.x, enemy.y - 82, '破势', '#9fe3ff', 560);
                     }
@@ -4111,6 +4197,7 @@ class LevelScene extends Phaser.Scene {
 
         // Boss door activation when all Room 3 enemies dead
         const room3AllDead = this.room3Enemies.every(e => !e.isAlive);
+        this._refreshBossDoorLabel();
         if (room3AllDead) this.bossDoor.setAlpha(1);
     }
 }
@@ -5312,6 +5399,12 @@ class BossScene extends Phaser.Scene {
         this._victoryTransitionInFlight = false;
         this._victoryRetryTimer = null;
         this._victoryRetryCount = 0;
+        this._bossOpeningRouteEchoShown = false;
+        this._bossOpeningRouteEcho = buildRunEventEncounterBossOpeningEcho(
+            data.runEventEncounterProfile,
+            GameState.runEventRoom,
+            RUN_EVENT_ROOM_POOL
+        );
         this._bossVictoryRouteRecap = buildRunEventEncounterBossVictoryRecap(
             data.runEventEncounterProfile,
             GameState.runEventRoom,
@@ -5533,6 +5626,11 @@ class BossScene extends Phaser.Scene {
             return;
         }
 
+        if (!this._bossOpeningRouteEchoShown && this._bossOpeningRouteEcho) {
+            this._bossOpeningRouteEchoShown = true;
+            showFloatingCombatText(this, this.player.x, this.player.y - 72, this._bossOpeningRouteEcho, '#ffe7b8', 900);
+        }
+
         this.player.update(time, delta);
         this._clampToArena(this.player);
         this.boss.update(time, delta, this.player);
@@ -5647,14 +5745,10 @@ class BossScene extends Phaser.Scene {
                             hb._slowBonusApplied = true;
                         }
                     }
-                    if (bossHadSlow && hb._slowBonusApplied) {
-                        this.player.controlRecommendationSlowTargetUntil = Math.max(Number(this.player.controlRecommendationSlowTargetUntil) || 0, this.time.now + 9000);
-                    }
                     const finisherArmed = bossHadSlow && hb._slowBonusApplied && (this.boss.breakHighlightUntil || 0) > this.time.now;
                     if (finisherArmed) {
                         hb.damage = Math.max(1, Math.round(hb.damage * 1.2));
                         this.boss.controlFinisherReadyUntil = Math.max(this.boss.controlFinisherReadyUntil || 0, this.time.now + 650);
-                        this.player.controlRecommendationFinisherUntil = Math.max(Number(this.player.controlRecommendationFinisherUntil) || 0, this.time.now + 9000);
                         showHitImpactPulse(this, this.boss.sprite.x, this.boss.sprite.y, 0x9FE3FF, 22);
                         showFloatingCombatText(this, this.boss.sprite.x, this.boss.sprite.y - 104, '破势终结', '#9fe3ff', 700);
                     } else if (bossHadSlow && hb._slowBonusApplied) {
@@ -5729,6 +5823,16 @@ class BossScene extends Phaser.Scene {
                 if (!GameState.defeatedBosses.includes(this.bossKey)) {
                     GameState.defeatedBosses.push(this.bossKey);
                 }
+                GameState.lastRunSummary = {
+                    bossLabel: `已讨伐 ${bossConfig.sin || this.bossKey} · ${bossConfig.area || bossConfig.name || this.bossKey}`,
+                    routeRecap: this._bossVictoryRouteRecap || '',
+                    choiceLabel: GameState.runEventRoom && typeof GameState.runEventRoom.selectedChoiceLabel === 'string'
+                        ? GameState.runEventRoom.selectedChoiceLabel.trim()
+                        : '',
+                    recommendationReason: GameState.runEventRoom && typeof GameState.runEventRoom.selectedChoiceRecommendationReason === 'string'
+                        ? GameState.runEventRoom.selectedChoiceRecommendationReason.trim()
+                        : ''
+                };
                 try {
                     GameState.save();
                 } catch (e) {
@@ -6076,9 +6180,6 @@ class BossScene extends Phaser.Scene {
             this.boss.sprite.setAlpha(0);
             this.cameras.main.flash(300, 255, 255, 255);
             const lines = ['Victory!'];
-            if (this._bossVictoryRouteRecap) {
-                lines.push(this._bossVictoryRouteRecap);
-            }
             if (this._weaponUnlockName) {
                 lines.push('解锁新武器: ' + this._weaponUnlockName);
             }
@@ -6088,6 +6189,9 @@ class BossScene extends Phaser.Scene {
             const bossDrops = BOSSES[this.bossKey] && BOSSES[this.bossKey].drops;
             if (bossDrops && bossDrops.gold) {
                 lines.push('金币 +' + bossDrops.gold);
+            }
+            if (this._bossVictoryRouteRecap) {
+                lines.push(this._bossVictoryRouteRecap);
             }
             const sealCount = Array.isArray(GameState.sinSeals) ? GameState.sinSeals.length : 0;
             lines.push('罪之印记: ' + sealCount + '/7');
@@ -8091,7 +8195,7 @@ class HelpScene extends Phaser.Scene {
             { title: '战斗补充', items: [disciplineAttackReadyHelpLine, disciplineReadyHelpLine, prayerReadyHelpLine, weaponRoutingHelpLine, riskRewardHelpLine, comboLinkHelpLine, counterattackHelpLine, telegraphLateGlowColorTempHelpLine, telegraphLateGlowInnerColorTempHelpLine, telegraphHeadContrastHelpLine, telegraphHeadColorTempHelpLine, telegraphHeadSaturationHelpLine, telegraphHeadEdgeSoftHelpLine, telegraphHeadEdgeHighlightHelpLine, telegraphHeadEdgeBalanceHelpLine, telegraphHeadEdgeBrightnessHelpLine, telegraphHeadEdgeWarmthHelpLine, telegraphHeadEdgeSaturationHelpLine, telegraphHeadEdgeFeatherHelpLine, telegraphHeadEdgeAlphaHelpLine, telegraphHeadEdgeWarmCoolAlphaHelpLine] },
             { title: '防御', items: ['Space  —  闪避翻滚（无敌帧）'] },
             { title: '武器', items: ['Q / E  —  切换武器'] },
-            { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位，并提示“快捷栏N：+<短名>”；若临时拿不到显式短名则会沿用道具名生成“快捷栏N：+生命”这类短句；提示现在会优先按 Phaser 文本实际宽度钳制，因此“快捷栏N：+HP恢复”这类混排会尽量保留更多有效信息；若当前环境拿不到真实测量结果则回退为宽度权重估算；若道具名词干过长则会截成“快捷栏N：+圣疗秘…”这类省略短句；快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”；若拿不到显式短名则改用“快捷栏1：狂战→净化”这类道具名短句；若这些道具名过长则同样会截成“快捷栏1：古代狂…→神圣净…”这类省略短句', '净化药剂/狂战油在铁匠制作成功时也会直接装入快捷栏，并沿用同一套“快捷栏N：+净化”/“快捷栏1：狂战→净化”提示；制作行现在还会直接补“入1”/“覆盖1：狂战→净化”这类快捷栏预告，让玩家在点前就知道会落在哪格、会不会顶掉现有补给；并额外补一条“净化药剂x2 · 差15金”这类批量回执，直接交代本次做了几份、又是因金币还是材料耗尽才停下；若这条制作成功回执还要再拼上快捷栏落位提示，底部消息会先按实际宽度把“快捷栏1：狂战→净化”收束成“覆盖1：狂战→净化”/“入1”这类短后缀，并把“净化药剂x2 · 差15金”这类做了几份/为何停下信息留在前面；若制作失败提示碰上长材料名或后续 richer error copy，底部消息也会先按实际宽度把“材料不足: 懒惰之精华”收束成“材料不足: 懒惰”/“材料不足”，把 blocker 留在前面；若强化成功提示触发时，底部消息会优先读出“强化成功! Lv.1→Lv.2 · 本次伤害+4/特攻-0.2s/体耗-2 · 消耗2个暴怒之精华”这类带升级段位、收益与材料锚点的回执；若像“强化成功! Lv.2→Lv.3 · 本次伤害+5/特攻-0.2s/体耗-1 · 累计伤害+9/特攻-0.3s/体耗-3”这类末级升级累计总览也放得下，还会优先把整把武器的累计现况一起钉在回执尾段；若中宽档位放不下完整累计总览，则会先收束成“强化成功! Lv.2→Lv.3 · 本次伤害+5/特攻-0.2s/体耗-1 · 累计+9/特攻-0.3s”或至少保住“强化成功! Lv.2→Lv.3 · 本次伤害+5/特攻-0.2s/体耗-1 · 累计伤害+9”这类累计首段锚点；若行宽再继续吃紧，才会退回“强化成功! Lv.1→Lv.2 · 本次伤害+4/特攻-0.2s/体耗-2”、“强化成功! Lv.1→Lv.2 · 本次伤害+4”或“强化成功! Lv.1→Lv.2”，优先把成功结论与升级段位留在前；材料不足路径也会先把“材料不足! 需要2个暴怒之精华”收束成“材料不足! 需要2个暴怒”/“材料不足! 需要2个”，把 blocker 留在前面；若窄窗口下“[强化] 250金+2暴怒之精华”这类强化按钮过长，按钮文案也会先按实际宽度把精华名收束成“[强化] 250金+2暴怒”/“[强化] 250金+2个”，并把“[强化]”与金币/材料成本留在前，避免长精华名继续挤窄按钮可读区；铁匠强化行现在也会在点按钮前直接显示“可强化/差50金/差2个暴怒之精华”这类短标签，blocked 时“[强化]”会同步降色停用，避免继续把 upgrade 决策留到失败提示才揭晓；Lv.3 武器右侧动作位不再留空，会直接显示“已满级”/“满阶”这类短标签，并沿用同一宽度护栏，避免把空白误读成未解锁、渲染缺失或还能继续强化；铁匠强化行现在也会在点按钮前直接补上“本次伤害+4/特攻-0.2s/体耗-2”这类短收益摘要；若武器已升过但还没满级，强化行还会优先补“累计+下次 · 累计伤害+4/本次伤害+5”这类双层短摘要，让玩家在同一行同时读到已购成长与下一跳收益；若行宽再吃紧，会先收束成“累计+4/下次+5”这类紧凑双层锚点，再继续退到“累计伤害+4/本次伤害+5”、“累计伤害+4”或“本次伤害+5”，避免非满级阶段过早丢掉双层语义；若武器已满级，强化行也不会退回只剩武器名，而会改为常驻显示“已满级 · 累计伤害+9/特攻-0.3s/体耗-3”这类累计已购收益；若行宽继续吃紧，会先收束成“满阶 · 累计伤害+9”，避免满级后又读不出这把武器已经买到了哪些成长；若窄窗口下长材料名、“拥有”、“可做xN/差15金”与预告同场出现，制作行会先按实际宽度收束，优先压掉“拥有”、再把材料名压成“嫉妒x1”/“懒惰x1”这类紧凑读法，尽量把决策提示留在“[制作]”前；若制作行显示“可做xN”，点击一次“[制作]”还会直接做到当前上限', '背包悬停说明也会按实际文本宽度贴边，因此靠近屏幕右缘时不会继续沿用固定 200px 估算', '净化药剂/狂战油可在铁匠制作'] },
+            { title: '道具', items: ['1-4  —  使用快捷栏道具', '点击背包消耗品会自动装入快捷栏首个空位，并提示“快捷栏N：+<短名>”；若临时拿不到显式短名则会沿用道具名生成“快捷栏N：+生命”这类短句；提示现在会优先按 Phaser 文本实际宽度钳制，因此“快捷栏N：+HP恢复”这类混排会尽量保留更多有效信息；若当前环境拿不到真实测量结果则回退为宽度权重估算；若道具名词干过长则会截成“快捷栏N：+圣疗秘…”这类省略短句；快捷栏已满时会覆盖 1 号槽位，并提示“快捷栏1：<旧短名>→<新短名>”；若新旧短名相同则压缩为“快捷栏1：同类 <短名>”；若拿不到显式短名则改用“快捷栏1：狂战→净化”这类道具名短句；若这些道具名过长则同样会截成“快捷栏1：古代狂…→神圣净…”这类省略短句', '净化药剂/狂战油在铁匠制作成功时也会直接装入快捷栏，并沿用同一套“快捷栏N：+净化”/“快捷栏1：狂战→净化”提示；制作行现在还会直接补“入1”/“覆盖1：狂战→净化”这类快捷栏预告，让玩家在点前就知道会落在哪格、会不会顶掉现有补给；并额外补一条“净化药剂x2 · 差15金”这类批量回执，直接交代本次做了几份、又是因金币还是材料耗尽才停下；若这条制作成功回执还要再拼上快捷栏落位提示，底部消息会先按实际宽度把“快捷栏1：狂战→净化”收束成“覆盖1：狂战→净化”/“入1”这类短后缀，并把“净化药剂x2 · 差15金”这类做了几份/为何停下信息留在前面；若制作失败提示碰上长材料名或后续 richer error copy，底部消息也会先按实际宽度把“材料不足: 懒惰之精华”收束成“材料不足: 懒惰”/“材料不足”，把 blocker 留在前面；若强化成功提示触发时，底部消息会优先读出“强化成功! Lv.1→Lv.2 · 本次伤害+4/特攻-0.2s/体耗-2 · 消耗2个暴怒之精华”这类带升级段位、收益与材料锚点的回执；若像“强化成功! Lv.2→Lv.3 · 本次伤害+5/特攻-0.2s/体耗-1 · 累计伤害+9/特攻-0.3s/体耗-3 · 消耗2个暴怒之精华”这类末级升级累计总览也放得下，还会优先把整把武器的累计现况与本次花费一起钉在回执尾段；若中宽档位放不下完整累计总览，则会先保住“强化成功! Lv.2→Lv.3 · 本次伤害+5/特攻-0.2s/体耗-1 · 累计+9/特攻-0.3s · 消耗2个暴怒”或至少“强化成功! Lv.2→Lv.3 · 本次伤害+5/特攻-0.2s/体耗-1 · 累计伤害+9 · 消耗2个暴怒”这类累计+消耗双锚点，再继续退回只保留累计首段的旧梯子；若行宽再继续吃紧，才会退回“强化成功! Lv.1→Lv.2 · 本次伤害+4/特攻-0.2s/体耗-2”、“强化成功! Lv.1→Lv.2 · 本次伤害+4”或“强化成功! Lv.1→Lv.2”，优先把成功结论与升级段位留在前；材料不足路径也会先把“材料不足! 需要2个暴怒之精华”收束成“材料不足! 需要2个暴怒”/“材料不足! 需要2个”，把 blocker 留在前面；若窄窗口下“[强化] 250金+2暴怒之精华”这类强化按钮过长，按钮文案也会先按实际宽度把精华名收束成“[强化] 250金+2暴怒”/“[强化] 250金+2个”，并把“[强化]”与金币/材料成本留在前，避免长精华名继续挤窄按钮可读区；铁匠强化行现在也会在点按钮前直接显示“可强化/差50金/差2个暴怒之精华”这类短标签，blocked 时“[强化]”会同步降色停用，避免继续把 upgrade 决策留到失败提示才揭晓；Lv.3 武器右侧动作位不再留空，会直接显示“已满级”/“满阶”这类短标签，并沿用同一宽度护栏，避免把空白误读成未解锁、渲染缺失或还能继续强化；铁匠强化行现在也会在点按钮前直接补上“本次伤害+4/特攻-0.2s/体耗-2”这类短收益摘要；若武器已升过但还没满级，强化行还会优先补“累计+下次 · 累计伤害+4/本次伤害+5”这类双层短摘要，让玩家在同一行同时读到已购成长与下一跳收益；若行宽再吃紧，会先收束成“累计+4/下次+5”这类紧凑双层锚点，再继续退到“累计伤害+4/本次伤害+5”、“累计伤害+4”或“本次伤害+5”，避免非满级阶段过早丢掉双层语义；若武器已满级，强化行也不会退回只剩武器名，而会改为常驻显示“已满级 · 累计伤害+9/特攻-0.3s/体耗-3”这类累计已购收益；若行宽继续吃紧，会先收束成“满阶 · 累计伤害+9”，避免满级后又读不出这把武器已经买到了哪些成长；若窄窗口下长材料名、“拥有”、“可做xN/差15金”与预告同场出现，制作行会先按实际宽度收束，优先压掉“拥有”、再把材料名压成“嫉妒x1”/“懒惰x1”这类紧凑读法，尽量把决策提示留在“[制作]”前；若制作行显示“可做xN”，点击一次“[制作]”还会直接做到当前上限', '背包悬停说明也会按实际文本宽度贴边，因此靠近屏幕右缘时不会继续沿用固定 200px 估算', '净化药剂/狂战油可在铁匠制作'] },
             { title: '状态', items: ['灼烧/流血会持续掉血', '减速会降低移动速度'] },
             { title: '本局词缀', items: runModifierLines },
             {
@@ -8099,11 +8203,12 @@ class HelpScene extends Phaser.Scene {
                 items: [
                     'F — NPC / 事件房交互',
                     '事件房祭坛靠近提示也会按 Phaser 文本实际宽度贴在当前视口内，因此贴近屏幕边缘时不会被裁出画面',
-                    '事件房导向的第三房路线现在不只会在 shrine 结算时预告“下间缓冲”/“下间高压”/“下间淘金”，进房时补“缓冲战 · 双拍缓冲”/“高压战 · 三向成压”/“淘金战 · 后排赏金”，还会在真正清场时再补“缓冲战 · 稳住出清”/“高压战 · 顶住成压”/“淘金战 · 赏金到手”这类短回顾；当 Boss 真正倒下时，胜利总结还会再补“缓冲路线 · 稳线收束”/“高压路线 · 顶压收束”/“淘金路线 · 带赏收束”这类极短 recap，把 routed segment 和通用奖励放进同一屏闭环；而在真正跨进第三房前，choice panel / 已触发 HUD / 结算浮字 也会先把“下间缓冲 · 双低压”/“下间高压 · 三敌齐压”/“下间淘金 · 双赏金”这类 objective preview 压到玩家眼前，让人先看懂这条路线要求的是“先稳住”还是“先追赏”；若已存储的 recommendation reason 仍和 routed encounter 强相关，入口/清场短句还会继续补“缓冲战 · 双拍缓冲 · 净化后稳场”/“高压战 · 三向成压 · 压线抢势”/“淘金战 · 后排赏金 · 血线够追赏”这类更短 echo，命途圣坛的“绝境修习”/“守心修习”也会一起接进“下间高压”/“下间缓冲”；同一套 routed encounter contract 现也开始吃进 build-facing 路线，武备圣坛的“压阵修习”/“离弦修习”会分别导向“下间高压”/“下间淘金”，烙痕圣坛的“余烬修习”/“血痕修习”则会分别导向“下间缓冲”/“下间高压”；其余行动型 blessing route 也会继续把第三房压成“缓冲/高压/淘金”，并在没有 recommendation receipt 时补“连斩抢拍”/“游步整拍”/“镇步控场”/“破势追杀”/“回息稳场”/“借势重击”/“催锋连段”/“回身整拍”/“追猎追赏”/“调息回线”这类 baseline anchor',
-                    '事件房导向的第三房路线现在不只会在 shrine 结算时预告“下间缓冲”/“下间高压”/“下间淘金”，进房时补“缓冲战 · 双拍缓冲”/“高压战 · 三向成压”/“淘金战 · 后排赏金”，还会在真正清场时再补“缓冲战 · 稳住出清”/“高压战 · 顶住成压”/“淘金战 · 赏金到手”这类短回顾；当 Boss 真正倒下时，胜利总结还会再补“缓冲路线 · 稳线收束”/“高压路线 · 顶压收束”/“淘金路线 · 带赏收束”这类极短 recap，把 routed segment 和通用奖励放进同一屏闭环；而在真正跨进第三房前，choice panel / 已触发 HUD / 结算浮字 也会先把“下间缓冲 · 双低压”/“下间高压 · 三敌齐压”/“下间淘金 · 双赏金”这类 objective preview 压到玩家眼前，让人先看懂这条路线要求的是“先稳住”还是“先追赏”；若已存储的 recommendation reason 仍和 routed encounter 强相关，入口/清场短句还会继续补“缓冲战 · 双拍缓冲 · 净化后稳场”/“高压战 · 三向成压 · 压线抢势”/“淘金战 · 后排赏金 · 血线够追赏”这类更短 echo，命途圣坛的“绝境修习”/“守心修习”也会一起接进“下间高压”/“下间缓冲”；同一套 routed encounter contract 现也开始吃进 build-facing 路线，武备圣坛的“压阵修习”/“离弦修习”会分别导向“下间高压”/“下间淘金”，烙痕圣坛的“余烬修习”/“血痕修习”则会分别导向“下间缓冲”/“下间高压”；其余行动型 blessing route 也会继续把第三房压成“缓冲/高压/淘金”，并在没有 recommendation receipt 时补“连斩抢拍”/“游步整拍”/“镇步控场”/“破势追杀”/“回息稳场”/“借势重击”/“催锋连段”/“回身整拍”/“追猎追赏”/“调息回线”这类 baseline anchor',
-                    '资源与结算路线现在也会把第三房继续钉成更具体的战术短句：“复苏祷言 / 迅击祷言 / 豪赌 / 稳押 / 战地净化包 / 狂战补给”会分别补“复苏回拍 / 迅击抢拍 / 豪赌追赏 / 稳押收赏 / 净包稳场 / 狂油抢势”；若“稳押”本身是因为“当前更宜稳押”才成立，还会继续升级成“留本追赏”',
+                    '事件房导向的第三房路线现在不只会在 shrine 结算时预告“下间缓冲”/“下间高压”/“下间淘金”，进房时补“缓冲战 · 双拍缓冲”/“高压战 · 三向成压”/“淘金战 · 后排赏金”，还会在真正清场时再补“缓冲战 · 稳住出清”/“高压战 · 顶住成压”/“淘金战 · 赏金到手”这类短回顾；若已存储的 recommendation reason 仍和 routed encounter 强相关，入口/清场短句还会继续补“缓冲战 · 双拍缓冲 · 净化后稳场”/“高压战 · 三向成压 · 压线抢势”/“淘金战 · 后排赏金 · 血线够追赏”这类更短 echo，命途圣坛的“绝境修习”/“守心修习”也会一起接进“下间高压”/“下间缓冲”；同一套 routed encounter contract 现也开始吃进 build-facing 路线，武备圣坛的“压阵修习”/“离弦修习”会分别导向“下间高压”/“下间淘金”，烙痕圣坛的“余烬修习”/“血痕修习”则会分别导向“下间缓冲”/“下间高压”；其余行动型 blessing route 也会继续把第三房压成“缓冲/高压/淘金”，并在没有 recommendation receipt 时补“连斩抢拍”/“游步整拍”/“镇步控场”/“破势追杀”/“回息稳场”/“借势重击”/“催锋连段”/“回身整拍”/“追猎追赏”/“调息回线”这类 baseline anchor',
+                    '当清场浮字淡出后，Boss 门标签也会继续保留“缓冲路线 · 稳线迎战”/“高压路线 · 顶压迎战”/“淘金路线 · 带赏迎战”这类 run-arc 回顾，让这段路线怎样改写了整段推进节奏不会在进 Boss 前立刻断掉；真正踏进 Boss 房后的第一拍，还会再补一次“缓冲路线 · 稳线开局”/“高压路线 · 抢势开局”/“淘金路线 · 带赏开局”这类共享 opener，把这段 route identity 真正接进 Boss 开局',
+                    '事件房导向的第三房路线现在不只会在 shrine 结算时预告“下间缓冲”/“下间高压”/“下间淘金”，进房时补“缓冲战 · 双拍缓冲”/“高压战 · 三向成压”/“淘金战 · 后排赏金”，还会在真正清场时再补“缓冲战 · 稳住出清”/“高压战 · 顶住成压”/“淘金战 · 赏金到手”这类短回顾；若已存储的 recommendation reason 仍和 routed encounter 强相关，入口/清场短句还会继续补“缓冲战 · 双拍缓冲 · 净化后稳场”/“高压战 · 三向成压 · 压线抢势”/“淘金战 · 后排赏金 · 血线够追赏”这类更短 echo，命途圣坛的“绝境修习”/“守心修习”也会一起接进“下间高压”/“下间缓冲”；同一套 routed encounter contract 现也开始吃进 build-facing 路线，武备圣坛的“压阵修习”/“离弦修习”会分别导向“下间高压”/“下间淘金”，烙痕圣坛的“余烬修习”/“血痕修习”则会分别导向“下间缓冲”/“下间高压”；其余行动型 blessing route 也会继续把第三房压成“缓冲/高压/淘金”，并在没有 recommendation receipt 时补“连斩抢拍”/“游步整拍”/“镇步控场”/“破势追杀”/“回息稳场”/“借势重击”/“催锋连段”/“回身整拍”/“追猎追赏”/“调息回线”这类 baseline anchor',
+                    '资源与结算路线现在也会把第三房继续钉成更具体的战术短句：“复苏祷言 / 迅击祷言 / 豪赌 / 稳押 / 战地净化包 / 狂战补给”会分别补“复苏回拍 / 迅击抢拍 / 豪赌追赏 / 稳押收赏 / 净包稳场 / 狂油抢势”；若“稳押”本身是因为“当前更宜稳押”才成立，还会继续升级成“留本追赏”；若“迅击祷言”本身就是因为“当前局已偏节奏”才被推荐，还会继续把 routed “高压战”压成“顺势抢压”；若“战地净化包”是因为“当前可负担”才成立，也会把 routed “缓冲战”继续压成“趁价备净”',
                     '当第三房真正开始兑现这条 recommendation 时，系统还会只在首个稳场节点/首个高压接敌/首个赏金兑现点再补一次“净化后稳场”/“压线抢势”/“血线够追赏”这类战中 source cue；若 recommendation 来自压阵/离弦/余烬/血痕这些 build-facing 路线，还会对应补“贴身压阵”/“远程追赏”/“灼烧稳场”/“挂血抢势”，把“为什么推荐这条”接到实际交手瞬间；即使没有 recommendation receipt，战技/镇压/战势/连携/反击这些行动型 blessing route 也会在同一拍点补“连斩抢拍”/“游步整拍”/“镇步控场”/“破势追杀”/“回息稳场”/“借势重击”/“催锋连段”/“回身整拍”/“追猎追赏”/“调息回线”',
-                    '事件房 choice panel 若出现明显上下文倾向，还会在底部脚注补“建议 1/2：净泉啜饮 · 可净化2层”这类短推荐，但不会改动原有 1/2 顺序；若玩家真的选了这条高置信路线，已触发后的 HUD / 祭坛世界标签 / 结算浮字也会继续补“治疗: 净泉啜饮 · 可净化2层”这类极短确认；战技/镇压/战势/连携/反击这些行动型 blessing route 也会把 live combat state 接进同一套 recommendation helper，并在高置信场景下给出“建议 1/2：连斩修习 · 普攻卡拍”/“游步修习 · 闪避卡拍”/“镇步修习 · 当前更宜控场”/“借势修习 · 特攻待借势”/“催锋修习 · 特攻待连段”/“回身修习 · 闪避待回身”/“追猎修习 · 可立即追猎”/“调息修习 · 当前更缺回体”这类脚注；武备/烙痕这些 build-facing route 也会在高置信场景下给出“建议 1/2：压阵修习 · 近战更宜压线”/“离弦修习 · 远程更宜追赏”/“余烬修习 · 灼烧更宜稳场”/“血痕修习 · 挂血更宜抢势”，不再只停在静态 loadout fit',
+                    '事件房 choice panel 若出现明显上下文倾向，还会在底部脚注补“建议 1/2：净泉啜饮 · 可净化2层”这类短推荐，但不会改动原有 1/2 顺序；若玩家真的选了这条高置信路线，已触发后的 HUD / 祭坛世界标签 / 结算浮字也会继续补“治疗: 净泉啜饮 · 可净化2层”这类极短确认；祈愿圣坛现在也会在明显节奏偏向时给出“建议 2：迅击祷言 · 当前局已偏节奏”这类脚注；若玩家真的选了这条高置信路线，已触发后的 HUD / 祭坛世界标签 / 结算浮字也会继续补“效果: 迅击祷言 · 当前局已偏节奏”这类极短确认；choice panel / 侧栏事件房摘要 / 已触发后的祭坛世界标签现在还会继续补“首拍兑现 / 稳场兑现 / 追赏兑现”这类极短时机签，让玩家在选前与选后都知道这条路线会在下一房的开压、稳场或追赏节点开始回本；战技/镇压/战势/连携/反击这些行动型 blessing route 也会把 live combat state 接进同一套 recommendation helper，并在高置信场景下给出“建议 1/2：连斩修习 · 普攻卡拍”/“游步修习 · 闪避卡拍”/“镇步修习 · 当前更宜控场”/“借势修习 · 特攻待借势”/“催锋修习 · 特攻待连段”/“回身修习 · 闪避待回身”/“追猎修习 · 可立即追猎”/“调息修习 · 当前更缺回体”这类脚注；武备/烙痕这些 build-facing route 也会在高置信场景下给出“建议 1/2：压阵修习 · 近战更宜压线”/“离弦修习 · 远程更宜追赏”/“余烬修习 · 灼烧更宜稳场”/“血痕修习 · 挂血更宜抢势”，不再只停在静态 loadout fit',
                     '若这些 action recommendation 的 persisted reason 仍和 routed encounter 强相关，第三房还会继续把“普攻卡拍/闪避卡拍/当前可追终结/特攻待借势/特攻待连段/可立即追猎”压成“抢拍开刃/游步回拍/破势收赏/借势抢压/连段催锋/追猎收赏”这类更窄的 why-now echo',
                     '右侧固定侧栏里的章节标题、区域名、本局词缀、本局挑战与事件房摘要会优先按 Phaser 文本实际宽度钳制，并按实际文本高度动态纵向排布，避免长标题 / 长路线结算继续互相顶出 HUD',
                     '这些 compact / ultra-compact / ultra-tight 分档会按实际显示尺寸触发，而不再只依赖固定逻辑画布尺寸',
