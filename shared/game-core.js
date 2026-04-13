@@ -2772,7 +2772,7 @@
 
     function formatRunEventRoomChoiceEncounterPreview(choice) {
         const profile = getRunEventRoomChoiceEncounterProfile(choice);
-        return profile ? profile.previewLabel : '';
+        return buildRunEventEncounterObjectivePreview(profile);
     }
 
     function buildRunEventRoomChoicePreview(choice) {
@@ -3507,6 +3507,20 @@
         if (profileKey === 'pressure') return '先拆夹角';
         if (profileKey === 'windfall') return '先盯后排';
         return '';
+    }
+
+    function buildRunEventEncounterObjectivePreview(profile) {
+        const safeProfile = profile && typeof profile === 'object' ? profile : {};
+        const profileKey = typeof safeProfile.key === 'string' ? safeProfile.key.trim() : '';
+        const baseProfile = profileKey && RUN_EVENT_ENCOUNTER_PROFILES[profileKey]
+            ? RUN_EVENT_ENCOUNTER_PROFILES[profileKey]
+            : null;
+        const previewLabel = typeof safeProfile.previewLabel === 'string' && safeProfile.previewLabel.trim()
+            ? safeProfile.previewLabel.trim()
+            : (baseProfile && typeof baseProfile.previewLabel === 'string' ? baseProfile.previewLabel : '');
+        const objectiveCue = buildRunEventEncounterObjectiveCue(safeProfile);
+        if (!previewLabel || !objectiveCue) return '';
+        return `${previewLabel} · ${objectiveCue}`;
     }
 
     function buildRunEventEncounterClearRecap(profile, runEventRoom, poolOverride) {
@@ -6253,6 +6267,7 @@
         buildRunEventEncounterPayoffPresentation,
         buildRunEventEncounterEntryPreview,
         buildRunEventEncounterObjectiveCue,
+        buildRunEventEncounterObjectivePreview,
         buildRunEventEncounterSourceCue,
         buildRunEventEncounterClearRecap,
         buildRunEventEncounterBossDoorRecap,
