@@ -2210,6 +2210,11 @@ function testRunEventEncounterProfileHelpers() {
     assert.equal(typeof buildRunEventEncounterStagingReceipt, 'function', 'event room encounter staging receipt helper should be exported');
     assert.equal(typeof getRunEventEncounterProfile, 'function', 'resolved event room encounter helper should be exported');
     assert.equal(typeof buildRunEventEncounterEntryPreview, 'function', 'event room encounter entry preview helper should be exported');
+    const measurePreviewWidth = (text) => Array.from(typeof text === 'string' ? text : '').reduce((sum, glyph) => {
+        if (glyph === ' ') return sum + 4;
+        if (/[A-Za-z0-9:+\-]/.test(glyph)) return sum + 8;
+        return sum + 16;
+    }, 0);
 
     assert.equal(
         buildRunEventEncounterObjectivePreview({ key: 'breather', previewLabel: '下间缓冲' }),
@@ -2230,6 +2235,55 @@ function testRunEventEncounterProfileHelpers() {
         buildRunEventEncounterObjectivePreview({ key: 'unknown', previewLabel: '下间未知' }),
         '',
         'unknown routed encounters should not invent a shrine-side objective preview'
+    );
+    const wideBreatherPreview = '下间缓冲 · 双低压 · 先稳前排';
+    assert.equal(
+        buildRunEventEncounterObjectivePreview(
+            { key: 'breather', previewLabel: '下间缓冲' },
+            {
+                includeStagingAnchor: true,
+                maxWidth: measurePreviewWidth(wideBreatherPreview),
+                measureTextWidth: measurePreviewWidth
+            }
+        ),
+        wideBreatherPreview,
+        'wide preview surfaces should restore the compact breather staging anchor before the first-beat objective'
+    );
+    assert.equal(
+        buildRunEventEncounterObjectivePreview(
+            { key: 'pressure', previewLabel: '下间高压' },
+            {
+                includeStagingAnchor: true,
+                maxWidth: measurePreviewWidth('下间高压 · 三敌齐压 · 先拆夹角'),
+                measureTextWidth: measurePreviewWidth
+            }
+        ),
+        '下间高压 · 三敌齐压 · 先拆夹角',
+        'wide preview surfaces should restore the compact pressure staging anchor before the first-beat objective'
+    );
+    assert.equal(
+        buildRunEventEncounterObjectivePreview(
+            { key: 'windfall', previewLabel: '下间淘金' },
+            {
+                includeStagingAnchor: true,
+                maxWidth: measurePreviewWidth('下间淘金 · 双赏金 · 先盯后排'),
+                measureTextWidth: measurePreviewWidth
+            }
+        ),
+        '下间淘金 · 双赏金 · 先盯后排',
+        'wide preview surfaces should restore the compact windfall staging anchor before the first-beat objective'
+    );
+    assert.equal(
+        buildRunEventEncounterObjectivePreview(
+            { key: 'breather', previewLabel: '下间缓冲' },
+            {
+                includeStagingAnchor: true,
+                maxWidth: measurePreviewWidth('下间缓冲 · 先稳前排'),
+                measureTextWidth: measurePreviewWidth
+            }
+        ),
+        '下间缓冲 · 先稳前排',
+        'tight preview surfaces should fall back to the compact route-plus-objective forecast when the staging anchor no longer fits'
     );
     assert.equal(
         buildRunEventEncounterStagingReceipt({ key: 'breather', encounterLabel: '缓冲战' }),
@@ -2256,6 +2310,15 @@ function testRunEventEncounterProfileHelpers() {
     const healingProfile = getRunEventRoomChoiceEncounterProfile(healingChoice);
     assert.equal(healingProfile.key, 'breather', 'healing/cleanse routes should bias the next room toward a breather profile');
     assert.equal(formatRunEventRoomChoiceEncounterPreview(healingChoice), '下间缓冲 · 先稳前排', 'healing/cleanse routes should preview the breather encounter and its first-beat objective');
+    assert.equal(
+        formatRunEventRoomChoiceEncounterPreview(healingChoice, {
+            includeStagingAnchor: true,
+            maxWidth: measurePreviewWidth(wideBreatherPreview),
+            measureTextWidth: measurePreviewWidth
+        }),
+        wideBreatherPreview,
+        'wide routed previews should reuse the shared staging-anchor ladder for concrete choices'
+    );
 
     const prayerChoice = getRunEventRoomChoices('prayerShrine').find(choice => choice.key === 'tempoPrayer');
     const prayerProfile = getRunEventRoomChoiceEncounterProfile(prayerChoice);
@@ -3867,6 +3930,11 @@ function testRunEventRoomHudSummary() {
     assert.equal(typeof buildRunEventRoomHudSummary, 'function', 'event room HUD summary helper should be exported');
     assert.equal(typeof buildRunEventRoomHudLines, 'function', 'event room HUD line builder should be exported');
     assert.equal(typeof formatRunEventEncounterPayoffTimingLabel, 'function', 'event room resolved timing helper should be exported');
+    const measurePreviewWidth = (text) => Array.from(typeof text === 'string' ? text : '').reduce((sum, glyph) => {
+        if (glyph === ' ') return sum + 4;
+        if (/[A-Za-z0-9:+\-]/.test(glyph)) return sum + 8;
+        return sum + 16;
+    }, 0);
 
     const unknownTypePool = [
         {
@@ -3900,6 +3968,25 @@ function testRunEventRoomHudSummary() {
             '狂战补给 [补给/爆发]: 金币-60, 狂战油x1 · 下间高压 · 先拆夹角 · 首拍兑现'
         ],
         'HUD summary should split unresolved routes into one compact line per choice while exposing both routed encounter identity and payoff timing'
+    );
+    const wideUnresolvedSummary = buildRunEventRoomHudSummary({
+        key: 'supplyCache',
+        discovered: true,
+        resolved: false
+    }, RUN_EVENT_ROOM_POOL, {
+        encounterPreviewOptions: {
+            includeStagingAnchor: true,
+            maxWidth: measurePreviewWidth('下间高压 · 三敌齐压 · 先拆夹角'),
+            measureTextWidth: measurePreviewWidth
+        }
+    });
+    assert.deepEqual(
+        wideUnresolvedSummary.routeLines,
+        [
+            '战地净化包 [补给/净化]: 金币-45, 净化药剂x1 · 下间缓冲 · 双低压 · 先稳前排 · 稳场兑现',
+            '狂战补给 [补给/爆发]: 金币-60, 狂战油x1 · 下间高压 · 三敌齐压 · 先拆夹角 · 首拍兑现'
+        ],
+        'HUD summary should restore preview-only staging anchors on wider budgets while keeping the compact fallback for tight layouts'
     );
 
     const resolvedSummary = buildRunEventRoomHudSummary({
@@ -4599,8 +4686,13 @@ function testRunEventEncounterRoutingHooks() {
     );
     assert.match(
         source,
-        /_openRunEventChoicePanel\(\)\s*{[\s\S]*?const previewState = this\._buildRunEventChoicePreviewState\(\);[\s\S]*?const encounterPreview = formatRunEventRoomChoiceEncounterPreview\(choice\);[\s\S]*?const encounterTiming = formatRunEventRoomChoiceEncounterTiming\(choice,\s*RUN_EVENT_ROOM_POOL\);[\s\S]*?textNode\.setText\(`\$\{index \+ 1\}\. \$\{previewText\}\$\{encounterPreview \? ` · \$\{encounterPreview\}` : ''\}\$\{encounterTiming \? ` · \$\{encounterTiming\}` : ''\}\$\{affordabilityLabel \? ` · \$\{affordabilityLabel\}` : ''\}`\);/,
-        'run-event choice panel should pass the full route context and append both the next-room encounter preview tag and the shared payoff-timing label'
+        /_openRunEventChoicePanel\(\)\s*{[\s\S]*?const previewState = this\._buildRunEventChoicePreviewState\(\);[\s\S]*?const encounterPreview = formatRunEventRoomChoiceEncounterPreview\(choice,\s*\{\s*includeStagingAnchor:\s*true\s*\}\);[\s\S]*?const encounterTiming = formatRunEventRoomChoiceEncounterTiming\(choice,\s*RUN_EVENT_ROOM_POOL\);[\s\S]*?textNode\.setText\(`\$\{index \+ 1\}\. \$\{previewText\}\$\{encounterPreview \? ` · \$\{encounterPreview\}` : ''\}\$\{encounterTiming \? ` · \$\{encounterTiming\}` : ''\}\$\{affordabilityLabel \? ` · \$\{affordabilityLabel\}` : ''\}`\);/,
+        'run-event choice panel should opt into the wider staging-anchor preview ladder before appending the shared payoff-timing label'
+    );
+    assert.match(
+        source,
+        /const lines = buildRunEventRoomHudLines\(eventRoom,\s*RUN_EVENT_ROOM_POOL,\s*\{\s*encounterPreviewOptions:\s*\{\s*includeStagingAnchor:\s*true,\s*maxWidth:\s*this\._getHudSidebarMaxWidth\(\),\s*measureTextWidth:\s*text => this\._measureHudSidebarTextWidth\(text,\s*'eventRoomSidebar'\)\s*\}\s*\}\);/,
+        'UIScene sidebar should pass an actual width budget into the shared event-room preview helper so only wider summaries regain staging anchors'
     );
     assert.match(
         source,
@@ -14628,8 +14720,8 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /事件房导向的第三房路线现在不只会在 shrine 结算时预告“下间缓冲 · 先稳前排”\/“下间高压 · 先拆夹角”\/“下间淘金 · 先盯后排”，进房时补“缓冲战 · 双拍缓冲”\/“高压战 · 三向成压”\/“淘金战 · 后排赏金”，还会在真正清场时再补“缓冲战 · 稳住出清”\/“高压战 · 顶住成压”\/“淘金战 · 赏金到手”这类短回顾/,
-        'help overlay should document that routed room-3 identity now closes with a clear-time recap, not only a selection-time preview and entry cue'
+        /事件房导向的第三房路线现在会按 preview 宽度分层：更宽的 surface 会先补“下间缓冲 · 双低压 · 先稳前排”\/“下间高压 · 三敌齐压 · 先拆夹角”\/“下间淘金 · 双赏金 · 先盯后排”这类 layered forecast，较窄的 surface 则继续保留“下间缓冲 · 先稳前排”\/“下间高压 · 先拆夹角”\/“下间淘金 · 先盯后排”；进房时再补“缓冲战 · 双拍缓冲”\/“高压战 · 三向成压”\/“淘金战 · 后排赏金”，真正清场时再补“缓冲战 · 稳住出清”\/“高压战 · 顶住成压”\/“淘金战 · 赏金到手”这类短回顾/,
+        'help overlay should document the width-layered shrine preview ladder before the existing entry and clear recap cues'
     );
     assert.match(
         source,

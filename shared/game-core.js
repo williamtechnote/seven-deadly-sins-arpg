@@ -2770,9 +2770,9 @@
         };
     }
 
-    function formatRunEventRoomChoiceEncounterPreview(choice) {
+    function formatRunEventRoomChoiceEncounterPreview(choice, options) {
         const profile = getRunEventRoomChoiceEncounterProfile(choice);
-        return buildRunEventEncounterObjectivePreview(profile);
+        return buildRunEventEncounterObjectivePreview(profile, options);
     }
 
     function buildRunEventRoomChoicePreview(choice) {
@@ -3514,8 +3514,29 @@
         return '';
     }
 
-    function buildRunEventEncounterObjectivePreview(profile) {
+    function buildRunEventEncounterPreviewStagingAnchor(profile) {
         const safeProfile = profile && typeof profile === 'object' ? profile : {};
+        const profileKey = typeof safeProfile.key === 'string' ? safeProfile.key.trim() : '';
+        if (profileKey === 'breather') return '双低压';
+        if (profileKey === 'pressure') return '三敌齐压';
+        if (profileKey === 'windfall') return '双赏金';
+        return '';
+    }
+
+    function canRunEventEncounterPreviewFit(text, options) {
+        const safeText = typeof text === 'string' ? text.trim() : '';
+        const safeOptions = options && typeof options === 'object' ? options : {};
+        const maxWidth = Number(safeOptions.maxWidth);
+        const measureTextWidth = typeof safeOptions.measureTextWidth === 'function'
+            ? safeOptions.measureTextWidth
+            : null;
+        if (!safeText || !Number.isFinite(maxWidth) || maxWidth <= 0 || !measureTextWidth) return true;
+        return measureTextWidth(safeText) <= maxWidth;
+    }
+
+    function buildRunEventEncounterObjectivePreview(profile, options) {
+        const safeProfile = profile && typeof profile === 'object' ? profile : {};
+        const safeOptions = options && typeof options === 'object' ? options : {};
         const profileKey = typeof safeProfile.key === 'string' ? safeProfile.key.trim() : '';
         const baseProfile = profileKey && RUN_EVENT_ENCOUNTER_PROFILES[profileKey]
             ? RUN_EVENT_ENCOUNTER_PROFILES[profileKey]
@@ -3524,8 +3545,14 @@
             ? safeProfile.previewLabel.trim()
             : (baseProfile && typeof baseProfile.previewLabel === 'string' ? baseProfile.previewLabel : '');
         const objectiveCue = buildRunEventEncounterObjectiveCue(safeProfile);
+        const previewStagingAnchor = buildRunEventEncounterPreviewStagingAnchor(safeProfile);
         if (!previewLabel || !objectiveCue) return '';
-        return `${previewLabel} · ${objectiveCue}`;
+        const compactPreview = `${previewLabel} · ${objectiveCue}`;
+        if (!safeOptions.includeStagingAnchor || !previewStagingAnchor) return compactPreview;
+        const layeredPreview = `${previewLabel} · ${previewStagingAnchor} · ${objectiveCue}`;
+        return canRunEventEncounterPreviewFit(layeredPreview, safeOptions)
+            ? layeredPreview
+            : compactPreview;
     }
 
     function buildRunEventEncounterClearRecap(profile, runEventRoom, poolOverride) {
@@ -3716,8 +3743,12 @@
         return '已选';
     }
 
-    function buildRunEventRoomHudSummary(runEventRoom, poolOverride) {
+    function buildRunEventRoomHudSummary(runEventRoom, poolOverride, options) {
         const normalizedRoom = normalizeRunEventRoom(runEventRoom, poolOverride);
+        const safeOptions = options && typeof options === 'object' ? options : {};
+        const encounterPreviewOptions = safeOptions.encounterPreviewOptions && typeof safeOptions.encounterPreviewOptions === 'object'
+            ? safeOptions.encounterPreviewOptions
+            : null;
         if (!normalizedRoom) {
             return {
                 visible: false,
@@ -3749,7 +3780,7 @@
             || (!forceHealingDoubleFallback && selectedChoice ? selectedChoice.label : '')
             || (normalizedRoom.resolved ? '未知选项' : '');
         const encounterPreview = normalizedRoom.resolved && selectedChoice
-            ? formatRunEventRoomChoiceEncounterPreview(selectedChoice)
+            ? formatRunEventRoomChoiceEncounterPreview(selectedChoice, encounterPreviewOptions)
             : '';
         const encounterProfile = normalizedRoom.resolved
             ? getRunEventEncounterProfile(normalizedRoom, poolOverride)
@@ -3775,7 +3806,7 @@
             )
             : visibleChoices.map((choice) => {
                 const preview = buildRunEventRoomChoicePreview(choice);
-                const nextRoomPreview = formatRunEventRoomChoiceEncounterPreview(choice);
+                const nextRoomPreview = formatRunEventRoomChoiceEncounterPreview(choice, encounterPreviewOptions);
                 const nextRoomTiming = formatRunEventRoomChoiceEncounterTiming(choice, poolOverride);
                 return `${preview}${nextRoomPreview ? ` · ${nextRoomPreview}` : ''}${nextRoomTiming ? ` · ${nextRoomTiming}` : ''}`.trim();
             });
@@ -3801,8 +3832,8 @@
         };
     }
 
-    function buildRunEventRoomHudLines(runEventRoom, poolOverride) {
-        const summary = buildRunEventRoomHudSummary(runEventRoom, poolOverride);
+    function buildRunEventRoomHudLines(runEventRoom, poolOverride, options) {
+        const summary = buildRunEventRoomHudSummary(runEventRoom, poolOverride, options);
         if (!summary.visible) return [];
 
         const lines = [
