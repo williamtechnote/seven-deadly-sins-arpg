@@ -79,6 +79,7 @@ const {
     buildRunEventEncounterFormationSlots,
     buildRunEventEncounterPayoffPresentation,
     buildRunEventEncounterEntryPreview,
+    buildRunEventEncounterStagingReceipt,
     buildRunEventEncounterSourceCue,
     buildRunEventEncounterClearRecap,
     buildRunEventRoomChoiceRecommendation,
@@ -2239,6 +2240,49 @@ function testRunEventEncounterProfileHelpers() {
     );
 }
 
+function testRunEventEncounterStagingReceiptHelpers() {
+    assert.equal(typeof buildRunEventEncounterStagingReceipt, 'function', 'event room encounter staging receipt helper should be exported');
+
+    assert.equal(
+        buildRunEventEncounterStagingReceipt({ key: 'pressure', encounterLabel: '高压战' }),
+        '遭遇: 高压战 · 三向成压',
+        'staging receipts should restate the pressure contract before room 3 begins'
+    );
+    assert.equal(
+        buildRunEventEncounterStagingReceipt(
+            { key: 'breather', encounterLabel: '缓冲战' },
+            {
+                key: 'healingFountain',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'purifyingSip',
+                selectedChoiceRecommendationReason: '可净化2层'
+            }
+        ),
+        '遭遇: 缓冲战 · 双拍缓冲 · 净化后稳场',
+        'staging receipts should carry the still-relevant recommendation echo when it still explains the routed encounter'
+    );
+    assert.equal(
+        buildRunEventEncounterStagingReceipt(
+            { key: 'windfall', encounterLabel: '淘金战' },
+            {
+                key: 'gamblersShrine',
+                discovered: true,
+                resolved: true,
+                selectedChoiceKey: 'carefulWager',
+                selectedChoiceRecommendationReason: '当前更宜稳押'
+            }
+        ),
+        '遭遇: 淘金战 · 后排赏金 · 留本追赏',
+        'staging receipts should reuse the shared routed-encounter vocabulary instead of inventing a separate settlement-only label'
+    );
+    assert.equal(
+        buildRunEventEncounterStagingReceipt({ key: 'unknown', encounterLabel: '未知战' }),
+        '',
+        'unknown encounter profiles should stay silent instead of inventing a staged receipt'
+    );
+}
+
 function testRunEventEncounterRosterHelpers() {
     const enemyPool = ['soldier', 'archer', 'brute'];
     const enemyDefs = {
@@ -3146,6 +3190,11 @@ function testRunEventRoomHudSummary() {
         'resolved blessing summary should keep the chosen-route prefix while surfacing the next-room pacing profile'
     );
     assert.equal(
+        resolvedSummary.stagingReceipt,
+        '遭遇: 高压战 · 三向成压 · 迅击抢拍',
+        'resolved blessing summary should expose the staged encounter receipt separately from the compact route line'
+    );
+    assert.equal(
         resolvedSummary.resolutionText,
         '特攻冷却-22%',
         'resolved blessing summary should compress cooldown settlements into compact effect text'
@@ -3168,6 +3217,11 @@ function testRunEventRoomHudSummary() {
         ['效果: 猩红锋契 · 下间高压'],
         'resolved risk-buff summary should keep the shared effect prefix while surfacing the next-room pacing profile'
     );
+    assert.equal(
+        resolvedRiskBuffSummary.stagingReceipt,
+        '遭遇: 高压战 · 三向成压',
+        'resolved risk-buff summary should surface the staged encounter receipt when the chosen route still maps to a known routed room'
+    );
     const resolvedTradeSummary = buildRunEventRoomHudSummary({
         key: 'gamblersShrine',
         discovered: true,
@@ -3185,6 +3239,11 @@ function testRunEventRoomHudSummary() {
         resolvedTradeSummary.routeLines,
         ['交易: 豪赌 · 下间淘金'],
         'resolved trade summary should keep the trade-specific chosen-route prefix while surfacing the next-room pacing profile'
+    );
+    assert.equal(
+        resolvedTradeSummary.stagingReceipt,
+        '遭遇: 淘金战 · 后排赏金 · 豪赌追赏',
+        'resolved trade summary should expose the staged windfall receipt separately from the compact route line'
     );
 
     const resolvedSupplySummary = buildRunEventRoomHudSummary({
@@ -3216,6 +3275,11 @@ function testRunEventRoomHudSummary() {
         'resolved healing summary should keep the healing-specific chosen-route prefix while carrying the persisted recommendation receipt ahead of the next-room pacing profile'
     );
     assert.equal(
+        resolvedHealingSummary.stagingReceipt,
+        '遭遇: 缓冲战 · 双拍缓冲 · 净化后稳场',
+        'resolved healing summary should expose the staged encounter receipt when the recommendation echo still explains the routed breather room'
+    );
+    assert.equal(
         resolvedHealingSummary.resolutionText,
         '生命+36, 净化',
         'resolved healing summary should compress restore-and-cleanse settlements into compact delta text'
@@ -3233,6 +3297,11 @@ function testRunEventRoomHudSummary() {
         resolvedHealingDoubleFallbackSummary.routeLines,
         ['治疗: 未知选项 · 下间缓冲'],
         'resolved healing summary should keep the healing prefix, unknown-option fallback, and next-room pacing profile when the choice key is still known'
+    );
+    assert.equal(
+        resolvedHealingDoubleFallbackSummary.stagingReceipt,
+        '遭遇: 缓冲战 · 双拍缓冲',
+        'resolved healing summary should still stage the routed encounter when the choice key survives even if the stored label is missing'
     );
     assert.equal(
         resolvedHealingDoubleFallbackSummary.resolutionText,
@@ -3254,6 +3323,11 @@ function testRunEventRoomHudSummary() {
         'resolved blessing summary should keep the effect prefix even when the stored option label is missing'
     );
     assert.equal(
+        resolvedBlessingMissingLabelSummary.stagingReceipt,
+        '',
+        'resolved blessing summary should stay silent when the persisted choice no longer resolves to a routed encounter contract'
+    );
+    assert.equal(
         resolvedBlessingMissingLabelSummary.resolutionText,
         '特攻冷却-22%',
         'resolved blessing summary should still compact the stored settlement text when the chosen label is missing'
@@ -3271,6 +3345,11 @@ function testRunEventRoomHudSummary() {
         resolvedTradeMissingSettlementSummary.routeLines,
         ['交易: 豪赌 · 下间淘金'],
         'resolved trade summary should keep the trade prefix and next-room pacing profile when settlement text is missing'
+    );
+    assert.equal(
+        resolvedTradeMissingSettlementSummary.stagingReceipt,
+        '遭遇: 淘金战 · 后排赏金 · 豪赌追赏',
+        'resolved trade summary should keep the staged encounter receipt even when settlement text is missing'
     );
     assert.equal(
         resolvedTradeMissingSettlementSummary.resolutionText,
@@ -3291,6 +3370,11 @@ function testRunEventRoomHudSummary() {
         resolvedUnknownSummary.routeLines,
         ['已选: 封印索引 · 旧档理由'],
         'resolved unknown-type summary should fall back to the persisted chosen label and carry the compact recommendation receipt with the generic 已选 prefix'
+    );
+    assert.equal(
+        resolvedUnknownSummary.stagingReceipt,
+        '',
+        'resolved unknown-type summary should not invent a staged encounter receipt'
     );
     assert.equal(
         resolvedUnknownSummary.resolutionText,
@@ -3405,9 +3489,11 @@ function testRunEventRoomHudLines() {
         [
             '事件房: 祈愿圣坛',
             '祝福 · 已触发',
-            '效果: 迅击祷言 · 下间高压 · 特攻冷却-22%'
+            '效果: 迅击祷言 · 下间高压',
+            '遭遇: 高压战 · 三向成压 · 迅击抢拍',
+            '结算: 特攻冷却-22%'
         ],
-        'resolved blessing event rooms should merge the chosen route, next-room pacing profile, and compact settlement into one line'
+        'resolved blessing event rooms should split the compact route line, staged encounter receipt, and settlement into a more readable resolved stack'
     );
 
     const resolvedTradeLines = buildRunEventRoomHudLines({
@@ -3423,9 +3509,11 @@ function testRunEventRoomHudLines() {
         [
             '事件房: 赌徒圣坛',
             '交易 · 已触发',
-            '交易: 豪赌 · 下间淘金 · 生命-30, 金币+120'
+            '交易: 豪赌 · 下间淘金',
+            '遭遇: 淘金战 · 后排赏金 · 豪赌追赏',
+            '结算: 生命-30, 金币+120'
         ],
-        'resolved trade event rooms should merge the chosen label, next-room pacing profile, and actual settlement delta'
+        'resolved trade event rooms should keep the chosen route compact, then stage the routed encounter before the settlement delta'
     );
 
     const resolvedTradeMissingSettlementLines = buildRunEventRoomHudLines({
@@ -3441,9 +3529,11 @@ function testRunEventRoomHudLines() {
         [
             '事件房: 赌徒圣坛',
             '交易 · 已触发',
-            '交易: 豪赌 · 下间淘金 · 结算待同步'
+            '交易: 豪赌 · 下间淘金',
+            '遭遇: 淘金战 · 后排赏金 · 豪赌追赏',
+            '结算: 结算待同步'
         ],
-        'resolved trade event rooms should keep a stable merged fallback line when settlement text is missing'
+        'resolved trade event rooms should keep a stable staged fallback stack when settlement text is missing'
     );
 
     const resolvedHealingLines = buildRunEventRoomHudLines({
@@ -3460,9 +3550,11 @@ function testRunEventRoomHudLines() {
         [
             '事件房: 疗愈泉眼',
             '治疗 · 已触发',
-            '治疗: 净泉啜饮 · 可净化2层 · 下间缓冲 · 生命+36, 净化'
+            '治疗: 净泉啜饮 · 可净化2层 · 下间缓冲',
+            '遭遇: 缓冲战 · 双拍缓冲 · 净化后稳场',
+            '结算: 生命+36, 净化'
         ],
-        'resolved healing event rooms should merge the chosen label, persisted recommendation receipt, next-room pacing profile, and actual settlement delta'
+        'resolved healing event rooms should stage the routed breather receipt between the chosen route line and the compact settlement delta'
     );
 
     const resolvedHealingDoubleFallbackLines = buildRunEventRoomHudLines({
@@ -3478,9 +3570,11 @@ function testRunEventRoomHudLines() {
         [
             '事件房: 疗愈泉眼',
             '治疗 · 已触发',
-            '治疗: 未知选项 · 下间缓冲 · 结算待同步'
+            '治疗: 未知选项 · 下间缓冲',
+            '遭遇: 缓冲战 · 双拍缓冲',
+            '结算: 结算待同步'
         ],
-        'resolved healing event rooms should keep a stable merged fallback line when both stored fragments are missing but the chosen route remains known'
+        'resolved healing event rooms should keep a stable staged fallback stack when the chosen route survives but stored text is missing'
     );
 
     const resolvedUnknownLines = buildRunEventRoomHudLines({
@@ -3773,6 +3867,11 @@ function testRunEventEncounterRoutingHooks() {
         source,
         /_showRunEventSettlementFeedback\(settlement,\s*startGold,\s*startHp,\s*encounterProfile\)\s*{[\s\S]*?const recommendationReason = typeof settlement\.eventRoom\.selectedChoiceRecommendationReason === 'string'[\s\S]*?selectedChoiceRecommendationReason\.trim\(\)[\s\S]*?if \(recommendationReason\) \{[\s\S]*?lines\.push\(\{\s*text:\s*recommendationReason,/,
         'settlement floating feedback should surface the persisted compact recommendation receipt when one was stored during event-room resolution'
+    );
+    assert.match(
+        source,
+        /_showRunEventSettlementFeedback\(settlement,\s*startGold,\s*startHp,\s*encounterProfile\)\s*{[\s\S]*?const encounterStagingReceipt = buildRunEventEncounterStagingReceipt\(encounterProfile,\s*settlement\.eventRoom,\s*RUN_EVENT_ROOM_POOL\);[\s\S]*?if \(encounterStagingReceipt\) \{[\s\S]*?lines\.push\(\{\s*text:\s*encounterStagingReceipt,/,
+        'settlement floating feedback should consume the shared staging helper instead of only surfacing the thin next-room preview label'
     );
     assert.match(
         source,
@@ -14689,6 +14788,7 @@ function main() {
     runTest('run event encounter roster helpers', testRunEventEncounterRosterHelpers);
     runTest('run event encounter formation helpers', testRunEventEncounterFormationHelpers);
     runTest('run event encounter payoff helpers', testRunEventEncounterPayoffHelpers);
+    runTest('run event encounter staging receipt helpers', testRunEventEncounterStagingReceiptHelpers);
     runTest('run event encounter clear recap helpers', testRunEventEncounterClearRecapHelpers);
     runTest('run event encounter source cue helpers', testRunEventEncounterSourceCueHelpers);
     runTest('run event room choice recommendation', testRunEventRoomChoiceRecommendation);

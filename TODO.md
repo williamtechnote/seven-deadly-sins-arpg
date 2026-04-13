@@ -1,9 +1,10 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] 资源 / 结算型 route recommendation encounter echo 深化：当 `祈愿圣坛 / 赌徒圣坛 / 战备商柜` 的 baseline anchor 跑通后，再评估是否把 `当前局已偏节奏 / 可净化N层 / 当前可负担` 这类更偏 run-state / affordability 的 reason 也筛进更窄的 encounter echo，避免只剩 baseline identity、却还没把“为什么是现在”继续接进 routed combat
+- [ ] 事件房遭遇 staging receipt：已触发后的 HUD / 结算浮字 当前只稳定保留 `下间缓冲 / 下间高压 / 下间淘金` 这类轻量 preview；补一条共享 `遭遇: 缓冲战 · 双拍缓冲 · 游步回拍` staging receipt，把已选路线、战术 suffix 与仍强相关的 recommendation echo 在进第三房前先再次钉稳，避免 route identity 还要等真正进房才完整闭环
 
 ## Next Up
+- [ ] 资源 / 结算型 route recommendation encounter echo 深化：当 `祈愿圣坛 / 赌徒圣坛 / 战备商柜` 的 baseline anchor 跑通后，再评估是否把 `当前局已偏节奏 / 可净化N层 / 当前可负担` 这类更偏 run-state / affordability 的 reason 也筛进更窄的 encounter echo，避免只剩 baseline identity、却还没把“为什么是现在”继续接进 routed combat
 - [ ] build-facing blessing route recommendation 扩圈：当前 `压阵 / 离弦 / 余烬 / 血痕` 已能把 `当前持近战 / 当前持远程 / 当前武器可触发` 这类高置信 reason 接进 routed encounter；后续可再评估是否把更细的 loadout/run-state reason 也接进 entry / clear / source cue，避免 build recommendation 仍只有最强一层 reason 能兑现
 
 ## Blocked
