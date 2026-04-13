@@ -3500,6 +3500,15 @@
         return `${encounterLabel} · ${tacticalSuffix}${recommendationEcho ? ` · ${recommendationEcho}` : ''}`;
     }
 
+    function buildRunEventEncounterObjectiveCue(profile) {
+        const safeProfile = profile && typeof profile === 'object' ? profile : {};
+        const profileKey = typeof safeProfile.key === 'string' ? safeProfile.key.trim() : '';
+        if (profileKey === 'breather') return '先稳前排';
+        if (profileKey === 'pressure') return '先拆夹角';
+        if (profileKey === 'windfall') return '先盯后排';
+        return '';
+    }
+
     function buildRunEventEncounterClearRecap(profile, runEventRoom, poolOverride) {
         const safeProfile = profile && typeof profile === 'object' ? profile : {};
         const profileKey = typeof safeProfile.key === 'string' ? safeProfile.key.trim() : '';
@@ -6243,6 +6252,7 @@
         buildRunEventEncounterFormationSlots,
         buildRunEventEncounterPayoffPresentation,
         buildRunEventEncounterEntryPreview,
+        buildRunEventEncounterObjectiveCue,
         buildRunEventEncounterSourceCue,
         buildRunEventEncounterClearRecap,
         buildRunEventEncounterBossDoorRecap,
