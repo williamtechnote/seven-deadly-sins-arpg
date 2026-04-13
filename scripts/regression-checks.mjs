@@ -5855,6 +5855,10 @@ function testBossMechanicDiversityHooks() {
         BOSSES.gluttony.phases.some(phase => Array.isArray(phase.attacks) && phase.attacks.includes('hungerTide')),
         'gluttony should add hungerTide into its phase-3 attack pool'
     );
+    assert.ok(
+        BOSSES.sloth.phases.slice(1).every(phase => Array.isArray(phase.attacks) && phase.attacks.includes('webCage')),
+        'sloth should add webCage into its phase-2/3 attack pool'
+    );
 
     assert.match(
         source,
@@ -5873,6 +5877,11 @@ function testBossMechanicDiversityHooks() {
     );
     assert.match(
         source,
+        /webCage:\s*'蛛网囚笼'/,
+        'attack display names should expose the localized webCage label'
+    );
+    assert.match(
+        source,
         /magmaRing:\s*'反制: 保持在火环安全带内，等收束后再贴近'/,
         'magmaRing should advertise a dedicated counter hint'
     );
@@ -5885,6 +5894,11 @@ function testBossMechanicDiversityHooks() {
         source,
         /hungerTide:\s*'反制: 留翻滚穿潮，别在边线耗光体力'/,
         'hungerTide should advertise a dedicated counter hint'
+    );
+    assert.match(
+        source,
+        /webCage:\s*'反制: 先稳住中心，小步贴着空区移动，别被收束墙挤到边线'/,
+        'webCage should advertise a dedicated counter hint'
     );
     assert.match(
         source,
@@ -5903,8 +5917,18 @@ function testBossMechanicDiversityHooks() {
     );
     assert.match(
         source,
+        /webCage:\s*1700/,
+        'webCage should define a counter window for the telegraph HUD'
+    );
+    assert.match(
+        source,
         /hungerTide:\s*\{\s*key:\s*'slow',\s*durationMs:\s*1600\s*\}/,
         'hungerTide should apply a short slow when the sludge wall clips the player'
+    );
+    assert.match(
+        source,
+        /webCage:\s*\{\s*key:\s*'slow',\s*durationMs:\s*2400\s*\}/,
+        'webCage should apply slow when the shrinking web wall clips the player'
     );
     assert.match(
         source,
@@ -5923,6 +5947,11 @@ function testBossMechanicDiversityHooks() {
     );
     assert.match(
         source,
+        /HAZARD:\s*\[[^\]]*'webCage'[^\]]*\]/,
+        'webCage should be classified as a HAZARD boss attack'
+    );
+    assert.match(
+        source,
         /else if \(atk === 'bladeOrbit'\)/,
         'Boss special attack executor should expose a bladeOrbit branch'
     );
@@ -5938,8 +5967,18 @@ function testBossMechanicDiversityHooks() {
     );
     assert.match(
         source,
+        /else if \(atk === 'webCage'\)/,
+        'Boss hazard executor should expose a webCage branch'
+    );
+    assert.match(
+        source,
         /else if \(atk === 'hungerTide'\)[\s\S]*?this\.attackData\.waveCount = 3;[\s\S]*?direction:\s*i % 2 === 0 \? 1 : -1,[\s\S]*?launchAt:\s*time \+ i \* 420,[\s\S]*?time - wave\.lastHit >= 480/,
         'hungerTide should build three staggered alternating sludge walls with a repeat-hit guard instead of a one-frame damage check'
+    );
+    assert.match(
+        source,
+        /else if \(atk === 'webCage'\)[\s\S]*?this\.attackData\.anchorX = Phaser\.Math\.Clamp\(player\.x,[\s\S]*?this\.attackData\.anchorY = Phaser\.Math\.Clamp\(player\.y,[\s\S]*?this\.attackData\.cage = this\.scene\.add\.graphics\(\);[\s\S]*?fillRect\([\s\S]*?strokeRect\([\s\S]*?this\._dealDamageToPlayer\(player, this\.damage \* 0\.28, atk\);/,
+        'webCage should snapshot the player position, draw a shrinking cage, and damage the player on web-wall contact'
     );
     assert.match(
         readme,
@@ -5947,9 +5986,19 @@ function testBossMechanicDiversityHooks() {
         'README should document the new Gluttony hungerTide mechanic and its stamina-preservation test'
     );
     assert.match(
+        readme,
+        /`梦境蛛后` 在 phase 2\/3 还会补一个 `蛛网囚笼`：蛛网围栏会围绕玩家初始站位收束，若被墙线扫到会吃到伤害与 `slow`，逼你先稳住中心再等收束结束/,
+        'README should document the new Sloth webCage mechanic and its center-holding test'
+    );
+    assert.match(
         source,
         /“深渊巨口”末阶段会追加“饥潮奔涌”：三道污潮会从两侧轮番卷入，逼玩家留一次翻滚穿潮；擦潮还会吃到短 slow，别把体力耗在边线/,
         'help overlay should document the new Gluttony hungerTide mechanic and its stamina-preservation test'
+    );
+    assert.match(
+        source,
+        /“梦境蛛后”在 phase 2\/3 还会补一个“蛛网囚笼”：蛛网围栏会围绕玩家初始站位收束；若被墙线扫到会吃到伤害与 slow，先稳住中心再等收束结束/,
+        'help overlay should document the new Sloth webCage mechanic and its center-holding test'
     );
 }
 

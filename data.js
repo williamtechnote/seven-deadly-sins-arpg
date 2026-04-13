@@ -90,8 +90,8 @@ const BOSSES = {
         area: '沉睡森林', color: 0xB10DC9,
         phases: [
             { hpPercent: 1.0, attacks: ['webShot', 'summonSpider'] },
-            { hpPercent: 0.6, attacks: ['webShot', 'summonSpider', 'sleepFog'] },
-            { hpPercent: 0.3, attacks: ['webShot', 'summonSpider', 'sleepFog', 'nightmare'] }
+            { hpPercent: 0.6, attacks: ['webShot', 'summonSpider', 'sleepFog', 'webCage'] },
+            { hpPercent: 0.3, attacks: ['webShot', 'summonSpider', 'sleepFog', 'webCage', 'nightmare'] }
         ],
         defeatDialog: [
             { speaker: '梦境蛛后', text: '梦醒了……这漫长的沉睡，终于结束了。' },
