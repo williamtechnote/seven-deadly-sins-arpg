@@ -102,6 +102,7 @@ const {
     buildRunEventEncounterBossOpeningEcho,
     buildRunEventEncounterBossVictoryRecap,
     buildHubLastRunSummary,
+    buildHubPortalChoiceSummary,
     formatRunEventRoomChoiceEncounterPreview,
     formatRunEventRoomChoiceEncounterTiming,
     buildRunChallengeCompletedFeedbackText,
@@ -2854,6 +2855,29 @@ class HubScene extends Phaser.Scene {
                 lineSpacing: 4
             }).setScrollFactor(0).setDepth(97);
         }
+        const portalChoiceX = 16;
+        const portalChoiceY = this.cameras.main.height - 100;
+        this._hubPortalChoiceSummary = {
+            visible: false,
+            title: '选门参考',
+            lines: []
+        };
+        this._hubPortalChoicePanel = this.add.rectangle(portalChoiceX, portalChoiceY, 300, 82, 0x0b1220, 0.88)
+            .setOrigin(0, 0)
+            .setScrollFactor(0)
+            .setDepth(96)
+            .setVisible(false);
+        this._hubPortalChoiceTitleText = this.add.text(portalChoiceX + 12, portalChoiceY + 10, this._hubPortalChoiceSummary.title, {
+            fontSize: '14px',
+            fill: '#7ed7ff',
+            fontStyle: 'bold'
+        }).setScrollFactor(0).setDepth(97).setVisible(false);
+        this._hubPortalChoiceBodyText = this.add.text(portalChoiceX + 12, portalChoiceY + 32, '', {
+            fontSize: '13px',
+            fill: '#d7e2f2',
+            lineSpacing: 4
+        }).setScrollFactor(0).setDepth(97).setVisible(false);
+        this._refreshHubPortalChoiceSummary();
         this.scene.launch('UIScene');
 
         GameState.save();
@@ -2960,6 +2984,37 @@ class HubScene extends Phaser.Scene {
         this._miniMapDynamic.strokeCircle(playerPos.x, playerPos.y, 6);
     }
 
+    _refreshHubPortalChoiceSummary() {
+        const portalFocusRadius = 96;
+        let focusedPortal = null;
+        let nearestDistance = Number.POSITIVE_INFINITY;
+        this.portals.forEach(portal => {
+            const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, portal.x, portal.y);
+            if (distance < portalFocusRadius && distance < nearestDistance) {
+                nearestDistance = distance;
+                focusedPortal = portal;
+            }
+        });
+        const summary = buildHubPortalChoiceSummary(GameState.lastRunSummary, focusedPortal ? {
+            label: focusedPortal.label.text,
+            bossKey: focusedPortal.bossKey
+        } : null);
+        this._hubPortalChoiceSummary = summary;
+        const visible = !!summary.visible;
+        this._hubPortalChoicePanel.setVisible(visible);
+        this._hubPortalChoiceTitleText.setVisible(visible);
+        this._hubPortalChoiceBodyText.setVisible(visible);
+        if (!visible) return;
+        const panelHeight = 30 + summary.lines.length * 20;
+        const panelY = this.cameras.main.height - panelHeight - 16;
+        this._hubPortalChoicePanel.setPosition(16, panelY);
+        this._hubPortalChoicePanel.setSize(300, panelHeight);
+        this._hubPortalChoiceTitleText.setPosition(28, panelY + 10);
+        this._hubPortalChoiceBodyText.setPosition(28, panelY + 32);
+        this._hubPortalChoiceTitleText.setText(summary.title);
+        this._hubPortalChoiceBodyText.setText(summary.lines.join('\n'));
+    }
+
     _flushPortalTransition() {
         if (!this._portalTransitioning || !this._pendingPortalBossKey) return false;
         const bossKey = this._pendingPortalBossKey;
@@ -2998,6 +3053,7 @@ class HubScene extends Phaser.Scene {
         });
         this.nearestNpc = nearest;
         this._updateMiniMap();
+        this._refreshHubPortalChoiceSummary();
 
         const ui = this.scene.get('UIScene');
         if (ui && ui.updateHUD) ui.updateHUD(this.player, '净罪庇护所');

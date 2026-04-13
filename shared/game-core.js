@@ -811,6 +811,17 @@
         volume: 100
     };
 
+    const HUB_PORTAL_TARGET_CUES = Object.freeze({
+        pride: '稳线读招',
+        envy: '追影拆位',
+        wrath: '回体扛压',
+        sloth: '拉稳开刃',
+        greed: '追赏断后',
+        gluttony: '留体拆潮',
+        lust: '稳拍反制',
+        final: '全备赴渊'
+    });
+
     function clampInt(value, min, max, fallback) {
         const n = Number(value);
         if (!Number.isFinite(n)) return fallback;
@@ -843,6 +854,29 @@
             routeRecap,
             choiceLabel,
             recommendationReason
+        };
+    }
+
+    function normalizeHubPortalTarget(target) {
+        if (typeof target === 'string') {
+            const label = target.replace(/\s*✓$/u, '').trim();
+            if (!label) return null;
+            return {
+                label,
+                bossKey: '',
+                bossCue: ''
+            };
+        }
+        if (!target || typeof target !== 'object') return null;
+        const label = typeof target.label === 'string'
+            ? target.label.replace(/\s*✓$/u, '').trim()
+            : '';
+        const bossKey = typeof target.bossKey === 'string' ? target.bossKey.trim() : '';
+        if (!label) return null;
+        return {
+            label,
+            bossKey,
+            bossCue: bossKey && HUB_PORTAL_TARGET_CUES[bossKey] ? HUB_PORTAL_TARGET_CUES[bossKey] : ''
         };
     }
 
@@ -3592,6 +3626,37 @@
         };
     }
 
+    function buildHubPortalChoiceSummary(summary, targetLabel) {
+        const normalizedSummary = normalizeLastRunSummary(summary);
+        const normalizedTarget = normalizeHubPortalTarget(targetLabel);
+        if (!normalizedTarget) {
+            return {
+                visible: false,
+                title: '选门参考',
+                lines: []
+            };
+        }
+
+        const lines = [`目标 ${normalizedTarget.label}`];
+        if (normalizedTarget.bossCue) {
+            lines.push(`门前 ${normalizedTarget.bossCue}`);
+        }
+        const lastRunAnchor = normalizedSummary
+            ? (normalizedSummary.routeRecap || normalizedSummary.bossLabel)
+            : '';
+        if (lastRunAnchor) {
+            lines.push(`上轮 ${lastRunAnchor}`);
+        }
+        if (normalizedSummary && normalizedSummary.choiceLabel) {
+            lines.push(`源于 ${normalizedSummary.choiceLabel}${normalizedSummary.recommendationReason ? ` · ${normalizedSummary.recommendationReason}` : ''}`);
+        }
+        return {
+            visible: lines.length > 1,
+            title: '选门参考',
+            lines: lines.length > 1 ? lines : []
+        };
+    }
+
     function buildCompactRunEventResolutionText(runEventRoom, choice) {
         const normalizedRoom = runEventRoom && typeof runEventRoom === 'object' ? runEventRoom : {};
         const safeChoice = choice && typeof choice === 'object' ? choice : {};
@@ -6221,6 +6286,7 @@
         buildRunEventEncounterBossOpeningEcho,
         buildRunEventEncounterBossVictoryRecap,
         buildHubLastRunSummary,
+        buildHubPortalChoiceSummary,
         formatRunEventEncounterPayoffTimingLabel,
         formatRunEventRoomChoiceEncounterPreview,
         formatRunEventRoomChoiceEncounterTiming,

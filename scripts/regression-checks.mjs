@@ -85,6 +85,7 @@ const {
     buildRunEventEncounterBossOpeningEcho,
     buildRunEventEncounterBossVictoryRecap,
     buildHubLastRunSummary,
+    buildHubPortalChoiceSummary,
     formatRunEventEncounterPayoffTimingLabel,
     buildRunEventRoomChoiceRecommendation,
     buildCraftRecipeAffordance,
@@ -995,6 +996,82 @@ function testHubLastRunSummaryHelper() {
             lines: []
         },
         'hub last-run summary helper should stay hidden when no recap payload exists'
+    );
+}
+
+function testHubPortalChoiceSummaryHelper() {
+    assert.equal(typeof buildHubPortalChoiceSummary, 'function', 'hub portal choice summary helper should be exported');
+
+    assert.deepEqual(
+        buildHubPortalChoiceSummary({
+            bossLabel: '已讨伐 色欲 · 色欲魔窟',
+            routeRecap: '淘金路线 · 带赏收官',
+            choiceLabel: '豪赌',
+            recommendationReason: '当前更宜稳押'
+        }, {
+            label: '色欲 色欲魔窟',
+            bossKey: 'lust'
+        }),
+        {
+            visible: true,
+            title: '选门参考',
+            lines: [
+                '目标 色欲 色欲魔窟',
+                '门前 稳拍反制',
+                '上轮 淘金路线 · 带赏收官',
+                '源于 豪赌 · 当前更宜稳押'
+            ]
+        },
+        'hub portal choice summary helper should keep target, boss posture, route, and routed source reason in one compact decision card'
+    );
+
+    assert.deepEqual(
+        buildHubPortalChoiceSummary({
+            bossLabel: '已讨伐 傲慢 · 傲慢战场',
+            routeRecap: '',
+            choiceLabel: '借势修习',
+            recommendationReason: ''
+        }, {
+            label: '傲慢 傲慢战场',
+            bossKey: 'pride'
+        }),
+        {
+            visible: true,
+            title: '选门参考',
+            lines: [
+                '目标 傲慢 傲慢战场',
+                '门前 稳线读招',
+                '上轮 已讨伐 傲慢 · 傲慢战场',
+                '源于 借势修习'
+            ]
+        },
+        'hub portal choice summary helper should fall back to the previous boss recap when no route recap survives and still keep the target cue'
+    );
+
+    assert.deepEqual(
+        buildHubPortalChoiceSummary(null, {
+            label: '暴怒 暴怒刑场',
+            bossKey: 'wrath'
+        }),
+        {
+            visible: true,
+            title: '选门参考',
+            lines: [
+                '目标 暴怒 暴怒刑场',
+                '门前 回体扛压'
+            ]
+        },
+        'hub portal choice summary helper should stay useful with target-only framing when no last-run summary exists'
+    );
+
+    assert.deepEqual(
+        buildHubPortalChoiceSummary(null, null),
+        {
+            visible: false,
+            title: '选门参考',
+            lines: []
+        },
+        'hub portal choice summary helper should stay hidden when no portal target is in focus'
     );
 }
 
@@ -12884,6 +12961,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /当玩家真正贴近任一传送门时，画面还会再补一个 compact `选门参考`，把 `目标 Boss`、`门前 稳线读招` \/ `门前 追影拆位` \/ `门前 回体扛压` \/ `门前 稳拍反制`、`上轮路线收官` 与 `源头抉择` 压进同一块 decision surface/,
+        'README should document the boss-facing portal choice summary that combines target framing with the previous run recap at portal focus'
+    );
+    assert.match(
+        source,
         /Tab.*背包/,
         'README should keep the backpack key binding visible'
     );
@@ -15444,6 +15526,40 @@ function testHubLastRunSummaryRuntimeHooks() {
     );
 }
 
+function testHubPortalChoiceRuntimeHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /buildHubPortalChoiceSummary,/,
+        'game.js should import the shared hub portal choice helper from GameCore'
+    );
+    assert.match(
+        source,
+        /this\._hubPortalChoicePanel = this\.add\.rectangle\([\s\S]*?setVisible\(false\);[\s\S]*?this\._hubPortalChoiceTitleText = this\.add\.text\([\s\S]*?setVisible\(false\);[\s\S]*?this\._hubPortalChoiceBodyText = this\.add\.text\([\s\S]*?setVisible\(false\);/,
+        'HubScene should create a dedicated portal-focus decision panel'
+    );
+    assert.match(
+        source,
+        /_refreshHubPortalChoiceSummary\(\)\s*{[\s\S]*?buildHubPortalChoiceSummary\(GameState\.lastRunSummary,\s*focusedPortal \? \{\s*label:\s*focusedPortal\.label\.text,\s*bossKey:\s*focusedPortal\.bossKey\s*\}\s*:\s*null\)/,
+        'HubScene should rebuild portal-focus copy from the shared helper and current boss-aware portal target'
+    );
+    assert.match(
+        source,
+        /this\._hubPortalChoiceTitleText\.setText\(summary\.title\);[\s\S]*?this\._hubPortalChoiceBodyText\.setText\(summary\.lines\.join\('\\n'\)\);/,
+        'HubScene should update both portal-focus title and multiline detail text from the shared helper output'
+    );
+    assert.match(
+        source,
+        /const portalFocusRadius = 96;[\s\S]*?if \(distance < portalFocusRadius && distance < nearestDistance\)/,
+        'HubScene should only surface portal-focus copy for the nearest in-range portal'
+    );
+    assert.match(
+        source,
+        /update\(time,\s*delta\)\s*{[\s\S]*?this\._refreshHubPortalChoiceSummary\(\);[\s\S]*?const ui = this\.scene\.get\('UIScene'\);/,
+        'HubScene update should refresh the portal-focus summary during normal hub updates'
+    );
+}
+
 function main() {
     runTest('weapon scaling monotonicity', testWeaponScalingMonotonicity);
     runTest('sword early reach baseline', testSwordEarlyReachBaseline);
@@ -15456,6 +15572,7 @@ function main() {
     runTest('weapon upgrade message helpers', testWeaponUpgradeMessageHelpers);
     runTest('save/load integrity', testSaveLoadIntegrity);
     runTest('hub last-run summary helper', testHubLastRunSummaryHelper);
+    runTest('hub portal choice summary helper', testHubPortalChoiceSummaryHelper);
     runTest('status effect logic', testStatusEffectLogic);
     runTest('run modifier selection/effects', testRunModifierSelectionAndEffects);
     runTest('run event room selection', testRunEventRoomSelection);
@@ -15567,6 +15684,7 @@ function main() {
     runTest('boss victory watchdog loop', testBossVictoryWatchdogLoop);
     runTest('hub portal transition safety hooks', testHubPortalTransitionSafetyHooks);
     runTest('hub last-run summary runtime hooks', testHubLastRunSummaryRuntimeHooks);
+    runTest('hub portal choice runtime hooks', testHubPortalChoiceRuntimeHooks);
     console.log('All regression checks passed.');
 }
 
