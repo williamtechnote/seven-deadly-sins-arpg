@@ -105,6 +105,7 @@ const {
     buildHubPortalChoiceSummary,
     buildBlacksmithPrepRecommendation,
     buildShopPrepRecommendation,
+    buildInventoryPrepReview,
     buildRunStartTargetCue,
     buildFirstCombatTargetCue,
     buildCorridorTargetBridgeCue,
@@ -6628,6 +6629,18 @@ class InventoryScene extends Phaser.Scene {
             fill: '#FFD700'
         }).setOrigin(0.5).setScrollFactor(0).setDepth(1);
 
+        this._inventoryPrepReview = { visible: false, title: '备战复查', lines: [], itemKey: '' };
+        this._inventoryPrepTitleText = this.add.text(width / 2 - 200, 118, '', {
+            fontSize: '14px',
+            fill: '#ffd27a',
+            fontStyle: 'bold'
+        }).setScrollFactor(0).setDepth(1).setVisible(false);
+        this._inventoryPrepBodyText = this.add.text(width / 2 - 200, 140, '', {
+            fontSize: '13px',
+            fill: '#ffe7b8',
+            lineSpacing: 4
+        }).setScrollFactor(0).setDepth(1).setVisible(false);
+
         this.autoAssignMessageText = this.add.text(width / 2, height - 76, '', {
             fontSize: '18px',
             fill: '#7dffb3'
@@ -6660,7 +6673,8 @@ class InventoryScene extends Phaser.Scene {
     _buildGrid() {
         this.gridContainer.removeAll(true);
         const width = this.cameras.main.width;
-        const startY = 130;
+        this._refreshInventoryPrepReview();
+        const startY = this._inventoryPrepReview.visible ? 190 : 130;
         const cellW = 100;
         const cellH = 70;
         const cols = 6;
@@ -6691,12 +6705,19 @@ class InventoryScene extends Phaser.Scene {
                 const x = width / 2 - (cols * (cellW + gap) - gap) / 2 + col * (cellW + gap) + cellW / 2 + gap / 2;
                 const y = startY + row * (cellH + gap) + cellH / 2 + gap / 2;
                 const item = ITEMS[key];
+                const isRecommendedItem = !!(this._inventoryPrepReview && this._inventoryPrepReview.itemKey === key);
                 const box = this.add.graphics();
-                box.fillStyle(0x2d5a27, 1);
+                box.fillStyle(isRecommendedItem ? 0x467f3a : 0x2d5a27, 1);
                 box.fillRoundedRect(-cellW / 2, -cellH / 2, cellW, cellH, 4);
                 box.setPosition(x, y);
-                const txt = this.add.text(x, y - 8, item.name, { fontSize: '14px', fill: '#ffffff' }).setOrigin(0.5);
-                const cnt = this.add.text(x, y + 12, 'x' + count, { fontSize: '12px', fill: '#aaaaaa' }).setOrigin(0.5);
+                const txt = this.add.text(x, y - 8, item.name, {
+                    fontSize: '14px',
+                    fill: isRecommendedItem ? '#ffe7b8' : '#ffffff'
+                }).setOrigin(0.5);
+                const cnt = this.add.text(x, y + 12, 'x' + count, {
+                    fontSize: '12px',
+                    fill: isRecommendedItem ? '#ffd27a' : '#aaaaaa'
+                }).setOrigin(0.5);
                 const zone = this.add.zone(x, y, cellW, cellH).setInteractive();
                 zone.itemKey = key;
                 zone.itemDesc = item.description || '';
@@ -6751,6 +6772,16 @@ class InventoryScene extends Phaser.Scene {
         }
 
         this.goldText.setText('金币: ' + (GameState.gold || 0));
+    }
+
+    _refreshInventoryPrepReview() {
+        this._inventoryPrepReview = buildInventoryPrepReview(GameState.portalPreparationTarget, GameState, ITEMS);
+        const visible = !!this._inventoryPrepReview.visible;
+        this._inventoryPrepTitleText.setVisible(visible);
+        this._inventoryPrepBodyText.setVisible(visible);
+        if (!visible) return;
+        this._inventoryPrepTitleText.setText(this._inventoryPrepReview.title);
+        this._inventoryPrepBodyText.setText(this._inventoryPrepReview.lines.join('\n'));
     }
 
     _close() {

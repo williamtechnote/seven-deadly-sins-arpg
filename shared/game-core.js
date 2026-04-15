@@ -3876,27 +3876,25 @@
         return `目标 ${shortLabel} · ${normalizedTarget.bossCue}`;
     }
 
-    function buildHubConsumablePrepRecommendation(target, title, keyField) {
+    function resolveHubConsumablePrep(target) {
         const normalizedTarget = normalizeHubPortalTarget(target);
         if (!normalizedTarget || !normalizedTarget.bossCue || !normalizedTarget.bossKey) {
-            return {
-                visible: false,
-                title,
-                lines: [],
-                [keyField]: ''
-            };
+            return null;
         }
         const prep = BLACKSMITH_PREP_RECOMMENDATIONS[normalizedTarget.bossKey];
-        if (!prep) {
-            return {
-                visible: false,
-                title,
-                lines: [],
-                [keyField]: ''
-            };
-        }
+        if (!prep) return null;
         const shortLabel = normalizedTarget.label.split(/\s+/).find(Boolean) || normalizedTarget.label;
-        if (!shortLabel) {
+        if (!shortLabel) return null;
+        return {
+            targetLine: `目标 ${shortLabel} · ${normalizedTarget.bossCue}`,
+            itemKey: prep.recipeKey,
+            prep
+        };
+    }
+
+    function buildHubConsumablePrepRecommendation(target, title, keyField) {
+        const resolvedPrep = resolveHubConsumablePrep(target);
+        if (!resolvedPrep) {
             return {
                 visible: false,
                 title,
@@ -3908,10 +3906,10 @@
             visible: true,
             title,
             lines: [
-                `目标 ${shortLabel} · ${normalizedTarget.bossCue}`,
-                `推荐 ${prep.recipeLabel} · ${prep.prepCue}`
+                resolvedPrep.targetLine,
+                `推荐 ${resolvedPrep.prep.recipeLabel} · ${resolvedPrep.prep.prepCue}`
             ],
-            [keyField]: prep.recipeKey
+            [keyField]: resolvedPrep.itemKey
         };
     }
 
@@ -3921,6 +3919,44 @@
 
     function buildShopPrepRecommendation(target) {
         return buildHubConsumablePrepRecommendation(target, '采购参考', 'itemKey');
+    }
+
+    function buildInventoryPrepReview(target, state, itemCatalog) {
+        const resolvedPrep = resolveHubConsumablePrep(target);
+        if (!resolvedPrep) {
+            return {
+                visible: false,
+                title: '备战复查',
+                lines: [],
+                itemKey: '',
+                ownedCount: 0,
+                quickSlotIndex: null
+            };
+        }
+
+        const safeState = state && typeof state === 'object' ? state : {};
+        const inventory = normalizeInventory(safeState.inventory);
+        const quickSlots = normalizeQuickSlots(safeState.quickSlots);
+        const safeItemCatalog = itemCatalog && typeof itemCatalog === 'object' ? itemCatalog : {};
+        const itemName = safeItemCatalog[resolvedPrep.itemKey] && typeof safeItemCatalog[resolvedPrep.itemKey].name === 'string'
+            ? safeItemCatalog[resolvedPrep.itemKey].name
+            : resolvedPrep.prep.recipeLabel;
+        const ownedCount = clampInt(inventory[resolvedPrep.itemKey], 0, Number.MAX_SAFE_INTEGER, 0);
+        const slottedIndex = quickSlots.findIndex(slotKey => slotKey === resolvedPrep.itemKey);
+        const quickSlotIndex = ownedCount > 0 && slottedIndex >= 0 ? slottedIndex : null;
+        const ownedLabel = ownedCount > 0 ? `背包已有${ownedCount}` : '背包暂无';
+        const quickSlotLabel = quickSlotIndex != null ? `快捷栏${quickSlotIndex + 1}` : '快捷栏待补';
+        return {
+            visible: true,
+            title: '备战复查',
+            lines: [
+                resolvedPrep.targetLine,
+                `复查 ${itemName} · ${ownedLabel} · ${quickSlotLabel}`
+            ],
+            itemKey: resolvedPrep.itemKey,
+            ownedCount,
+            quickSlotIndex
+        };
     }
 
     function buildFirstCombatTargetCue(target) {
@@ -6586,6 +6622,7 @@
         buildHubPortalChoiceSummary,
         buildBlacksmithPrepRecommendation,
         buildShopPrepRecommendation,
+        buildInventoryPrepReview,
         buildRunStartTargetCue,
         buildFirstCombatTargetCue,
         buildCorridorTargetBridgeCue,

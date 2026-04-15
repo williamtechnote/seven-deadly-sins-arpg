@@ -88,6 +88,7 @@ const {
     buildHubPortalChoiceSummary,
     buildBlacksmithPrepRecommendation,
     buildShopPrepRecommendation,
+    buildInventoryPrepReview,
     buildRunStartTargetCue,
     buildFirstCombatTargetCue,
     buildCorridorTargetBridgeCue,
@@ -1212,6 +1213,91 @@ function testShopPrepRecommendationHelper() {
             itemKey: ''
         },
         'shop prep recommendation helper should stay hidden when no prep target payload exists'
+    );
+}
+
+function testInventoryPrepReviewHelper() {
+    const { ITEMS } = loadDataConstants();
+    assert.equal(typeof buildInventoryPrepReview, 'function', 'inventory prep review helper should be exported');
+
+    assert.deepEqual(
+        buildInventoryPrepReview(
+            {
+                label: '色欲 幻梦花园',
+                bossKey: 'lust'
+            },
+            {
+                inventory: {
+                    berserkerOil: 2
+                },
+                quickSlots: [null, 'berserkerOil', null, null]
+            },
+            ITEMS
+        ),
+        {
+            visible: true,
+            title: '备战复查',
+            lines: [
+                '目标 色欲 · 稳拍反制',
+                '复查 狂战油 · 背包已有2 · 快捷栏2'
+            ],
+            itemKey: 'berserkerOil',
+            ownedCount: 2,
+            quickSlotIndex: 1
+        },
+        'inventory prep review helper should show the recommended consumable together with owned count and ready quick-slot anchor'
+    );
+
+    assert.deepEqual(
+        buildInventoryPrepReview(
+            {
+                label: '暴怒 熔岩锻炉',
+                bossKey: 'wrath'
+            },
+            {
+                inventory: {},
+                quickSlots: [null, null, null, null]
+            },
+            ITEMS
+        ),
+        {
+            visible: true,
+            title: '备战复查',
+            lines: [
+                '目标 暴怒 · 回体扛压',
+                '复查 净化药剂 · 背包暂无 · 快捷栏待补'
+            ],
+            itemKey: 'cleanseTonic',
+            ownedCount: 0,
+            quickSlotIndex: null
+        },
+        'inventory prep review helper should stay useful when the recommended consumable is still missing and not slotted'
+    );
+
+    assert.deepEqual(
+        buildInventoryPrepReview('傲慢 · 天空神殿', { inventory: {}, quickSlots: [] }, ITEMS),
+        {
+            visible: false,
+            title: '备战复查',
+            lines: [],
+            itemKey: '',
+            ownedCount: 0,
+            quickSlotIndex: null
+        },
+        'inventory prep review helper should stay hidden for legacy string targets without boss-aware posture data'
+    );
+
+    assert.deepEqual(
+        buildInventoryPrepReview(null, null, ITEMS),
+        {
+            visible: false,
+            title: '备战复查',
+            lines: [],
+            itemKey: '',
+            ownedCount: 0,
+            quickSlotIndex: null
+        },
+        'inventory prep review helper should stay hidden when no prep target payload exists'
     );
 }
 
@@ -13758,6 +13844,11 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
+        /若 hub 最近聚焦的传送门已经把 `目标 Boss \/ 门前姿态` 压成 consumable prep 问题，打开背包时还会补一个 compact `备战复查`[\s\S]*?`背包已有2` \/ `快捷栏2` \/ `快捷栏待补`/,
+        'README should document the backpack prep review block that turns the last hub consumable check into owned-count plus quick-slot readiness'
+    );
+    assert.match(
+        source,
         /顶部 telegraph 也会自动切成双行测量布局[\s\S]*?第二行 `反制窗口` 还会改成左对齐高亮带/,
         'README should document the stacked telegraph fallback and highlighted counter-window row for long boss warning copy'
     );
@@ -16537,6 +16628,35 @@ function testShopPrepRecommendationRuntimeHooks() {
     );
 }
 
+function testInventoryPrepReviewRuntimeHooks() {
+    const source = loadGameSource();
+    assert.match(
+        source,
+        /buildInventoryPrepReview,/,
+        'game.js should import the shared inventory prep review helper from GameCore'
+    );
+    assert.match(
+        source,
+        /this\._inventoryPrepReview = buildInventoryPrepReview\(GameState\.portalPreparationTarget, GameState, ITEMS\);/,
+        'InventoryScene should build its prep review block from the shared helper, portal target, and current inventory state'
+    );
+    assert.match(
+        source,
+        /this\._inventoryPrepTitleText = this\.add\.text\([\s\S]*?this\._inventoryPrepBodyText = this\.add\.text\(/,
+        'InventoryScene should allocate a compact prep-review title/body block near the header'
+    );
+    assert.match(
+        source,
+        /const startY = this\._inventoryPrepReview\.visible \? 190 : 130;/,
+        'InventoryScene should push the item grid down when the prep review block is visible'
+    );
+    assert.match(
+        source,
+        /const isRecommendedItem = !!\(this\._inventoryPrepReview && this\._inventoryPrepReview\.itemKey === key\);[\s\S]*?box\.fillStyle\(isRecommendedItem \? 0x467f3a : 0x2d5a27, 1\);[\s\S]*?const txt = this\.add\.text\([\s\S]*?fill: isRecommendedItem \? '#ffe7b8' : '#ffffff'[\s\S]*?const cnt = this\.add\.text\([\s\S]*?fill: isRecommendedItem \? '#ffd27a' : '#aaaaaa'/,
+        'InventoryScene consumable rows should highlight the recommended prep item and its count when the backpack review points at it'
+    );
+}
+
 function main() {
     runTest('weapon scaling monotonicity', testWeaponScalingMonotonicity);
     runTest('sword early reach baseline', testSwordEarlyReachBaseline);
@@ -16552,6 +16672,7 @@ function main() {
     runTest('hub portal choice summary helper', testHubPortalChoiceSummaryHelper);
     runTest('blacksmith prep recommendation helper', testBlacksmithPrepRecommendationHelper);
     runTest('shop prep recommendation helper', testShopPrepRecommendationHelper);
+    runTest('inventory prep review helper', testInventoryPrepReviewHelper);
     runTest('run-start target cue helper', testRunStartTargetCueHelper);
     runTest('first-combat target cue helper', testFirstCombatTargetCueHelper);
     runTest('corridor target bridge cue helper', testCorridorTargetBridgeCueHelper);
@@ -16670,6 +16791,7 @@ function main() {
     runTest('hub portal choice runtime hooks', testHubPortalChoiceRuntimeHooks);
     runTest('blacksmith prep recommendation runtime hooks', testBlacksmithPrepRecommendationRuntimeHooks);
     runTest('shop prep recommendation runtime hooks', testShopPrepRecommendationRuntimeHooks);
+    runTest('inventory prep review runtime hooks', testInventoryPrepReviewRuntimeHooks);
     runTest('run-start target cue runtime hooks', testRunStartTargetCueRuntimeHooks);
     runTest('first-combat target cue runtime hooks', testFirstCombatTargetCueRuntimeHooks);
     runTest('corridor target bridge cue runtime hooks', testCorridorTargetBridgeCueRuntimeHooks);
