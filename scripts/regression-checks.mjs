@@ -16550,7 +16550,7 @@ function testRunStartTargetCueRuntimeHooks() {
     assert.match(
         source,
         /_maybeShowRunStartPrepReceipt\(\) \{[\s\S]*?const prepColor = receiptLine\.startsWith\('✗'\)[\s\S]*?'#ff9a9a'[\s\S]*?receiptLine\.startsWith\('✓'\)[\s\S]*?'#7dffb3'[\s\S]*?'#ffe7a8'[\s\S]*?this\._showFloatingText\(this\.player\.x, this\.player\.y - 58, receiptLine, prepColor\);[\s\S]*?\}/,
-        'LevelScene should show the run-start prep receipt once, shortly after scene entry, with status-aware coloring for missing, equipped, and carried-only prep states'
+        'LevelScene should show the run-start prep receipt once, shortly after scene entry, with status-aware coloring and a tighter post-entry timing so the prep audit lands right after the run-start target cue'
     );
     assert.match(
         source,
