@@ -16549,8 +16549,8 @@ function testRunStartTargetCueRuntimeHooks() {
     );
     assert.match(
         source,
-        /_maybeShowRunStartPrepReceipt\(\) \{[\s\S]*?this\._showFloatingText\(this\.player\.x, this\.player\.y - 58, receiptLine, '#b8ffd5'\);[\s\S]*?\}/,
-        'LevelScene should show the run-start prep receipt once, shortly after scene entry, using the shared floating-text channel'
+        /_maybeShowRunStartPrepReceipt\(\) \{[\s\S]*?const prepColor = receiptLine\.startsWith\('缺'\)[\s\S]*?'#ff9a9a'[\s\S]*?receiptLine\.startsWith\('已挂'\)[\s\S]*?'#7dffb3'[\s\S]*?'#ffe7a8'[\s\S]*?this\._showFloatingText\(this\.player\.x, this\.player\.y - 58, receiptLine, prepColor\);[\s\S]*?\}/,
+        'LevelScene should show the run-start prep receipt once, shortly after scene entry, with status-aware coloring for missing, equipped, and carried-only prep states'
     );
     assert.match(
         source,
