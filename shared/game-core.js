@@ -3921,6 +3921,45 @@
         return buildHubConsumablePrepRecommendation(target, '采购参考', 'itemKey');
     }
 
+    function buildRunStartPrepReceipt(target, state, itemCatalog) {
+        const resolvedPrep = resolveHubConsumablePrep(target);
+        if (!resolvedPrep) {
+            return {
+                visible: false,
+                title: '开局备战',
+                lines: [],
+                itemKey: '',
+                ownedCount: 0,
+                quickSlotIndex: null
+            };
+        }
+
+        const safeState = state && typeof state === 'object' ? state : {};
+        const inventory = normalizeInventory(safeState.inventory);
+        const quickSlots = normalizeQuickSlots(safeState.quickSlots);
+        const safeItemCatalog = itemCatalog && typeof itemCatalog === 'object' ? itemCatalog : {};
+        const itemName = safeItemCatalog[resolvedPrep.itemKey] && typeof safeItemCatalog[resolvedPrep.itemKey].name === 'string'
+            ? safeItemCatalog[resolvedPrep.itemKey].name
+            : resolvedPrep.prep.recipeLabel;
+        const ownedCount = clampInt(inventory[resolvedPrep.itemKey], 0, Number.MAX_SAFE_INTEGER, 0);
+        const slottedIndex = quickSlots.findIndex(slotKey => slotKey === resolvedPrep.itemKey);
+        const quickSlotIndex = ownedCount > 0 && slottedIndex >= 0 ? slottedIndex : null;
+        const statusLabel = ownedCount <= 0
+            ? `待备 ${itemName}`
+            : (quickSlotIndex != null ? `已备${itemName} · 快捷栏${quickSlotIndex + 1}` : `已备${itemName} · 快捷栏待补`);
+        return {
+            visible: true,
+            title: '开局备战',
+            lines: [
+                resolvedPrep.targetLine,
+                statusLabel
+            ],
+            itemKey: resolvedPrep.itemKey,
+            ownedCount,
+            quickSlotIndex
+        };
+    }
+
     function buildInventoryPrepReview(target, state, itemCatalog) {
         const resolvedPrep = resolveHubConsumablePrep(target);
         if (!resolvedPrep) {
@@ -6623,6 +6662,7 @@
         buildBlacksmithPrepRecommendation,
         buildShopPrepRecommendation,
         buildInventoryPrepReview,
+        buildRunStartPrepReceipt,
         buildRunStartTargetCue,
         buildFirstCombatTargetCue,
         buildCorridorTargetBridgeCue,

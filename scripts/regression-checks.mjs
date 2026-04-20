@@ -89,6 +89,7 @@ const {
     buildBlacksmithPrepRecommendation,
     buildShopPrepRecommendation,
     buildInventoryPrepReview,
+    buildRunStartPrepReceipt,
     buildRunStartTargetCue,
     buildFirstCombatTargetCue,
     buildCorridorTargetBridgeCue,
@@ -1299,6 +1300,52 @@ function testInventoryPrepReviewHelper() {
         },
         'inventory prep review helper should stay hidden when no prep target payload exists'
     );
+}
+
+function testRunStartPrepReceiptHelper() {
+    const { ITEMS } = loadDataConstants();
+    assert.equal(typeof buildRunStartPrepReceipt, 'function', 'run-start prep receipt helper should be exported');
+
+    const equippedReceipt = buildRunStartPrepReceipt(
+        { label: '色欲 幻梦花园', bossKey: 'lust' },
+        { inventory: { berserkerOil: 2 }, quickSlots: ['berserkerOil', null, null, null] },
+        ITEMS
+    );
+    assert.deepEqual(equippedReceipt, {
+        visible: true,
+        title: '开局备战',
+        lines: [
+            '目标 色欲 · 稳拍反制',
+            '已备狂战油 · 快捷栏1'
+        ],
+        itemKey: 'berserkerOil',
+        ownedCount: 2,
+        quickSlotIndex: 0
+    }, 'run-start prep receipt should confirm when the recommended consumable is already slotted');
+
+    const unslottedReceipt = buildRunStartPrepReceipt(
+        { label: '暴怒 熔岩锻炉', bossKey: 'wrath' },
+        { inventory: { cleanseTonic: 1 }, quickSlots: [null, null, null, null] },
+        ITEMS
+    );
+    assert.equal(unslottedReceipt.lines[1], '已备净化药剂 · 快捷栏待补', 'run-start prep receipt should flag carried but unslotted consumables');
+
+    const missingReceipt = buildRunStartPrepReceipt(
+        { label: '暴怒 熔岩锻炉', bossKey: 'wrath' },
+        { inventory: {}, quickSlots: [null, null, null, null] },
+        ITEMS
+    );
+    assert.equal(missingReceipt.lines[1], '待备 净化药剂', 'run-start prep receipt should flag missing prep when the item is not carried');
+
+    const hiddenReceipt = buildRunStartPrepReceipt(null, { inventory: {}, quickSlots: [] }, ITEMS);
+    assert.deepEqual(hiddenReceipt, {
+        visible: false,
+        title: '开局备战',
+        lines: [],
+        itemKey: '',
+        ownedCount: 0,
+        quickSlotIndex: null
+    }, 'run-start prep receipt should stay hidden without a valid portal-prep target');
 }
 
 function testRunStartTargetCueHelper() {
@@ -16490,6 +16537,26 @@ function testRunStartTargetCueRuntimeHooks() {
         /update\(time,\s*delta\)\s*{[\s\S]*?this\._maybeShowRunStartTargetCue\(\);[\s\S]*?this\.player\.update\(time,\s*delta\);/,
         'LevelScene update should trigger the one-shot run-start target cue before normal gameplay updates continue'
     );
+    assert.match(
+        source,
+        /this\._runStartPrepReceipt = buildRunStartPrepReceipt\(GameState\.portalPreparationTarget, GameState, ITEMS\);/,
+        'LevelScene should derive the run-start prep receipt from the latest portal prep target when the run scene is created'
+    );
+    assert.match(
+        source,
+        /this\._runStartPrepReceiptShown = false;/,
+        'LevelScene should track whether the run-start prep receipt has already been shown'
+    );
+    assert.match(
+        source,
+        /_maybeShowRunStartPrepReceipt\(\) \{[\s\S]*?this\._showFloatingText\(this\.player\.x, this\.player\.y - 58, receiptLine, '#b8ffd5'\);[\s\S]*?\}/,
+        'LevelScene should show the run-start prep receipt once, shortly after scene entry, using the shared floating-text channel'
+    );
+    assert.match(
+        source,
+        /this\._maybeShowRunStartTargetCue\(\);\s*this\._maybeShowRunStartPrepReceipt\(\);\s*this\._maybeShowFirstCombatTargetCue\(\);/,
+        'LevelScene update should trigger the run-start prep receipt alongside the run-start target cue before normal gameplay updates continue'
+    );
 }
 
 function testFirstCombatTargetCueRuntimeHooks() {
@@ -16673,6 +16740,7 @@ function main() {
     runTest('blacksmith prep recommendation helper', testBlacksmithPrepRecommendationHelper);
     runTest('shop prep recommendation helper', testShopPrepRecommendationHelper);
     runTest('inventory prep review helper', testInventoryPrepReviewHelper);
+    runTest('run-start prep receipt helper', testRunStartPrepReceiptHelper);
     runTest('run-start target cue helper', testRunStartTargetCueHelper);
     runTest('first-combat target cue helper', testFirstCombatTargetCueHelper);
     runTest('corridor target bridge cue helper', testCorridorTargetBridgeCueHelper);
