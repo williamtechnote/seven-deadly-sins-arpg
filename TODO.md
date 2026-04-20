@@ -1,7 +1,7 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] 开局备战回执垂直层级轻量化：若 run-start prep audit cue 已能更早跟上目标 cue，就继续把它的浮字位置再往下收一点，减少与 `目标 色欲 · 稳拍反制` 的视觉叠压，让两条开局提示更像连续梯子而不是互相盖住
+- [ ] 开局备战回执停留轻量化：若 run-start prep audit cue 已有更早时序与更低层级，就继续让它比目标 cue 更快淡出，避免它在玩家起手移动后还抢占视线，同时保住那一拍的 consumable audit 信息
 
 ## Next Up
 - [ ] 首段清场姿态后续评估：若首段 corridor 的一次性 `过门 稳拍反制` / `过门 回体扛压` 已能稳定把目标姿态保到首个 shrine 靠近，再评估是否还需要额外的首段清场 cue，还是让“首战开压 + corridor 过门 + shrine 靠近”成为足够轻量的早段 handoff 梯子
