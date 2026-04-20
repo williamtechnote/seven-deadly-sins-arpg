@@ -1,7 +1,7 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] 开局备战回执后续评估：若 `选门参考` + `备战参考` + `采购参考` + `备战复查` 已能在 Hub 内稳定回答“该备什么 / 背包是否带着 / 是否已进快捷栏”，再评估是否还需要把同一层 consumable prep 跨过 scene transition，落成 run-start 的一次性 `已备净化` / `已挂狂战` 回执，还是让现有 hub prep ladder 保持为最后一个轻量检查点
+- [ ] 开局备战回执轻量化：若 run-start 的一次性 `已备狂战油 · 快捷栏1` / `已备净化药剂 · 快捷栏待补` / `待备 净化药剂` 已能稳定把 consumable sanity check 带过 scene transition，就把它继续压成更短的 `已挂狂战` / `已备净化` / `缺净化` 风格 audit cue，减少与 `目标 色欲 · 稳拍反制` 同屏时的注意力竞争，同时保住“已带上 / 已挂槽 / 仍缺失”这层关键结论
 
 ## Next Up
 - [ ] 首段清场姿态后续评估：若首段 corridor 的一次性 `过门 稳拍反制` / `过门 回体扛压` 已能稳定把目标姿态保到首个 shrine 靠近，再评估是否还需要额外的首段清场 cue，还是让“首战开压 + corridor 过门 + shrine 靠近”成为足够轻量的早段 handoff 梯子

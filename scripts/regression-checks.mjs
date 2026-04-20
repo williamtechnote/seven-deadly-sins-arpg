@@ -1316,7 +1316,7 @@ function testRunStartPrepReceiptHelper() {
         title: '开局备战',
         lines: [
             '目标 色欲 · 稳拍反制',
-            '已备狂战油 · 快捷栏1'
+            '已挂狂战油'
         ],
         itemKey: 'berserkerOil',
         ownedCount: 2,
@@ -1328,14 +1328,14 @@ function testRunStartPrepReceiptHelper() {
         { inventory: { cleanseTonic: 1 }, quickSlots: [null, null, null, null] },
         ITEMS
     );
-    assert.equal(unslottedReceipt.lines[1], '已备净化药剂 · 快捷栏待补', 'run-start prep receipt should flag carried but unslotted consumables');
+    assert.equal(unslottedReceipt.lines[1], '已备净化药剂', 'run-start prep receipt should flag carried but unslotted consumables');
 
     const missingReceipt = buildRunStartPrepReceipt(
         { label: '暴怒 熔岩锻炉', bossKey: 'wrath' },
         { inventory: {}, quickSlots: [null, null, null, null] },
         ITEMS
     );
-    assert.equal(missingReceipt.lines[1], '待备 净化药剂', 'run-start prep receipt should flag missing prep when the item is not carried');
+    assert.equal(missingReceipt.lines[1], '缺净化药剂', 'run-start prep receipt should flag missing prep when the item is not carried');
 
     const hiddenReceipt = buildRunStartPrepReceipt(null, { inventory: {}, quickSlots: [] }, ITEMS);
     assert.deepEqual(hiddenReceipt, {

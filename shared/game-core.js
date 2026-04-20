@@ -3945,8 +3945,8 @@
         const slottedIndex = quickSlots.findIndex(slotKey => slotKey === resolvedPrep.itemKey);
         const quickSlotIndex = ownedCount > 0 && slottedIndex >= 0 ? slottedIndex : null;
         const statusLabel = ownedCount <= 0
-            ? `待备 ${itemName}`
-            : (quickSlotIndex != null ? `已备${itemName} · 快捷栏${quickSlotIndex + 1}` : `已备${itemName} · 快捷栏待补`);
+            ? `缺${itemName}`
+            : (quickSlotIndex != null ? `已挂${itemName}` : `已备${itemName}`);
         return {
             visible: true,
             title: '开局备战',
