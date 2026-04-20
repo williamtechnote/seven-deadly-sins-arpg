@@ -1316,7 +1316,7 @@ function testRunStartPrepReceiptHelper() {
         title: '开局备战',
         lines: [
             '目标 色欲 · 稳拍反制',
-            '已挂狂战油'
+            '✓ 已挂狂战油'
         ],
         itemKey: 'berserkerOil',
         ownedCount: 2,
@@ -1328,14 +1328,14 @@ function testRunStartPrepReceiptHelper() {
         { inventory: { cleanseTonic: 1 }, quickSlots: [null, null, null, null] },
         ITEMS
     );
-    assert.equal(unslottedReceipt.lines[1], '已备净化药剂', 'run-start prep receipt should flag carried but unslotted consumables');
+    assert.equal(unslottedReceipt.lines[1], '○ 已备净化药剂', 'run-start prep receipt should flag carried but unslotted consumables');
 
     const missingReceipt = buildRunStartPrepReceipt(
         { label: '暴怒 熔岩锻炉', bossKey: 'wrath' },
         { inventory: {}, quickSlots: [null, null, null, null] },
         ITEMS
     );
-    assert.equal(missingReceipt.lines[1], '缺净化药剂', 'run-start prep receipt should flag missing prep when the item is not carried');
+    assert.equal(missingReceipt.lines[1], '✗ 缺净化药剂', 'run-start prep receipt should flag missing prep when the item is not carried');
 
     const hiddenReceipt = buildRunStartPrepReceipt(null, { inventory: {}, quickSlots: [] }, ITEMS);
     assert.deepEqual(hiddenReceipt, {
@@ -16549,7 +16549,7 @@ function testRunStartTargetCueRuntimeHooks() {
     );
     assert.match(
         source,
-        /_maybeShowRunStartPrepReceipt\(\) \{[\s\S]*?const prepColor = receiptLine\.startsWith\('缺'\)[\s\S]*?'#ff9a9a'[\s\S]*?receiptLine\.startsWith\('已挂'\)[\s\S]*?'#7dffb3'[\s\S]*?'#ffe7a8'[\s\S]*?this\._showFloatingText\(this\.player\.x, this\.player\.y - 58, receiptLine, prepColor\);[\s\S]*?\}/,
+        /_maybeShowRunStartPrepReceipt\(\) \{[\s\S]*?const prepColor = receiptLine\.startsWith\('✗'\)[\s\S]*?'#ff9a9a'[\s\S]*?receiptLine\.startsWith\('✓'\)[\s\S]*?'#7dffb3'[\s\S]*?'#ffe7a8'[\s\S]*?this\._showFloatingText\(this\.player\.x, this\.player\.y - 58, receiptLine, prepColor\);[\s\S]*?\}/,
         'LevelScene should show the run-start prep receipt once, shortly after scene entry, with status-aware coloring for missing, equipped, and carried-only prep states'
     );
     assert.match(
