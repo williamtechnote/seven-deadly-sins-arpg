@@ -550,3 +550,4 @@
 [2026-04-13 22:56 +08] heartbeat: fallback note for Sloth `蛛网囚笼` after merge/push; repo changes are complete and GitHub `main` is updated, but the required `openclaw system event --text "Done: seven-deadly-sins-arpg heartbeat cycle finished" --mode now` notification failed twice with `gateway closed (1006 abnormal closure)` against `ws://127.0.0.1:18789`; fallback=one direct retry attempted; blocker=notification delivery only.
 2026-04-20 14:11 SGT | heartbeat | feat/auto-run-start-prep-receipt | added run-start prep receipt cue, checks passed in clean temp clone
 2026-04-20 16:11 SGT | heartbeat | feat/auto-run-start-prep-compact | shortened run-start prep receipt to compact audit cue, checks passed in clean temp clone
+2026-04-20 17:11 SGT | heartbeat | feat/auto-run-start-prep-color | added status-aware coloring to compact run-start prep audit cue, checks passed in clean temp clone
