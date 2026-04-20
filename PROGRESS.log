@@ -553,3 +553,4 @@
 2026-04-20 17:11 SGT | heartbeat | feat/auto-run-start-prep-color | added status-aware coloring to compact run-start prep audit cue, checks passed in clean temp clone
 2026-04-20 18:11 SGT | heartbeat | feat/auto-run-start-prep-icon | added icon semantics to compact run-start prep audit cue, checks passed in clean temp clone
 2026-04-20 19:11 SGT | heartbeat | feat/auto-run-start-prep-timing | tightened run-start prep audit cue timing to follow target cue more closely, checks passed in clean temp clone
+2026-04-20 20:11 SGT | heartbeat | feat/auto-run-start-prep-spacing | lowered run-start prep audit cue to reduce overlap with target cue, checks passed in clean temp clone
