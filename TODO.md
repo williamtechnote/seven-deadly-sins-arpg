@@ -1,10 +1,10 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] 首个事件房前缀映射收束：若 prayer shrine 的提示前缀已经收成 `按F祈愿`，就把这条映射前移到事件房前缀源头，避免 prompt helper 再挂一个 key-specific 特判
+- [ ] 首段 corridor handoff 文案轻量化：若 corridor bridge cue 仍像位置标签，就把 `过门 稳拍反制` / `过门 回体扛压` 收成更像 handoff 的短 cue，避免和 shrine/world-label 读感过近
 
 ## Next Up
-- [ ] 首段清场姿态后续评估：若首段 corridor 的一次性 `过门 稳拍反制` / `过门 回体扛压` 已能稳定把目标姿态保到首个 shrine 靠近，再评估是否还需要额外的首段清场 cue，还是让“首战开压 + corridor 过门 + shrine 靠近”成为足够轻量的早段 handoff 梯子
+- [ ] 首段清场姿态后续评估：若首段 corridor 的一次性 cue 与 shrine 靠近 reminder 已能稳定形成“首战开压 + corridor handoff + shrine 靠近”的轻量梯子，再评估是否还需要额外的首段清场 cue
 - [ ] Hub 记忆桥后续评估：若 portal focus 的 `选门参考` 已能把 `上轮路线收官 / 源头抉择 / 当前目标 Boss` 稳定压进选门时刻，再评估是否仍需要额外的 run-history 入口，还是让 `上轮战报 + 选门参考` 成为足够轻量的 route memory 终点
 - [ ] 命途 / 烙痕 Boss 姿态后续评估：若 `守心稳场 / 压线抢势 / 灼烧稳场 / 挂血抢势` 这批 threshold/status matchup echo 已能稳定解释 `命途 / 烙痕` 的 choice footer 与 routed encounter handoff，再评估是否还要把同一层 posture 继续扩到 forge / consumable 之类更间接的战前抉择，而不是重新膨胀成更多独立 Boss 文案
 

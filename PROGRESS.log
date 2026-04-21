@@ -561,3 +561,4 @@
 2026-04-21 12:11 SGT | heartbeat | feat/auto-shrine-worldlabel-tighten | unified shrine target-posture helper contract by removing redundant world-label target prefix, checks passed in clean temp clone
 2026-04-21 15:11 SGT | heartbeat | feat/auto-shrine-prompt-tighten | lightened prayer-shrine prompt prefix from 按F效果 to 按F祈愿, checks passed in clean temp clone
 2026-04-21 16:11 SGT | heartbeat | feat/auto-shrine-prompt-compact | clarified shrine prompt contract and preserved resolved altar taxonomy while checks passed in clean temp clone
+2026-04-21 17:11 SGT | heartbeat | feat/auto-shrine-todo-advance | renamed corridor bridge cue from 过门 to 承接 to read as a lighter handoff, checks passed in clean temp clone

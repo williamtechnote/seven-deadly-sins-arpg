@@ -4007,7 +4007,7 @@
     function buildCorridorTargetBridgeCue(target) {
         const normalizedTarget = normalizeHubPortalTarget(target);
         if (!normalizedTarget || !normalizedTarget.bossCue) return '';
-        return `过门 ${normalizedTarget.bossCue}`;
+        return `承接 ${normalizedTarget.bossCue}`;
     }
 
     function buildRunEventRoomTargetPostureCue(target) {
