@@ -4235,8 +4235,10 @@
         }
         if (!normalizedRoom.resolved) {
             const targetCue = buildRunEventRoomTargetPostureCue(target);
-            return targetCue && targetCue.worldLabelCue
-                ? `${normalizedRoom.name} · ${targetCue.worldLabelCue}`
+            if (!targetCue || !targetCue.worldLabelCue) return normalizedRoom.name;
+            const compactWorldLabelCue = targetCue.worldLabelCue.replace(/^目标\s*/, '');
+            return compactWorldLabelCue
+                ? `${normalizedRoom.name} · ${compactWorldLabelCue}`
                 : normalizedRoom.name;
         }
 
@@ -4252,8 +4254,10 @@
         const baseLabel = prefix === '已选' ? '按F抉择' : `按F${prefix}`;
         if (normalizedRoom.resolved) return baseLabel;
         const targetCue = buildRunEventRoomTargetPostureCue(target);
-        return targetCue && targetCue.promptCue
-            ? `${baseLabel} · ${targetCue.promptCue}`
+        if (!targetCue || !targetCue.promptCue) return baseLabel;
+        const compactPromptCue = targetCue.promptCue.replace(/^目标\s*/, '');
+        return compactPromptCue
+            ? `${baseLabel} · ${compactPromptCue}`
             : baseLabel;
     }
 

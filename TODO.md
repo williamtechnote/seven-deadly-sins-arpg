@@ -1,7 +1,7 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] corridor 过门姿态提示停留轻量化：若 `首战 ...` cue 已能更快收束，就继续让 `过门 稳拍反制` / `过门 回体扛压` 这条 corridor bridge cue 更快淡出，避免首段清场后的 handoff 在靠近 shrine 前停留过久
+- [ ] 首个事件房姿态提示轻量化：若 `过门 ...` cue 已能更快收束，就继续让首个未结算 shrine 的 posture reminder 保持更紧凑，避免 `按F效果 · 稳拍反制` 这类提示在靠近事件房时显得过重
 
 ## Next Up
 - [ ] 首段清场姿态后续评估：若首段 corridor 的一次性 `过门 稳拍反制` / `过门 回体扛压` 已能稳定把目标姿态保到首个 shrine 靠近，再评估是否还需要额外的首段清场 cue，还是让“首战开压 + corridor 过门 + shrine 靠近”成为足够轻量的早段 handoff 梯子
