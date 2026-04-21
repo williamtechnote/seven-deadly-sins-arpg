@@ -4248,7 +4248,8 @@
         const normalizedRoom = normalizeRunEventRoom(runEventRoom, poolOverride);
         if (!normalizedRoom) return '按F抉择';
         const prefix = getRunEventRoomResolvedPrefix(normalizedRoom.type);
-        const baseLabel = prefix === '已选' ? '按F抉择' : `按F${prefix}`;
+        const compactPrefix = normalizedRoom.key === 'prayerShrine' && prefix === '效果' ? '祈愿' : prefix;
+        const baseLabel = compactPrefix === '已选' ? '按F抉择' : `按F${compactPrefix}`;
         if (normalizedRoom.resolved) return baseLabel;
         const targetCue = buildRunEventRoomTargetPostureCue(target);
         return targetCue && targetCue.promptCue
