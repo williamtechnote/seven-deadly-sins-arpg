@@ -555,3 +555,4 @@
 2026-04-20 19:11 SGT | heartbeat | feat/auto-run-start-prep-timing | tightened run-start prep audit cue timing to follow target cue more closely, checks passed in clean temp clone
 2026-04-20 20:11 SGT | heartbeat | feat/auto-run-start-prep-spacing | lowered run-start prep audit cue to reduce overlap with target cue, checks passed in clean temp clone
 2026-04-20 21:11 SGT | heartbeat | feat/auto-run-start-prep-fade | shortened run-start prep audit cue fade duration, checks passed in clean temp clone
+2026-04-21 08:11 SGT | heartbeat | feat/auto-first-combat-fade | shortened first-combat target cue fade duration, checks passed in clean temp clone
