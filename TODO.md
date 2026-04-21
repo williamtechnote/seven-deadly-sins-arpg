@@ -1,10 +1,10 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] 首段清场姿态后续评估：若当前“首战开压 + corridor handoff + shrine 靠近”已足够稳定，就评估是否不再新增额外首段清场 cue，而把这段 handoff 梯子视为早段 baseline
+- [ ] Hub 记忆桥后续评估：若 `上轮战报 + 选门参考` 已足够稳定覆盖 `上轮路线收官 / 源头抉择 / 当前目标 Boss`，就评估是否不再新增额外 run-history 入口，而把这组双卡片视为 hub route-memory baseline
 
 ## Next Up
-- [ ] Hub 记忆桥后续评估：若 `上轮战报 + 选门参考` 已足够稳定覆盖 `上轮路线收官 / 源头抉择 / 当前目标 Boss`，就评估是否不再新增额外 run-history 入口，而把这组双卡片视为 hub route-memory baseline
+- [ ] 命途 / 烙痕 Boss 姿态后续评估：若 `守心稳场 / 压线抢势 / 灼烧稳场 / 挂血抢势` 这批 threshold/status matchup echo 已能稳定解释 `命途 / 烙痕` 的 choice footer 与 routed encounter handoff，再评估是否还要把同一层 posture 继续扩到 forge / consumable 之类更间接的战前抉择，而不是重新膨胀成更多独立 Boss 文案
 - [ ] 命途 / 烙痕 Boss 姿态后续评估：若 `守心稳场 / 压线抢势 / 灼烧稳场 / 挂血抢势` 这批 threshold/status matchup echo 已能稳定解释 `命途 / 烙痕` 的 choice footer 与 routed encounter handoff，再评估是否还要把同一层 posture 继续扩到 forge / consumable 之类更间接的战前抉择，而不是重新膨胀成更多独立 Boss 文案
 
 ## Blocked
@@ -16,6 +16,7 @@
 - [x] 铁匠备战推荐：当 Hub 最近聚焦的传送门已经把 `目标 Boss / 门前姿态` 压进 `选门参考` 后，铁匠铺现在也会继续补一个 compact `备战参考`，把同一条 Boss posture 折成 `净化药剂 · 稳场备净` / `狂战油 · 抢势开刃` 这类具体制作建议，并直接高亮对应制作行，让开跑前的 consumable prep 不再退回纯记忆题或抽象常识（完成：2026-04-14 01:16 +08）
 - [x] corridor 过门目标桥接：若开局 seed 先落普通战斗，`首战 稳拍反制` / `首战 回体扛压` 已能把目标姿态保到第一次开压，但首段清场后到首个未结算 shrine 靠近前仍有一段 corridor 静默；现已把同一条 Boss posture 只在首段 corridor 过门补成一次性的 `过门 稳拍反制` / `过门 回体扛压` 短 cue，让目标姿态继续保到第一次路线抉择，而不是回退成 room-clear 常驻标题或第二块 Boss HUD（完成：2026-04-13 21:37 +08）
 - [x] corridor handoff 文案轻量化：首段 corridor bridge cue 已从 `过门 稳拍反制` / `过门 回体扛压` 收成更像 handoff 的 `承接 稳拍反制` / `承接 回体扛压`，避免和 shrine/world-label 读感过近，同时保留同一条早段 posture ladder（完成：2026-04-21 17:11 +08）
+- [x] 首段清场姿态后续评估：当前“首战开压 + corridor handoff + shrine 靠近”已稳定形成轻量三段接力，现阶段不再新增额外首段清场 cue，并将其视为早段 baseline（完成：2026-04-21 22:11 +08）
 - [x] 首战目标姿态补位：当前 `目标 色欲 · 稳拍反制` 已能从 Hub 选门一路接到 run 开局与首个未结算 shrine，但若某些开局 seed 会先把玩家丢进普通战斗读图，再遇到第一次路线抉择，这条 posture 仍可能在首战开压前重新失声；现已把同一条目标姿态补成首段普通战斗刚被敌群唤醒时的一次性 `首战 稳拍反制` / `首战 回体扛压` 短 cue，让目标姿态能继续保到第一次开压，而不是回退成常驻 Boss HUD 或另一块长驻标题（完成：2026-04-13 20:19 +08）
 - [x] 首个事件房姿态接力：`目标 色欲 · 稳拍反制` 这类开局 cue 现在不再只覆盖 run 第一秒；同一条 Boss posture 已继续接到首个未结算 shrine 的靠近提示 / 世界标签，并以 `按F效果 · 稳拍反制` / `祈愿圣坛 · 目标 稳拍反制` 这类短 reminder 把目标姿态保到第一次路线抉择前，避免为了保住目标姿态而被迫新增常驻 Boss HUD 块（完成：2026-04-13 14:11 +08）
 - [x] 命途 / 烙痕接入 Boss 姿态权重：当前 boss posture tiebreaker 已经覆盖 `祈愿 / 战技 / 镇压 / 战势 / 连携 / 反击 / 武备`，但 `命途圣坛 / 烙痕圣坛` 在中性血线或较安静的 live state 下仍只剩阈值 / loadout 提示；现已让 `绝境修习 / 守心修习 / 余烬修习 / 血痕修习` 也能在高置信 matchup 下复用 `目标Boss更宜压线 / 回体 / 控场` 这类脚注，并继续兑现到 `压线抢势 / 守心稳场 / 灼烧稳场 / 挂血抢势` 这类 routed encounter echo，让 threshold / status 路线也接回同一条 matchup ladder（完成：2026-04-13 13:15 +08）

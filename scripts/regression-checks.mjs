@@ -13856,7 +13856,7 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /首段普通战斗清场后，穿过首段 corridor 时还会再补一次 `承接 稳拍反制` \/ `承接 回体扛压` 这类短 cue[\s\S]*?当前这条 early-run ladder 现已稳定成“首战开压 \+ corridor handoff \+ shrine 靠近”的轻量三段接力，并已成为当前优先评估的早段 baseline/,
+        /首段普通战斗清场后，穿过首段 corridor 时还会再补一次 `承接 稳拍反制` \/ `承接 回体扛压` 这类短 cue[\s\S]*?当前这条 early-run ladder 现已稳定成“首战开压 \+ corridor handoff \+ shrine 靠近”的轻量三段接力，并已正式收束为当前早段 baseline，不再额外新增首段清场 cue/,
         'README should document the one-shot corridor bridge cue that carries the boss target through the quiet gap before shrine proximity'
     );
     assert.match(
@@ -15495,7 +15495,7 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /若首段普通战斗已经清场，但首个未结算 shrine 还没贴近，穿过首段 corridor 时也会再补一次“承接 稳拍反制”\/“承接 回体扛压”这类短 cue，把目标姿态继续保到第一次路线抉择前[\s\S]*?目前这段 early-run handoff 已稳定形成“首战开压 \+ corridor handoff \+ shrine 靠近”的三段接力，并作为当前优先评估的早段 baseline/,
+        /若首段普通战斗已经清场，但首个未结算 shrine 还没贴近，穿过首段 corridor 时也会再补一次“承接 稳拍反制”\/“承接 回体扛压”这类短 cue，把目标姿态继续保到第一次路线抉择前[\s\S]*?目前这段 early-run handoff 已稳定形成“首战开压 \+ corridor handoff \+ shrine 靠近”的三段接力，并已收束为当前早段 baseline，不再额外新增首段清场 cue/,
         'help overlay should document the one-shot corridor bridge cue that carries the boss target through the quiet gap before shrine proximity'
     );
     assert.match(
