@@ -3444,7 +3444,7 @@ class LevelScene extends Phaser.Scene {
         const room1CombatWakeup = this.room1Enemies.some((enemy) => enemy && enemy.isAlive && (enemy.state === 'chase' || enemy.state === 'attack'));
         if (!room1CombatWakeup) return;
         this._firstCombatTargetCueShown = true;
-        this._showFloatingText(this.player.x, this.player.y - 96, this._firstCombatTargetCue, '#ffe7b8');
+        this._showFloatingText(this.player.x, this.player.y - 96, this._firstCombatTargetCue, '#ffe7b8', 760);
     }
 
     _maybeShowCorridorTargetBridgeCue() {
@@ -8345,7 +8345,7 @@ class HelpScene extends Phaser.Scene {
                     '事件房导向的第三房路线现在不只会在 shrine 结算时预告“下间缓冲”/“下间高压”/“下间淘金”，进房时补“缓冲战 · 双拍缓冲”/“高压战 · 三向成压”/“淘金战 · 后排赏金”，还会在真正清场时再补“缓冲战 · 稳住出清”/“高压战 · 顶住成压”/“淘金战 · 赏金到手”这类短回顾；若已存储的 recommendation reason 仍和 routed encounter 强相关，入口/清场短句还会继续补“缓冲战 · 双拍缓冲 · 净化后稳场”/“高压战 · 三向成压 · 压线抢势”/“淘金战 · 后排赏金 · 血线够追赏”这类更短 echo，命途圣坛的“绝境修习”/“守心修习”也会一起接进“下间高压”/“下间缓冲”；同一套 routed encounter contract 现也开始吃进 build-facing 路线，武备圣坛的“压阵修习”/“离弦修习”会分别导向“下间高压”/“下间淘金”，烙痕圣坛的“余烬修习”/“血痕修习”则会分别导向“下间缓冲”/“下间高压”；其余行动型 blessing route 也会继续把第三房压成“缓冲/高压/淘金”，并在没有 recommendation receipt 时补“连斩抢拍”/“游步整拍”/“镇步控场”/“破势追杀”/“回息稳场”/“借势重击”/“催锋连段”/“回身整拍”/“追猎追赏”/“调息回线”这类 baseline anchor',
                     '传送门的“选门参考”若已经给出“门前 稳线读招”/“门前 回体扛压”/“门前 稳拍反制”这类 Boss posture，真正踏进关卡后的第一秒还会再补一次“目标 傲慢 · 稳线读招”/“目标 暴怒 · 回体扛压”/“目标 色欲 · 稳拍反制”这类一次性开局提示，让 scene transition 后不会立刻失声',
                     '若 hub 内已经通过“备战参考”/“采购参考”/“备战复查”确认过净化药剂或狂战油，真正踏进关卡后的第一秒还会再补一次“✓ 已挂狂战油”/“○ 已备净化药剂”/“✗ 缺净化药剂”这类更短的一次性备战回执，并用图标+绿/金/红同时区分已挂好、已带未挂与仍缺失；这条回执也会紧跟开局目标 cue 提前弹出、稍微下移一层，并更快淡出，避免和目标姿态提示互相盖住',
-                    '若开局 seed 会先把玩家落进首段普通战斗，首个房间刚被敌群唤醒时也会再补一次“首战 稳拍反制”/“首战 回体扛压”这类短 cue，把目标姿态保到第一次开压，而不是提前退回记忆题',
+                    '若开局 seed 会先把玩家落进首段普通战斗，首个房间刚被敌群唤醒时也会再补一次“首战 稳拍反制”/“首战 回体扛压”这类短 cue，把目标姿态保到第一次开压，而不是提前退回记忆题；这条首战 cue 也会更快收束，避免开压后还在早段读图里停留过久',
                     '若首段普通战斗已经清场，但首个未结算 shrine 还没贴近，穿过首段 corridor 时也会再补一次“过门 稳拍反制”/“过门 回体扛压”这类短 cue，把目标姿态继续保到第一次路线抉择前',
                     '当玩家真正贴近首个未结算事件房时，靠近提示/世界标签也会继续补“按F效果 · 稳拍反制”/“祈愿圣坛 · 目标 稳拍反制”这类短 reminder，把同一条 Boss posture 接到第一次路线抉择前，而不是为了保住目标姿态再新增常驻 Boss HUD',
                     '当清场浮字淡出后，Boss 门标签也会继续保留“缓冲路线 · 稳线迎战”/“高压路线 · 顶压迎战”/“淘金路线 · 带赏迎战”这类 run-arc 回顾，让这段路线怎样改写了整段推进节奏不会在进 Boss 前立刻断掉；真正踏进 Boss 房后的第一拍，还会再补一次“缓冲路线 · 稳线开局”/“高压路线 · 抢势开局”/“淘金路线 · 带赏开局”这类共享 opener，把这段 route identity 真正接进 Boss 开局',

@@ -13851,7 +13851,7 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /若开局 seed 会先把玩家落进首段普通战斗，首个房间刚被敌群唤醒时还会再补一次 `首战 稳拍反制` \/ `首战 回体扛压` 这类短 cue/,
+        /若开局 seed 会先把玩家落进首段普通战斗，首个房间刚被敌群唤醒时还会再补一次 `首战 稳拍反制` \/ `首战 回体扛压` 这类短 cue[\s\S]*?这条首战 cue 现在也会更快收束/,
         'README should document the one-shot first-combat cue that keeps the boss target alive before the first shrine'
     );
     assert.match(
@@ -15490,7 +15490,7 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /若开局 seed 会先把玩家落进首段普通战斗，首个房间刚被敌群唤醒时也会再补一次“首战 稳拍反制”\/“首战 回体扛压”这类短 cue，把目标姿态保到第一次开压/,
+        /若开局 seed 会先把玩家落进首段普通战斗，首个房间刚被敌群唤醒时也会再补一次“首战 稳拍反制”\/“首战 回体扛压”这类短 cue，把目标姿态保到第一次开压[\s\S]*?这条首战 cue 也会更快收束/,
         'help overlay should document the one-shot first-combat cue that keeps the boss target alive before the first shrine'
     );
     assert.match(
@@ -16583,7 +16583,7 @@ function testFirstCombatTargetCueRuntimeHooks() {
     );
     assert.match(
         source,
-        /_maybeShowFirstCombatTargetCue\(\)\s*{[\s\S]*?if \(!this\._firstCombatTargetCue \|\| this\._firstCombatTargetCueShown\) return;[\s\S]*?const room1CombatWakeup = this\.room1Enemies\.some\(\(enemy\) => enemy && enemy\.isAlive && \(enemy\.state === 'chase' \|\| enemy\.state === 'attack'\)\);[\s\S]*?if \(!room1CombatWakeup\) return;[\s\S]*?this\._firstCombatTargetCueShown = true;[\s\S]*?this\._showFloatingText\([\s\S]*?this\._firstCombatTargetCue,\s*'#ffe7b8'\s*\);[\s\S]*?}/,
+        /_maybeShowFirstCombatTargetCue\(\)\s*{[\s\S]*?if \(!this\._firstCombatTargetCue \|\| this\._firstCombatTargetCueShown\) return;[\s\S]*?const room1CombatWakeup = this\.room1Enemies\.some\(\(enemy\) => enemy && enemy\.isAlive && \(enemy\.state === 'chase' \|\| enemy\.state === 'attack'\)\);[\s\S]*?if \(!room1CombatWakeup\) return;[\s\S]*?this\._firstCombatTargetCueShown = true;[\s\S]*?this\._showFloatingText\([\s\S]*?this\._firstCombatTargetCue,\s*'#ffe7b8',\s*760\s*\);[\s\S]*?}/,
         'LevelScene should show the first-combat target cue once when room-1 enemies first wake up'
     );
     assert.match(
