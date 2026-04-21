@@ -1460,7 +1460,7 @@ function testRunEventRoomTargetPostureCueHelper() {
         }),
         {
             promptCue: '稳拍反制',
-            worldLabelCue: '目标 稳拍反制'
+            worldLabelCue: '稳拍反制'
         },
         'run-event shrine target-posture helper should derive a compact shrine-facing reminder from the current boss target'
     );
@@ -1472,7 +1472,7 @@ function testRunEventRoomTargetPostureCueHelper() {
         }),
         {
             promptCue: '回体扛压',
-            worldLabelCue: '目标 回体扛压'
+            worldLabelCue: '回体扛压'
         },
         'run-event shrine target-posture helper should reuse the same boss posture vocabulary for sustain-heavy bosses'
     );
@@ -13861,7 +13861,7 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /首个未结算事件房的靠近提示 \/ 世界标签还会继续补 `按F效果 · 稳拍反制` \/ `祈愿圣坛 · 稳拍反制` 这类更紧的短 reminder/,
+        /首个未结算事件房的靠近提示 \/ 世界标签还会继续补 `按F效果 · 稳拍反制` \/ `祈愿圣坛 · 稳拍反制` 这类更紧的短 reminder（由 shared helper 直接产出一致文案）/,
         'README should document the first-shrine posture reminder that keeps the boss target alive into the first route decision'
     );
     assert.match(
@@ -15500,7 +15500,7 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /当玩家真正贴近首个未结算事件房时，靠近提示\/世界标签也会继续补“按F效果 · 稳拍反制”\/“祈愿圣坛 · 稳拍反制”这类更紧的短 reminder/,
+        /当玩家真正贴近首个未结算事件房时，靠近提示\/世界标签也会继续补“按F效果 · 稳拍反制”\/“祈愿圣坛 · 稳拍反制”这类更紧的短 reminder，把同一条 Boss posture 以统一 contract 接到第一次路线抉择前/,
         'help overlay should document the first-shrine posture reminder that keeps the boss target alive into the first route decision'
     );
     assert.match(
