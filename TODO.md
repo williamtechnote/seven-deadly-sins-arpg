@@ -1,10 +1,10 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Hub 记忆桥延伸后续评估：若 hub route-memory baseline 已足够稳定，就再评估是否需要把同类 history/route recall 延到更晚的 prep 或结算 surface，而不是现在继续新增入口
+- [ ] 命途 / 烙痕后续延伸评估：若 threshold/status posture 之后还有新增需求，再评估是否应落到更明确的战中兑现，而不是回到 forge / consumable 这类更间接 surface
 
 ## Next Up
-- [ ] 命途 / 烙痕后续延伸评估：若 threshold/status posture 之后还有新增需求，再评估是否应落到更明确的战中兑现，而不是回到 forge / consumable 这类更间接 surface
+- [ ] Hub 记忆桥远期复查：若后续真的出现新的 recall 缺口，再评估是否要把 route history 延到更晚 surface，而不是现在提前铺开
 
 ## Blocked
 - [x] 仓库交付闭环：源仓库自带未提交修改 + 未跟踪 plan 文件会在整合 `origin/main` 时阻塞 merge；现已通过归档/提交历史改动解除该 blocker（完成：2026-04-07 11:52 +08）
@@ -18,6 +18,7 @@
 - [x] 首段清场姿态后续评估：当前“首战开压 + corridor handoff + shrine 靠近”已稳定形成轻量三段接力，现阶段不再新增额外首段清场 cue，并将其视为早段 baseline（完成：2026-04-21 22:11 +08）
 - [x] Hub 记忆桥后续评估：当前 `上轮战报 + 选门参考` 已足够稳定覆盖 `上轮路线收官 / 源头抉择 / 当前目标 Boss`，现阶段不再新增额外 run-history 入口，并将其视为 hub route-memory baseline（完成：2026-04-22 02:11 +08）
 - [x] 命途 / 烙痕 Boss 姿态后续评估：`守心稳场 / 压线抢势 / 灼烧稳场 / 挂血抢势` 这批 threshold/status matchup echo 已足够稳定解释 `命途 / 烙痕` 的 choice footer 与 routed encounter handoff，现阶段不再继续扩到 forge / consumable 这类更间接 surface（完成：2026-04-22 03:11 +08）
+- [x] Hub 记忆桥延伸后续评估：hub route-memory baseline 现阶段就停在 `上轮战报 + 选门参考` 双卡片，后续 prep surface 已由 `备战参考 / 采购参考 / 备战复查` 承接，因此暂不继续新增 history/route recall 入口（完成：2026-04-22 04:11 +08）
 - [x] 首战目标姿态补位：当前 `目标 色欲 · 稳拍反制` 已能从 Hub 选门一路接到 run 开局与首个未结算 shrine，但若某些开局 seed 会先把玩家丢进普通战斗读图，再遇到第一次路线抉择，这条 posture 仍可能在首战开压前重新失声；现已把同一条目标姿态补成首段普通战斗刚被敌群唤醒时的一次性 `首战 稳拍反制` / `首战 回体扛压` 短 cue，让目标姿态能继续保到第一次开压，而不是回退成常驻 Boss HUD 或另一块长驻标题（完成：2026-04-13 20:19 +08）
 - [x] 首个事件房姿态接力：`目标 色欲 · 稳拍反制` 这类开局 cue 现在不再只覆盖 run 第一秒；同一条 Boss posture 已继续接到首个未结算 shrine 的靠近提示 / 世界标签，并以 `按F效果 · 稳拍反制` / `祈愿圣坛 · 目标 稳拍反制` 这类短 reminder 把目标姿态保到第一次路线抉择前，避免为了保住目标姿态而被迫新增常驻 Boss HUD 块（完成：2026-04-13 14:11 +08）
 - [x] 命途 / 烙痕接入 Boss 姿态权重：当前 boss posture tiebreaker 已经覆盖 `祈愿 / 战技 / 镇压 / 战势 / 连携 / 反击 / 武备`，但 `命途圣坛 / 烙痕圣坛` 在中性血线或较安静的 live state 下仍只剩阈值 / loadout 提示；现已让 `绝境修习 / 守心修习 / 余烬修习 / 血痕修习` 也能在高置信 matchup 下复用 `目标Boss更宜压线 / 回体 / 控场` 这类脚注，并继续兑现到 `压线抢势 / 守心稳场 / 灼烧稳场 / 挂血抢势` 这类 routed encounter echo，让 threshold / status 路线也接回同一条 matchup ladder（完成：2026-04-13 13:15 +08）
