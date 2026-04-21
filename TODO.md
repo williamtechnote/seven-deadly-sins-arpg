@@ -1,7 +1,7 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] 首个事件房姿态提示前缀轻量化：若 shrine 的 shared helper contract 已统一，就继续把 blessing 类事件房的提示前缀从 `按F效果` 收成更轻的 `按F祈愿`，让靠近事件房时的 posture reminder 再短一点
+- [ ] 首个事件房前缀映射收束：若 prayer shrine 的提示前缀已经收成 `按F祈愿`，就把这条映射前移到事件房前缀源头，避免 prompt helper 再挂一个 key-specific 特判
 
 ## Next Up
 - [ ] 首段清场姿态后续评估：若首段 corridor 的一次性 `过门 稳拍反制` / `过门 回体扛压` 已能稳定把目标姿态保到首个 shrine 靠近，再评估是否还需要额外的首段清场 cue，还是让“首战开压 + corridor 过门 + shrine 靠近”成为足够轻量的早段 handoff 梯子
