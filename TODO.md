@@ -1,7 +1,7 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] Hub 记忆桥后续评估：若 `上轮战报 + 选门参考` 已足够承接 `上轮路线收官 / 源头抉择 / 当前目标 Boss`，就评估是否不再新增额外 run-history 入口，而把这组双卡片视为 hub route-memory baseline
+- [ ] Hub 记忆桥后续评估：若 `上轮战报 + 选门参考` 已足够稳定覆盖 `上轮路线收官 / 源头抉择 / 当前目标 Boss`，就评估是否不再新增额外 run-history 入口，而把这组双卡片视为 hub route-memory baseline
 
 ## Next Up
 - [ ] 首段清场姿态后续评估：若当前“首战开压 + corridor handoff + shrine 靠近”已足够稳定，就评估是否不再新增额外首段清场 cue，而把这段 handoff 梯子视为早段 baseline
