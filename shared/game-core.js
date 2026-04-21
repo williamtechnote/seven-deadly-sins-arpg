@@ -4015,7 +4015,7 @@
         if (!normalizedTarget || !normalizedTarget.bossCue) return null;
         return {
             promptCue: normalizedTarget.bossCue,
-            worldLabelCue: `目标 ${normalizedTarget.bossCue}`
+            worldLabelCue: normalizedTarget.bossCue
         };
     }
 
@@ -4236,10 +4236,7 @@
         if (!normalizedRoom.resolved) {
             const targetCue = buildRunEventRoomTargetPostureCue(target);
             if (!targetCue || !targetCue.worldLabelCue) return normalizedRoom.name;
-            const compactWorldLabelCue = targetCue.worldLabelCue.replace(/^目标\s*/, '');
-            return compactWorldLabelCue
-                ? `${normalizedRoom.name} · ${compactWorldLabelCue}`
-                : normalizedRoom.name;
+            return `${normalizedRoom.name} · ${targetCue.worldLabelCue}`;
         }
 
         const selectedLine = buildRunEventRoomWorldLabelRouteLine(normalizedRoom, poolOverride);
@@ -4254,10 +4251,8 @@
         const baseLabel = prefix === '已选' ? '按F抉择' : `按F${prefix}`;
         if (normalizedRoom.resolved) return baseLabel;
         const targetCue = buildRunEventRoomTargetPostureCue(target);
-        if (!targetCue || !targetCue.promptCue) return baseLabel;
-        const compactPromptCue = targetCue.promptCue.replace(/^目标\s*/, '');
-        return compactPromptCue
-            ? `${baseLabel} · ${compactPromptCue}`
+        return targetCue && targetCue.promptCue
+            ? `${baseLabel} · ${targetCue.promptCue}`
             : baseLabel;
     }
 

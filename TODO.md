@@ -1,7 +1,7 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] 首个事件房姿态提示轻量化：若 `过门 ...` cue 已能更快收束，就继续让首个未结算 shrine 的 posture reminder 保持更紧凑，避免 `按F效果 · 稳拍反制` 这类提示在靠近事件房时显得过重
+- [ ] 首个事件房姿态 contract 收束：若 shrine 的 prompt/world-label 已经去掉冗余 `目标` 前缀，就继续把 shared helper 本身也收束成同一套紧凑 contract，避免后续由调用方各自裁剪文案
 
 ## Next Up
 - [ ] 首段清场姿态后续评估：若首段 corridor 的一次性 `过门 稳拍反制` / `过门 回体扛压` 已能稳定把目标姿态保到首个 shrine 靠近，再评估是否还需要额外的首段清场 cue，还是让“首战开压 + corridor 过门 + shrine 靠近”成为足够轻量的早段 handoff 梯子
