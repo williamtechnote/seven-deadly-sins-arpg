@@ -13836,7 +13836,7 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /回到 Hub 后，画面上还会保留一个小型 `上轮战报`，至少会把 `已讨伐谁 \/ 哪条路线收官 \/ 源于哪次抉择` 继续钉在下一次选门前[\s\S]*?当前 hub route-memory baseline 已明确收束为这组 `上轮战报 \+ 选门参考` 双卡片/,
+        /回到 Hub 后，画面上还会保留一个小型 `上轮战报`，至少会把 `已讨伐谁 \/ 哪条路线收官 \/ 源于哪次抉择` 继续钉在下一次选门前[\s\S]*?当前 hub route-memory baseline 已明确收束为这组 `上轮战报 \+ 选门参考` 双卡片，现阶段不再额外新增 run-history 入口/,
         'README should document the hub-visible last-run recap that preserves the route memory bridge after Boss victory'
     );
     assert.match(
@@ -15485,7 +15485,7 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /Hub 里的“上轮战报 \+ 选门参考”若已经稳定覆盖上轮收官与当前门前姿态，真正踏进关卡后的第一秒还会再补一次“目标 傲慢 · 稳线读招”\/“目标 暴怒 · 回体扛压”\/“目标 色欲 · 稳拍反制”这类一次性开局提示/,
+        /Hub 里的“上轮战报 \+ 选门参考”既然已经稳定覆盖上轮收官与当前门前姿态，真正踏进关卡后的第一秒还会再补一次“目标 傲慢 · 稳线读招”\/“目标 暴怒 · 回体扛压”\/“目标 色欲 · 稳拍反制”这类一次性开局提示/,
         'help overlay should document the one-shot run-start target cue that keeps portal posture alive after the scene transition'
     );
     assert.match(
