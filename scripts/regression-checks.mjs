@@ -14246,7 +14246,7 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /补充：`命途圣坛 \/ 烙痕圣坛` 现在也会沿用同一套 boss-posture ladder。若当前血线还没压进 `绝境 \/ 守心` 阈值，或 burn\/bleed loadout 也还没有强到足以单独解释当前 live state，`绝境修习 \/ 守心修习 \/ 余烬修习 \/ 血痕修习` 也会分别给出 `目标Boss更宜压线 \/ 回体 \/ 控场 \/ 压线` 这类脚注[\s\S]*?现阶段这条 threshold\/status posture ladder 就停在 routed encounter handoff，不再继续扩到 forge \/ consumable 这类更间接 surface/,
+        /补充：`命途圣坛 \/ 烙痕圣坛` 现在也会沿用同一套 boss-posture ladder。若当前血线还没压进 `绝境 \/ 守心` 阈值，或 burn\/bleed loadout 也还没有强到足以单独解释当前 live state，`绝境修习 \/ 守心修习 \/ 余烬修习 \/ 血痕修习` 也会分别给出 `目标Boss更宜压线 \/ 回体 \/ 控场 \/ 压线` 这类脚注[\s\S]*?现阶段这条 threshold\/status posture ladder 就停在 routed encounter handoff，不再继续扩到 forge \/ consumable 这类更间接 surface；在出现新的真实缺口前，也不再额外开新的延伸 lane/,
         'README should document the new threshold/status boss-posture tiebreakers'
     );
     assert.match(
