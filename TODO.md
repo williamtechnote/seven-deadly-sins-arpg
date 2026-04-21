@@ -1,11 +1,10 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] 首段清场姿态后续评估：若当前“首战开压 + corridor handoff + shrine 靠近”已足够稳定，就评估是否不再新增额外首段清场 cue，而把这段 handoff 梯子视为早段 baseline
+- [ ] Hub 记忆桥后续评估：若 `上轮战报 + 选门参考` 已足够承接 `上轮路线收官 / 源头抉择 / 当前目标 Boss`，就评估是否不再新增额外 run-history 入口，而把这组双卡片视为 hub route-memory baseline
 
 ## Next Up
-- [ ] Hub 记忆桥后续评估：若 portal focus 的 `选门参考` 已能把 `上轮路线收官 / 源头抉择 / 当前目标 Boss` 稳定压进选门时刻，再评估是否仍需要额外的 run-history 入口，还是让 `上轮战报 + 选门参考` 成为足够轻量的 route memory 终点
-- [ ] Hub 记忆桥后续评估：若 portal focus 的 `选门参考` 已能把 `上轮路线收官 / 源头抉择 / 当前目标 Boss` 稳定压进选门时刻，再评估是否仍需要额外的 run-history 入口，还是让 `上轮战报 + 选门参考` 成为足够轻量的 route memory 终点
+- [ ] 首段清场姿态后续评估：若当前“首战开压 + corridor handoff + shrine 靠近”已足够稳定，就评估是否不再新增额外首段清场 cue，而把这段 handoff 梯子视为早段 baseline
 - [ ] 命途 / 烙痕 Boss 姿态后续评估：若 `守心稳场 / 压线抢势 / 灼烧稳场 / 挂血抢势` 这批 threshold/status matchup echo 已能稳定解释 `命途 / 烙痕` 的 choice footer 与 routed encounter handoff，再评估是否还要把同一层 posture 继续扩到 forge / consumable 之类更间接的战前抉择，而不是重新膨胀成更多独立 Boss 文案
 
 ## Blocked
