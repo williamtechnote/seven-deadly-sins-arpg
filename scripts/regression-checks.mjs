@@ -13856,7 +13856,7 @@ function testReadmeKeyboardInventoryLoop() {
     );
     assert.match(
         source,
-        /首段普通战斗清场后，穿过首段 corridor 时还会再补一次 `过门 稳拍反制` \/ `过门 回体扛压` 这类短 cue/,
+        /首段普通战斗清场后，穿过首段 corridor 时还会再补一次 `过门 稳拍反制` \/ `过门 回体扛压` 这类短 cue[\s\S]*?这条 corridor cue 现在也会更快收束/,
         'README should document the one-shot corridor bridge cue that carries the boss target through the quiet gap before shrine proximity'
     );
     assert.match(
@@ -15495,7 +15495,7 @@ function testHelpOverlayQuickSlotLoop() {
     );
     assert.match(
         source,
-        /若首段普通战斗已经清场，但首个未结算 shrine 还没贴近，穿过首段 corridor 时也会再补一次“过门 稳拍反制”\/“过门 回体扛压”这类短 cue，把目标姿态继续保到第一次路线抉择前/,
+        /若首段普通战斗已经清场，但首个未结算 shrine 还没贴近，穿过首段 corridor 时也会再补一次“过门 稳拍反制”\/“过门 回体扛压”这类短 cue，把目标姿态继续保到第一次路线抉择前[\s\S]*?这条 corridor cue 也会更快收束/,
         'help overlay should document the one-shot corridor bridge cue that carries the boss target through the quiet gap before shrine proximity'
     );
     assert.match(
