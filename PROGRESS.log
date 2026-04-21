@@ -564,3 +564,4 @@
 2026-04-21 17:11 SGT | heartbeat | feat/auto-shrine-todo-advance | renamed corridor bridge cue from 过门 to 承接 to read as a lighter handoff, checks passed in clean temp clone
 2026-04-21 18:11 SGT | heartbeat | feat/auto-handoff-ladder-copy | advanced TODO/docs to reflect shipped early-run handoff ladder baseline, checks passed in clean temp clone
 2026-04-21 19:11 SGT | heartbeat | feat/auto-hub-memory-eval | deduped hub-memory TODO and documented 上轮战报+选门参考 as current route-memory baseline, checks passed in clean temp clone
+2026-04-21 20:11 SGT | heartbeat | feat/auto-hub-memory-copy | tightened hub memory baseline wording from tentative handoff to stable coverage, checks passed in clean temp clone
