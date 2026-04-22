@@ -8,6 +8,7 @@
 - [x] 仓库交付闭环：源仓库自带未提交修改 + 未跟踪 plan 文件会在整合 `origin/main` 时阻塞 merge；现已通过归档/提交历史改动解除该 blocker（完成：2026-04-07 11:52 +08）
 
 ## Completed
+- [x] corridor handoff 旧词收口：把 context files 里还残留的 `过门 稳拍反制 / 过门 回体扛压` 与 `corridor 过门` 旧写法，统一收回当前已验证的 `承接 稳拍反制 / 承接 回体扛压` 与 `corridor handoff`，避免 runbook 每轮都重复看到同一漂移（完成：2026-04-22 21:11 +08）
 - [x] corridor handoff 文案收口：把仍残留在 TODO / README 里的 `过门 稳拍反制 / 过门 回体扛压` 与 `corridor 过门` 旧写法统一收回当前基线 `承接 稳拍反制 / 承接 回体扛压` 与 `corridor handoff`，避免 context docs 再和现行早段 contract 双轨漂移（完成：2026-04-22 20:11 +08）
 - [x] corridor handoff baseline copy sync：既然早段 baseline 已明确收束为“首战开压 + corridor handoff + shrine 靠近”，就把仍残留在 README/TODO 中的 `过门 稳拍反制 / 过门 回体扛压` 旧表述统一收回 `承接 稳拍反制 / 承接 回体扛压`，避免 context files 再和运行时 contract 分叉（完成：2026-04-22 19:11 +08）
 - [x] corridor handoff 文案一致性复查：既然早段 baseline 已收束到更轻的 handoff 语气，就把残留的 `过门 稳拍反制 / 过门 回体扛压` 旧文案统一收回 `承接 稳拍反制 / 承接 回体扛压`，避免 README / runtime / checks 再出现双轨表述（完成：2026-04-22 17:11 +08）
