@@ -574,3 +574,4 @@
 2026-04-22 05:11 SGT | heartbeat | feat/auto-threshold-extension-eval | closed threshold/status extension lane and moved to long-horizon review only, checks passed in clean temp clone
 2026-04-22 09:02 SGT | heartbeat | feat/auto-review-queue | shifted project TODO into maintenance mode after closing active lanes, checks passed in clean temp clone
 2026-04-22 11:11 SGT | heartbeat | feat/auto-maintenance-state | refined maintenance-mode wording into monitoring state, checks passed in clean temp clone
+2026-04-22 13:11 SGT | heartbeat | feat/auto-todo-hygiene | collapsed TODO top into observation-only structure for cleaner maintenance state, checks passed in clean temp clone
