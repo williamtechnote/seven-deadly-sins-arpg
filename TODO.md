@@ -1,10 +1,8 @@
 # TODO — seven-deadly-sins-arpg
 
-## Active
-- [ ] 维护观察：当前无新增高价值 lane，仅保留回归观察与真实缺口监测
-
-## Next Up
-- [ ] 无（等待新的真实缺口）
+## Observation
+- [ ] 当前无新增高价值 lane，仅保留回归观察与真实缺口监测
+- [ ] 无待启动 lane，等待新的真实缺口
 
 ## Blocked
 - [x] 仓库交付闭环：源仓库自带未提交修改 + 未跟踪 plan 文件会在整合 `origin/main` 时阻塞 merge；现已通过归档/提交历史改动解除该 blocker（完成：2026-04-07 11:52 +08）
