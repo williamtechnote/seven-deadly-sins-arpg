@@ -1,10 +1,10 @@
 # TODO — seven-deadly-sins-arpg
 
 ## Active
-- [ ] 远期复查：若后续真的出现新的 recall / posture 缺口，再评估是否需要新增 surface，而不是现在提前铺开
+- [ ] 维护模式：当前无新增高价值 lane，等待新的真实缺口或体验回归信号后再开启下一轮扩展
 
 ## Next Up
-- [ ] 无，等待新的真实缺口出现后再开新 lane
+- [ ] 无
 
 ## Blocked
 - [x] 仓库交付闭环：源仓库自带未提交修改 + 未跟踪 plan 文件会在整合 `origin/main` 时阻塞 merge；现已通过归档/提交历史改动解除该 blocker（完成：2026-04-07 11:52 +08）
