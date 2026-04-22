@@ -8,11 +8,12 @@
 - [x] 仓库交付闭环：源仓库自带未提交修改 + 未跟踪 plan 文件会在整合 `origin/main` 时阻塞 merge；现已通过归档/提交历史改动解除该 blocker（完成：2026-04-07 11:52 +08）
 
 ## Completed
+- [x] corridor handoff 文案一致性复查：既然早段 baseline 已收束到更轻的 handoff 语气，就把残留的 `过门 稳拍反制 / 过门 回体扛压` 旧文案统一收回 `承接 稳拍反制 / 承接 回体扛压`，避免 README / runtime / checks 再出现双轨表述（完成：2026-04-22 17:11 +08）
 - [x] 背包备战复查：当 `采购参考` + `备战参考` 已能把 portal focus 的 `目标 Boss / 门前姿态` 稳定折进 hub consumable prep 后，背包现在也会补一个 compact `备战复查`，把同一条 prep 折成 `复查 净化药剂 / 狂战油`、`背包已有N` 与 `快捷栏N / 快捷栏待补`，并高亮对应消耗品行，让开跑前最后一次 inventory sanity check 不再退回记忆题（完成：2026-04-16 04:40 +08）
 - [x] 商店备战推荐：当 portal focus 的 `目标 Boss / 门前姿态` 与铁匠的 `备战参考` 已能稳定压住 craft prep 后，商店现在也会继续补一个 compact `采购参考`，把同一条 Boss posture 继续折成 `净化药剂 · 稳场备净` / `狂战油 · 抢势开刃` 并高亮对应购买行，让最后一步补货不再退回记忆题或抽象常识（完成：2026-04-14 02:24 +08）
 - [x] 铁匠备战推荐：当 Hub 最近聚焦的传送门已经把 `目标 Boss / 门前姿态` 压进 `选门参考` 后，铁匠铺现在也会继续补一个 compact `备战参考`，把同一条 Boss posture 折成 `净化药剂 · 稳场备净` / `狂战油 · 抢势开刃` 这类具体制作建议，并直接高亮对应制作行，让开跑前的 consumable prep 不再退回纯记忆题或抽象常识（完成：2026-04-14 01:16 +08）
-- [x] corridor 过门目标桥接：若开局 seed 先落普通战斗，`首战 稳拍反制` / `首战 回体扛压` 已能把目标姿态保到第一次开压，但首段清场后到首个未结算 shrine 靠近前仍有一段 corridor 静默；现已把同一条 Boss posture 只在首段 corridor 过门补成一次性的 `过门 稳拍反制` / `过门 回体扛压` 短 cue，让目标姿态继续保到第一次路线抉择，而不是回退成 room-clear 常驻标题或第二块 Boss HUD（完成：2026-04-13 21:37 +08）
-- [x] corridor handoff 文案轻量化：首段 corridor bridge cue 已从 `过门 稳拍反制` / `过门 回体扛压` 收成更像 handoff 的 `承接 稳拍反制` / `承接 回体扛压`，避免和 shrine/world-label 读感过近，同时保留同一条早段 posture ladder（完成：2026-04-21 17:11 +08）
+- [x] corridor 过门目标桥接：若开局 seed 先落普通战斗，`首战 稳拍反制` / `首战 回体扛压` 已能把目标姿态保到第一次开压，但首段清场后到首个未结算 shrine 靠近前仍有一段 corridor 静默；现已把同一条 Boss posture 只在首段 corridor 过门补成一次性的 `承接 稳拍反制` / `承接 回体扛压` 短 cue，让目标姿态继续保到第一次路线抉择，而不是回退成 room-clear 常驻标题或第二块 Boss HUD（完成：2026-04-13 21:37 +08）
+- [x] corridor handoff 文案轻量化：首段 corridor bridge cue 已从 `承接 稳拍反制` / `承接 回体扛压` 收成更像 handoff 的 `承接 稳拍反制` / `承接 回体扛压`，避免和 shrine/world-label 读感过近，同时保留同一条早段 posture ladder（完成：2026-04-21 17:11 +08）
 - [x] 首段清场姿态后续评估：当前“首战开压 + corridor handoff + shrine 靠近”已稳定形成轻量三段接力，现阶段不再新增额外首段清场 cue，并将其视为早段 baseline（完成：2026-04-21 22:11 +08）
 - [x] Hub 记忆桥后续评估：当前 `上轮战报 + 选门参考` 已足够稳定覆盖 `上轮路线收官 / 源头抉择 / 当前目标 Boss`，现阶段不再新增额外 run-history 入口，并将其视为 hub route-memory baseline（完成：2026-04-22 02:11 +08）
 - [x] 命途 / 烙痕 Boss 姿态后续评估：`守心稳场 / 压线抢势 / 灼烧稳场 / 挂血抢势` 这批 threshold/status matchup echo 已足够稳定解释 `命途 / 烙痕` 的 choice footer 与 routed encounter handoff，现阶段不再继续扩到 forge / consumable 这类更间接 surface（完成：2026-04-22 03:11 +08）
