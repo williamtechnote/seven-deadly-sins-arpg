@@ -8,6 +8,7 @@
 - [x] 仓库交付闭环：源仓库自带未提交修改 + 未跟踪 plan 文件会在整合 `origin/main` 时阻塞 merge；现已通过归档/提交历史改动解除该 blocker（完成：2026-04-07 11:52 +08）
 
 ## Completed
+- [x] corridor handoff baseline copy sync：既然早段 baseline 已明确收束为“首战开压 + corridor handoff + shrine 靠近”，就把仍残留在 README/TODO 中的 `过门 稳拍反制 / 过门 回体扛压` 旧表述统一收回 `承接 稳拍反制 / 承接 回体扛压`，避免 context files 再和运行时 contract 分叉（完成：2026-04-22 19:11 +08）
 - [x] corridor handoff 文案一致性复查：既然早段 baseline 已收束到更轻的 handoff 语气，就把残留的 `过门 稳拍反制 / 过门 回体扛压` 旧文案统一收回 `承接 稳拍反制 / 承接 回体扛压`，避免 README / runtime / checks 再出现双轨表述（完成：2026-04-22 17:11 +08）
 - [x] 背包备战复查：当 `采购参考` + `备战参考` 已能把 portal focus 的 `目标 Boss / 门前姿态` 稳定折进 hub consumable prep 后，背包现在也会补一个 compact `备战复查`，把同一条 prep 折成 `复查 净化药剂 / 狂战油`、`背包已有N` 与 `快捷栏N / 快捷栏待补`，并高亮对应消耗品行，让开跑前最后一次 inventory sanity check 不再退回记忆题（完成：2026-04-16 04:40 +08）
 - [x] 商店备战推荐：当 portal focus 的 `目标 Boss / 门前姿态` 与铁匠的 `备战参考` 已能稳定压住 craft prep 后，商店现在也会继续补一个 compact `采购参考`，把同一条 Boss posture 继续折成 `净化药剂 · 稳场备净` / `狂战油 · 抢势开刃` 并高亮对应购买行，让最后一步补货不再退回记忆题或抽象常识（完成：2026-04-14 02:24 +08）
