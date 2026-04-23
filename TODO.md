@@ -8,6 +8,7 @@
 - [x] 仓库交付闭环：源仓库自带未提交修改 + 未跟踪 plan 文件会在整合 `origin/main` 时阻塞 merge；现已通过归档/提交历史改动解除该 blocker（完成：2026-04-07 11:52 +08）
 
 ## Completed
+- [x] corridor handoff copy resync：把 TODO / README 里仍残留的 `过门 稳拍反制 / 过门 回体扛压` 与 “corridor 过门” 旧写法重新收回当前实现与方法论已经对齐的 `承接 稳拍反制 / 承接 回体扛压` 与 “corridor handoff”，避免目标仓库上下文继续反复漂移（完成：2026-04-23 09:03 +08）
 - [x] corridor handoff copy tighten：把 TODO / README 中还残留的 `过门 稳拍反制 / 过门 回体扛压` 与 “corridor 过门” 旧词面统一收回 `承接 稳拍反制 / 承接 回体扛压` 与 “corridor handoff”，避免上下文文档继续落后于已验证实现（完成：2026-04-23 01:11 +08）
 - [x] corridor handoff 词面收口：把 TODO / README 中仍残留的 `过门 稳拍反制 / 过门 回体扛压` 和 “corridor 过门” 旧表述，统一收回到当前实现已验证的 `承接 稳拍反制 / 承接 回体扛压` 和 “corridor handoff”，避免 heartbeat 每轮都重复撞上同一 context drift（完成：2026-04-22 23:11 +08）
 - [x] corridor handoff baseline sync：把 context 文档里仍残留的 `过门 稳拍反制 / 过门 回体扛压` 与 “corridor 过门” 旧写法，统一收回到现行早段 baseline `承接 稳拍反制 / 承接 回体扛压` 与 “corridor handoff”，避免 README/TODO 再持续背离已验证实现（完成：2026-04-22 22:11 +08）
